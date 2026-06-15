@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Omar Soubra Coaching — Coach Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #4f7fff;
+    --accent2: #ff6b35;
+    --accent3: #00e5a0;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --danger: #ff4466;
+    --warn: #ffb84a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .brand h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 0.04em;
+  }
+  .brand .accent { color: var(--accent2); }
+  .brand .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .header-controls {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+  }
+  .btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #6f9fff; }
+  .sync-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    padding: 0.4rem 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .sync-status.ok    { color: var(--accent3); border-color: rgba(0,229,160,0.4); }
+  .sync-status.err   { color: var(--danger);  border-color: rgba(255,68,102,0.4); }
+
+  /* Summary bar */
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+  }
+  .summary-card .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .summary-card .val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .summary-card .desc {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  /* Alerts strip */
+  .alerts { margin-bottom: 2rem; }
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    background: rgba(255,184,74,0.08);
+    border: 1px solid rgba(255,184,74,0.3);
+    color: var(--warn);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+  .alert.danger {
+    background: rgba(255,68,102,0.08);
+    border-color: rgba(255,68,102,0.4);
+    color: var(--danger);
+  }
+
+  /* Section title */
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    color: var(--muted);
+  }
+
+  /* Client grid */
+  .client-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .client-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .client-card .status-dot {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent3);
+  }
+  .client-card .status-dot.warn { background: var(--warn); }
+  .client-card .status-dot.danger { background: var(--danger); }
+  .client-card .name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.7rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+  }
+  .client-card .program {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .client-card .weight-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .client-card .weight-row .cur {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    line-height: 1;
+    color: var(--accent3);
+  }
+  .client-card .weight-row .goal {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .client-card .delta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent3);
+    margin-bottom: 0.8rem;
+  }
+  .client-card .delta.gain { color: var(--accent2); }
+  .client-card .meta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  .client-card .meta-item {
+    font-size: 0.72rem;
+  }
+  .client-card .meta-item .label {
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.1rem;
+  }
+  .client-card .meta-item .val {
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+  .client-card .meta-item .val.muted { color: var(--muted); }
+
+  .flag-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.7rem;
+  }
+  .flag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.45rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .flag-pill.warn   { background: rgba(255,184,74,0.12);  color: var(--warn);    border: 1px solid rgba(255,184,74,0.3); }
+  .flag-pill.danger { background: rgba(255,68,102,0.12); color: var(--danger);  border: 1px solid rgba(255,68,102,0.3); }
+  .flag-pill.ok     { background: rgba(0,229,160,0.12);  color: var(--accent3); border: 1px solid rgba(0,229,160,0.3); }
+
+  .streak-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    background: var(--surface2);
+    border-radius: 6px;
+  }
+  .streak-item { display: flex; align-items: center; gap: 0.4rem; }
+  .streak-item .icon { font-size: 0.85rem; }
+  .streak-item .num { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; line-height: 1; color: var(--accent3); }
+  .streak-item .num.weak { color: var(--warn); }
+  .streak-item .num.none { color: var(--muted); }
+  .streak-item .label { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .notif-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+  }
+  .notif-toggle.on { color: var(--accent3); border-color: rgba(0,229,160,0.4); background: rgba(0,229,160,0.08); }
+  .notif-toggle:hover { color: var(--text); }
+
+  /* ─── Detail panel: 30-day heatmap + adherence ─── */
+  .adherence-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+  .adherence-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+  }
+  .adherence-card .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+  .adherence-card .val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--accent3);
+  }
+  .adherence-card .val.weak { color: var(--warn); }
+  .adherence-card .val.none { color: var(--muted); }
+  .adherence-card .desc {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+  .heatmap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    gap: 4px;
+    margin-top: 0.8rem;
+  }
+  .heatmap-day {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid transparent;
+    position: relative;
+    cursor: default;
+    transition: transform 0.1s, border-color 0.1s;
+  }
+  .heatmap-day:hover { transform: scale(1.15); border-color: var(--accent); z-index: 5; }
+  .heatmap-day.l1 { background: rgba(0,229,160,0.20); }
+  .heatmap-day.l2 { background: rgba(0,229,160,0.40); }
+  .heatmap-day.l3 { background: rgba(0,229,160,0.65); }
+  .heatmap-day.l4 { background: rgba(0,229,160,0.95); }
+  .heatmap-day.today { outline: 1px solid var(--accent2); }
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+  .heatmap-legend .swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .heatmap-legend .swatch.l0 { background: rgba(255,255,255,0.05); }
+  .heatmap-legend .swatch.l1 { background: rgba(0,229,160,0.20); }
+  .heatmap-legend .swatch.l2 { background: rgba(0,229,160,0.40); }
+  .heatmap-legend .swatch.l3 { background: rgba(0,229,160,0.65); }
+  .heatmap-legend .swatch.l4 { background: rgba(0,229,160,0.95); }
+
+  /* Detail modal */
+  .detail-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    padding: 2rem;
+    overflow-y: auto;
+  }
+  .detail-overlay.open { display: block; }
+  .detail-panel {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+  }
+  .detail-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+  .detail-close:hover { color: var(--text); border-color: var(--text); }
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .detail-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    letter-spacing: 0.04em;
+  }
+  .detail-header .meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .chart-wrap {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    height: 240px;
+  }
+
+  .log-section { margin-bottom: 1.5rem; }
+  .log-section h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+  .log-table {
+    width: 100%;
+    background: var(--surface2);
+    border-radius: 10px;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .log-table th {
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .log-table td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+  }
+  .log-table tr:last-child td { border-bottom: none; }
+  .log-empty {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+  }
+  .status-pill.ate  { background: rgba(0,229,160,0.15); color: var(--accent3); }
+  .status-pill.swap { background: rgba(255,184,74,0.15); color: var(--warn); }
+  .status-pill.skip { background: rgba(255,68,102,0.15); color: var(--danger); }
+
+  .open-program-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .open-program-btn:hover { background: #6f9fff; }
+
+  .login-overlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    max-width: 400px;
+    text-align: center;
+  }
+  .login-card h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  .login-card p { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.85rem; }
+  .login-card input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    text-align: center;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+  .login-card input:focus { outline: none; border-color: var(--accent); }
+  .login-card .err {
+    color: var(--danger);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 1rem; }
+    .brand h1 { font-size: 1.6rem; }
+    .header-controls { width: 100%; justify-content: space-between; }
+    .detail-overlay { padding: 0.5rem; }
+    .detail-panel { padding: 1.2rem; }
+    .detail-header h2 { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <h2>COACH DASHBOARD</h2>
+    <p>Trainer password required.</p>
+    <input id="login-input" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')login()"/>
+    <div class="err" id="login-err">Wrong password.</div>
+    <button class="btn primary" onclick="login()">UNLOCK</button>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div class="container" id="dashboard" style="display:none;">
+
+  <div class="header">
+    <div class="brand">
+      <h1>STRENGTH<span class="accent">BY</span>O</h1>
+      <span class="tag">Coach Dashboard</span>
+    </div>
+    <div class="header-controls">
+      <span class="sync-status" id="sync-status">⟳ checking...</span>
+      <button class="notif-toggle" id="notif-toggle" onclick="toggleNotifications()">🔕 NOTIFY</button>
+      <button class="btn primary" onclick="openClientForm()">+ ADD CLIENT</button>
+      <button class="btn" onclick="loadAll()">⟳ REFRESH</button>
+      <button class="btn" onclick="logout()">EXIT</button>
+    </div>
+  </div>
+
+  <!-- Add/Edit client modal -->
+  <div class="detail-overlay" id="client-form-overlay" onclick="if(event.target===this)closeClientForm()">
+    <div class="detail-panel" style="max-width:560px;">
+      <button class="detail-close" onclick="closeClientForm()">✕ CLOSE</button>
+      <div class="detail-header" style="margin-bottom:1rem;">
+        <h2 id="client-form-title">ADD CLIENT</h2>
+      </div>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Storage key must match the <code style="color:var(--accent3);">storageKey</code> in the client's program JSON (also their localStorage prefix). The program URL is the relative path from the dashboard to the client's HTML file.</p>
+      <div style="display:grid;grid-template-columns:140px 1fr;gap:0.7rem 1rem;align-items:center;margin-bottom:1.5rem;">
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Storage key</label>
+        <input id="cf-storage" type="text" placeholder="e.g. amir" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Display name</label>
+        <input id="cf-name" type="text" placeholder="e.g. Amir" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Program type</label>
+        <input id="cf-type" type="text" placeholder="e.g. Strength Cut" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Start weight (kg)</label>
+        <input id="cf-start-weight" type="number" step="0.1" placeholder="e.g. 95" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Goal weight (kg)</label>
+        <input id="cf-goal-weight" type="number" step="0.1" placeholder="e.g. 80" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Start date</label>
+        <input id="cf-start-date" type="date" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Program URL</label>
+        <input id="cf-url" type="text" placeholder="e.g. clients/amir_program.html" />
+      </div>
+      <style>
+        #client-form-overlay input { background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.8rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.85rem; }
+        #client-form-overlay input:focus { outline:none;border-color:var(--accent); }
+      </style>
+      <div style="display:flex;gap:0.6rem;justify-content:space-between;flex-wrap:wrap;">
+        <button class="btn" onclick="resetClientsToDefault()" style="color:var(--warn);border-color:rgba(255,184,74,0.4);">↶ RESET TO DEFAULTS</button>
+        <div style="display:flex;gap:0.6rem;">
+          <button class="btn" onclick="closeClientForm()">CANCEL</button>
+          <button class="btn primary" onclick="saveClientForm()">SAVE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY BAR -->
+  <div class="summary-row" id="summary-row"></div>
+
+  <!-- ALERTS -->
+  <div class="alerts" id="alerts"></div>
+
+  <!-- CLIENT GRID -->
+  <div class="section-title">CLIENTS</div>
+  <div class="client-grid" id="client-grid">
+    <div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:2rem;">Loading…</div>
+  </div>
+
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-overlay" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-panel" id="detail-panel"></div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────
+// Default clients — used on first boot. After that, the dashboard reads/writes
+// from localStorage so adding/removing/editing happens directly in-app.
+const COACH = {
+  password: 'OMARTRAINS',
+  webhookUrl: 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec',
+  defaultClients: [
+    // { storageKey, displayName, programType, startWeight, goalWeight, startDate (YYYY-MM-DD), programUrl }
+    { storageKey: 'amir',     displayName: 'Amir',     programType: 'Strength Cut',     startWeight: 95,  goalWeight: 80,  startDate: '2026-05-10', programUrl: 'clients/amir_program.html' },
+    { storageKey: 'lana',     displayName: 'Lana',     programType: 'Transformation',   startWeight: 102, goalWeight: 90,  startDate: '2026-05-25', programUrl: 'clients/lana_program.html' },
+    { storageKey: 'yusuf',    displayName: 'Yusuf',    programType: 'Lean Bulk',        startWeight: 67,  goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/yusuf_program.html' },
+    { storageKey: 'abdullah', displayName: 'Abdullah', programType: 'Bulk + Build',     startWeight: 57,  goalWeight: 62,  startDate: '2026-05-25', programUrl: 'clients/abdullah_program.html' },
+    { storageKey: 'ali',      displayName: 'Ali',      programType: 'Transformation',   startWeight: 115, goalWeight: 103, startDate: '2026-06-09', programUrl: 'clients/ali_program.html' },
+    { storageKey: 'siam',     displayName: 'Siam',     programType: 'Fat Loss',         startWeight: 108, goalWeight: 90,  startDate: '2026-04-25', programUrl: 'siam_program_v6.html' },
+  ],
+  get clients() { return loadClients(); },
+};
+
+const LS_CLIENTS = 'coach_clients_v1';
+function loadClients() {
+  try {
+    const raw = localStorage.getItem(LS_CLIENTS);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // First boot — seed with defaults
+  localStorage.setItem(LS_CLIENTS, JSON.stringify(COACH.defaultClients));
+  return COACH.defaultClients.slice();
+}
+function saveClients(list) { localStorage.setItem(LS_CLIENTS, JSON.stringify(list)); }
+function addClient(client) {
+  const list = loadClients();
+  // Replace if same storageKey, else append
+  const idx = list.findIndex(c => c.storageKey === client.storageKey);
+  if (idx >= 0) list[idx] = client; else list.push(client);
+  saveClients(list);
+  loadAll();
+}
+function removeClient(storageKey) {
+  if (!confirm('Remove ' + storageKey + ' from dashboard? (Their program file is not deleted — they just disappear from the dashboard.)')) return;
+  const list = loadClients().filter(c => c.storageKey !== storageKey);
+  saveClients(list);
+  loadAll();
+}
+function resetClientsToDefault() {
+  if (!confirm('Reset the client list to defaults? Any added clients will be lost.')) return;
+  localStorage.removeItem(LS_CLIENTS);
+  loadAll();
+  closeClientForm();
+}
+
+// ─── Client form (add/edit) ───
+let _editingStorageKey = null;
+function openClientForm(storageKey) {
+  _editingStorageKey = storageKey || null;
+  if (storageKey) {
+    const c = loadClients().find(c => c.storageKey === storageKey);
+    document.getElementById('client-form-title').textContent = 'EDIT — ' + c.displayName.toUpperCase();
+    document.getElementById('cf-storage').value      = c.storageKey;
+    document.getElementById('cf-storage').disabled   = true;
+    document.getElementById('cf-name').value         = c.displayName;
+    document.getElementById('cf-type').value         = c.programType;
+    document.getElementById('cf-start-weight').value = c.startWeight;
+    document.getElementById('cf-goal-weight').value  = c.goalWeight;
+    document.getElementById('cf-start-date').value   = c.startDate;
+    document.getElementById('cf-url').value          = c.programUrl;
+  } else {
+    document.getElementById('client-form-title').textContent = 'ADD CLIENT';
+    document.getElementById('cf-storage').value      = '';
+    document.getElementById('cf-storage').disabled   = false;
+    document.getElementById('cf-name').value         = '';
+    document.getElementById('cf-type').value         = '';
+    document.getElementById('cf-start-weight').value = '';
+    document.getElementById('cf-goal-weight').value  = '';
+    document.getElementById('cf-start-date').value   = new Date().toISOString().slice(0,10);
+    document.getElementById('cf-url').value          = 'clients/_program.html';
+  }
+  document.getElementById('client-form-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeClientForm() {
+  document.getElementById('client-form-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function saveClientForm() {
+  const c = {
+    storageKey:  document.getElementById('cf-storage').value.trim().toLowerCase(),
+    displayName: document.getElementById('cf-name').value.trim(),
+    programType: document.getElementById('cf-type').value.trim() || 'Program',
+    startWeight: parseFloat(document.getElementById('cf-start-weight').value) || 0,
+    goalWeight:  parseFloat(document.getElementById('cf-goal-weight').value) || 0,
+    startDate:   document.getElementById('cf-start-date').value,
+    programUrl:  document.getElementById('cf-url').value.trim(),
+  };
+  if (!c.storageKey) { alert('Storage key required.'); return; }
+  if (!c.displayName) { alert('Display name required.'); return; }
+  addClient(c);
+  closeClientForm();
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────
+function login() {
+  const pw = document.getElementById('login-input').value;
+  if (pw === COACH.password) {
+    sessionStorage.setItem('coach_unlocked', '1');
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('dashboard').style.display = '';
+    loadAll();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+function logout() {
+  sessionStorage.removeItem('coach_unlocked');
+  location.reload();
+}
+if (sessionStorage.getItem('coach_unlocked') === '1') {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+}
+
+// ─── DATA LAYER ───────────────────────────────────────────────────────────
+let _dashboardData = {};
+let _lastSyncMs = 0;
+let _syncStatus = 'never';
+
+function updateSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  if (_syncStatus === 'never') { el.textContent = '⟳ checking...'; el.className = 'sync-status'; return; }
+  if (_syncStatus === 'err')   { el.textContent = '⟳ sync failed — click refresh'; el.className = 'sync-status err'; return; }
+  const ago = Math.floor((Date.now() - _lastSyncMs) / 1000);
+  let label;
+  if (ago < 5) label = 'just now';
+  else if (ago < 60) label = ago + 's ago';
+  else if (ago < 3600) label = Math.floor(ago/60) + 'm ago';
+  else label = Math.floor(ago/3600) + 'h ago';
+  el.textContent = '⟳ synced ' + label;
+  el.className = 'sync-status ok';
+}
+
+async function fetchDashboardData() {
+  const url = COACH.webhookUrl + '?type=dashboard&_=' + Date.now();
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return await resp.json();
+}
+
+async function loadAll() {
+  try {
+    _dashboardData = await fetchDashboardData();
+    _lastSyncMs = Date.now();
+    _syncStatus = 'ok';
+    renderDashboard();
+  } catch (e) {
+    console.error('Dashboard fetch failed:', e);
+    _syncStatus = 'err';
+    updateSyncStatus();
+    // Render with cached/empty data so UI is still usable
+    renderDashboard();
+  }
+}
+
+// ─── RENDER: HELPERS ──────────────────────────────────────────────────────
+function programWeek(startDate) {
+  if (!startDate) return null;
+  const start = new Date(startDate);
+  const now = new Date();
+  const days = Math.floor((now - start) / (86400000));
+  return Math.max(1, Math.min(12, Math.ceil(days / 7) || 1));
+}
+
+function daysSince(ts) {
+  if (!ts) return null;
+  return Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+}
+
+function fmtAgo(ts) {
+  if (!ts) return 'never';
+  const days = daysSince(ts);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return days + 'd ago';
+  if (days < 30) return Math.floor(days/7) + 'w ago';
+  return Math.floor(days/30) + 'mo ago';
+}
+
+function clientStatus(c, summary) {
+  // Returns 'ok' / 'warn' / 'danger'
+  if (!summary) return 'warn'; // No data
+  const lastWeight = summary.latestWeightTs;
+  const lastCheckIn = summary.latestCheckIn ? summary.latestCheckIn.timestamp : null;
+  const dWeight = daysSince(lastWeight);
+  const dCheckIn = daysSince(lastCheckIn);
+
+  if (dWeight !== null && dWeight > 10) return 'danger';
+  if (dCheckIn !== null && dCheckIn > 10) return 'warn';
+  if (dWeight === null && programWeek(c.startDate) > 1) return 'warn';
+  return 'ok';
+}
+
+// ─── METRICS + FLAGS ─────────────────────────────────────────────────────
+function calculateMetrics(client, sum) {
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 86400000;
+  const recentMeals = (sum.recentMeals    || []).filter(m => m.timestamp && new Date(m.timestamp).getTime() > sevenDaysAgo);
+  const recentWorkouts = (sum.recentWorkouts || []).filter(w => w.timestamp && new Date(w.timestamp).getTime() > sevenDaysAgo);
+  const mealDays    = new Set(recentMeals.map(m => String(m.timestamp).slice(0, 10)));
+  const workoutDays = new Set(recentWorkouts.map(w => String(w.timestamp).slice(0, 10)));
+  return {
+    mealDays7d:     mealDays.size,
+    workoutDays7d:  workoutDays.size,
+    mealCount7d:    recentMeals.length,
+    workoutCount7d: recentWorkouts.length,
+  };
+}
+
+function detectFlags(client, sum, metrics) {
+  const flags = [];
+  if (!sum || !sum.latestWeight) {
+    if (programWeek(client.startDate) > 1) {
+      flags.push({ level: 'warn', text: 'No weigh-in yet' });
+    }
+    return flags;
+  }
+
+  const isCutting = client.goalWeight < client.startWeight;
+  const isBulking = client.goalWeight > client.startWeight;
+  const startToCurrent = client.startWeight - sum.latestWeight;
+
+  // Direction-vs-goal flag
+  if (isCutting && startToCurrent < -0.5) {
+    flags.push({ level: 'danger', text: `+${Math.abs(startToCurrent).toFixed(1)}kg gained on a cut` });
+  } else if (isBulking && startToCurrent > 0.5) {
+    flags.push({ level: 'danger', text: `−${startToCurrent.toFixed(1)}kg lost on a bulk` });
+  }
+
+  // No activity flag
+  const dWeight = daysSince(sum.latestWeightTs);
+  if (dWeight !== null && dWeight > 7) {
+    flags.push({ level: 'warn', text: `No weigh-in ${dWeight}d` });
+  }
+
+  // No workouts this week (after week 1 of program)
+  if (programWeek(client.startDate) > 1 && metrics.workoutDays7d === 0) {
+    flags.push({ level: 'warn', text: '0 workouts logged this wk' });
+  }
+
+  // Low meal adherence (< 3 days logged this week)
+  if (programWeek(client.startDate) > 1 && metrics.mealDays7d < 3 && metrics.mealDays7d > 0) {
+    flags.push({ level: 'warn', text: `Only ${metrics.mealDays7d}d meals logged` });
+  }
+
+  // Strong adherence — give a positive pill
+  if (metrics.mealDays7d >= 6 && metrics.workoutDays7d >= 3) {
+    flags.push({ level: 'ok', text: '🔥 on it' });
+  }
+
+  return flags;
+}
+
+// ─── PUSH NOTIFICATIONS ──────────────────────────────────────────────────
+let _notifEnabled = localStorage.getItem('coach_notif_enabled') === '1';
+let _lastSeen = JSON.parse(localStorage.getItem('coach_last_seen') || '{}');
+
+function updateNotifToggleUI() {
+  const el = document.getElementById('notif-toggle');
+  if (!el) return;
+  if (_notifEnabled && Notification.permission === 'granted') {
+    el.textContent = '🔔 NOTIFY ON';
+    el.className = 'notif-toggle on';
+  } else {
+    el.textContent = '🔕 NOTIFY';
+    el.className = 'notif-toggle';
+  }
+}
+
+async function toggleNotifications() {
+  if (!('Notification' in window)) {
+    alert('This browser does not support notifications.');
+    return;
+  }
+  if (_notifEnabled) {
+    _notifEnabled = false;
+    localStorage.setItem('coach_notif_enabled', '0');
+    updateNotifToggleUI();
+    return;
+  }
+  // Request permission
+  if (Notification.permission !== 'granted') {
+    const result = await Notification.requestPermission();
+    if (result !== 'granted') {
+      alert('Notifications were blocked. Re-enable them in your browser settings.');
+      return;
+    }
+  }
+  _notifEnabled = true;
+  localStorage.setItem('coach_notif_enabled', '1');
+  updateNotifToggleUI();
+  // Quick confirmation notification
+  new Notification('Strengthbyo Dashboard', {
+    body: 'Notifications are on — you\'ll see new logs here.',
+    tag: 'coach-test',
+  });
+}
+
+function checkForNewActivity() {
+  if (!_notifEnabled || Notification.permission !== 'granted') return;
+
+  for (const c of COACH.clients) {
+    const sum = _dashboardData[c.storageKey];
+    if (!sum) continue;
+    const seen = _lastSeen[c.storageKey] || { workoutCount: 0, mealCount: 0, weightCount: 0 };
+
+    // New workout(s)?
+    if ((sum.workoutCount || 0) > seen.workoutCount) {
+      const newLog = (sum.recentWorkouts || [])[0];
+      if (newLog) {
+        try {
+          new Notification(c.displayName + ' just logged a workout', {
+            body: (newLog.exerciseName || 'set') + ' — ' + (newLog.weightActual || '?') + ' × ' + (newLog.repsActual || '?'),
+            tag: 'workout-' + c.storageKey + '-' + (newLog.timestamp || Date.now()),
+          });
+        } catch(e) {}
+      }
+    }
+    // New meal(s)?
+    if ((sum.mealCount || 0) > seen.mealCount) {
+      const newLog = (sum.recentMeals || [])[0];
+      if (newLog) {
+        try {
+          new Notification(c.displayName + ' just logged a meal', {
+            body: (newLog.mealName || 'meal') + ' — ' + (newLog.calActual || '?') + ' kcal' + (newLog.swapDesc ? ' (' + newLog.swapDesc + ')' : ''),
+            tag: 'meal-' + c.storageKey + '-' + (newLog.timestamp || Date.now()),
+          });
+        } catch(e) {}
+      }
+    }
+    // New weigh-in?
+    if (sum.latestWeightTs && (!seen.latestWeightTs || new Date(sum.latestWeightTs) > new Date(seen.latestWeightTs))) {
+      if (seen.latestWeightTs) {  // skip very first one to avoid spam on initial load
+        try {
+          new Notification(c.displayName + ' just weighed in', {
+            body: sum.latestWeight + ' kg',
+            tag: 'weight-' + c.storageKey + '-' + sum.latestWeightTs,
+          });
+        } catch(e) {}
+      }
+    }
+
+    _lastSeen[c.storageKey] = {
+      workoutCount: sum.workoutCount || 0,
+      mealCount:    sum.mealCount || 0,
+      weightCount:  sum.weightCount || 0,
+      latestWeightTs: sum.latestWeightTs || null,
+    };
+  }
+  localStorage.setItem('coach_last_seen', JSON.stringify(_lastSeen));
+}
+
+// ─── RENDER: DASHBOARD ────────────────────────────────────────────────────
+function renderDashboard() {
+  updateSyncStatus();
+  updateNotifToggleUI();
+  renderSummary();
+  renderAlerts();
+  renderClientGrid();
+  checkForNewActivity();  // fires notifications for new logs since last poll
+}
+
+function renderSummary() {
+  const total = COACH.clients.length;
+  let activeCount = 0;
+  let totalLoss = 0;
+  let logsToday = 0;
+  const today = new Date().toISOString().slice(0, 10);
+
+  COACH.clients.forEach(c => {
+    const sum = _dashboardData[c.storageKey];
+    if (sum && sum.latestWeight) {
+      activeCount++;
+      const delta = (c.startWeight || 0) - sum.latestWeight;
+      if (delta > 0) totalLoss += delta;
+    }
+    if (sum) {
+      const allLogs = (sum.recentWorkouts || []).concat(sum.recentMeals || []);
+      allLogs.forEach(l => {
+        if (l.timestamp && String(l.timestamp).slice(0, 10) === today) logsToday++;
+      });
+    }
+  });
+
+  document.getElementById('summary-row').innerHTML = `
+    <div class="summary-card">
+      <div class="label">Active clients</div>
+      <div class="val">${activeCount}<span style="font-size:1rem;color:var(--muted);"> / ${total}</span></div>
+      <div class="desc">with at least one weigh-in</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total weight lost</div>
+      <div class="val">${totalLoss.toFixed(1)}<span style="font-size:1rem;color:var(--muted);"> kg</span></div>
+      <div class="desc">summed across all clients</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Logs today</div>
+      <div class="val">${logsToday}</div>
+      <div class="desc">workouts + meals combined</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Last sync</div>
+      <div class="val" style="font-size:1.4rem;">${_syncStatus === 'ok' ? fmtAgo(new Date(_lastSyncMs).toISOString()) : '—'}</div>
+      <div class="desc">click refresh anytime</div>
+    </div>
+  `;
+}
+
+function renderAlerts() {
+  const alerts = [];
+  COACH.clients.forEach(c => {
+    const sum = _dashboardData[c.storageKey] || {};
+    const metrics = calculateMetrics(c, sum);
+    const flags = detectFlags(c, sum, metrics);
+    // Surface DANGER-level flags + selected WARN flags as alerts
+    flags.forEach(f => {
+      if (f.level === 'danger') {
+        alerts.push({ level: 'danger', text: c.displayName + ' — ' + f.text });
+      } else if (f.level === 'warn' && /^No|^0 workouts|^Only/.test(f.text)) {
+        alerts.push({ level: 'warn', text: c.displayName + ' — ' + f.text });
+      }
+    });
+  });
+  const html = alerts.length
+    ? alerts.map(a => `<div class="alert ${a.level === 'danger' ? 'danger' : ''}">⚠ ${a.text}</div>`).join('')
+    : '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">No alerts — all clients tracking.</div>';
+  document.getElementById('alerts').innerHTML = html;
+}
+
+function renderClientGrid() {
+  const list = COACH.clients;
+  if (!list.length) {
+    document.getElementById('client-grid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:3rem;border:1px dashed var(--border);border-radius:12px;"><div style="font-size:1rem;margin-bottom:0.5rem;">No clients yet.</div><div style="font-size:0.85rem;margin-bottom:1rem;">Click <strong>+ ADD CLIENT</strong> in the header to get started.</div></div>`;
+    return;
+  }
+  const html = list.map(c => {
+    const sum = _dashboardData[c.storageKey] || {};
+    const week = programWeek(c.startDate);
+    const status = clientStatus(c, sum);
+    const cur = sum.latestWeight || c.startWeight;
+    const delta = (c.startWeight - cur).toFixed(1);
+    const deltaClass = delta < 0 ? 'gain' : '';
+    const deltaSign = delta >= 0 ? '−' : '+';
+    const lastWeightAgo = fmtAgo(sum.latestWeightTs);
+    const lastCheckIn = sum.latestCheckIn ? fmtAgo(sum.latestCheckIn.timestamp) : 'never';
+
+    const metrics = calculateMetrics(c, sum);
+    const flags = detectFlags(c, sum, metrics);
+
+    const flagPills = flags.length
+      ? `<div class="flag-pills">${flags.map(f => `<span class="flag-pill ${f.level}">${f.text}</span>`).join('')}</div>`
+      : '';
+
+    // Streak row — workouts and meals logged this week
+    const wkClass = metrics.workoutDays7d >= 3 ? '' : (metrics.workoutDays7d === 0 ? 'none' : 'weak');
+    const mlClass = metrics.mealDays7d >= 5 ? '' : (metrics.mealDays7d === 0 ? 'none' : 'weak');
+    const streakRow = `
+      <div class="streak-row">
+        <div class="streak-item">
+          <span class="icon">🏋️</span>
+          <div>
+            <div class="num ${wkClass}">${metrics.workoutDays7d}<span style="font-size:0.7rem;color:var(--muted);">/7</span></div>
+            <div class="label">workout days</div>
+          </div>
+        </div>
+        <div class="streak-item">
+          <span class="icon">🍽️</span>
+          <div>
+            <div class="num ${mlClass}">${metrics.mealDays7d}<span style="font-size:0.7rem;color:var(--muted);">/7</span></div>
+            <div class="label">meals logged</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    return `
+      <div class="client-card" onclick="openDetail('${c.storageKey}')">
+        <div class="status-dot ${status === 'ok' ? '' : status}"></div>
+        <div style="position:absolute;top:0.8rem;left:0.8rem;display:flex;gap:0.3rem;z-index:5;">
+          <button onclick="event.stopPropagation(); openClientForm('${c.storageKey}')" title="Edit"
+            style="background:rgba(79,127,255,0.15);border:1px solid rgba(79,127,255,0.4);color:var(--accent);font-size:0.6rem;padding:0.2rem 0.4rem;border-radius:3px;cursor:pointer;font-family:'DM Mono',monospace;">✏️</button>
+          <button onclick="event.stopPropagation(); removeClient('${c.storageKey}')" title="Remove"
+            style="background:rgba(255,68,102,0.12);border:1px solid rgba(255,68,102,0.4);color:var(--danger);font-size:0.6rem;padding:0.2rem 0.4rem;border-radius:3px;cursor:pointer;font-family:'DM Mono',monospace;">✕</button>
+        </div>
+        <div class="name" style="margin-top:0.6rem;">${c.displayName}</div>
+        <div class="program">${c.programType} · Wk ${week || 1}/12</div>
+        <div class="weight-row">
+          <div class="cur">${cur}<span style="font-size:1rem;color:var(--muted);">kg</span></div>
+          <div class="goal">→ ${c.goalWeight}</div>
+        </div>
+        <div class="delta ${deltaClass}">${deltaSign}${Math.abs(delta)} kg · ${lastWeightAgo}</div>
+        ${streakRow}
+        ${flagPills}
+        <div class="meta-row">
+          <div class="meta-item">
+            <span class="label">Check-in</span>
+            <span class="val ${lastCheckIn === 'never' ? 'muted' : ''}">${lastCheckIn}</span>
+          </div>
+          <div class="meta-item">
+            <span class="label">Logs (7d)</span>
+            <span class="val">${metrics.workoutCount7d + metrics.mealCount7d}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('client-grid').innerHTML = html;
+}
+
+// ─── 30-day adherence metrics + heatmap ──────────────────────────────────
+function build30DayMetrics(sum) {
+  // Build per-day activity map for the last 30 days
+  const now = Date.now();
+  const days = [];
+  const dayMap = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now - i * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ key, date: d, workouts: 0, meals: 0, weighIns: 0 });
+    dayMap[key] = days[days.length - 1];
+  }
+
+  const tally = (arr, field) => {
+    (arr || []).forEach(r => {
+      if (!r.timestamp) return;
+      const k = String(r.timestamp).slice(0, 10);
+      if (dayMap[k]) dayMap[k][field]++;
+    });
+  };
+  tally(sum.recentWorkouts, 'workouts');
+  tally(sum.recentMeals,    'meals');
+  // recentMeals + recentWorkouts in sum are limited to ~10/15 entries so 30-day
+  // accuracy assumes the sheet returns the most recent — fine for our needs.
+
+  // Calculate streaks
+  let currentStreak = 0, bestStreak = 0, runningStreak = 0;
+  let totalActiveDays = 0, totalLogs = 0;
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    const logs = d.workouts + d.meals + d.weighIns;
+    d.logs = logs;
+    if (logs > 0) {
+      runningStreak++;
+      totalActiveDays++;
+      totalLogs += logs;
+      if (runningStreak > bestStreak) bestStreak = runningStreak;
+    } else {
+      runningStreak = 0;
+    }
+  }
+  // Current streak — count back from today until we hit a 0-log day
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].logs > 0) currentStreak++;
+    else break;
+  }
+
+  return { days, totalActiveDays, bestStreak, currentStreak, totalLogs };
+}
+
+function renderAdherenceSection(metrics30) {
+  const cards = `
+    <div class="adherence-grid">
+      <div class="adherence-card">
+        <div class="label">Active days</div>
+        <div class="val ${metrics30.totalActiveDays === 0 ? 'none' : (metrics30.totalActiveDays < 10 ? 'weak' : '')}">${metrics30.totalActiveDays}<span style="font-size:0.85rem;color:var(--muted);"> / 30</span></div>
+        <div class="desc">days with at least 1 log</div>
+      </div>
+      <div class="adherence-card">
+        <div class="label">Current streak</div>
+        <div class="val ${metrics30.currentStreak === 0 ? 'none' : (metrics30.currentStreak < 3 ? 'weak' : '')}">${metrics30.currentStreak}<span style="font-size:0.85rem;color:var(--muted);"> d</span></div>
+        <div class="desc">days in a row right now</div>
+      </div>
+      <div class="adherence-card">
+        <div class="label">Best streak</div>
+        <div class="val ${metrics30.bestStreak === 0 ? 'none' : ''}">${metrics30.bestStreak}<span style="font-size:0.85rem;color:var(--muted);"> d</span></div>
+        <div class="desc">longest in last 30d</div>
+      </div>
+      <div class="adherence-card">
+        <div class="label">Total logs</div>
+        <div class="val ${metrics30.totalLogs === 0 ? 'none' : ''}">${metrics30.totalLogs}</div>
+        <div class="desc">workouts + meals · 30d</div>
+      </div>
+    </div>
+  `;
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const cells = metrics30.days.map(d => {
+    let level = 0;
+    if (d.logs === 0)        level = 0;
+    else if (d.logs === 1)   level = 1;
+    else if (d.logs <= 3)    level = 2;
+    else if (d.logs <= 6)    level = 3;
+    else                     level = 4;
+    const tooltip = `${d.date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} — ${d.logs} log${d.logs !== 1 ? 's' : ''}` +
+      (d.workouts ? ` · ${d.workouts} workout${d.workouts !== 1 ? 's' : ''}` : '') +
+      (d.meals ? ` · ${d.meals} meal${d.meals !== 1 ? 's' : ''}` : '');
+    return `<div class="heatmap-day l${level}${d.key === todayKey ? ' today' : ''}" title="${tooltip}"></div>`;
+  }).join('');
+
+  const heatmap = `
+    <div class="heatmap">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.04em;color:var(--muted);">30-day activity</h3>
+        <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);">today is bordered</span>
+      </div>
+      <div class="heatmap-grid">${cells}</div>
+      <div class="heatmap-legend">
+        <span>less</span>
+        <span class="swatch l0"></span>
+        <span class="swatch l1"></span>
+        <span class="swatch l2"></span>
+        <span class="swatch l3"></span>
+        <span class="swatch l4"></span>
+        <span>more</span>
+      </div>
+    </div>
+  `;
+
+  return cards + heatmap;
+}
+
+// ─── DETAIL PANEL ─────────────────────────────────────────────────────────
+let _detailChart = null;
+function openDetail(storageKey) {
+  const c = COACH.clients.find(c => c.storageKey === storageKey);
+  if (!c) return;
+  const sum = _dashboardData[storageKey] || {};
+
+  const checkin = sum.latestCheckIn;
+  const week = programWeek(c.startDate);
+  const cur = sum.latestWeight || c.startWeight;
+  const delta = (c.startWeight - cur).toFixed(1);
+
+  const metrics30 = build30DayMetrics(sum);
+
+  document.getElementById('detail-panel').innerHTML = `
+    <button class="detail-close" onclick="closeDetail()">✕ CLOSE</button>
+    <div class="detail-header">
+      <div>
+        <h2>${c.displayName.toUpperCase()}</h2>
+        <div class="meta">${c.programType} · Week ${week}/12 · ${cur}kg / goal ${c.goalWeight}kg · Δ ${delta < 0 ? '+' : '−'}${Math.abs(delta)}kg</div>
+      </div>
+      <a class="open-program-btn" href="${c.programUrl}" target="_blank">OPEN PROGRAM →</a>
+    </div>
+
+    <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
+
+    ${renderAdherenceSection(metrics30)}
+
+    <div class="log-section">
+      <h3>Latest check-in${checkin ? ' · ' + fmtAgo(checkin.timestamp) : ''}</h3>
+      ${checkin ? renderCheckIn(checkin) : '<div class="log-empty">No check-in submitted yet.</div>'}
+    </div>
+
+    <div class="log-section">
+      <h3>Recent workouts (last 10)</h3>
+      ${renderWorkoutLogTable(sum.recentWorkouts || [])}
+    </div>
+
+    <div class="log-section">
+      <h3>Recent meals (last 15)</h3>
+      ${renderMealLogTable(sum.recentMeals || [])}
+    </div>
+  `;
+  document.getElementById('detail-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Build the chart after innerHTML settles
+  setTimeout(() => buildWeightChart(c, sum), 0);
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  if (_detailChart) { _detailChart.destroy(); _detailChart = null; }
+}
+
+async function buildWeightChart(c, sum) {
+  // Fetch full weight history for this client
+  try {
+    const url = COACH.webhookUrl + '?type=weightLog&client=' + encodeURIComponent(c.storageKey) + '&_=' + Date.now();
+    const resp = await fetch(url, { cache: 'no-store' });
+    const log = await resp.json();
+    const data = log
+      .filter(r => r.weightKg)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+      .map(r => ({ x: r.timestamp, y: Number(r.weightKg) }));
+    // Prepend the start weight if no log on the start date
+    if (data.length === 0 || new Date(data[0].x) > new Date(c.startDate)) {
+      data.unshift({ x: c.startDate, y: c.startWeight });
+    }
+
+    const ctx = document.getElementById('detail-chart');
+    if (!ctx) return;
+    _detailChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Weight',
+            data: data,
+            borderColor: '#00e5a0',
+            backgroundColor: 'rgba(0,229,160,0.1)',
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: '#00e5a0',
+          },
+          {
+            label: 'Goal',
+            data: [
+              { x: c.startDate, y: c.goalWeight },
+              { x: new Date().toISOString().slice(0,10), y: c.goalWeight },
+            ],
+            borderColor: 'rgba(255,107,53,0.5)',
+            borderDash: [5,5],
+            pointRadius: 0,
+            fill: false,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#e8e8f0' } } },
+        scales: {
+          x: { type: 'time', time: { unit: 'week' }, ticks: { color: '#6b6b8a' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#6b6b8a' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        }
+      }
+    });
+  } catch (e) {
+    console.error('Chart load failed:', e);
+  }
+}
+
+function renderCheckIn(ci) {
+  return `
+    <table class="log-table">
+      <tr>
+        <th>Week</th><th>Weight</th><th>Energy</th><th>Sleep</th><th>Stress</th><th>Diet</th><th>Train</th><th>Notes</th>
+      </tr>
+      <tr>
+        <td>${ci.week || '—'}</td>
+        <td>${ci.weightKg || '—'} kg</td>
+        <td>${ci.energy1to10 || '—'}/10</td>
+        <td>${ci.sleepHours || '—'} hr</td>
+        <td>${ci.stress1to10 || '—'}/10</td>
+        <td>${ci.dietAdherence1to10 || '—'}/10</td>
+        <td>${ci.trainingAdherence1to10 || '—'}/10</td>
+        <td style="white-space:normal;">${ci.notes || '—'}</td>
+      </tr>
+    </table>
+  `;
+}
+
+function renderWorkoutLogTable(rows) {
+  if (!rows.length) return '<div class="log-empty">No workouts logged yet.</div>';
+  return `
+    <table class="log-table">
+      <tr><th>When</th><th>Phase</th><th>Day</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th><th>RPE</th></tr>
+      ${rows.map(r => `
+        <tr>
+          <td>${fmtAgo(r.timestamp)}</td>
+          <td>P${r.phase || '—'}</td>
+          <td>D${(r.dayIdx ?? 0) + 1}</td>
+          <td>${r.exerciseName || '—'}</td>
+          <td>${r.setsActual || '—'}</td>
+          <td>${r.repsActual || '—'}</td>
+          <td>${r.weightActual || '—'}</td>
+          <td>${r.rpeActual || '—'}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+}
+
+function renderMealLogTable(rows) {
+  if (!rows.length) return '<div class="log-empty">No meals logged yet.</div>';
+  return `
+    <table class="log-table">
+      <tr><th>When</th><th>Wk</th><th>Day</th><th>Meal</th><th>Status</th><th>Cal</th><th>P/C/F</th><th>Notes</th></tr>
+      ${rows.map(r => `
+        <tr>
+          <td>${fmtAgo(r.timestamp)}</td>
+          <td>${r.week || '—'}</td>
+          <td>D${(r.dayIdx ?? 0) + 1}</td>
+          <td>${r.mealName || '—'}</td>
+          <td><span class="status-pill ${r.status || 'ate'}">${(r.status || 'ate').toUpperCase()}</span></td>
+          <td>${r.calActual || '—'}</td>
+          <td>${[r.pActual, r.cActual, r.fActual].filter(Boolean).join('/') || '—'}</td>
+          <td style="white-space:normal;">${r.swapDesc || r.notes || '—'}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────
+if (sessionStorage.getItem('coach_unlocked') === '1') {
+  loadAll();
+  setInterval(() => {
+    if (!document.hidden) loadAll();
+  }, 30000);
+  setInterval(updateSyncStatus, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadAll();
+  });
+}
+</script>
+
+</body>
+</html>
