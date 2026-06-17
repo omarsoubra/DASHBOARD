@@ -376,6 +376,258 @@
   .heatmap-legend .swatch.l3 { background: rgba(0,229,160,0.65); }
   .heatmap-legend .swatch.l4 { background: rgba(0,229,160,0.95); }
 
+  /* ─── Detail panel: macro tally ─── */
+  .macro-tally-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .macro-tally-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+  }
+  .macro-tally-card .title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.7rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .macro-tally-card .title .sub {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: 'DM Mono', monospace;
+  }
+  .macro-tally-card .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.7rem;
+  }
+  .macro-tally-card .cell .num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+  .macro-tally-card .cell .label {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+  .macro-tally-card .cell .num.kcal { color: var(--accent3); }
+  .macro-tally-card .cell .num.p { color: var(--accent); }
+  .macro-tally-card .cell .num.c { color: var(--accent2); }
+  .macro-tally-card .cell .num.f { color: var(--text); }
+
+  .kcal-chart-wrap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .kcal-bar-row {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    gap: 4px;
+    margin-top: 0.8rem;
+    align-items: end;
+    height: 90px;
+  }
+  .kcal-bar {
+    background: rgba(0,229,160,0.5);
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    min-height: 2px;
+    transition: opacity 0.15s;
+  }
+  .kcal-bar.empty { background: rgba(255,255,255,0.04); }
+  .kcal-bar.today { background: var(--accent3); box-shadow: 0 0 8px rgba(0,229,160,0.5); }
+  .kcal-bar:hover { opacity: 0.85; }
+  .kcal-chart-labels {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    gap: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 0.4rem;
+  }
+
+  /* ─── Quick actions on cards ─── */
+  .quick-actions {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.7rem;
+    flex-wrap: wrap;
+  }
+  .quick-action {
+    flex: 1;
+    min-width: 0;
+    background: rgba(79,127,255,0.1);
+    border: 1px solid rgba(79,127,255,0.3);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    padding: 0.35rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    text-transform: uppercase;
+    transition: background 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quick-action:hover { background: rgba(79,127,255,0.25); }
+  .quick-action.message { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.3); color: var(--accent3); }
+  .quick-action.message:hover { background: rgba(0,229,160,0.25); }
+  .quick-action.disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ─── Search + filter bar ─── */
+  .search-bar {
+    display: flex;
+    gap: 0.7rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+  }
+  .search-input:focus { outline: none; border-color: var(--accent); }
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ─── Today's activity feed ─── */
+  .activity-feed {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 2rem;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .activity-feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.8rem;
+  }
+  .activity-feed-header h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.04em;
+  }
+  .activity-feed-header .count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .activity-row {
+    display: grid;
+    grid-template-columns: 70px 90px 1fr 80px;
+    gap: 0.7rem;
+    align-items: center;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.1s;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .activity-row:hover { background: var(--surface2); }
+  .activity-row .when {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .activity-row .client {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+  }
+  .activity-row .what { color: var(--text); }
+  .activity-row .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .activity-row .tag.workout { background: rgba(79,127,255,0.15);  color: var(--accent); }
+  .activity-row .tag.meal    { background: rgba(0,229,160,0.15);  color: var(--accent3); }
+  .activity-row .tag.weight  { background: rgba(255,107,53,0.15); color: var(--accent2); }
+  .activity-row .tag.checkin { background: rgba(255,184,74,0.15); color: var(--warn); }
+  .activity-row .tag.pr      { background: rgba(255,68,102,0.15); color: var(--danger); animation: prPulse 2s ease-in-out infinite; }
+  @keyframes prPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,102,0.6); }
+    50%      { box-shadow: 0 0 0 4px rgba(255,68,102,0.0); }
+  }
+  .activity-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 2rem;
+    font-style: italic;
+  }
+
+  /* ─── PDF report styles (print-only) ─── */
+  @media print {
+    body { background: white; color: black; }
+    .header, .summary-row, .alerts, .activity-feed, .search-bar,
+    .section-title, .client-grid, .quick-actions, .detail-close,
+    .open-program-btn, .notif-toggle, .header-controls, .sync-status,
+    #report-btn, #client-form-overlay { display: none !important; }
+    .detail-overlay { position: static !important; background: white !important; padding: 0 !important; backdrop-filter: none !important; }
+    .detail-panel {
+      background: white !important;
+      border: none !important;
+      box-shadow: none !important;
+      max-width: 100% !important;
+      padding: 0.5rem !important;
+    }
+    .detail-panel * { color: black !important; }
+    .detail-header h2 { color: #4f7fff !important; }
+    .chart-wrap, .heatmap, .macro-tally-card, .adherence-card, .kcal-chart-wrap, .log-table {
+      background: white !important;
+      border: 1px solid #ccc !important;
+      page-break-inside: avoid;
+    }
+  }
+
   /* Detail modal */
   .detail-overlay {
     display: none;
@@ -612,6 +864,8 @@
         <input id="cf-start-date" type="date" />
         <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Program URL</label>
         <input id="cf-url" type="text" placeholder="e.g. clients/amir_program.html" />
+        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Phone (optional)</label>
+        <input id="cf-phone" type="text" placeholder="e.g. +61412345678 (E.164)" />
       </div>
       <style>
         #client-form-overlay input { background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.8rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.85rem; }
@@ -633,8 +887,36 @@
   <!-- ALERTS -->
   <div class="alerts" id="alerts"></div>
 
-  <!-- CLIENT GRID -->
+  <!-- TODAY'S DIGEST (top summary) -->
+  <div class="activity-feed" id="digest-panel" style="background:linear-gradient(135deg, rgba(79,127,255,0.06), rgba(0,229,160,0.05));border-color:rgba(0,229,160,0.3);margin-bottom:1rem;">
+    <div class="activity-feed-header">
+      <h3>📋 TODAY'S DIGEST · <span id="digest-date" style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--muted);font-weight:normal;letter-spacing:0.04em;"></span></h3>
+      <button class="btn" onclick="emailDigestNow()" style="font-size:0.62rem;">✉ EMAIL ME THIS</button>
+    </div>
+    <div id="digest-body" style="font-size:0.88rem;line-height:1.6;color:var(--text);"></div>
+  </div>
+
+  <!-- TODAY'S ACTIVITY FEED -->
+  <div class="activity-feed" id="activity-feed">
+    <div class="activity-feed-header">
+      <h3>🔥 RECENT ACTIVITY</h3>
+      <span class="count" id="activity-count">— logs · last 24h</span>
+    </div>
+    <div id="activity-body"></div>
+  </div>
+
+  <!-- CLIENT SEARCH + FILTER -->
   <div class="section-title">CLIENTS</div>
+  <div class="search-bar">
+    <input class="search-input" id="search-input" type="text" placeholder="🔍 search by name or storage key…" oninput="renderClientGrid()" />
+    <select class="filter-select" id="filter-select" onchange="renderClientGrid()">
+      <option value="all">ALL CLIENTS</option>
+      <option value="on-track">ON TRACK</option>
+      <option value="attention">NEEDS ATTENTION</option>
+      <option value="no-activity">NO RECENT ACTIVITY</option>
+      <option value="has-pr">HAS RECENT PR</option>
+    </select>
+  </div>
   <div class="client-grid" id="client-grid">
     <div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:2rem;">Loading…</div>
   </div>
@@ -654,13 +936,13 @@ const COACH = {
   password: 'OMARTRAINS',
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec',
   defaultClients: [
-    // { storageKey, displayName, programType, startWeight, goalWeight, startDate (YYYY-MM-DD), programUrl }
-    { storageKey: 'amir',     displayName: 'Amir',     programType: 'Strength Cut',     startWeight: 95,  goalWeight: 80,  startDate: '2026-05-10', programUrl: 'clients/amir_program.html' },
-    { storageKey: 'lana',     displayName: 'Lana',     programType: 'Transformation',   startWeight: 102, goalWeight: 90,  startDate: '2026-05-25', programUrl: 'clients/lana_program.html' },
-    { storageKey: 'yusuf',    displayName: 'Yusuf',    programType: 'Lean Bulk',        startWeight: 67,  goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/yusuf_program.html' },
-    { storageKey: 'abdullah', displayName: 'Abdullah', programType: 'Bulk + Build',     startWeight: 57,  goalWeight: 62,  startDate: '2026-05-25', programUrl: 'clients/abdullah_program.html' },
-    { storageKey: 'ali',      displayName: 'Ali',      programType: 'Transformation',   startWeight: 115, goalWeight: 103, startDate: '2026-06-09', programUrl: 'clients/ali_program.html' },
-    { storageKey: 'siam',     displayName: 'Siam',     programType: 'Fat Loss',         startWeight: 108, goalWeight: 90,  startDate: '2026-04-25', programUrl: 'siam_program_v6.html' },
+    // { storageKey, displayName, programType, startWeight, goalWeight, startDate, programUrl, phone (E.164 e.g. +61412345678) }
+    { storageKey: 'amir',     displayName: 'Amir',     programType: 'Strength Cut',     startWeight: 95,  goalWeight: 80,  startDate: '2026-05-10', programUrl: 'clients/amir_program.html',     phone: '' },
+    { storageKey: 'lana',     displayName: 'Lana',     programType: 'Transformation',   startWeight: 102, goalWeight: 90,  startDate: '2026-05-25', programUrl: 'clients/lana_program.html',     phone: '' },
+    { storageKey: 'yusuf',    displayName: 'Yusuf',    programType: 'Lean Bulk',        startWeight: 67,  goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/yusuf_program.html',    phone: '' },
+    { storageKey: 'abdullah', displayName: 'Abdullah', programType: 'Bulk + Build',     startWeight: 57,  goalWeight: 62,  startDate: '2026-05-25', programUrl: 'clients/abdullah_program.html', phone: '' },
+    { storageKey: 'ali',      displayName: 'Ali',      programType: 'Transformation',   startWeight: 115, goalWeight: 103, startDate: '2026-06-09', programUrl: 'clients/ali_program.html',      phone: '' },
+    { storageKey: 'siam',     displayName: 'Siam',     programType: 'Fat Loss',         startWeight: 108, goalWeight: 90,  startDate: '2026-04-25', programUrl: 'siam_program_v6.html',          phone: '' },
   ],
   get clients() { return loadClients(); },
 };
@@ -712,6 +994,7 @@ function openClientForm(storageKey) {
     document.getElementById('cf-goal-weight').value  = c.goalWeight;
     document.getElementById('cf-start-date').value   = c.startDate;
     document.getElementById('cf-url').value          = c.programUrl;
+    document.getElementById('cf-phone').value        = c.phone || '';
   } else {
     document.getElementById('client-form-title').textContent = 'ADD CLIENT';
     document.getElementById('cf-storage').value      = '';
@@ -722,6 +1005,7 @@ function openClientForm(storageKey) {
     document.getElementById('cf-goal-weight').value  = '';
     document.getElementById('cf-start-date').value   = new Date().toISOString().slice(0,10);
     document.getElementById('cf-url').value          = 'clients/_program.html';
+    document.getElementById('cf-phone').value        = '';
   }
   document.getElementById('client-form-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -739,6 +1023,7 @@ function saveClientForm() {
     goalWeight:  parseFloat(document.getElementById('cf-goal-weight').value) || 0,
     startDate:   document.getElementById('cf-start-date').value,
     programUrl:  document.getElementById('cf-url').value.trim(),
+    phone:       document.getElementById('cf-phone').value.trim(),
   };
   if (!c.storageKey) { alert('Storage key required.'); return; }
   if (!c.displayName) { alert('Display name required.'); return; }
@@ -1011,9 +1296,209 @@ function renderDashboard() {
   updateSyncStatus();
   updateNotifToggleUI();
   renderSummary();
+  renderDigestPanel();
   renderAlerts();
+  renderActivityFeed();
   renderClientGrid();
-  checkForNewActivity();  // fires notifications for new logs since last poll
+  checkForNewActivity();
+}
+
+// ─── TODAY'S DIGEST ──────────────────────────────────────────────────────
+function buildDigestText() {
+  const today = new Date().toISOString().slice(0, 10);
+  const lines = [];
+  let totalWorkouts = 0, totalMeals = 0, totalWeighIns = 0, totalPRs = 0;
+  const perClient = [];
+
+  COACH.clients.forEach(c => {
+    const sum = _dashboardData[c.storageKey];
+    if (!sum) return;
+    const todayWorkouts = (sum.recentWorkouts || []).filter(w => String(w.timestamp).slice(0,10) === today).length;
+    const todayMeals    = (sum.recentMeals    || []).filter(m => String(m.timestamp).slice(0,10) === today && m.status !== 'undo').length;
+    const todayWeigh    = sum.latestWeightTs && String(sum.latestWeightTs).slice(0,10) === today;
+    const prs           = detectPRs(sum).recentPRs.filter(p => String(p.date).slice(0,10) === today);
+    totalWorkouts += todayWorkouts;
+    totalMeals    += todayMeals;
+    if (todayWeigh) totalWeighIns++;
+    totalPRs += prs.length;
+    const metrics = calculateMetrics(c, sum);
+    const flags = detectFlags(c, sum, metrics);
+    const danger = flags.filter(f => f.level === 'danger');
+
+    if (todayWorkouts || todayMeals || todayWeigh || prs.length || danger.length) {
+      let entry = '<strong>' + c.displayName + '</strong>: ';
+      const bits = [];
+      if (todayWorkouts) bits.push(todayWorkouts + ' workout' + (todayWorkouts > 1 ? 's' : ''));
+      if (todayMeals)    bits.push(todayMeals + ' meal' + (todayMeals > 1 ? 's' : ''));
+      if (todayWeigh)    bits.push('weighed in (' + sum.latestWeight + 'kg)');
+      if (prs.length)    bits.push('🏆 ' + prs.length + ' PR' + (prs.length > 1 ? 's' : ''));
+      if (danger.length) bits.push('<span style="color:var(--danger);">⚠ ' + danger.map(f => f.text).join(', ') + '</span>');
+      entry += bits.join(' · ');
+      perClient.push(entry);
+    }
+  });
+
+  // Find quiet clients (no activity today AND none in last 3 days)
+  const quietClients = [];
+  const threeAgo = Date.now() - 3 * 86400000;
+  COACH.clients.forEach(c => {
+    const sum = _dashboardData[c.storageKey];
+    if (!sum) return;
+    const all = (sum.recentWorkouts || []).concat(sum.recentMeals || []);
+    const latest = all.reduce((max, r) => Math.max(max, new Date(r.timestamp || 0).getTime()), 0);
+    if (latest > 0 && latest < threeAgo) quietClients.push(c.displayName);
+  });
+
+  return {
+    summary: `${totalWorkouts} workout${totalWorkouts !== 1 ? 's' : ''} · ${totalMeals} meal${totalMeals !== 1 ? 's' : ''} · ${totalWeighIns} weigh-in${totalWeighIns !== 1 ? 's' : ''}${totalPRs ? ' · 🏆 ' + totalPRs + ' PR' + (totalPRs > 1 ? 's' : '') : ''}`,
+    perClient,
+    quietClients,
+  };
+}
+
+function renderDigestPanel() {
+  const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' });
+  const dateEl = document.getElementById('digest-date');
+  if (dateEl) dateEl.textContent = today;
+  const bodyEl = document.getElementById('digest-body');
+  if (!bodyEl) return;
+  const d = buildDigestText();
+  let html = '<div style="font-family:\'DM Mono\',monospace;font-size:0.78rem;color:var(--accent3);margin-bottom:0.7rem;">' + d.summary + '</div>';
+  if (d.perClient.length === 0 && d.quietClients.length === 0) {
+    html += '<div style="color:var(--muted);font-style:italic;">No activity yet today.</div>';
+  } else {
+    if (d.perClient.length) {
+      html += d.perClient.map(line => '<div style="padding:0.25rem 0;">• ' + line + '</div>').join('');
+    }
+    if (d.quietClients.length) {
+      html += '<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);color:var(--warn);font-size:0.82rem;">🤫 No activity in 3+ days: ' + d.quietClients.join(', ') + '</div>';
+    }
+  }
+  bodyEl.innerHTML = html;
+}
+
+function emailDigestNow() {
+  const d = buildDigestText();
+  const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const subject = encodeURIComponent('Coaching digest — ' + today);
+  // Build plain text body
+  let body = `Today's coaching digest — ${today}\n\n`;
+  body += d.summary.replace(/<[^>]+>/g, '') + '\n\n';
+  if (d.perClient.length) {
+    body += 'PER CLIENT:\n';
+    d.perClient.forEach(line => { body += '  • ' + line.replace(/<[^>]+>/g, '') + '\n'; });
+  }
+  if (d.quietClients.length) {
+    body += '\nQuiet (no activity 3+ days):\n  ' + d.quietClients.join(', ') + '\n';
+  }
+  body += '\n— Sent from coach dashboard';
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + encodeURIComponent(body);
+}
+
+// ─── PR DETECTION (parse all WorkoutLog entries) ─────────────────────────
+function _parseWeightNum(w) {
+  if (w == null) return null;
+  const m = String(w).match(/(-?\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+function detectPRs(sum) {
+  // Returns: { allTimeMax: {exName: maxWeight}, recentPRs: [{exName, weight, date}] }
+  const maxByEx = {};
+  const recentPRs = [];
+  const workouts = (sum.recentWorkouts || []).slice().sort((a, b) =>
+    new Date(a.timestamp) - new Date(b.timestamp));
+  for (const w of workouts) {
+    const wt = _parseWeightNum(w.weightActual);
+    if (wt == null) continue;
+    const ex = w.exerciseName;
+    const prev = maxByEx[ex] || 0;
+    if (wt > prev) {
+      // New PR
+      if (prev > 0) {
+        recentPRs.push({ exName: ex, weight: wt, prev, date: w.timestamp });
+      }
+      maxByEx[ex] = wt;
+    }
+  }
+  // Recent PRs = those set in the last 7 days
+  const sevenAgo = Date.now() - 7 * 86400000;
+  const last7d = recentPRs.filter(p => new Date(p.date).getTime() > sevenAgo);
+  return { allTimeMax: maxByEx, recentPRs: last7d, allPRs: recentPRs };
+}
+
+// ─── TODAY'S ACTIVITY FEED ───────────────────────────────────────────────
+function buildActivityFeed() {
+  // Aggregate all recent activity across all clients, sort by timestamp desc
+  const events = [];
+  const last24 = Date.now() - 24 * 3600000;
+
+  COACH.clients.forEach(c => {
+    const sum = _dashboardData[c.storageKey];
+    if (!sum) return;
+    // Workouts
+    (sum.recentWorkouts || []).forEach(w => {
+      const ts = new Date(w.timestamp).getTime();
+      if (ts < last24) return;
+      events.push({
+        ts, client: c, type: 'workout',
+        what: w.exerciseName + ' — ' + (w.weightActual || '?') + ' × ' + (w.repsActual || '?') + (w.rpeActual ? ' @ RPE ' + w.rpeActual : ''),
+      });
+    });
+    // Meals
+    (sum.recentMeals || []).forEach(m => {
+      const ts = new Date(m.timestamp).getTime();
+      if (ts < last24) return;
+      if (m.status === 'undo') return;
+      const macros = m.calActual ? `${m.calActual} kcal` : '';
+      const desc = m.swapDesc ? ` (${m.swapDesc})` : '';
+      events.push({
+        ts, client: c, type: 'meal',
+        what: m.mealName + desc + ' — ' + (m.status || 'ate') + (macros ? ' · ' + macros : ''),
+      });
+    });
+    // Weight
+    if (sum.latestWeightTs && new Date(sum.latestWeightTs).getTime() > last24) {
+      events.push({
+        ts: new Date(sum.latestWeightTs).getTime(),
+        client: c, type: 'weight',
+        what: sum.latestWeight + ' kg',
+      });
+    }
+    // PRs
+    const prs = detectPRs(sum);
+    prs.recentPRs.forEach(p => {
+      const ts = new Date(p.date).getTime();
+      if (ts < last24) return;
+      events.push({
+        ts, client: c, type: 'pr',
+        what: '🏆 PR · ' + p.exName + ' ' + p.weight + 'kg (was ' + p.prev + 'kg)',
+      });
+    });
+  });
+
+  events.sort((a, b) => b.ts - a.ts);
+  return events;
+}
+
+function renderActivityFeed() {
+  const events = buildActivityFeed();
+  const countEl = document.getElementById('activity-count');
+  const bodyEl = document.getElementById('activity-body');
+  if (countEl) countEl.textContent = events.length + ' logs · last 24h';
+  if (!bodyEl) return;
+  if (!events.length) {
+    bodyEl.innerHTML = '<div class="activity-empty">No activity in the last 24 hours. Quiet day.</div>';
+    return;
+  }
+  bodyEl.innerHTML = events.map(e => {
+    const ago = fmtAgo(new Date(e.ts).toISOString());
+    return `<div class="activity-row" onclick="openDetail('${e.client.storageKey}')">
+      <div class="when">${ago}</div>
+      <div class="client">${e.client.displayName}</div>
+      <div class="what">${e.what}</div>
+      <div class="tag ${e.type}">${e.type === 'workout' ? '🏋️ LIFT' : e.type === 'meal' ? '🍽️ MEAL' : e.type === 'weight' ? '⚖️ WEIGH' : e.type === 'pr' ? '🏆 PR' : '✓ CHECK'}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderSummary() {
@@ -1084,9 +1569,35 @@ function renderAlerts() {
 }
 
 function renderClientGrid() {
-  const list = COACH.clients;
+  let list = COACH.clients;
+  const searchEl = document.getElementById('search-input');
+  const filterEl = document.getElementById('filter-select');
+  const search = (searchEl ? searchEl.value : '').trim().toLowerCase();
+  const filter = filterEl ? filterEl.value : 'all';
+
+  if (search) {
+    list = list.filter(c =>
+      c.displayName.toLowerCase().includes(search) ||
+      c.storageKey.toLowerCase().includes(search) ||
+      (c.programType || '').toLowerCase().includes(search)
+    );
+  }
+  if (filter !== 'all') {
+    list = list.filter(c => {
+      const sum = _dashboardData[c.storageKey] || {};
+      const metrics = calculateMetrics(c, sum);
+      const flags = detectFlags(c, sum, metrics);
+      const prs = detectPRs(sum);
+      if (filter === 'on-track')     return flags.every(f => f.level !== 'danger') && (metrics.workoutDays7d > 0 || metrics.mealDays7d > 0);
+      if (filter === 'attention')    return flags.some(f => f.level === 'danger' || f.level === 'warn');
+      if (filter === 'no-activity')  return metrics.workoutDays7d === 0 && metrics.mealDays7d === 0;
+      if (filter === 'has-pr')       return prs.recentPRs.length > 0;
+      return true;
+    });
+  }
+
   if (!list.length) {
-    document.getElementById('client-grid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:3rem;border:1px dashed var(--border);border-radius:12px;"><div style="font-size:1rem;margin-bottom:0.5rem;">No clients yet.</div><div style="font-size:0.85rem;margin-bottom:1rem;">Click <strong>+ ADD CLIENT</strong> in the header to get started.</div></div>`;
+    document.getElementById('client-grid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:3rem;border:1px dashed var(--border);border-radius:12px;"><div style="font-size:1rem;margin-bottom:0.5rem;">${search || filter !== 'all' ? 'No clients match.' : 'No clients yet.'}</div><div style="font-size:0.85rem;margin-bottom:1rem;">${search || filter !== 'all' ? 'Try a different search or filter.' : 'Click <strong>+ ADD CLIENT</strong> in the header to get started.'}</div></div>`;
     return;
   }
   const html = list.map(c => {
@@ -1102,10 +1613,30 @@ function renderClientGrid() {
 
     const metrics = calculateMetrics(c, sum);
     const flags = detectFlags(c, sum, metrics);
+    const prs = detectPRs(sum);
+
+    // Add PR pill if there's a recent PR
+    if (prs.recentPRs.length > 0) {
+      const latest = prs.recentPRs[prs.recentPRs.length - 1];
+      flags.unshift({ level: 'ok', text: `🏆 ${latest.exName} ${latest.weight}kg` });
+    }
 
     const flagPills = flags.length
       ? `<div class="flag-pills">${flags.map(f => `<span class="flag-pill ${f.level}">${f.text}</span>`).join('')}</div>`
       : '';
+
+    // Quick actions
+    const smsUrl = c.phone ? `sms:${c.phone}` : '';
+    const waUrl = c.phone ? `https://wa.me/${c.phone.replace('+','')}` : '';
+    const quickActions = `
+      <div class="quick-actions" onclick="event.stopPropagation()">
+        ${c.phone
+          ? `<a class="quick-action message" href="${smsUrl}" title="iMessage / SMS">💬 SMS</a>
+             <a class="quick-action message" href="${waUrl}" target="_blank" title="WhatsApp">📱 WA</a>`
+          : `<span class="quick-action disabled" title="Add phone in client edit to enable">💬 NO PHONE</span>`}
+        <a class="quick-action" href="${c.programUrl}#trainer" target="_blank" title="Edit program as trainer">✏️ EDIT</a>
+      </div>
+    `;
 
     // Streak row — workouts and meals logged this week
     const wkClass = metrics.workoutDays7d >= 3 ? '' : (metrics.workoutDays7d === 0 ? 'none' : 'weak');
@@ -1147,6 +1678,7 @@ function renderClientGrid() {
         <div class="delta ${deltaClass}">${deltaSign}${Math.abs(delta)} kg · ${lastWeightAgo}</div>
         ${streakRow}
         ${flagPills}
+        ${quickActions}
         <div class="meta-row">
           <div class="meta-item">
             <span class="label">Check-in</span>
@@ -1275,6 +1807,131 @@ function renderAdherenceSection(metrics30) {
   return cards + heatmap;
 }
 
+// ─── Macro tally — daily + 7-day average + 14-day kcal chart ─────────────
+function computeDailyMacroTotals(meals) {
+  // Returns { 'YYYY-MM-DD': { kcal, p, c, f, count } }
+  const byDay = {};
+  (meals || []).forEach(m => {
+    if (!m.timestamp || m.status === 'skip' || m.status === 'undo') return;
+    const k = String(m.timestamp).slice(0, 10);
+    if (!byDay[k]) byDay[k] = { kcal: 0, p: 0, c: 0, f: 0, count: 0 };
+    byDay[k].kcal  += Number(m.calActual) || 0;
+    byDay[k].p     += Number(m.pActual)   || 0;
+    byDay[k].c     += Number(m.cActual)   || 0;
+    byDay[k].f     += Number(m.fActual)   || 0;
+    byDay[k].count++;
+  });
+  return byDay;
+}
+
+function computeRollingAverage(byDay, days) {
+  const out = [];
+  const now = Date.now();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now - i * 86400000);
+    const k = d.toISOString().slice(0, 10);
+    out.push({ key: k, date: d, ...(byDay[k] || { kcal: 0, p: 0, c: 0, f: 0, count: 0 }) });
+  }
+  const logged = out.filter(d => d.count > 0);
+  if (!logged.length) return { kcal: 0, p: 0, c: 0, f: 0, daysLogged: 0, days: out };
+  const sum = logged.reduce((s, d) => ({
+    kcal: s.kcal + d.kcal, p: s.p + d.p, c: s.c + d.c, f: s.f + d.f,
+  }), { kcal: 0, p: 0, c: 0, f: 0 });
+  return {
+    kcal: Math.round(sum.kcal / logged.length),
+    p: Math.round(sum.p / logged.length),
+    c: Math.round(sum.c / logged.length),
+    f: Math.round(sum.f / logged.length),
+    daysLogged: logged.length,
+    days: out,
+  };
+}
+
+function renderMacroTallySection(sum) {
+  const byDay = computeDailyMacroTotals(sum.recentMeals || []);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const today = byDay[todayKey] || { kcal: 0, p: 0, c: 0, f: 0, count: 0 };
+  const week = computeRollingAverage(byDay, 7);
+  const last14 = computeRollingAverage(byDay, 14);
+
+  // Build kcal bar chart for last 14 days
+  const maxKcal = Math.max(1, ...last14.days.map(d => d.kcal));
+  const bars = last14.days.map(d => {
+    const pct = Math.max(0, Math.min(100, Math.round((d.kcal / maxKcal) * 100)));
+    const isToday = d.key === todayKey;
+    const empty = d.count === 0;
+    const tooltip = `${d.date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} — ${d.kcal} kcal · ${d.count} meal${d.count !== 1 ? 's' : ''}`;
+    return `<div class="kcal-bar ${empty ? 'empty' : ''} ${isToday ? 'today' : ''}" style="height:${empty ? 8 : pct}%" title="${tooltip}"></div>`;
+  }).join('');
+
+  const labels = last14.days.map((d, i) => {
+    // Label every 2 days
+    if (i % 2 !== 0) return '<div></div>';
+    return `<div>${d.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }).replace(' ', '<br>')}</div>`;
+  }).join('');
+
+  return `
+    <div class="macro-tally-row">
+      <div class="macro-tally-card">
+        <div class="title">Today's totals <span class="sub">${today.count} meal${today.count !== 1 ? 's' : ''} logged</span></div>
+        <div class="grid">
+          <div class="cell"><div class="num kcal">${today.kcal}</div><div class="label">kcal</div></div>
+          <div class="cell"><div class="num p">${Math.round(today.p)}g</div><div class="label">protein</div></div>
+          <div class="cell"><div class="num c">${Math.round(today.c)}g</div><div class="label">carbs</div></div>
+          <div class="cell"><div class="num f">${Math.round(today.f)}g</div><div class="label">fat</div></div>
+        </div>
+      </div>
+      <div class="macro-tally-card">
+        <div class="title">7-day average <span class="sub">${week.daysLogged}/7 days logged</span></div>
+        <div class="grid">
+          <div class="cell"><div class="num kcal">${week.kcal}</div><div class="label">kcal</div></div>
+          <div class="cell"><div class="num p">${week.p}g</div><div class="label">protein</div></div>
+          <div class="cell"><div class="num c">${week.c}g</div><div class="label">carbs</div></div>
+          <div class="cell"><div class="num f">${week.f}g</div><div class="label">fat</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="kcal-chart-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.04em;color:var(--muted);">14-day kcal · hover bars for detail</h3>
+        <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);">today highlighted</span>
+      </div>
+      <div class="kcal-bar-row">${bars}</div>
+      <div class="kcal-chart-labels">${labels}</div>
+    </div>
+  `;
+}
+
+function renderPRSection(sum) {
+  const prs = detectPRs(sum);
+  const all = prs.allPRs.slice().reverse();  // most recent first
+  if (!all.length) {
+    return `
+      <div class="log-section">
+        <h3>🏆 Personal Records</h3>
+        <div class="log-empty">No PRs detected yet. Logged sets will be compared to history.</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="log-section">
+      <h3>🏆 Personal Records · ${all.length} total</h3>
+      <table class="log-table">
+        <tr><th>When</th><th>Exercise</th><th>New PR</th><th>Previous</th><th>+Δ</th></tr>
+        ${all.slice(0, 10).map(p => `
+          <tr>
+            <td>${fmtAgo(p.date)}</td>
+            <td>${p.exName}</td>
+            <td style="color:var(--accent3);">${p.weight}kg</td>
+            <td>${p.prev}kg</td>
+            <td style="color:var(--accent3);">+${(p.weight - p.prev).toFixed(1)}kg</td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+  `;
+}
+
 // ─── DETAIL PANEL ─────────────────────────────────────────────────────────
 let _detailChart = null;
 function openDetail(storageKey) {
@@ -1296,10 +1953,17 @@ function openDetail(storageKey) {
         <h2>${c.displayName.toUpperCase()}</h2>
         <div class="meta">${c.programType} · Week ${week}/12 · ${cur}kg / goal ${c.goalWeight}kg · Δ ${delta < 0 ? '+' : '−'}${Math.abs(delta)}kg</div>
       </div>
-      <a class="open-program-btn" href="${c.programUrl}" target="_blank">OPEN PROGRAM →</a>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button class="open-program-btn" onclick="window.print()" id="report-btn" style="background:var(--accent2);">📄 EXPORT PDF</button>
+        <a class="open-program-btn" href="${c.programUrl}" target="_blank">OPEN PROGRAM →</a>
+      </div>
     </div>
 
     <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
+
+    ${renderMacroTallySection(sum)}
+
+    ${renderPRSection(sum)}
 
     ${renderAdherenceSection(metrics30)}
 
