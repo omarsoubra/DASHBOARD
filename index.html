@@ -947,7 +947,10 @@ const COACH = {
   get clients() { return loadClients(); },
 };
 
-const LS_CLIENTS = 'coach_clients_v1';
+const LS_CLIENTS       = 'coach_clients_v1';
+const LS_CLIENTS_TS    = 'coach_clients_v1_ts';   // last-modified timestamp (ms)
+const LS_ROSTER_SYNCED = 'coach_clients_v1_synced_ts'; // last successful cloud sync (ms)
+
 function loadClients() {
   try {
     const raw = localStorage.getItem(LS_CLIENTS);
@@ -955,27 +958,91 @@ function loadClients() {
   } catch(e) {}
   // First boot — seed with defaults
   localStorage.setItem(LS_CLIENTS, JSON.stringify(COACH.defaultClients));
+  localStorage.setItem(LS_CLIENTS_TS, String(Date.now()));
   return COACH.defaultClients.slice();
 }
-function saveClients(list) { localStorage.setItem(LS_CLIENTS, JSON.stringify(list)); }
+function saveClients(list) {
+  localStorage.setItem(LS_CLIENTS, JSON.stringify(list));
+  localStorage.setItem(LS_CLIENTS_TS, String(Date.now()));
+}
+
+/**
+ * Push the current roster to the Sheets Roster tab.
+ * "Last write wins" — the Apps Script always stores the latest push.
+ * Non-blocking; fires the request and returns.
+ */
+async function pushRoster() {
+  if (!COACH.webhookUrl) return;
+  const roster = loadClients();
+  const ts = localStorage.getItem(LS_CLIENTS_TS) || String(Date.now());
+  try {
+    // Use no-cors + text/plain to avoid preflight (Apps Script accepts it).
+    await fetch(COACH.webhookUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'rosterPut', ts: Number(ts), roster: roster }),
+    });
+    localStorage.setItem(LS_ROSTER_SYNCED, String(Date.now()));
+  } catch (e) {
+    console.warn('pushRoster failed', e);
+  }
+}
+
+/**
+ * Pull the roster from the Sheets Roster tab. If the cloud version is newer
+ * than the local version, replace local. Returns true if local was updated.
+ */
+async function pullRoster() {
+  if (!COACH.webhookUrl) return false;
+  try {
+    const url = COACH.webhookUrl + '?type=rosterGet&_=' + Date.now();
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    if (!data || !data.roster || !Array.isArray(data.roster)) return false;
+    const cloudTs = Number(data.ts) || 0;
+    const localTs = Number(localStorage.getItem(LS_CLIENTS_TS)) || 0;
+    // Cloud wins if strictly newer than local. Ties keep local.
+    if (cloudTs > localTs) {
+      localStorage.setItem(LS_CLIENTS, JSON.stringify(data.roster));
+      localStorage.setItem(LS_CLIENTS_TS, String(cloudTs));
+      localStorage.setItem(LS_ROSTER_SYNCED, String(Date.now()));
+      return true;
+    }
+    // Otherwise, our local is newer — push it up so the cloud catches up.
+    if (localTs > cloudTs && loadClients().length > 0) {
+      pushRoster();
+    }
+    return false;
+  } catch (e) {
+    console.warn('pullRoster failed', e);
+    return false;
+  }
+}
+
 function addClient(client) {
   const list = loadClients();
   // Replace if same storageKey, else append
   const idx = list.findIndex(c => c.storageKey === client.storageKey);
   if (idx >= 0) list[idx] = client; else list.push(client);
   saveClients(list);
+  pushRoster();   // push new/edited client to cloud
   loadAll();
 }
 function removeClient(storageKey) {
   if (!confirm('Remove ' + storageKey + ' from dashboard? (Their program file is not deleted — they just disappear from the dashboard.)')) return;
   const list = loadClients().filter(c => c.storageKey !== storageKey);
   saveClients(list);
+  pushRoster();   // push removal to cloud
   loadAll();
 }
 function resetClientsToDefault() {
   if (!confirm('Reset the client list to defaults? Any added clients will be lost.')) return;
   localStorage.removeItem(LS_CLIENTS);
+  localStorage.removeItem(LS_CLIENTS_TS);
   loadAll();
+  pushRoster();   // push the reset state to cloud so the other device follows
   closeClientForm();
 }
 
@@ -1081,7 +1148,12 @@ async function fetchDashboardData() {
 
 async function loadAll() {
   try {
-    _dashboardData = await fetchDashboardData();
+    // Pull roster + dashboard data in parallel — both use the same webhook.
+    const [rosterChanged, dashData] = await Promise.all([
+      pullRoster(),
+      fetchDashboardData(),
+    ]);
+    _dashboardData = dashData;
     _lastSyncMs = Date.now();
     _syncStatus = 'ok';
     renderDashboard();
