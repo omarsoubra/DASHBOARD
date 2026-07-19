@@ -1053,12 +1053,30 @@ function removeClient(storageKey) {
   pushRoster();   // push removal to cloud
   loadAll();
 }
-function resetClientsToDefault() {
-  if (!confirm('Reset the client list to defaults? Any added clients will be lost.')) return;
-  localStorage.removeItem(LS_CLIENTS);
-  localStorage.removeItem(LS_CLIENTS_TS);
-  loadAll();
-  pushRoster();   // push the reset state to cloud so the other device follows
+async function resetClientsToDefault() {
+  if (!confirm('Reset the client list to defaults? Any added clients will be lost. (Weight logs, meal logs, workouts, and check-ins are all SAFE — they live in your Google Sheet.)')) return;
+  // 1. Seed local with the fresh defaults AND a brand-new timestamp that
+  //    will beat any existing cloud roster.
+  const nowTs = Date.now();
+  localStorage.setItem(LS_CLIENTS, JSON.stringify(COACH.defaultClients));
+  localStorage.setItem(LS_CLIENTS_TS, String(nowTs));
+  // 2. Push to cloud FIRST so the Sheet's Roster tab gets the new roster
+  //    with the fresh timestamp before anyone else tries to sync down.
+  await pushRoster();
+  // 3. Wait ~2 seconds for the Sheet write to settle.
+  await new Promise(r => setTimeout(r, 2000));
+  // 4. Fetch dashboard data (weight logs, workouts etc.) and re-render —
+  //    but SKIP the roster pull, otherwise cloud with older data might race.
+  //    Roster is already correct locally, no need to re-pull.
+  try {
+    _dashboardData = await fetchDashboardData();
+    _lastSyncMs = Date.now();
+    _syncStatus = 'ok';
+  } catch (e) {
+    console.error('Dashboard fetch failed:', e);
+    _syncStatus = 'err';
+  }
+  renderDashboard();
   closeClientForm();
 }
 
