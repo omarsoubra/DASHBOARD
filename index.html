@@ -937,12 +937,28 @@ const COACH = {
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec',
   defaultClients: [
     // { storageKey, displayName, programType, startWeight, goalWeight, startDate, programUrl, phone (E.164 e.g. +61412345678) }
-    { storageKey: 'amir',     displayName: 'Amir',     programType: 'Strength Cut',     startWeight: 95,  goalWeight: 80,  startDate: '2026-05-10', programUrl: 'clients/amir_program.html',     phone: '' },
-    { storageKey: 'lana',     displayName: 'Lana',     programType: 'Transformation',   startWeight: 102, goalWeight: 90,  startDate: '2026-05-25', programUrl: 'clients/lana_program.html',     phone: '' },
-    { storageKey: 'yusuf',    displayName: 'Yusuf',    programType: 'Lean Bulk',        startWeight: 67,  goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/yusuf_program.html',    phone: '' },
-    { storageKey: 'abdullah', displayName: 'Abdullah', programType: 'Bulk + Build',     startWeight: 57,  goalWeight: 62,  startDate: '2026-05-25', programUrl: 'clients/abdullah_program.html', phone: '' },
-    { storageKey: 'ali',      displayName: 'Ali',      programType: 'Transformation',   startWeight: 115, goalWeight: 103, startDate: '2026-06-09', programUrl: 'clients/ali_program.html',      phone: '' },
-    { storageKey: 'siam',     displayName: 'Siam',     programType: 'Fat Loss',         startWeight: 108, goalWeight: 90,  startDate: '2026-04-25', programUrl: 'siam_program_v6.html',          phone: '' },
+    // ─── Original cohort (May-June starts) ────────────────────────────────
+    { storageKey: 'amir',           displayName: 'Amir',           programType: 'Strength Cut',      startWeight: 90,   goalWeight: 80,  startDate: '2026-05-10', programUrl: 'clients/amir_program.html',           phone: '' },
+    { storageKey: 'lana',           displayName: 'Lana',           programType: 'Transformation',    startWeight: 102,  goalWeight: 90,  startDate: '2026-05-25', programUrl: 'clients/lana_program.html',           phone: '' },
+    { storageKey: 'yusuf',          displayName: 'Yusuf',          programType: 'Lean Bulk',         startWeight: 67,   goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/yusuf_program.html',          phone: '' },
+    { storageKey: 'abdullah',       displayName: 'Abdullah',       programType: 'Bulk + Build',      startWeight: 57,   goalWeight: 62,  startDate: '2026-05-25', programUrl: 'clients/abdullah_program.html',       phone: '' },
+    { storageKey: 'ilham',          displayName: 'Ilham',          programType: 'Recomp',            startWeight: 57,   goalWeight: 56,  startDate: '2026-05-25', programUrl: 'clients/ilham_program.html',          phone: '' },
+    { storageKey: 'jamal',          displayName: 'Jamal',          programType: 'Body Recomp',       startWeight: 67,   goalWeight: 66,  startDate: '2026-05-25', programUrl: 'clients/jamal_program.html',          phone: '' },
+    { storageKey: 'maddison',       displayName: 'Maddison',       programType: 'Glute Recomp',      startWeight: 78,   goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/maddison_program.html',       phone: '' },
+    { storageKey: 'mayank',         displayName: 'Mayank',         programType: 'Cut',               startWeight: 88,   goalWeight: 78,  startDate: '2026-06-01', programUrl: 'clients/mayank_program.html',         phone: '' },
+    { storageKey: 'sarah',          displayName: 'Sarah',          programType: 'Lean Bulk',         startWeight: 60,   goalWeight: 64,  startDate: '2026-06-01', programUrl: 'clients/sarah_program.html',          phone: '' },
+    { storageKey: 'ali',            displayName: 'Ali',            programType: 'Transformation',    startWeight: 115,  goalWeight: 103, startDate: '2026-06-09', programUrl: 'clients/ali_program.html',            phone: '' },
+    { storageKey: 'siam',           displayName: 'Siam',           programType: 'Fat Loss',          startWeight: 108,  goalWeight: 90,  startDate: '2026-04-25', programUrl: 'siam_program_v7.html',                phone: '' },
+
+    // ─── July cohort (new intakes) ────────────────────────────────────────
+    { storageKey: 'omar',           displayName: 'Omar',           programType: 'Ab Reveal',         startWeight: 77.5, goalWeight: 76,  startDate: '2026-07-05', programUrl: 'clients/omar_program.html',           phone: '' },
+    { storageKey: 'karim',          displayName: 'Karim',          programType: 'Lean Out',          startWeight: 77,   goalWeight: 72,  startDate: '2026-07-05', programUrl: 'clients/karim_program.html',          phone: '' },
+    { storageKey: 'ali_alfatlawi',  displayName: 'Ali Al-Fatlawi', programType: 'Lean Bulk',         startWeight: 68,   goalWeight: 72,  startDate: '2026-07-04', programUrl: 'clients/ali_alfatlawi_program.html',  phone: '' },
+    { storageKey: 'ali_khan',       displayName: 'Ali Khan',       programType: 'T1D Cut',           startWeight: 85,   goalWeight: 79,  startDate: '2026-07-06', programUrl: 'clients/ali_khan_program.html',       phone: '' },
+    { storageKey: 'hamza',          displayName: 'Hamza',          programType: 'Nikkah Bulk',       startWeight: 65,   goalWeight: 71,  startDate: '2026-07-06', programUrl: 'clients/hamza_program.html',          phone: '' },
+    { storageKey: 'hamzah_dargham', displayName: 'Hamzah Dargham', programType: 'Cut',               startWeight: 74,   goalWeight: 69,  startDate: '2026-07-06', programUrl: 'clients/hamzah_dargham_program.html', phone: '' },
+    { storageKey: 'nicholas',       displayName: 'Nicholas',       programType: 'Identity Shift',    startWeight: 121,  goalWeight: 106, startDate: '2026-07-06', programUrl: 'clients/nicholas_program.html',       phone: '' },
+    { storageKey: 'tarkyn',         displayName: 'Tarkyn',         programType: 'Recomp',            startWeight: 83,   goalWeight: 84,  startDate: '2026-07-06', programUrl: 'clients/tarkyn_program.html',         phone: '' },
   ],
   get clients() { return loadClients(); },
 };
