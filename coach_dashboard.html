@@ -968,6 +968,7 @@ const COACH = {
     { storageKey: 'tarkyn',         displayName: 'Tarkyn',         programType: 'Recomp',            startWeight: 83,   goalWeight: 84,  startDate: '2026-07-06', programUrl: 'clients/tarkyn/',         phone: '' },
     { storageKey: 'omar_yagmour',   displayName: 'Omar Yagmour',   programType: 'Lean Bulk',         startWeight: 60,   goalWeight: 65,  startDate: '2026-07-27', programUrl: 'clients/omar_yagmour/',   phone: '' },
     { storageKey: 'malak_hanani',   displayName: 'Malak Hanani',   programType: 'Cut + Bulk Primer',   startWeight: 80.5, goalWeight: 75, startDate: '2026-07-27', programUrl: 'clients/malak_hanani/',   phone: '' },
+    { storageKey: 'jad_elali',      displayName: 'Jad Elali',      programType: 'Aggressive Cut',      startWeight: 125,  goalWeight: 110, startDate: '2026-07-27', programUrl: 'clients/jad_elali/',      phone: '' },
   ],
   get clients() { return loadClients(); },
 };
@@ -1475,6 +1476,30 @@ const BASELINE_MACROS = {
       "c": 326,
       "f": 52,
       "deficit": -100
+    }
+  },
+  "jad_elali": {
+    "tdee": 3754,
+    "p1": {
+      "cal": 2600,
+      "p": 250,
+      "c": 231,
+      "f": 75,
+      "deficit": 1154
+    },
+    "p2": {
+      "cal": 2400,
+      "p": 250,
+      "c": 181,
+      "f": 75,
+      "deficit": 1354
+    },
+    "p3": {
+      "cal": 2200,
+      "p": 250,
+      "c": 131,
+      "f": 75,
+      "deficit": 1554
     }
   }
 };
