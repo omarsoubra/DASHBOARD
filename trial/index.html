@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Malak's Program — Trial UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #FF6B35;
+  --primary-soft: #FFEDE6;
+  --indigo: #6366F1;
+  --teal: #14B8A6;
+  --pink: #EC4899;
+  --emerald: #10B981;
+  --amber: #F59E0B;
+  --bg-1: #F0F9FF;
+  --bg-2: #FDF4F2;
+  --card: #FFFFFF;
+  --text: #1F2937;
+  --text-muted: #6B7280;
+  --border: #F3F4F6;
+  --shadow: 0 4px 20px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.06);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  min-height: 100vh;
+  color: var(--text);
+  padding-bottom: 100px;
+  overflow-x: hidden;
+}
+.container { max-width: 640px; margin: 0 auto; padding: 0 20px; }
+
+/* HEADER */
+.mobile-header {
+  padding: env(safe-area-inset-top, 20px) 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, var(--bg-1) 0%, rgba(240,249,255,0.95) 100%);
+  backdrop-filter: blur(10px);
+  z-index: 100;
+}
+.greeting { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.02em; }
+.username { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.03em; color: var(--text); line-height: 1; margin-top: 2px; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary), var(--pink));
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 800; font-size: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* TAB SWITCHER */
+.tab-switcher {
+  display: flex;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 4px;
+  margin: 16px 0;
+  box-shadow: var(--shadow);
+  gap: 4px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-radius: 12px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--primary), #FF8659);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255,107,53,0.3);
+}
+
+/* CARDS */
+.card {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.card-lg { border-radius: 28px; padding: 24px; }
+
+.section-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-subtitle { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+/* HERO PROGRAM CARD */
+.hero-card {
+  background: linear-gradient(135deg, var(--primary) 0%, #FF8659 100%);
+  color: white;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(255,107,53,0.25);
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 250px; height: 250px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-label { font-size: 11px; letter-spacing: 0.15em; font-weight: 700; opacity: 0.85; text-transform: uppercase; }
+.hero-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 0.02em; line-height: 1.1; margin-top: 6px; }
+.hero-progress {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px; margin-top: 20px;
+  position: relative;
+}
+.hero-stat {
+  background: rgba(255,255,255,0.15);
+  border-radius: 14px;
+  padding: 12px;
+  backdrop-filter: blur(10px);
+}
+.hero-stat-label { font-size: 10px; opacity: 0.9; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+.hero-stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; margin-top: 4px; line-height: 1; }
+
+/* PHASE BAR */
+.phase-bar {
+  background: rgba(255,255,255,0.2);
+  border-radius: 100px;
+  height: 8px;
+  margin-top: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.phase-bar-fill {
+  background: white;
+  height: 100%;
+  width: 25%;
+  border-radius: 100px;
+  transition: width 0.4s;
+}
+.phase-text {
+  display: flex; justify-content: space-between;
+  font-size: 11px; margin-top: 8px; opacity: 0.9; font-weight: 600;
+}
+
+/* STATS GRID */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.stat-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.stat-icon.orange { background: var(--primary-soft); color: var(--primary); }
+.stat-icon.indigo { background: #EEF2FF; color: var(--indigo); }
+.stat-icon.teal { background: #F0FDFA; color: var(--teal); }
+.stat-icon.pink { background: #FDF2F8; color: var(--pink); }
+.stat-icon.emerald { background: #ECFDF5; color: var(--emerald); }
+.stat-icon.amber { background: #FEF3C7; color: var(--amber); }
+.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 28px; margin-top: 4px; color: var(--text); line-height: 1; }
+.stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
+
+/* MEAL CARD */
+.meal-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+.meal-row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.meal-time-pill {
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.meal-kcal {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--primary);
+  line-height: 1;
+}
+.meal-kcal-unit { font-size: 10px; color: var(--text-muted); font-weight: 600; text-align: right; letter-spacing: 0.05em; }
+.meal-name { font-weight: 700; font-size: 16px; color: var(--text); margin-bottom: 4px; }
+.meal-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.meal-macros {
+  display: flex; gap: 12px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.macro-chip { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.macro-dot { width: 8px; height: 8px; border-radius: 50%; }
+.macro-dot.p { background: var(--indigo); }
+.macro-dot.c { background: var(--amber); }
+.macro-dot.f { background: var(--pink); }
+
+.meal-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+.meal-action-btn {
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+.meal-action-btn.ate { background: #ECFDF5; color: var(--emerald); }
+.meal-action-btn.ate:hover { background: var(--emerald); color: white; }
+.meal-action-btn.swap { background: #FEF3C7; color: var(--amber); }
+.meal-action-btn.swap:hover { background: var(--amber); color: white; }
+.meal-action-btn.skip { background: #FEE2E2; color: #EF4444; }
+.meal-action-btn.skip:hover { background: #EF4444; color: white; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--card);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.06);
+  z-index: 200;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  max-width: 80px;
+}
+.nav-icon { font-size: 22px; }
+.nav-label { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+.nav-item.active .nav-icon { transform: scale(1.1); }
+.nav-item.active .nav-label { color: var(--primary); }
+.nav-item.active {
+  background: var(--primary-soft);
+}
+.fab {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  right: 24px;
+  width: 56px; height: 56px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--primary), #FF8659);
+  color: white;
+  border: none;
+  font-size: 26px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 32px rgba(255,107,53,0.4);
+  z-index: 201;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* WORKOUT CARDS */
+.workout-day {
+  background: var(--card);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+}
+.workout-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.workout-day-label { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.04em; }
+.workout-badge {
+  background: linear-gradient(135deg, var(--indigo), #818CF8);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.exercise-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.exercise-row:last-child { border-bottom: none; }
+.exercise-num {
+  width: 28px; height: 28px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px;
+}
+.exercise-name { font-weight: 600; font-size: 14px; color: var(--text); }
+.exercise-sets { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+.exercise-weight {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  color: var(--primary);
+}
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="mobile-header">
+  <div>
+    <div class="greeting">Good morning bro</div>
+    <div class="username">MALAK</div>
+  </div>
+  <div class="avatar">MH</div>
+</div>
+
+<div class="container">
+  <!-- TAB SWITCHER (Web-style, will collapse to bottom nav on mobile via CSS) -->
+  <div class="tab-switcher">
+    <button class="tab-btn active" onclick="showPage('home', event)">HOME</button>
+    <button class="tab-btn" onclick="showPage('training', event)">TRAIN</button>
+    <button class="tab-btn" onclick="showPage('nutrition', event)">MEALS</button>
+    <button class="tab-btn" onclick="showPage('progress', event)">PROGRESS</button>
+  </div>
+
+  <!-- HOME PAGE -->
+  <div class="page active" id="home">
+    <div class="hero-card">
+      <div class="hero-label">8-Week Aggressive Cut</div>
+      <div class="hero-title">80.5kg → 75kg</div>
+      <div class="phase-bar"><div class="phase-bar-fill" style="width: 15%;"></div></div>
+      <div class="phase-text"><span>Phase 1 · Week 1 of 8</span><span>15%</span></div>
+      <div class="hero-progress">
+        <div class="hero-stat"><div class="hero-stat-label">Today</div><div class="hero-stat-value">1750</div><div style="font-size:10px;opacity:0.8;">kcal</div></div>
+        <div class="hero-stat"><div class="hero-stat-label">Protein</div><div class="hero-stat-value">145g</div><div style="font-size:10px;opacity:0.8;">2.2/kg</div></div>
+        <div class="hero-stat"><div class="hero-stat-label">Deficit</div><div class="hero-stat-value">-732</div><div style="font-size:10px;opacity:0.8;">kcal</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Today's Focus</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon orange">🏋️</div>
+        <div class="stat-label">Training</div>
+        <div class="stat-value">CHEST + TRIS</div>
+        <div class="stat-sub">Day 1 · 45 min</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon indigo">🍽️</div>
+        <div class="stat-label">Meals Logged</div>
+        <div class="stat-value">2/5</div>
+        <div class="stat-sub">1250 / 1750 kcal</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon teal">💧</div>
+        <div class="stat-label">Water</div>
+        <div class="stat-value">1.8L</div>
+        <div class="stat-sub">Target 3L</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon emerald">💤</div>
+        <div class="stat-label">Sleep</div>
+        <div class="stat-value">7.2h</div>
+        <div class="stat-sub">On target</div>
+      </div>
+    </div>
+
+    <div class="section-title">Weekly Check-In</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700;font-size:15px;">Due tomorrow (Sunday)</div>
+          <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Weight + photos + form (2 min)</div>
+        </div>
+        <button style="background:var(--primary);color:white;border:none;padding:10px 18px;border-radius:14px;font-family:inherit;font-weight:700;font-size:13px;letter-spacing:0.05em;">START</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRAINING PAGE -->
+  <div class="page" id="training">
+    <div class="section-title">Phase 1 · Foundation</div>
+    <div class="workout-day">
+      <div class="workout-header">
+        <div class="workout-day-label">Day 1 — Chest + Triceps</div>
+        <div class="workout-badge">Today</div>
+      </div>
+      <div class="exercise-row"><div class="exercise-num">1</div><div><div class="exercise-name">Machine Chest Press</div><div class="exercise-sets">4 sets × 10-12 reps · RPE 7</div></div><div class="exercise-weight">40kg</div></div>
+      <div class="exercise-row"><div class="exercise-num">2</div><div><div class="exercise-name">Incline DB Press</div><div class="exercise-sets">3 sets × 10 reps · RPE 7</div></div><div class="exercise-weight">14kg</div></div>
+      <div class="exercise-row"><div class="exercise-num">3</div><div><div class="exercise-name">Cable Chest Fly (Mid)</div><div class="exercise-sets">3 sets × 12-15 · RPE 7</div></div><div class="exercise-weight">10kg</div></div>
+      <div class="exercise-row"><div class="exercise-num">4</div><div><div class="exercise-name">Cable Tricep Pushdown</div><div class="exercise-sets">3 sets × 12 · RPE 7</div></div><div class="exercise-weight">20kg</div></div>
+      <div class="exercise-row"><div class="exercise-num">5</div><div><div class="exercise-name">Overhead Cable Ext</div><div class="exercise-sets">3 sets × 12 · RPE 7</div></div><div class="exercise-weight">17.5kg</div></div>
+    </div>
+
+    <div class="workout-day">
+      <div class="workout-header">
+        <div class="workout-day-label">Day 2 — Back + Biceps</div>
+        <div class="workout-badge" style="background:linear-gradient(135deg,var(--teal),#5EEAD4);">Tomorrow</div>
+      </div>
+      <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">5 exercises · Gym · 45 min</div>
+    </div>
+
+    <div class="workout-day">
+      <div class="workout-header">
+        <div class="workout-day-label">Day 3 — Shoulders + Arms (HOME)</div>
+        <div class="workout-badge" style="background:linear-gradient(135deg,var(--pink),#F9A8D4);">Thu</div>
+      </div>
+      <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">8 exercises · Home DBs · 45 min</div>
+    </div>
+  </div>
+
+  <!-- NUTRITION PAGE -->
+  <div class="page" id="nutrition">
+    <div class="card-lg card" style="background:linear-gradient(135deg,var(--primary-soft),#FFE4D6);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:0.02em;">MONDAY</div>
+          <div style="color:var(--text-muted);font-size:13px;font-weight:600;">Training Day · 1750 kcal</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--primary);">1250</div>
+          <div style="font-size:11px;color:var(--text-muted);font-weight:600;">/ 1750 kcal</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="meal-card">
+      <div class="meal-row-top">
+        <div class="meal-time-pill">7:00 AM</div>
+        <div><div class="meal-kcal">420</div><div class="meal-kcal-unit">KCAL</div></div>
+      </div>
+      <div class="meal-name">Eggs + Rice Cakes</div>
+      <div class="meal-desc">4 boiled eggs + 3 rice cakes + coffee</div>
+      <div class="meal-macros">
+        <div class="macro-chip"><div class="macro-dot p"></div>26g Protein</div>
+        <div class="macro-chip"><div class="macro-dot c"></div>32g Carbs</div>
+        <div class="macro-chip"><div class="macro-dot f"></div>20g Fat</div>
+      </div>
+      <div class="meal-actions">
+        <button class="meal-action-btn ate">✓ ATE IT</button>
+        <button class="meal-action-btn swap">↔ SWAP</button>
+        <button class="meal-action-btn skip">✗ SKIP</button>
+      </div>
+    </div>
+
+    <div class="meal-card">
+      <div class="meal-row-top">
+        <div class="meal-time-pill">10:30 AM</div>
+        <div><div class="meal-kcal">360</div><div class="meal-kcal-unit">KCAL</div></div>
+      </div>
+      <div class="meal-name">Protein Shake + Dates</div>
+      <div class="meal-desc">30g whey + 250ml milk + 3 medjool dates</div>
+      <div class="meal-macros">
+        <div class="macro-chip"><div class="macro-dot p"></div>38g Protein</div>
+        <div class="macro-chip"><div class="macro-dot c"></div>42g Carbs</div>
+        <div class="macro-chip"><div class="macro-dot f"></div>6g Fat</div>
+      </div>
+      <div class="meal-actions">
+        <button class="meal-action-btn ate">✓ ATE IT</button>
+        <button class="meal-action-btn swap">↔ SWAP</button>
+        <button class="meal-action-btn skip">✗ SKIP</button>
+      </div>
+    </div>
+
+    <div class="meal-card" style="border:2px solid var(--primary);">
+      <div class="meal-row-top">
+        <div class="meal-time-pill">1:00 PM</div>
+        <div><div class="meal-kcal">500</div><div class="meal-kcal-unit">KCAL</div></div>
+      </div>
+      <div class="meal-name">Chicken + Rice + Broccoli</div>
+      <div class="meal-desc">200g grilled chicken breast + 3/4 cup jasmine rice + steamed broccoli + salt/pepper</div>
+      <div class="meal-macros">
+        <div class="macro-chip"><div class="macro-dot p"></div>52g Protein</div>
+        <div class="macro-chip"><div class="macro-dot c"></div>55g Carbs</div>
+        <div class="macro-chip"><div class="macro-dot f"></div>10g Fat</div>
+      </div>
+      <div class="meal-actions">
+        <button class="meal-action-btn ate">✓ ATE IT</button>
+        <button class="meal-action-btn swap">↔ SWAP</button>
+        <button class="meal-action-btn skip">✗ SKIP</button>
+      </div>
+    </div>
+
+    <div class="meal-card">
+      <div class="meal-row-top">
+        <div class="meal-time-pill">4:30 PM</div>
+        <div><div class="meal-kcal">280</div><div class="meal-kcal-unit">KCAL</div></div>
+      </div>
+      <div class="meal-name">Small Chicken + Rice</div>
+      <div class="meal-desc">100g leftover chicken + 1/2 cup rice + salt/pepper</div>
+      <div class="meal-macros">
+        <div class="macro-chip"><div class="macro-dot p"></div>30g Protein</div>
+        <div class="macro-chip"><div class="macro-dot c"></div>35g Carbs</div>
+        <div class="macro-chip"><div class="macro-dot f"></div>5g Fat</div>
+      </div>
+      <div class="meal-actions">
+        <button class="meal-action-btn ate">✓ ATE IT</button>
+        <button class="meal-action-btn swap">↔ SWAP</button>
+        <button class="meal-action-btn skip">✗ SKIP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS PAGE -->
+  <div class="page" id="progress">
+    <div class="card">
+      <div class="section-title">📊 Weight Trend</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:44px;color:var(--primary);line-height:1;">78.2</div>
+          <div style="color:var(--text-muted);font-size:12px;font-weight:600;margin-top:2px;">kg current</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="color:var(--emerald);font-size:13px;font-weight:700;">↓ 2.3 kg</div>
+          <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">since start</div>
+        </div>
+      </div>
+      <div style="height:80px;background:linear-gradient(180deg,var(--primary-soft) 0%,transparent 100%);border-radius:12px;margin-top:16px;display:flex;align-items:flex-end;padding:8px;">
+        <svg viewBox="0 0 300 60" style="width:100%;height:100%;">
+          <polyline points="0,10 40,15 80,12 120,20 160,25 200,30 240,35 280,40" fill="none" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="text-align:right;font-size:12px;color:var(--text-muted);margin-top:4px;">Target: 75kg by Week 8</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon amber">⚡</div>
+        <div class="stat-label">Streak</div>
+        <div class="stat-value">6 DAYS</div>
+        <div class="stat-sub">Personal best!</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon pink">📸</div>
+        <div class="stat-label">Last Photo</div>
+        <div class="stat-value">3 DAYS</div>
+        <div class="stat-sub">Due Sunday</div>
+      </div>
+    </div>
+
+    <div class="section-title">Recent Wins 🏆</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+        <div class="stat-icon emerald" style="margin:0;width:36px;height:36px;">💪</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:14px;">New PR on Machine Chest Press</div>
+          <div style="color:var(--text-muted);font-size:12px;">45kg × 10 · yesterday</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+        <div class="stat-icon teal" style="margin:0;width:36px;height:36px;">✅</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:14px;">Full week meal-log streak</div>
+          <div style="color:var(--text-muted);font-size:12px;">7/7 days logged</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FLOATING ACTION BUTTON -->
+<button class="fab" onclick="alert('Quick log — coming')">+</button>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="nav-item active" onclick="showPage('home', event, true)">
+    <div class="nav-icon">🏠</div>
+    <div class="nav-label">Home</div>
+  </div>
+  <div class="nav-item" onclick="showPage('training', event, true)">
+    <div class="nav-icon">🏋️</div>
+    <div class="nav-label">Train</div>
+  </div>
+  <div class="nav-item" onclick="showPage('nutrition', event, true)">
+    <div class="nav-icon">🍽️</div>
+    <div class="nav-label">Meals</div>
+  </div>
+  <div class="nav-item" onclick="showPage('progress', event, true)">
+    <div class="nav-icon">📈</div>
+    <div class="nav-label">Progress</div>
+  </div>
+  <div class="nav-item" onclick="showPage('chat', event, true)">
+    <div class="nav-icon">💬</div>
+    <div class="nav-label">Chat</div>
+  </div>
+</nav>
+
+<script>
+function showPage(id, ev, fromNav) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if (fromNav && ev) ev.currentTarget.classList.add('active');
+  else {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(t => { if (t.textContent.toLowerCase().includes(id.substring(0,4))) t.classList.add('active'); });
+    // also mark bottom nav
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.querySelector('.nav-label').textContent.toLowerCase() === id) n.classList.add('active');
+    });
+  }
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
