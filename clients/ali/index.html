@@ -876,8 +876,21 @@
     .supps-grid { grid-template-columns: 1fr; }
     .lifestyle-grid { grid-template-columns: 1fr; }
     .tracker-grid { grid-template-columns: 1fr; }
-    .meal-card { grid-template-columns: 1fr; }
+    .meal-card {
+      /* !important beats the inline style set in renderDay() (5-col desktop grid) */
+      grid-template-columns: 1fr !important;
+      padding: 0.9rem 1rem !important;
+      gap: 0.6rem !important;
+    }
+    /* Macro + kcal columns inside meal-card become a horizontal strip below the description */
+    .meal-card > div:nth-child(n+3) {
+      display: inline-block;
+      text-align: left !important;
+      margin-right: 1.2rem;
+      vertical-align: top;
+    }
     .meal-cals { text-align: left; }
+    .meal-food { word-break: normal; overflow-wrap: break-word; }
   }
 </style>
 </head>
