@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StrengthByO — Client Intake</title>
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #141414;
+    --panel-border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #888;
+    --accent: #00E5A0;
+    --input-bg: #1a1a1a;
+    --input-border: #333;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    padding: 0;
+    min-height: 100vh;
+  }
+  .container { max-width: 640px; margin: 0 auto; padding: 24px 20px 80px; }
+  .header { text-align: center; margin-bottom: 40px; padding: 32px 0; border-bottom: 1px solid var(--panel-border); }
+  .logo { font-size: 32px; font-weight: 900; letter-spacing: -1px; color: var(--accent); margin-bottom: 8px; }
+  .logo .by { color: var(--text); }
+  .tagline { color: var(--muted); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+  .intro { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+  .intro h2 { color: var(--accent); font-size: 20px; margin-bottom: 12px; }
+  .intro p { color: var(--muted); font-size: 15px; margin-bottom: 8px; }
+  .intro p strong { color: var(--text); }
+  section { margin-bottom: 32px; }
+  .section-title { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--panel-border); }
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  label .num { color: var(--accent); font-weight: 900; margin-right: 6px; }
+  label .req { color: #ff4d4d; margin-left: 4px; }
+  input[type="text"], input[type="number"], input[type="email"], input[type="tel"], select, textarea {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .helper { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .radio-group label { display: inline-flex; align-items: center; padding: 8px 14px; border: 1px solid var(--input-border); border-radius: 20px; cursor: pointer; background: var(--input-bg); font-weight: 500; transition: all 0.15s; }
+  .radio-group label:hover { border-color: var(--accent); }
+  .radio-group input[type="radio"] { display: none; }
+  .radio-group input[type="radio"]:checked + span { color: var(--accent); }
+  .radio-group label:has(input:checked) { border-color: var(--accent); background: rgba(0, 229, 160, 0.08); }
+  .photo-block { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .photo-slot { aspect-ratio: 3 / 4; background: var(--input-bg); border: 2px dashed var(--input-border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; transition: border-color 0.15s; }
+  .photo-slot:hover { border-color: var(--accent); }
+  .photo-slot input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .photo-slot .placeholder { text-align: center; color: var(--muted); padding: 12px; }
+  .photo-slot .placeholder .icon { font-size: 24px; margin-bottom: 4px; }
+  .photo-slot .placeholder .label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }
+  .photo-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .submit-block { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--panel-border); }
+  button[type="submit"] { width: 100%; background: var(--accent); color: #000; font-weight: 800; font-size: 18px; padding: 16px; border: none; border-radius: 10px; cursor: pointer; letter-spacing: 1px; transition: opacity 0.15s; font-family: inherit; }
+  button[type="submit"]:hover { opacity: 0.9; }
+  button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status { text-align: center; padding: 12px; margin-top: 16px; border-radius: 8px; font-size: 14px; }
+  .status.err { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border: 1px solid rgba(255, 77, 77, 0.3); }
+  .status.ok { background: rgba(0, 229, 160, 0.1); color: var(--accent); border: 1px solid rgba(0, 229, 160, 0.3); }
+  .success-screen { display: none; text-align: center; padding: 60px 20px; }
+  .success-screen.show { display: block; }
+  .success-screen .check { font-size: 64px; margin-bottom: 24px; color: var(--accent); }
+  .success-screen h1 { font-size: 28px; margin-bottom: 16px; }
+  .success-screen p { color: var(--muted); margin-bottom: 8px; }
+  @media (max-width: 480px) {
+    .row, .row-3 { grid-template-columns: 1fr; }
+    .container { padding: 20px 16px 60px; }
+    .logo { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+  <div class="container" id="formContainer">
+    <div class="header">
+      <div class="logo">STRENGTH<span class="by">byO</span></div>
+      <div class="tagline">CLIENT INTAKE</div>
+    </div>
+
+    <div class="intro">
+      <h2>Welcome bro</h2>
+      <p>Fill this out honestly + i'll have ur full custom program built within 24-48 hrs.</p>
+      <p>Takes ~10 min. <strong>Don't rush it</strong> — the more detail u give me, the better the program.</p>
+      <p style="margin-top:12px;color:var(--accent);font-weight:600;">— Omar</p>
+    </div>
+
+    <form id="intakeForm">
+      <section>
+        <div class="section-title">Basic Info</div>
+        <div class="field"><label><span class="num">1</span> Full Name<span class="req">*</span></label><input type="text" name="fullName" required /></div>
+        <div class="row">
+          <div class="field"><label><span class="num">2</span> Age<span class="req">*</span></label><input type="number" name="age" min="12" max="99" required /></div>
+          <div class="field"><label><span class="num">3</span> Sex<span class="req">*</span></label><select name="sex" required><option value="">Select…</option><option value="male">Male</option><option value="female">Female</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label><span class="num">4</span> Height (cm)<span class="req">*</span></label><input type="number" name="heightCm" min="120" max="230" required /><div class="helper">e.g. 175</div></div>
+          <div class="field"><label><span class="num">5</span> Current Weight (kg)<span class="req">*</span></label><input type="number" name="weightKg" step="0.1" min="30" max="250" required /></div>
+        </div>
+        <div class="field"><label><span class="num">6</span> Location / Suburb<span class="req">*</span></label><input type="text" name="location" placeholder="e.g. Greenacre, Sydney" required /></div>
+        <div class="row">
+          <div class="field"><label><span class="num">7</span> Phone Number<span class="req">*</span></label><input type="tel" name="phone" placeholder="+61 4xx xxx xxx" required /></div>
+          <div class="field"><label><span class="num">8</span> Email</label><input type="email" name="email" /></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">Goal &amp; Motivation</div>
+        <div class="field"><label><span class="num">9</span> What is ur #1 goal right now?<span class="req">*</span></label><textarea name="goal" required placeholder="e.g. build muscle, lose fat, get stronger, tone up"></textarea></div>
+        <div class="field"><label><span class="num">10</span> What does success look like in 12 weeks?<span class="req">*</span></label><textarea name="successVision" required placeholder="Be specific — target weight, target look, target lift, etc."></textarea></div>
+        <div class="field"><label><span class="num">11</span> Why now? What made u want to start?<span class="req">*</span></label><textarea name="whyNow" required></textarea></div>
+      </section>
+
+      <section>
+        <div class="section-title">Training History</div>
+        <div class="field"><label><span class="num">12</span> How long have u been training?<span class="req">*</span></label><input type="text" name="trainingHistory" placeholder="e.g. 6 months on/off, 3 years consistent, complete beginner" required /></div>
+        <div class="field"><label><span class="num">13</span> What does ur current routine look like?<span class="req">*</span></label><textarea name="currentRoutine" placeholder="Days per week, split, exercises, or 'not training at all'" required></textarea></div>
+        <div class="field"><label><span class="num">14</span> What stopped u from being consistent in the past?<span class="req">*</span></label><textarea name="stoppedConsistency" required></textarea></div>
+      </section>
+
+      <section>
+        <div class="section-title">Schedule &amp; Lifestyle</div>
+        <div class="row">
+          <div class="field"><label><span class="num">15</span> Days per week u can realistically train<span class="req">*</span></label><input type="number" name="daysPerWeek" min="1" max="7" required /></div>
+          <div class="field"><label><span class="num">16</span> Gym or home?<span class="req">*</span></label><select name="trainingLocation" required><option value="">Select…</option><option value="gym">Commercial Gym</option><option value="home">Home only</option><option value="hybrid">Hybrid (both)</option></select></div>
+        </div>
+        <div class="field"><label><span class="num">17</span> What time of day do u usually work out?<span class="req">*</span></label><input type="text" name="trainingTime" placeholder="e.g. 6am, lunchtime, 6pm after work" required /></div>
+        <div class="field"><label><span class="num">18</span> How would u describe ur daily activity outside the gym?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="jobActivity" value="sedentary" required /><span>Sedentary (desk job)</span></label>
+            <label><input type="radio" name="jobActivity" value="moderate" /><span>Moderate (on feet sometimes)</span></label>
+            <label><input type="radio" name="jobActivity" value="active" /><span>Active (on feet all day)</span></label>
+            <label><input type="radio" name="jobActivity" value="very_active" /><span>Very Active (labor / trades)</span></label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">Nutrition</div>
+        <div class="field"><label><span class="num">19</span> How many meals per day do u eat right now?<span class="req">*</span></label><input type="number" name="mealsPerDay" min="1" max="8" required /></div>
+        <div class="field"><label><span class="num">20</span> Any foods u can't eat or strongly dislike?<span class="req">*</span></label><textarea name="foodRestrictions" placeholder="Allergies, halal only, vegetarian, hate mushrooms, etc. Or 'none'" required></textarea></div>
+        <div class="field"><label><span class="num">21</span> Do u currently track calories or macros?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="tracksMacros" value="yes_actively" required /><span>Yes actively</span></label>
+            <label><input type="radio" name="tracksMacros" value="have_app" /><span>Have an app but don't use</span></label>
+            <label><input type="radio" name="tracksMacros" value="no" /><span>No never</span></label>
+          </div>
+        </div>
+        <div class="field"><label><span class="num">22</span> What do u actually enjoy eating? Regular meals u eat?<span class="req">*</span></label><textarea name="enjoyEating" placeholder="What u eat most weeks. Do u eat takeaway a lot? What kind?" required></textarea></div>
+        <div class="field"><label><span class="num">23</span> Different meals daily OR same meals each week?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="mealVariety" value="variety" required /><span>Variety every day</span></label>
+            <label><input type="radio" name="mealVariety" value="rotating" /><span>Rotating every couple weeks</span></label>
+            <label><input type="radio" name="mealVariety" value="repetitive" /><span>Same meals repeated — I don't mind</span></label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">Health &amp; Recovery</div>
+        <div class="field"><label><span class="num">24</span> Any injuries, medical conditions, or physical limitations?<span class="req">*</span></label><textarea name="injuries" placeholder="Or 'none'" required></textarea></div>
+        <div class="field"><label><span class="num">25</span> Average hours of sleep per night<span class="req">*</span></label><input type="number" name="sleepHours" step="0.5" min="3" max="12" required /></div>
+        <div class="field"><label><span class="num">26</span> Stress levels day-to-day<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="stressLevel" value="low" required /><span>Low</span></label>
+            <label><input type="radio" name="stressLevel" value="moderate" /><span>Moderate</span></label>
+            <label><input type="radio" name="stressLevel" value="high" /><span>High</span></label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">Starting Photos (Optional but Recommended)</div>
+        <p class="helper" style="margin-bottom:16px;">Front, side, back. Tight-fitting clothes or singlet + shorts. Same lighting each week. These become ur baseline — u'll thank urself in 12 weeks.</p>
+        <div class="photo-block">
+          <label class="photo-slot" for="photoFront"><div class="placeholder"><div class="icon">📷</div><div class="label">FRONT</div></div><input type="file" id="photoFront" accept="image/*" capture="environment" /></label>
+          <label class="photo-slot" for="photoSide"><div class="placeholder"><div class="icon">📷</div><div class="label">SIDE</div></div><input type="file" id="photoSide" accept="image/*" capture="environment" /></label>
+          <label class="photo-slot" for="photoBack"><div class="placeholder"><div class="icon">📷</div><div class="label">BACK</div></div><input type="file" id="photoBack" accept="image/*" capture="environment" /></label>
+        </div>
+      </section>
+
+      <div class="submit-block">
+        <button type="submit" id="submitBtn">SUBMIT INTAKE</button>
+        <div id="status"></div>
+      </div>
+    </form>
+  </div>
+
+  <div class="container success-screen" id="successScreen">
+    <div class="check">✓</div>
+    <h1>Intake received bro</h1>
+    <p>I'll build ur program + send u the link within 24-48 hrs.</p>
+    <p style="margin-top:24px;color:var(--accent);font-weight:600;">— Omar</p>
+  </div>
+
+<script>
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec';
+
+// Photo handling
+const photoData = { front: null, side: null, back: null };
+
+function resizeImage(file, maxDim = 800, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > maxDim) { h = h * (maxDim / w); w = maxDim; } }
+        else { if (h > maxDim) { w = w * (maxDim / h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+['front', 'side', 'back'].forEach(view => {
+  const input = document.getElementById('photo' + view.charAt(0).toUpperCase() + view.slice(1));
+  input.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImage(file);
+      photoData[view] = dataUrl;
+      const slot = input.closest('.photo-slot');
+      slot.innerHTML = `<img src="${dataUrl}" alt="${view}" />`;
+    } catch (err) { console.warn('Photo resize failed', err); }
+  });
+});
+
+// Form submit
+document.getElementById('intakeForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  btn.textContent = 'SUBMITTING…';
+  status.className = '';
+  status.textContent = '';
+
+  const formData = new FormData(e.target);
+  const payload = { type: 'intake', timestamp: new Date().toISOString() };
+  formData.forEach((v, k) => { payload[k] = v; });
+  payload.photoFront = photoData.front || '';
+  payload.photoSide = photoData.side || '';
+  payload.photoBack = photoData.back || '';
+
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    // fire-and-forget in no-cors, always assume success unless network throws
+    document.getElementById('formContainer').style.display = 'none';
+    document.getElementById('successScreen').classList.add('show');
+    window.scrollTo(0, 0);
+  } catch (err) {
+    console.error('Submit error', err);
+    btn.disabled = false;
+    btn.textContent = 'SUBMIT INTAKE';
+    status.className = 'status err';
+    status.textContent = 'Something went wrong. Try again or DM Omar directly.';
+  }
+});
+</script>
+</body>
+</html>
