@@ -461,94 +461,19 @@ body {
 
   <!-- NUTRITION PAGE -->
   <div class="page" id="nutrition">
-    <div class="card-lg card" style="background:linear-gradient(135deg,var(--primary-soft),#FFE4D6);">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:0.02em;">MONDAY</div>
-          <div style="color:var(--text-muted);font-size:13px;font-weight:600;">Training Day · 1750 kcal</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--primary);">1250</div>
-          <div style="font-size:11px;color:var(--text-muted);font-weight:600;">/ 1750 kcal</div>
-        </div>
-      </div>
+    <!-- WEEK SELECTOR (horizontal scroll) -->
+    <div style="overflow-x:auto;margin:0 -20px 12px;padding:0 20px;-webkit-overflow-scrolling:touch;">
+      <div id="week-tabs" style="display:flex;gap:8px;padding-bottom:4px;"></div>
     </div>
 
-    <div class="meal-card">
-      <div class="meal-row-top">
-        <div class="meal-time-pill">7:00 AM</div>
-        <div><div class="meal-kcal">420</div><div class="meal-kcal-unit">KCAL</div></div>
-      </div>
-      <div class="meal-name">Eggs + Rice Cakes</div>
-      <div class="meal-desc">4 boiled eggs + 3 rice cakes + coffee</div>
-      <div class="meal-macros">
-        <div class="macro-chip"><div class="macro-dot p"></div>26g Protein</div>
-        <div class="macro-chip"><div class="macro-dot c"></div>32g Carbs</div>
-        <div class="macro-chip"><div class="macro-dot f"></div>20g Fat</div>
-      </div>
-      <div class="meal-actions">
-        <button class="meal-action-btn ate">✓ ATE IT</button>
-        <button class="meal-action-btn swap">↔ SWAP</button>
-        <button class="meal-action-btn skip">✗ SKIP</button>
-      </div>
-    </div>
+    <!-- DAY SELECTOR (Mon-Sun pills) -->
+    <div id="day-tabs" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;"></div>
 
-    <div class="meal-card">
-      <div class="meal-row-top">
-        <div class="meal-time-pill">10:30 AM</div>
-        <div><div class="meal-kcal">360</div><div class="meal-kcal-unit">KCAL</div></div>
-      </div>
-      <div class="meal-name">Protein Shake + Dates</div>
-      <div class="meal-desc">30g whey + 250ml milk + 3 medjool dates</div>
-      <div class="meal-macros">
-        <div class="macro-chip"><div class="macro-dot p"></div>38g Protein</div>
-        <div class="macro-chip"><div class="macro-dot c"></div>42g Carbs</div>
-        <div class="macro-chip"><div class="macro-dot f"></div>6g Fat</div>
-      </div>
-      <div class="meal-actions">
-        <button class="meal-action-btn ate">✓ ATE IT</button>
-        <button class="meal-action-btn swap">↔ SWAP</button>
-        <button class="meal-action-btn skip">✗ SKIP</button>
-      </div>
-    </div>
+    <!-- DAY HERO CARD -->
+    <div class="card-lg card" id="day-hero" style="background:linear-gradient(135deg,var(--primary-soft),#FFE4D6);"></div>
 
-    <div class="meal-card" style="border:2px solid var(--primary);">
-      <div class="meal-row-top">
-        <div class="meal-time-pill">1:00 PM</div>
-        <div><div class="meal-kcal">500</div><div class="meal-kcal-unit">KCAL</div></div>
-      </div>
-      <div class="meal-name">Chicken + Rice + Broccoli</div>
-      <div class="meal-desc">200g grilled chicken breast + 3/4 cup jasmine rice + steamed broccoli + salt/pepper</div>
-      <div class="meal-macros">
-        <div class="macro-chip"><div class="macro-dot p"></div>52g Protein</div>
-        <div class="macro-chip"><div class="macro-dot c"></div>55g Carbs</div>
-        <div class="macro-chip"><div class="macro-dot f"></div>10g Fat</div>
-      </div>
-      <div class="meal-actions">
-        <button class="meal-action-btn ate">✓ ATE IT</button>
-        <button class="meal-action-btn swap">↔ SWAP</button>
-        <button class="meal-action-btn skip">✗ SKIP</button>
-      </div>
-    </div>
-
-    <div class="meal-card">
-      <div class="meal-row-top">
-        <div class="meal-time-pill">4:30 PM</div>
-        <div><div class="meal-kcal">280</div><div class="meal-kcal-unit">KCAL</div></div>
-      </div>
-      <div class="meal-name">Small Chicken + Rice</div>
-      <div class="meal-desc">100g leftover chicken + 1/2 cup rice + salt/pepper</div>
-      <div class="meal-macros">
-        <div class="macro-chip"><div class="macro-dot p"></div>30g Protein</div>
-        <div class="macro-chip"><div class="macro-dot c"></div>35g Carbs</div>
-        <div class="macro-chip"><div class="macro-dot f"></div>5g Fat</div>
-      </div>
-      <div class="meal-actions">
-        <button class="meal-action-btn ate">✓ ATE IT</button>
-        <button class="meal-action-btn swap">↔ SWAP</button>
-        <button class="meal-action-btn skip">✗ SKIP</button>
-      </div>
-    </div>
+    <!-- MEAL CARDS -->
+    <div id="meal-list"></div>
   </div>
 
   <!-- PROGRESS PAGE -->
@@ -646,13 +571,199 @@ function showPage(id, ev, fromNav) {
   else {
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(t => { if (t.textContent.toLowerCase().includes(id.substring(0,4))) t.classList.add('active'); });
-    // also mark bottom nav
     document.querySelectorAll('.nav-item').forEach(n => {
       if (n.querySelector('.nav-label').textContent.toLowerCase() === id) n.classList.add('active');
     });
   }
   window.scrollTo(0, 0);
+  if (id === 'nutrition') renderNutrition();
 }
+
+// ─── NUTRITION DATA + STATE ───────────────────────────────────
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAY_FULL = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
+const DAY_TYPE = ['Training','Training','Training','Training','Rest','Rest','Prep Day'];
+
+// 8-week program: wk 1-3 (P1 1750 kcal), wk 4-6 (P2 1650 kcal), wk 7-8 (P3 maintenance 2350)
+const WEEKS = 8;
+const PHASE_KCAL = [null, 1750, 1750, 1750, 1650, 1650, 1650, 2350, 2350];
+const PHASE_LABEL = [null, 'P1', 'P1', 'P1', 'P2', 'P2', 'P2', 'P3 · MAINTAIN', 'P3 · MAINTAIN'];
+
+// Meal pool — rotates by (week × day) so every day is slightly different
+const MEAL_POOL = {
+  breakfast: [
+    { name:'Eggs + Rice Cakes', desc:'4 boiled eggs + 3 rice cakes + coffee', cal:420, p:26, c:32, f:20, time:'7:00 AM' },
+    { name:'Eggs + Sweet Potato', desc:'3 whole eggs + 3 whites + 200g roast sweet potato', cal:450, p:34, c:38, f:16, time:'7:00 AM' },
+    { name:'Protein Shake + Eggs', desc:'30g whey + 250ml milk + 3 boiled eggs', cal:430, p:50, c:20, f:18, time:'7:00 AM' },
+    { name:'Egg White Scramble + Potato', desc:'4 egg whites + 2 whole eggs + 200g roast potato', cal:450, p:36, c:34, f:16, time:'7:00 AM' },
+    { name:'Steak + Eggs', desc:'120g leftover steak + 3 boiled eggs + coffee', cal:450, p:52, c:4, f:26, time:'7:00 AM' },
+  ],
+  snack: [
+    { name:'Protein Shake + Dates', desc:'30g whey + 250ml milk + 3 medjool dates', cal:360, p:38, c:42, f:6, time:'10:30 AM' },
+    { name:'Boiled Eggs + Rice Cakes', desc:'3 boiled eggs + 3 rice cakes + salt', cal:320, p:22, c:34, f:14, time:'10:30 AM' },
+    { name:'Chicken + Rice Cakes', desc:'100g leftover chicken + 3 rice cakes + hot sauce', cal:260, p:28, c:26, f:4, time:'10:30 AM' },
+    { name:'Rokeby Protein Milk', desc:'500ml Rokeby Farms High Protein milk', cal:290, p:42, c:32, f:4, time:'10:30 AM' },
+  ],
+  lunch: [
+    { name:'Chicken + Rice + Broccoli', desc:'200g grilled chicken breast + 3/4 cup jasmine rice + steamed broccoli', cal:500, p:52, c:55, f:10, time:'1:00 PM' },
+    { name:'Chicken + Sweet Potato', desc:'200g grilled chicken + 250g roast sweet potato + steamed greens', cal:480, p:50, c:45, f:10, time:'1:00 PM' },
+    { name:'Chicken + Potato', desc:'200g grilled chicken + 250g roast white potato + steamed greens', cal:470, p:50, c:42, f:10, time:'1:00 PM' },
+    { name:'Steak + Rice', desc:'180g leftover steak (sliced) + 3/4 cup rice + steamed veg', cal:510, p:48, c:50, f:15, time:'1:00 PM' },
+    { name:'Chicken Rice Bowl (Shredded)', desc:'200g shredded chicken thigh + 3/4 cup rice + steamed veg', cal:520, p:50, c:55, f:15, time:'1:00 PM' },
+  ],
+  preworkout: [
+    { name:'Small Chicken + Rice', desc:'100g leftover chicken + 1/2 cup rice + salt/pepper', cal:280, p:30, c:35, f:5, time:'4:30 PM' },
+    { name:'Dates + Protein Shake', desc:'5 medjool dates + 30g whey + 250ml water', cal:345, p:25, c:60, f:1, time:'4:30 PM' },
+    { name:'Rice Cakes + Chicken', desc:'4 rice cakes + 100g leftover chicken + hot sauce', cal:310, p:32, c:34, f:4, time:'4:30 PM' },
+    { name:'Dates + Almonds', desc:'5 medjool dates + 20g almonds', cal:330, p:5, c:65, f:10, time:'4:30 PM' },
+  ],
+  dinner: [
+    { name:'Chicken + Rice + Broccoli', desc:'220g grilled chicken breast + 1 cup rice + steamed broccoli + salt', cal:580, p:60, c:65, f:10, time:'7:30 PM' },
+    { name:'Chicken + Sweet Potato', desc:'220g grilled chicken + 300g roast sweet potato + steamed greens', cal:580, p:55, c:55, f:12, time:'7:30 PM' },
+    { name:'Steak + Rice + Veggies', desc:'200g sirloin steak + 3/4 cup rice + steamed greens', cal:580, p:52, c:55, f:18, time:'7:30 PM' },
+    { name:'Grilled Chicken Thigh + Rice', desc:'220g grilled chicken thigh + 1 cup rice + steamed veg', cal:600, p:58, c:60, f:18, time:'7:30 PM' },
+    { name:'Steak + Potato + Greens', desc:'200g sirloin steak + 250g roast potato + steamed green beans', cal:560, p:52, c:42, f:20, time:'7:30 PM' },
+  ],
+  prebed: [
+    { name:'Protein Shake', desc:'30g whey + 250ml milk', cal:260, p:32, c:15, f:7, time:'10:00 PM' },
+    { name:'Rokeby Bedtime', desc:'500ml Rokeby Farms High Protein milk', cal:290, p:42, c:32, f:4, time:'10:00 PM' },
+    { name:'Casein-Style Shake', desc:'30g whey + 250ml milk + 1 tbsp PB', cal:330, p:34, c:15, f:15, time:'10:00 PM' },
+  ],
+};
+
+let currentWeek = 1;
+let currentDay = 0; // 0 = Monday
+
+// State: mealLog[weekIdx][dayIdx][mealIdx] = 'ate' | 'swap' | 'skip' | null
+const LS_KEY = 'trial_ui_meal_log_v1';
+const mealLog = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+
+function saveLog() { localStorage.setItem(LS_KEY, JSON.stringify(mealLog)); }
+function getLog(w, d, m) { return mealLog[w+'_'+d+'_'+m] || null; }
+function setLog(w, d, m, status) {
+  const key = w+'_'+d+'_'+m;
+  if (mealLog[key] === status) delete mealLog[key]; // toggle off
+  else mealLog[key] = status;
+  saveLog();
+  renderNutrition();
+}
+
+// Rotating meal picker — different meal every day
+function pickMeal(pool, week, day) {
+  return pool[(week * 3 + day * 5 + pool.length) % pool.length];
+}
+
+function getMealsForDay(week, day) {
+  const isRest = day >= 4;
+  const isPrepDay = day === 6;
+  const meals = [
+    pickMeal(MEAL_POOL.breakfast, week, day),
+    pickMeal(MEAL_POOL.snack, week, day),
+    pickMeal(MEAL_POOL.lunch, week, day),
+    pickMeal(MEAL_POOL.preworkout, week, day),
+    pickMeal(MEAL_POOL.dinner, week, day),
+    pickMeal(MEAL_POOL.prebed, week, day),
+  ];
+  return meals;
+}
+
+function renderNutrition() {
+  // WEEK TABS
+  const weekTabs = document.getElementById('week-tabs');
+  weekTabs.innerHTML = '';
+  for (let w = 1; w <= WEEKS; w++) {
+    const btn = document.createElement('button');
+    btn.style.cssText = `padding:10px 16px;border:none;border-radius:12px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:0.06em;cursor:pointer;white-space:nowrap;flex-shrink:0;` +
+      (w === currentWeek
+        ? 'background:linear-gradient(135deg,var(--primary),#FF8659);color:white;box-shadow:0 4px 12px rgba(255,107,53,0.3);'
+        : 'background:white;color:var(--text-muted);box-shadow:var(--shadow);');
+    btn.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.05em;">WK ${w}</div><div style="font-size:9px;margin-top:1px;opacity:0.9;">${PHASE_LABEL[w]}</div>`;
+    btn.onclick = () => { currentWeek = w; renderNutrition(); };
+    weekTabs.appendChild(btn);
+  }
+
+  // DAY TABS
+  const dayTabs = document.getElementById('day-tabs');
+  dayTabs.innerHTML = '';
+  DAYS.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `padding:12px 4px;border:none;border-radius:14px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;` +
+      (i === currentDay
+        ? 'background:linear-gradient(135deg,var(--primary),#FF8659);color:white;box-shadow:0 4px 12px rgba(255,107,53,0.3);'
+        : 'background:white;color:var(--text-muted);box-shadow:var(--shadow);');
+    btn.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.05em;">${d}</div>`;
+    btn.onclick = () => { currentDay = i; renderNutrition(); };
+    dayTabs.appendChild(btn);
+  });
+
+  // DAY HERO
+  const meals = getMealsForDay(currentWeek, currentDay);
+  const dayKcalTotal = meals.reduce((s, m) => s + m.cal, 0);
+  let loggedKcal = 0;
+  meals.forEach((m, i) => {
+    const status = getLog(currentWeek, currentDay, i);
+    if (status === 'ate' || status === 'swap') loggedKcal += m.cal;
+  });
+  const target = PHASE_KCAL[currentWeek];
+
+  document.getElementById('day-hero').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:0.02em;">${DAY_FULL[currentDay]}</div>
+        <div style="color:var(--text-muted);font-size:13px;font-weight:600;">${DAY_TYPE[currentDay]} Day · Week ${currentWeek} · ${target} kcal target</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--primary);">${loggedKcal}</div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:600;">/ ${target} kcal</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,107,53,0.15);border-radius:100px;height:6px;margin-top:12px;overflow:hidden;">
+      <div style="background:var(--primary);height:100%;width:${Math.min(100, (loggedKcal/target)*100)}%;border-radius:100px;transition:width 0.3s;"></div>
+    </div>
+  `;
+
+  // MEAL CARDS
+  const list = document.getElementById('meal-list');
+  list.innerHTML = '';
+  meals.forEach((m, i) => {
+    const status = getLog(currentWeek, currentDay, i);
+    const statusBar =
+      status === 'ate' ? `<div style="background:#ECFDF5;color:var(--emerald);padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;margin-bottom:8px;text-align:center;">✓ ATE IT · +${m.cal} kcal logged</div>` :
+      status === 'swap' ? `<div style="background:#FEF3C7;color:var(--amber);padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;margin-bottom:8px;text-align:center;">↔ SWAPPED · +${m.cal} kcal logged</div>` :
+      status === 'skip' ? `<div style="background:#FEE2E2;color:#EF4444;padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;margin-bottom:8px;text-align:center;">✗ SKIPPED · 0 kcal</div>` :
+      '';
+
+    const cardStyle = status ? 'opacity:0.85;' : '';
+    const borderStyle = status === 'ate' ? 'border:2px solid var(--emerald);' :
+                        status === 'swap' ? 'border:2px solid var(--amber);' :
+                        status === 'skip' ? 'border:2px solid #EF4444;' : '';
+
+    list.insertAdjacentHTML('beforeend', `
+      <div class="meal-card" style="${cardStyle}${borderStyle}">
+        ${statusBar}
+        <div class="meal-row-top">
+          <div class="meal-time-pill">${m.time}</div>
+          <div><div class="meal-kcal">${m.cal}</div><div class="meal-kcal-unit">KCAL</div></div>
+        </div>
+        <div class="meal-name">${m.name}</div>
+        <div class="meal-desc">${m.desc}</div>
+        <div class="meal-macros">
+          <div class="macro-chip"><div class="macro-dot p"></div>${m.p}g Protein</div>
+          <div class="macro-chip"><div class="macro-dot c"></div>${m.c}g Carbs</div>
+          <div class="macro-chip"><div class="macro-dot f"></div>${m.f}g Fat</div>
+        </div>
+        <div class="meal-actions">
+          <button class="meal-action-btn ate" onclick="setLog(${currentWeek},${currentDay},${i},'ate')" style="${status==='ate'?'background:var(--emerald);color:white;':''}">✓ ATE IT</button>
+          <button class="meal-action-btn swap" onclick="setLog(${currentWeek},${currentDay},${i},'swap')" style="${status==='swap'?'background:var(--amber);color:white;':''}">↔ SWAP</button>
+          <button class="meal-action-btn skip" onclick="setLog(${currentWeek},${currentDay},${i},'skip')" style="${status==='skip'?'background:#EF4444;color:white;':''}">✗ SKIP</button>
+        </div>
+      </div>
+    `);
+  });
+}
+
+// Initial render
+renderNutrition();
 </script>
 </body>
 </html>
