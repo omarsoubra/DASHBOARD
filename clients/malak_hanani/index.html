@@ -4,100 +4,112 @@
 <meta charset="UTF-8"/>
 <!-- PWA support -->
 <link rel="manifest" href="manifest.json"/>
-<meta name="theme-color" content="#000000"/>
+<meta name="theme-color" content="#FF6B35"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="apple-mobile-web-app-title" content="StrengthByO"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>Malak Hanani's 8-Week 8-Week Aggressive Cut</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <style>
   :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface2: #1a1a26;
-    --border: #2a2a3d;
-    --accent: #4f7fff;
-    --accent2: #ff6b35;
-    --accent3: #00e5a0;
-    --text: #e8e8f0;
-    --muted: #6b6b8a;
-    --danger: #ff4466;
+    /* NEW UI PALETTE — orange primary + pastel gradient + rounded soft cards */
+    --bg: #F0F9FF;                     /* soft sky-blue start */
+    --bg2: #FDF4F2;                    /* warm peach end */
+    --surface: #FFFFFF;                /* card white */
+    --surface2: #F9FAFB;               /* subtle grey for nested cards */
+    --border: #F3F4F6;                 /* very light border */
+    --accent: #FF6B35;                 /* PRIMARY ORANGE */
+    --accent-soft: #FFEDE6;            /* orange 10% */
+    --accent-grad: linear-gradient(135deg, #FF6B35 0%, #FF8659 100%);
+    --accent2: #6366F1;                /* indigo (secondary — protein) */
+    --accent3: #10B981;                /* emerald (success — kcal ok / meals) */
+    --amber: #F59E0B;                  /* amber (carbs / warnings) */
+    --pink: #EC4899;                   /* pink (fat / accents) */
+    --teal: #14B8A6;                   /* teal (photos / activity) */
+    --text: #1F2937;                   /* dark grey text */
+    --muted: #6B7280;                  /* muted grey */
+    --danger: #EF4444;                 /* red */
+    --shadow: 0 4px 20px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.06);
+    --shadow-orange: 0 8px 24px rgba(255,107,53,0.25);
+    --radius-sm: 12px;
+    --radius: 20px;
+    --radius-lg: 24px;
+    --radius-xl: 28px;
   }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   body {
-    background: var(--bg);
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    background-attachment: fixed;
     color: var(--text);
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 500;
     min-height: 100vh;
     overflow-x: hidden;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));  /* bottom nav clearance */
   }
 
-  /* ─── HERO ─── */
+  /* ─── HERO (new soft orange gradient card, not full-viewport dark) ─── */
   .hero {
     position: relative;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    padding: 3.5rem 1.5rem 2.5rem;
     text-align: center;
-    padding: 2rem;
+    background: var(--accent-grad);
+    color: white;
+    border-bottom-left-radius: var(--radius-xl);
+    border-bottom-right-radius: var(--radius-xl);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-orange);
     overflow: hidden;
   }
-
-  .hero-bg {
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, #1a1f4a 0%, transparent 70%),
-                radial-gradient(ellipse 50% 40% at 80% 80%, #1a0f0a 0%, transparent 60%),
-                var(--bg);
-  }
-
+  .hero-bg { display: none; }
   .hero-grid {
-    position: absolute; inset: 0;
-    background-image: linear-gradient(var(--border) 1px, transparent 1px),
-                      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 60px 60px;
-    opacity: 0.3;
-    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    position: absolute; top: -30%; right: -20%;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+    pointer-events: none;
+    mask: none;
   }
-
-  .hero-content { position: relative; z-index: 1; max-width: 800px; }
+  .hero-content { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; }
 
   .hero-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.3em;
-    color: var(--accent);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.9);
     text-transform: uppercase;
-    margin-bottom: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
     opacity: 0;
     animation: fadeUp 0.6s ease 0.2s forwards;
   }
 
   .hero-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(5rem, 15vw, 11rem);
-    line-height: 0.9;
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    line-height: 0.95;
     letter-spacing: 0.02em;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
+    color: white;
     opacity: 0;
     animation: fadeUp 0.6s ease 0.4s forwards;
   }
-
-  .hero-title span { color: var(--accent); }
-  .hero-title .line2 { color: var(--accent2); display: block; }
+  .hero-title span, .hero-title .line2 { color: white; display: block; }
 
   .hero-sub {
-    font-size: 1.05rem;
-    color: var(--muted);
-    margin-bottom: 3rem;
-    line-height: 1.6;
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 2rem;
+    line-height: 1.5;
+    font-weight: 500;
     opacity: 0;
     animation: fadeUp 0.6s ease 0.6s forwards;
   }
@@ -105,37 +117,40 @@
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    margin-top: 2rem;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
+    overflow: visible;
+    margin-top: 1.5rem;
     opacity: 0;
     animation: fadeUp 0.6s ease 0.8s forwards;
   }
 
   .stat-box {
-    background: var(--surface);
-    padding: 1.5rem 1rem;
+    background: rgba(255,255,255,0.18);
+    padding: 1rem 0.5rem;
     text-align: center;
+    border-radius: var(--radius-sm);
+    backdrop-filter: blur(10px);
   }
 
   .stat-val {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 2.4rem;
-    color: var(--accent);
+    font-size: 1.6rem;
+    color: white;
     display: block;
     line-height: 1;
   }
 
   .stat-label {
-    font-size: 0.7rem;
-    color: var(--muted);
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.85);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     margin-top: 0.3rem;
     display: block;
+    font-weight: 700;
   }
 
   .scroll-hint {
@@ -152,40 +167,75 @@
   .scroll-arrow { width: 24px; height: 24px; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(45deg); animation: bounce 1.5s infinite; }
 
   /* ─── NAV ─── */
+  /* Original top nav — now transformed into a modern segmented pill scroller */
   .nav {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(10,10,15,0.9);
+    background: rgba(240,249,255,0.85);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
+    padding: 12px 20px;
     display: flex;
-    gap: 0;
+    gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
   }
-
   .nav::-webkit-scrollbar { display: none; }
 
   .nav-btn {
-    padding: 1rem 1.5rem;
-    font-family: 'DM Mono', monospace;
+    padding: 8px 14px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 0.72rem;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--muted);
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
     flex-shrink: 0;
+    font-weight: 700;
+    box-shadow: var(--shadow);
   }
 
-  .nav-btn:hover { color: var(--text); }
-  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-btn:hover { color: var(--text); border-color: var(--accent); }
+  .nav-btn.active { color: white; background: var(--accent-grad); border-color: transparent; box-shadow: 0 4px 12px rgba(255,107,53,0.3); }
+
+  /* ─── BOTTOM NAV (new mobile-first primary navigation) ─── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top-left-radius: var(--radius-xl);
+    border-top-right-radius: var(--radius-xl);
+    padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.06);
+    z-index: 200;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .bottom-nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 6px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1;
+    max-width: 80px;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+  }
+  .bottom-nav-item .icon { font-size: 20px; }
+  .bottom-nav-item .label { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .bottom-nav-item.active { background: var(--accent-soft); }
+  .bottom-nav-item.active .label { color: var(--accent); }
+  .bottom-nav-item.active .icon { transform: scale(1.1); }
 
   /* ─── SECTIONS ─── */
   .section { display: none; padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
@@ -725,50 +775,53 @@
   .meal-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.5rem;
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
     display: grid;
-    grid-template-columns: 160px 1fr 120px;
+    grid-template-columns: 140px 1fr 100px;
     align-items: center;
-    gap: 1rem;
-    transition: border-color 0.2s;
+    gap: 0.8rem;
+    transition: all 0.2s;
+    box-shadow: var(--shadow);
   }
 
-  .meal-card:hover { border-color: var(--accent); }
-  .meal-card:last-child { border-color: var(--accent); background: rgba(79,127,255,0.05); }
+  .meal-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+  .meal-card:last-child { border-color: var(--accent); background: var(--accent-soft); }
 
-  .meal-time { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--accent); letter-spacing: 0.1em; }
-  .meal-food { font-size: 0.88rem; color: var(--text); }
-  .meal-cals { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; color: var(--accent3); text-align: right; }
+  .meal-time { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.7rem; color: var(--accent); letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; background: var(--accent-soft); display: inline-block; padding: 4px 10px; border-radius: 100px; }
+  .meal-food { font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+  .meal-cals { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; color: var(--accent); text-align: right; line-height: 1; }
 
   .rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; }
 
   .rule-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     padding: 1.2rem;
     display: flex;
     gap: 1rem;
     align-items: flex-start;
+    box-shadow: var(--shadow);
   }
 
-  .rule-icon { font-size: 1.5rem; flex-shrink: 0; }
+  .rule-icon { font-size: 1.5rem; flex-shrink: 0; background: var(--accent-soft); color: var(--accent); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
   .rule-text { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
-  .rule-text strong { color: var(--text); display: block; margin-bottom: 0.2rem; }
+  .rule-text strong { color: var(--text); display: block; margin-bottom: 0.2rem; font-weight: 700; }
 
   .supps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 2rem; }
 
   .supp-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     padding: 1.2rem;
+    box-shadow: var(--shadow);
   }
 
-  .supp-name { font-weight: 600; color: var(--text); margin-bottom: 0.3rem; }
-  .supp-when { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--accent2); letter-spacing: 0.1em; margin-bottom: 0.4rem; }
-  .supp-why { font-size: 0.82rem; color: var(--muted); }
+  .supp-name { font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+  .supp-when { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.7rem; color: var(--accent); letter-spacing: 0.08em; margin-bottom: 0.4rem; font-weight: 700; text-transform: uppercase; }
+  .supp-why { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
 
   /* ─── LIFESTYLE ─── */
   .lifestyle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
@@ -892,6 +945,151 @@
     .meal-cals { text-align: left; }
     .meal-food { word-break: normal; overflow-wrap: break-word; }
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     GLOBAL UI OVERRIDES — NEW ORANGE/PASTEL DESIGN SYSTEM
+     Applied LAST to beat all earlier dark-mode declarations
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* Sections wrap all main content — pad + max-width for phone */
+  .section { padding: 1.5rem 1.25rem !important; }
+  .section-header { margin-bottom: 1.5rem !important; }
+  .section-tag {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-size: 0.7rem !important;
+    letter-spacing: 0.15em !important;
+    text-transform: uppercase !important;
+    font-weight: 700 !important;
+    color: var(--accent) !important;
+    background: var(--accent-soft);
+    padding: 4px 12px;
+    border-radius: 100px;
+    display: inline-block;
+    margin-bottom: 0.5rem !important;
+  }
+  .section-title, h2, h3 {
+    font-family: 'Bebas Neue', sans-serif !important;
+    color: var(--text) !important;
+    letter-spacing: 0.02em !important;
+  }
+  .section-title, h2 { font-size: 2rem !important; }
+  h3 { font-size: 1.4rem !important; }
+  p { color: var(--muted); line-height: 1.6; }
+  strong { color: var(--text); font-weight: 700; }
+
+  /* ─── Buttons: rounded, orange gradient primaries ─── */
+  button:not(.nav-btn):not(.bottom-nav-item):not(.meal-log-btn):not(.tab-btn) {
+    font-family: inherit;
+    border-radius: 12px;
+    transition: all 0.15s;
+  }
+  button.primary, .btn-primary,
+  button[type=submit]:not(.meal-log-btn) {
+    background: var(--accent-grad) !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 20px !important;
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    letter-spacing: 0.03em !important;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.25);
+  }
+
+  /* ─── All the generic card grids (cardio, lifestyle, tracker, etc) ─── */
+  .cardio-cards, .lifestyle-grid, .tracker-grid { gap: 1rem !important; }
+  .cardio-card, .lifestyle-card, .tracker-card, .phase-card, .day-card, .info-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow) !important;
+    color: var(--text) !important;
+  }
+  .phase-info { border-radius: var(--radius) !important; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 1rem; }
+
+  /* ─── Tables ─── */
+  table {
+    background: var(--surface) !important;
+    border-radius: var(--radius) !important;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  th { background: var(--accent-soft) !important; color: var(--accent) !important; font-family: 'Plus Jakarta Sans', sans-serif !important; letter-spacing: 0.08em !important; font-weight: 700 !important; }
+  td, th { border-color: var(--border) !important; color: var(--text); }
+  tr:nth-child(even) td { background: var(--surface2); }
+
+  /* ─── Inputs (weight log, check-in form) ─── */
+  input, textarea, select {
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    font-family: inherit !important;
+    font-size: 14px !important;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-soft) !important;
+  }
+  label { color: var(--text); font-weight: 600; }
+
+  /* ─── Meal log action buttons (Ate / Swap / Skip) ─── */
+  .meal-log-btn {
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 10px 8px !important;
+    font-family: inherit !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .meal-log-btn.ate-btn { background: #ECFDF5 !important; color: var(--accent3) !important; }
+  .meal-log-btn.ate-btn:hover { background: var(--accent3) !important; color: white !important; }
+  .meal-log-btn.swap-btn { background: #FEF3C7 !important; color: var(--amber) !important; }
+  .meal-log-btn.swap-btn:hover { background: var(--amber) !important; color: white !important; }
+  .meal-log-btn.skip-btn { background: #FEE2E2 !important; color: var(--danger) !important; }
+  .meal-log-btn.skip-btn:hover { background: var(--danger) !important; color: white !important; }
+
+  /* ─── Actuals card (daily nutrition summary) ─── */
+  .actuals-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow);
+    padding: 1.2rem !important;
+    color: var(--text);
+  }
+  .actuals-card.complete { border-color: var(--accent3) !important; background: #ECFDF5 !important; }
+
+  /* ─── Weight log / photo timeline etc ─── */
+  .photo-slot { background: var(--surface2) !important; border-color: var(--border) !important; border-radius: 14px !important; }
+
+  /* Kill dark backgrounds anywhere they leak through */
+  [style*="background:#0a"], [style*="background:#12"], [style*="background:#1a"], [style*="background: rgba(10"] {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+  }
+
+  /* Mobile-specific tightening */
+  @media (max-width: 700px) {
+    .section { padding: 1.25rem 1rem !important; }
+    .hero { padding: 2.5rem 1.25rem 2rem !important; }
+    .hero-title { font-size: 2.8rem !important; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .section-title, h2 { font-size: 1.6rem !important; }
+    .bottom-nav-item .label { font-size: 8px !important; }
+  }
+
+  /* Hide scroll-hint arrow (was for full-viewport dark hero, not needed now) */
+  .scroll-hint { display: none !important; }
 </style>
 </head>
 <body>
@@ -3952,6 +4150,22 @@ window.addEventListener('load', () => {
 // ─── END PWA REGISTRATION ─────────────────────────────────────────────
 
 renderCheckins();
+</script>
+
+<!-- ─── BOTTOM NAV (mobile-first primary navigation, mirrors top .nav for touch reach) ─── -->
+<nav class="bottom-nav" role="navigation" aria-label="Primary">
+  <button class="bottom-nav-item active" id="bnav-training" onclick="showSection('training');updateBottomNav('training');"><div class="icon">🏋️</div><div class="label">Train</div></button>
+  <button class="bottom-nav-item" id="bnav-cardio" onclick="tryNavLock('cardio');updateBottomNav('cardio');"><div class="icon">🏃</div><div class="label">Cardio</div></button>
+  <button class="bottom-nav-item" id="bnav-nutrition" onclick="tryNavLock('nutrition');updateBottomNav('nutrition');"><div class="icon">🍽️</div><div class="label">Meals</div></button>
+  <button class="bottom-nav-item" id="bnav-lifestyle" onclick="showSection('lifestyle');updateBottomNav('lifestyle');"><div class="icon">💤</div><div class="label">Life</div></button>
+  <button class="bottom-nav-item" id="bnav-tracker" onclick="showSection('tracker');updateBottomNav('tracker');"><div class="icon">📈</div><div class="label">Track</div></button>
+</nav>
+<script>
+function updateBottomNav(id) {
+  document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('bnav-' + id);
+  if (el) el.classList.add('active');
+}
 </script>
 </body>
 </html>
