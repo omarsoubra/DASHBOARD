@@ -1090,6 +1090,313 @@
 
   /* Hide scroll-hint arrow (was for full-viewport dark hero, not needed now) */
   .scroll-hint { display: none !important; }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     TRIAL-UI NEW COMPONENTS — meal cards, week/day pills, workout cards
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* NEW: pill-based meal card (replaces the old 5-col grid card) */
+  .tmeal-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    position: relative;
+    transition: all 0.2s;
+  }
+  .tmeal-card.status-ate  { border: 2px solid var(--accent3); }
+  .tmeal-card.status-swap { border: 2px solid var(--amber);   }
+  .tmeal-card.status-skip { border: 2px solid var(--danger);  }
+  .tmeal-status-bar {
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  .tmeal-status-bar.ate  { background: #ECFDF5; color: var(--accent3); }
+  .tmeal-status-bar.swap { background: #FEF3C7; color: var(--amber);   }
+  .tmeal-status-bar.skip { background: #FEE2E2; color: var(--danger);  }
+  .tmeal-status-bar .undo {
+    margin-left: 0.5rem;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tmeal-status-bar .undo:hover { color: var(--text); }
+  .tmeal-row-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .tmeal-time-pill {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .tmeal-kcal {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    line-height: 1;
+    text-align: right;
+  }
+  .tmeal-kcal-unit { font-size: 10px; color: var(--muted); font-weight: 600; text-align: right; letter-spacing: 0.05em; }
+  .tmeal-name { font-weight: 700; font-size: 16px; color: var(--text); margin-bottom: 4px; }
+  .tmeal-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .tmeal-macros {
+    display: flex; gap: 12px; margin-top: 12px;
+    padding-top: 12px; border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .tmacro-chip { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .tmacro-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .tmacro-dot.p { background: var(--accent2); }
+  .tmacro-dot.c { background: var(--amber);  }
+  .tmacro-dot.f { background: var(--pink);   }
+  .tmeal-actions {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px;
+  }
+  .tmeal-actions button {
+    padding: 10px 8px;
+    border-radius: 12px;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.15s;
+  }
+  .tmeal-actions .ate  { background: #ECFDF5; color: var(--accent3); }
+  .tmeal-actions .ate:hover  { background: var(--accent3); color: white; }
+  .tmeal-actions .swap { background: #FEF3C7; color: var(--amber);   }
+  .tmeal-actions .swap:hover { background: var(--amber);   color: white; }
+  .tmeal-actions .skip { background: #FEE2E2; color: var(--danger);  }
+  .tmeal-actions .skip:hover { background: var(--danger);  color: white; }
+
+  /* NEW: week selector strip */
+  .tweek-scroll {
+    overflow-x: auto;
+    margin: 0 -1.25rem 12px;
+    padding: 0 1.25rem 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tweek-scroll::-webkit-scrollbar { display: none; }
+  .tweek-row { display: flex; gap: 8px; padding-bottom: 4px; }
+  .tweek-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    background: var(--surface);
+    color: var(--muted);
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 62px;
+  }
+  .tweek-btn.active {
+    background: var(--accent-grad);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.3);
+  }
+  .tweek-btn .wk-num { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.04em; }
+  .tweek-btn .wk-lbl { font-size: 9px; opacity: 0.85; font-weight: 700; letter-spacing: 0.06em; }
+
+  /* NEW: day selector grid */
+  .tday-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+    margin-bottom: 16px;
+  }
+  .tday-btn {
+    padding: 10px 2px;
+    border: none;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--muted);
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .tday-btn.active {
+    background: var(--accent-grad);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.3);
+  }
+  .tday-btn .d-name { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.04em; }
+  .tday-btn .d-type { font-size: 8px; opacity: 0.85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* NEW: day hero card */
+  .tday-hero {
+    background: linear-gradient(135deg, var(--accent-soft), #FFE4D6);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .tday-hero-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .tday-hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .tday-hero-sub { color: var(--muted); font-size: 12px; font-weight: 600; margin-top: 4px; }
+  .tday-hero-kcal { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--accent); line-height: 1; text-align: right; }
+  .tday-hero-kcal-unit { font-size: 11px; color: var(--muted); font-weight: 600; text-align: right; margin-top: 2px; }
+  .tday-hero-bar {
+    background: rgba(255,107,53,0.15);
+    border-radius: 100px;
+    height: 6px;
+    margin-top: 14px;
+    overflow: hidden;
+  }
+  .tday-hero-bar-fill {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.3s;
+  }
+  .tday-hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.6);
+    color: var(--accent);
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* NEW: workout-day card */
+  .tworkout-day {
+    background: var(--surface);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .tworkout-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
+  .tworkout-day-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .tworkout-badge {
+    background: linear-gradient(135deg, var(--accent2), #818CF8);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .texercise-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .texercise-row:last-child { border-bottom: none; }
+  .texercise-num {
+    width: 28px; height: 28px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 12px;
+  }
+  .texercise-name { font-weight: 600; font-size: 14px; color: var(--text); }
+  .texercise-sets { font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  .texercise-weight {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    color: var(--accent);
+    text-align: right;
+    line-height: 1;
+  }
+  .texercise-tools {
+    margin-top: 6px;
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+
+  /* NEW: mobile sticky greeting header */
+  .tmobile-header {
+    display: none;
+    padding: 12px 20px;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(240,249,255,0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    z-index: 100;
+    border-bottom: 1px solid var(--border);
+  }
+  .tgreeting { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.02em; }
+  .tusername { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.03em; color: var(--text); line-height: 1; margin-top: 2px; }
+  .tavatar {
+    width: 40px; height: 40px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: 13px;
+    box-shadow: var(--shadow);
+    text-transform: uppercase;
+  }
+  @media (max-width: 700px) {
+    .tmobile-header { display: flex; }
+    .tavatar { font-size: 12px; }
+  }
+  /* Compact hero on mobile (mobile header + hero would be redundant otherwise) */
+  @media (max-width: 700px) {
+    .hero { padding-top: 2rem !important; padding-bottom: 1.5rem !important; margin-bottom: 1rem !important; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; }
+    .hero-label { margin-bottom: 0.4rem !important; }
+    .hero-title { font-size: 2.4rem !important; margin-bottom: 0.6rem !important; }
+    .hero-sub { margin-bottom: 1.2rem !important; font-size: 0.85rem !important; }
+  }
+
+  /* Only show first initial in avatar via CSS trick — done via text-transform + JS below */
+
+    /* Kill legacy top nav on small screens */
+  @media (max-width: 700px) {
+    .nav { display: none !important; }
+    body { padding-top: env(safe-area-inset-top, 0px); }
+  }
+
+  @media (max-width: 500px) {
+    .tday-hero-title { font-size: 26px; }
+    .tday-hero-kcal { font-size: 26px; }
+  }
 </style>
 </head>
 <body>
@@ -1099,6 +1406,15 @@
   📊 SUNDAY CHECK-IN DUE — please submit this week's form
   <button onclick="scrollToCheckin()" style="margin-left:0.8rem;background:#000;color:#ffb84a;border:none;padding:0.35rem 0.9rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.75rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">DO IT NOW (2 MIN)</button>
   <button onclick="document.getElementById('sunday-checkin-reminder').style.display='none'" style="margin-left:0.4rem;background:transparent;color:#000;border:1px solid rgba(0,0,0,0.4);padding:0.35rem 0.6rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;cursor:pointer;">DISMISS</button>
+</div>
+
+<!-- MOBILE STICKY HEADER (greeting + initials avatar) — shown on all pages -->
+<div class="tmobile-header">
+  <div>
+    <div class="tgreeting">Welcome back</div>
+    <div class="tusername">MALAK HANANI</div>
+  </div>
+  <div class="tavatar">MALAK HANANI</div>
 </div>
 
 <!-- HERO -->
@@ -1902,11 +2218,17 @@ let currentDay = 0;
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('section-' + id).classList.add('active');
+  const sec = document.getElementById('section-' + id);
+  if (sec) sec.classList.add('active');
   const btns = document.querySelectorAll('.nav-btn');
   const map = { training: 0, cardio: 1, nutrition: 2, lifestyle: 3, tracker: 4 };
-  btns[map[id]].classList.add('active');
-  window.scrollTo({ top: document.querySelector('.nav').offsetTop, behavior: 'smooth' });
+  if (btns[map[id]]) btns[map[id]].classList.add('active');
+  // Keep bottom nav highlight in sync when called from anywhere (top nav, scroll-hint, etc)
+  try { updateBottomNav(id); } catch(e) {}
+  // Scroll to top of the newly-active section (safe on mobile where .nav is display:none)
+  const nav = document.querySelector('.nav');
+  const top = (nav && nav.offsetParent !== null) ? nav.offsetTop : 0;
+  window.scrollTo({ top: top, behavior: 'smooth' });
 }
 
 // ─── TRAINING ───────────────────────────────────────────────────────────────
@@ -3132,11 +3454,12 @@ function renderDay() {
   const trainer = _safeIsTrainerMode();
   const edited = isDayOverridden(currentPhase, currentDay);
 
+  // Build exercise rows in new trial-card style
   const rows = exercises.map((ex, i) => {
     const hasHowTo = howTos[ex.name];
     const btn = hasHowTo ? `<button class="howto-btn" onclick="openModal('${ex.name.replace(/'/g,"\\'")}')">HOW TO</button>` : '';
     const edBtns = trainer
-      ? `<button class="trainer-icon-btn" onclick="editExercise(${i})" title="Edit">✏️ EDIT</button>
+      ? `<button class="trainer-icon-btn" onclick="editExercise(${i})" title="Edit">✏️</button>
          <button class="trainer-icon-btn del" onclick="deleteExercise(${i})" title="Delete">✕</button>`
       : '';
     // Client-side workout log button (non-trainer mode only)
@@ -3147,18 +3470,20 @@ function renderDay() {
       logBtn = `<button class="log-set-btn" onclick="openWorkoutLog(${currentPhase},${currentDay},'${exNameEsc}',${presEsc})">📝 LOG</button>`;
       const logEntry = getWorkoutLogEntry(currentPhase, currentDay, ex.name);
       if (logEntry) {
-        logged = `<span class="last-logged">✓ logged: ${logEntry.sets || '?'}×${logEntry.reps || '?'} @ ${logEntry.weight || '?'} ${logEntry.rpe ? '· RPE ' + logEntry.rpe : ''}</span>`;
+        logged = `<span class="last-logged">✓ ${logEntry.sets || '?'}×${logEntry.reps || '?'} @ ${logEntry.weight || '?'}${logEntry.rpe ? ' · RPE ' + logEntry.rpe : ''}</span>`;
       }
     }
+    const rpeCls = getRpeClass(ex.rpe);
     return `
-      <tr>
-        <td class="ex-name">${ex.name}${btn}${edBtns}${logBtn}${logged}</td>
-        <td class="ex-sets">${ex.sets}</td>
-        <td class="ex-reps">${ex.reps}</td>
-        <td class="ex-weight">${ex.weight}</td>
-        <td class="ex-rest">${ex.rest}</td>
-        <td class="ex-rpe"><span class="rpe-pill ${getRpeClass(ex.rpe)}">${ex.rpe}</span></td>
-      </tr>
+      <div class="texercise-row">
+        <div class="texercise-num">${i+1}</div>
+        <div>
+          <div class="texercise-name">${ex.name}</div>
+          <div class="texercise-sets">${ex.sets} sets × ${ex.reps} · <span class="rpe-pill ${rpeCls}" style="padding:1px 6px;font-size:10px;">RPE ${ex.rpe}</span> · rest ${ex.rest}</div>
+          <div class="texercise-tools">${btn}${edBtns}${logBtn}${logged}</div>
+        </div>
+        <div class="texercise-weight">${ex.weight}</div>
+      </div>
     `;
   }).join('');
 
@@ -3185,25 +3510,13 @@ function renderDay() {
     : '';
 
   document.getElementById('workout-content').innerHTML = `
-    <div class="workout-day-title">
-      ${day.label}
-      <span class="day-badge">${day.badge}</span>
-      ${editedBadge}
-    </div>
-    <div class="workout-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Exercise</th>
-            <th>Sets</th>
-            <th>Reps</th>
-            <th>Weight</th>
-            <th>Rest</th>
-            <th>RPE</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="tworkout-day">
+      <div class="tworkout-header">
+        <div class="tworkout-day-label">${day.label}</div>
+        <span class="tworkout-badge">${day.badge}</span>
+        ${editedBadge}
+      </div>
+      ${rows}
       ${trainerFooter}
     </div>
   `;
@@ -3580,7 +3893,7 @@ function renderNutrition(){
   const pPct=Math.round((t.p*4/totalMacroKcal)*100);
   const cPct=Math.round((t.c*4/totalMacroKcal)*100);
   const fPct=100-pPct-cPct;
-  const weekBtns=Array.from({length:endWeek-startWeek+1},(_,i)=>{const w=startWeek+i;return`<button class="nutr-week-btn day-tab ${w===currentNutritionWeek?'active':''}" onclick="setNutritionWeek(${w})">Week ${w}</button>`;}).join('');
+  const weekBtns=Array.from({length:endWeek-startWeek+1},(_,i)=>{const w=startWeek+i;return`<button class="nutr-week-btn tweek-btn ${w===currentNutritionWeek?'active':''}" onclick="setNutritionWeek(${w})"><span class="wk-num">WK ${w}</span><span class="wk-lbl">P${phase}</span></button>`;}).join('');
   const macroCardClass = trainerMode ? 'info-card macro-card-editable' : 'info-card';
   const macroCardClick = trainerMode ? `onclick="editPhaseMacros(${phase})" title="Click to edit"` : '';
   const editPrompt = trainerMode ? ' <span style="color:#ff6644;font-size:0.7rem;">Trainer: click any macro card to edit. Editing kcal offers to rescale meals.</span>' : '';
@@ -3611,16 +3924,16 @@ function renderNutrition(){
       <div style="font-size:0.83rem;color:var(--muted);line-height:1.6;">${rationale}</div>
     </div>
     <div class="section-tag" style="margin-bottom:0.75rem;">Select Week</div>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">${weekBtns}</div>
+    <div class="tweek-scroll"><div class="tweek-row">${weekBtns}</div></div>
     <div id="nutrition-day-section"></div>`;
   renderNutritionDay();
 }
 
 function renderNutritionDay(){
-  const dayBtns=DAY_NAMES.map((d,i)=>`<button class="nutr-day-btn day-tab ${i===currentNutritionDay?'active':''}" onclick="setNutritionDay(${i})" style="display:flex;flex-direction:column;align-items:center;gap:2px;"><span>${d.slice(0,3)}</span><span style="font-size:0.6rem;color:var(--muted)">${DAY_TYPES[i].split('/')[0].split(' ')[0]}</span></button>`).join('');
+  const dayBtns=DAY_NAMES.map((d,i)=>`<button class="nutr-day-btn tday-btn ${i===currentNutritionDay?'active':''}" onclick="setNutritionDay(${i})"><span class="d-name">${d.slice(0,3).toUpperCase()}</span><span class="d-type">${DAY_TYPES[i].split('/')[0].split(' ')[0]}</span></button>`).join('');
   document.getElementById('nutrition-day-section').innerHTML=`
     <div class="section-tag" style="margin-bottom:0.75rem;">Select Day — Week ${currentNutritionWeek}</div>
-    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.5rem;">${dayBtns}</div>
+    <div class="tday-grid">${dayBtns}</div>
     <div id="nutrition-day-content"></div>`;
   renderNutritionDayContent();
 }
@@ -3643,30 +3956,50 @@ function renderNutritionDayContent(){
   const mealRows=meals.map((meal,mIdx)=>{
     if(!meal.name) return '';
     const pencil = trainerMode ? `<button class="meal-edit-pencil" onclick="editMeal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">✏️ EDIT</button>` : '';
-    // Client-mode logging UI (only show in non-trainer mode)
-    let logUI = '';
-    if (!trainerMode) {
-      const logEntry = getMealLogEntry(currentNutritionWeek, currentNutritionDay, mIdx);
-      if (logEntry && logEntry.status) {
-        const label = logEntry.status === 'ate' ? '✓ ATE' : logEntry.status === 'swap' ? '⚠ SWAPPED' : '✗ SKIPPED';
-        const sub = logEntry.swapDesc ? ` — ${logEntry.swapDesc}` : '';
-        logUI = `<div class="meal-log-row"><span class="meal-log-status ${logEntry.status}">${label}${sub}<span class="undo" onclick="unlogMeal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">undo</span></span></div>`;
-      } else {
-        logUI = `<div class="meal-log-row">
-          <button class="meal-log-btn ate-btn"  onclick="logMealQuick(${currentNutritionWeek},${currentNutritionDay},${mIdx},'ate')">✓ Ate it</button>
-          <button class="meal-log-btn swap-btn" onclick="openSwapModal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">⚠ Swapped</button>
-          <button class="meal-log-btn skip-btn" onclick="logMealQuick(${currentNutritionWeek},${currentNutritionDay},${mIdx},'skip')">✗ Skipped</button>
-        </div>`;
-      }
+    // Log status for non-trainer mode
+    const logEntry = trainerMode ? null : getMealLogEntry(currentNutritionWeek, currentNutritionDay, mIdx);
+    const status = logEntry && logEntry.status ? logEntry.status : null;
+    // "Prep note" style card — no calories, just a reminder line (e.g. meal prep instructions)
+    if(!meal.cal){
+      return `<div class="tmeal-card" style="text-align:center;border-style:dashed;">
+        ${pencil}
+        <div class="tmeal-name">🍳 ${meal.name}</div>
+        <div class="tmeal-desc">${meal.desc||''}</div>
+      </div>`;
     }
-    if(!meal.cal)return`<div style="position:relative;background:rgba(0,229,160,0.05);border:1px dashed rgba(0,229,160,0.3);border-radius:10px;padding:1rem 1.5rem;text-align:center;font-size:0.85rem;color:var(--accent3);">🍳 ${meal.name} — ${meal.desc}${pencil}${logUI}</div>`;
-    return`<div class="meal-card" style="position:relative;grid-template-columns:140px 1fr 52px 52px 60px;">
+    // Status bar (shown when logged)
+    let statusBar = '';
+    if (status) {
+      const bl = status === 'ate' ? `✓ ATE IT · +${meal.cal} kcal logged`
+              : status === 'swap' ? `↔ SWAPPED${logEntry.swapDesc?' — '+logEntry.swapDesc:''} · +${logEntry.cal||meal.cal} kcal logged`
+              : `✗ SKIPPED · 0 kcal`;
+      statusBar = `<div class="tmeal-status-bar ${status}">${bl}<span class="undo" onclick="unlogMeal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">undo</span></div>`;
+    }
+    // Action buttons (only for client mode + only when not already logged)
+    let actionBtns = '';
+    if (!trainerMode && !status) {
+      actionBtns = `<div class="tmeal-actions">
+        <button class="ate"  onclick="logMealQuick(${currentNutritionWeek},${currentNutritionDay},${mIdx},'ate')">✓ ATE IT</button>
+        <button class="swap" onclick="openSwapModal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">↔ SWAP</button>
+        <button class="skip" onclick="logMealQuick(${currentNutritionWeek},${currentNutritionDay},${mIdx},'skip')">✗ SKIP</button>
+      </div>`;
+    }
+    const statusCls = status ? ' status-' + status : '';
+    return `<div class="tmeal-card${statusCls}">
       ${pencil}
-      <div><div class="meal-time">${meal.time}</div><div style="font-size:0.8rem;font-weight:500;color:var(--text);margin-top:0.2rem;">${meal.name}</div></div>
-      <div class="meal-food">${meal.desc}${logUI}</div>
-      <div style="text-align:center"><div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);font-weight:600;">${meal.p}g</div><div style="font-size:0.6rem;color:var(--muted)">PRO</div></div>
-      <div style="text-align:center"><div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent2);font-weight:600;">${meal.c}g</div><div style="font-size:0.6rem;color:var(--muted)">CARB</div></div>
-      <div style="text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--accent3);line-height:1;">${meal.cal}</div><div style="font-size:0.6rem;color:var(--muted)">kcal</div></div>
+      ${statusBar}
+      <div class="tmeal-row-top">
+        <div class="tmeal-time-pill">${meal.time||''}</div>
+        <div><div class="tmeal-kcal">${meal.cal}</div><div class="tmeal-kcal-unit">KCAL</div></div>
+      </div>
+      <div class="tmeal-name">${meal.name}</div>
+      <div class="tmeal-desc">${meal.desc||''}</div>
+      <div class="tmeal-macros">
+        <div class="tmacro-chip"><div class="tmacro-dot p"></div>${meal.p}g Protein</div>
+        <div class="tmacro-chip"><div class="tmacro-dot c"></div>${meal.c}g Carbs</div>
+        <div class="tmacro-chip"><div class="tmacro-dot f"></div>${meal.f}g Fat</div>
+      </div>
+      ${actionBtns}
     </div>`;
   }).join('');
 
@@ -3693,26 +4026,41 @@ function renderNutritionDayContent(){
   }
   const dayResetBtn = (trainerMode && dayEdited) ? `<button class="trainer-reset-btn" onclick="resetMealDay(${currentNutritionWeek},${currentNutritionDay})" style="margin-top:0.5rem;">↶ Reset This Day's Meals</button>` : '';
   const dayEditedBadge = dayEdited ? '<span class="trainer-edited-badge">EDITED</span>' : '';
+  // Compute a "logged so far" number for the hero card (trainer mode shows planned total)
+  let heroLoggedCal = totalCal;
+  if (!trainerMode) {
+    heroLoggedCal = 0;
+    meals.forEach((m, i) => {
+      const le = getMealLogEntry(currentNutritionWeek, currentNutritionDay, i);
+      if (le && (le.status === 'ate' || le.status === 'swap')) heroLoggedCal += (le.cal || m.cal || 0);
+    });
+  }
+  const heroPct = t.cal ? Math.min(100, Math.round((heroLoggedCal / t.cal) * 100)) : 0;
   document.getElementById('nutrition-day-content').innerHTML=`
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;">${DAY_NAMES[currentNutritionDay]} — Week ${currentNutritionWeek}</div>
-      <span style="font-family:'DM Mono',monospace;font-size:0.65rem;padding:0.3rem 0.8rem;border-radius:4px;background:rgba(79,127,255,0.1);border:1px solid ${typeBadgeColor};color:${typeBadgeColor};">${typeBadge}</span>
-      ${dayEditedBadge}
-      ${dayResetBtn}
+    <div class="tday-hero">
+      <div class="tday-hero-top">
+        <div>
+          <div class="tday-hero-title">${DAY_NAMES[currentNutritionDay].toUpperCase()}</div>
+          <div class="tday-hero-sub">${typeBadge} · Week ${currentNutritionWeek} · target ${t.cal} kcal</div>
+          ${dayEditedBadge ? '<div style="margin-top:6px;">'+dayEditedBadge+'</div>' : ''}
+        </div>
+        <div>
+          <div class="tday-hero-kcal">${heroLoggedCal}</div>
+          <div class="tday-hero-kcal-unit">/ ${t.cal} KCAL</div>
+        </div>
+      </div>
+      <div class="tday-hero-bar"><div class="tday-hero-bar-fill" style="width:${heroPct}%;"></div></div>
+      ${dayResetBtn ? '<div style="margin-top:10px;">'+dayResetBtn+'</div>' : ''}
     </div>
-    <div class="meal-cards" style="margin-bottom:1.5rem;">${mealRows}</div>
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;">
-      <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.15em;margin-bottom:0.75rem;">DAILY TOTALS vs TARGET</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem;">
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Calories</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:${calPct>=90?'var(--accent3)':'var(--accent)'};">${totalCal}</div><div style="font-size:0.7rem;color:var(--muted);">target ${t.cal}</div></div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Protein</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--accent);">${totalP}g</div><div style="font-size:0.7rem;color:var(--muted);">target ${t.p}g</div></div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Carbs</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--accent2);">${totalC}g</div><div style="font-size:0.7rem;color:var(--muted);">target ${t.c}g</div></div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Fat</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--accent3);">${totalF}g</div><div style="font-size:0.7rem;color:var(--muted);">target ${t.f}g</div></div>
+    <div class="meal-cards trial-mode" style="margin-bottom:1.5rem;">${mealRows}</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;box-shadow:var(--shadow);">
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;color:var(--muted);letter-spacing:0.12em;margin-bottom:0.75rem;text-transform:uppercase;font-weight:700;">Planned Day Totals</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;">
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Kcal</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${calPct>=90?'var(--accent3)':'var(--accent)'};line-height:1;margin-top:2px;">${totalCal}</div><div style="font-size:11px;color:var(--muted);">of ${t.cal}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Protein</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent2);line-height:1;margin-top:2px;">${totalP}g</div><div style="font-size:11px;color:var(--muted);">of ${t.p}g</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Carbs</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--amber);line-height:1;margin-top:2px;">${totalC}g</div><div style="font-size:11px;color:var(--muted);">of ${t.c}g</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Fat</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--pink);line-height:1;margin-top:2px;">${totalF}g</div><div style="font-size:11px;color:var(--muted);">of ${t.f}g</div></div>
       </div>
-      <div style="display:flex;height:6px;border-radius:20px;overflow:hidden;background:var(--surface);gap:1px;">
-        <div style="width:${calPct}%;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:20px;transition:width 0.4s;"></div>
-      </div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem;">${calPct}% of daily calorie target</div>
     </div>
     ${actualsCard}`;
 }
@@ -4166,6 +4514,26 @@ function updateBottomNav(id) {
   const el = document.getElementById('bnav-' + id);
   if (el) el.classList.add('active');
 }
+// Compact avatar to real initials (up to 2 chars — first letter of first two words)
+(function trimAvatar() {
+  const av = document.querySelector('.tavatar');
+  if (!av) return;
+  const t = (av.textContent || '').trim();
+  if (!t) return;
+  const parts = t.split(/\s+/).filter(Boolean);
+  const init = parts.length >= 2
+    ? (parts[0][0] || '') + (parts[1][0] || '')
+    : parts[0].slice(0, 2);
+  av.textContent = init.toUpperCase();
+})();
+// Update the sticky greeting username to just the first name
+(function trimGreetingName() {
+  const un = document.querySelector('.tusername');
+  if (!un) return;
+  const t = (un.textContent || '').trim();
+  const first = t.split(/\s+/)[0] || t;
+  un.textContent = first;
+})();
 </script>
 </body>
 </html>
