@@ -1099,6 +1099,8 @@
      SHOP — Fortnight shopping list
      ═══════════════════════════════════════════════════════════════════════ */
   .shop-pills { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+  .shop-price { font-size:0.72rem; color:var(--accent,#FF6B35); text-decoration:none; margin-left:0.3rem; opacity:0.85; white-space:nowrap; }
+  .shop-price:hover { text-decoration:underline; opacity:1; }
   .shop-pill {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -5630,6 +5632,69 @@ function updateBottomNav(id) {
 // SHOP — Fortnight shopping list (additive; reads existing mealPlan)
 // ═════════════════════════════════════════════════════════════════════════
 (function shopFeature(){
+
+  // Woolworths prices (AUD, ~current) + search terms
+  const WOOLWORTHS_PRICES = {
+    rice_cakes:     { price: '~$3.50', q: 'rice cakes' },
+    sweet_potato:   { price: '~$4/kg', q: 'sweet potato' },
+    cottage_cheese: { price: '~$4.50', q: 'cottage cheese' },
+    egg_whites:     { price: '~$6.00', q: 'egg whites liquid' },
+    peanut_butter:  { price: '~$4.50', q: 'peanut butter' },
+    medjool_dates:  { price: '~$7.00', q: 'medjool dates' },
+    rokeby_milk:    { price: '~$3.50', q: 'rokeby farms protein milk' },
+    greek_yogurt:   { price: '~$5.00', q: 'greek yogurt chobani' },
+    hot_sauce:      { price: '~$3.50', q: 'hot sauce sriracha' },
+    soy_sauce:      { price: '~$2.50', q: 'soy sauce' },
+    olive_oil:      { price: '~$6.00', q: 'olive oil' },
+    bell_pepper:    { price: '~$3.50', q: 'capsicum' },
+    salad_greens:   { price: '~$4.00', q: 'salad mix leaves' },
+    salt_pepper:    { price: '~$2.00', q: 'salt pepper' },
+    chicken:        { price: '~$8/kg', q: 'chicken breast' },
+    beef_mince:     { price: '~$7/500g', q: 'beef mince' },
+    steak:          { price: '~$12/kg', q: 'beef steak' },
+    salmon:         { price: '~$10.00', q: 'salmon fillet' },
+    tuna:           { price: '~$2.50', q: 'tuna canned' },
+    fish:           { price: '~$8.00', q: 'white fish fillet' },
+    eggs:           { price: '~$5.50/doz', q: 'eggs dozen' },
+    whey:           { price: '~$35.00', q: 'whey protein powder' },
+    casein:         { price: '~$40.00', q: 'casein protein powder' },
+    rice:           { price: '~$3/kg', q: 'jasmine rice' },
+    potato:         { price: '~$3.50/kg', q: 'potatoes' },
+    oats:           { price: '~$3.50', q: 'rolled oats' },
+    wraps:          { price: '~$4.00', q: 'wraps tortilla' },
+    pasta:          { price: '~$1.50', q: 'pasta' },
+    granola:        { price: '~$5.00', q: 'granola' },
+    bread:          { price: '~$3.50', q: 'bread loaf' },
+    broccoli:       { price: '~$3.00', q: 'broccoli' },
+    spinach:        { price: '~$3.50', q: 'baby spinach' },
+    tomato:         { price: '~$1.50', q: 'tomatoes' },
+    cucumber:       { price: '~$2.00', q: 'cucumber' },
+    zucchini:       { price: '~$2.50', q: 'zucchini' },
+    onion:          { price: '~$2.50/kg', q: 'brown onion' },
+    garlic:         { price: '~$3.00', q: 'garlic bulb' },
+    mushroom:       { price: '~$4.00', q: 'mushrooms' },
+    avocado:        { price: '~$2.00', q: 'avocado' },
+    banana:         { price: '~$3/kg', q: 'bananas' },
+    apple:          { price: '~$5/kg', q: 'apples' },
+    berries:        { price: '~$5.00', q: 'mixed berries frozen' },
+    orange:         { price: '~$4/kg', q: 'oranges' },
+    mango:          { price: '~$2.50', q: 'mango' },
+    milk:           { price: '~$2.50/2L', q: 'full cream milk' },
+    cheese:         { price: '~$4.50', q: 'cheese block' },
+    almonds:        { price: '~$5.50', q: 'almonds' },
+    cashews:        { price: '~$5.00', q: 'cashews' },
+    olives:         { price: '~$4.00', q: 'olives' },
+    seeds:          { price: '~$4.00', q: 'mixed seeds' },
+    honey:          { price: '~$6.00', q: 'honey' },
+    maple:          { price: '~$6.50', q: 'maple syrup' },
+    salt:           { price: '~$1.50', q: 'salt' },
+    pepper:         { price: '~$2.50', q: 'black pepper' },
+    spices:         { price: '~$3.00', q: 'mixed spices seasoning' },
+    cinnamon:       { price: '~$2.50', q: 'cinnamon' },
+    cocoa:          { price: '~$4.00', q: 'cocoa powder' },
+    coffee:         { price: '~$8.00', q: 'instant coffee' },
+    tea:            { price: '~$4.00', q: 'tea bags' },
+  };
   const SHOP_CATEGORIES = {
     protein: { label: 'Protein',     icon: '🍗' },
     carbs:   { label: 'Carbs',       icon: '🍚' },
@@ -5913,9 +5978,11 @@ function updateBottomNav(id) {
           const checked = !!state[item.key];
           const cls = 'shop-item' + (checked ? ' checked' : '');
           const box = checked ? '☑' : '☐';
+          const _wp = WOOLWORTHS_PRICES[item.key];
+          const _priceTag = _wp ? '<a class="shop-price" href="https://www.woolworths.com.au/shop/search/products?searchTerm=' + encodeURIComponent(_wp.q) + '" target="_blank" onclick="event.stopPropagation()">' + _wp.price + ' ↗</a>' : '';
           return '<div class="' + cls + '" onclick="window._shopToggle(\'' + _escHtml(item.key).replace(/'/g, '&#39;') + '\')">'
             + '<div class="shop-cb">' + box + '</div>'
-            + '<div class="shop-name">' + _escHtml(item.name) + '</div>'
+            + '<div class="shop-name">' + _escHtml(item.name) + _priceTag + '</div>'
             + '<div class="shop-qty">' + _escHtml(_fmtQty(item)) + '</div>'
             + '</div>';
         }).join('');
