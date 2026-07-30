@@ -664,7 +664,7 @@
 
   .sync-status-badge {
     position: fixed;
-    bottom: 14px;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     left: 14px;
     background: rgba(0,0,0,0.5);
     color: var(--muted);
@@ -673,10 +673,14 @@
     padding: 0.4rem 0.7rem;
     border-radius: 6px;
     border: 1px solid var(--border);
-    z-index: 8000;
+    z-index: 150;
     opacity: 0.7;
     cursor: pointer;
     user-select: none;
+    pointer-events: auto;
+  }
+  @media (min-width: 701px) {
+    .sync-status-badge { bottom: 14px; }
   }
   .sync-status-badge:hover { opacity: 1; }
   .sync-status-badge.ok    { color: var(--accent3); border-color: rgba(0,229,160,0.4); }
@@ -1498,16 +1502,17 @@
     border: 1px solid var(--border);
   }
   .rings-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 0.75rem; }
+  .rings-stage { position: relative; width: 190px; height: 190px; margin-bottom: 16px; }
   .rings-svg { width: 190px; height: 190px; display: block; }
   .rings-svg circle.track { fill: none; stroke: var(--border); stroke-width: 14; opacity: 0.4; }
   .rings-svg circle.fill  { fill: none; stroke-width: 14; stroke-linecap: round; transform-origin: 50% 50%; transform: rotate(-90deg); transition: stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1); }
   .rings-svg circle.r1 { stroke: var(--accent); }
   .rings-svg circle.r2 { stroke: var(--accent2); }
   .rings-svg circle.r3 { stroke: var(--accent3); }
-  .rings-center { margin-top: -110px; text-align: center; pointer-events: none; }
-  .rings-center .cnum { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; color: var(--text); line-height: 1; }
-  .rings-center .clbl { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
-  .rings-legend { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; justify-content: center; }
+  .rings-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 70%; }
+  .rings-center .cnum { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--text); line-height: 1; }
+  .rings-center .clbl { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-top: 4px; }
+  .rings-legend { display: flex; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap; justify-content: center; width: 100%; }
   .ring-leg { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); font-weight: 600; }
   .ring-leg .sw { width: 10px; height: 10px; border-radius: 3px; }
   .ring-leg .sw.r1 { background: var(--accent); }
@@ -1724,17 +1729,19 @@
 
     <div class="rings-card">
       <div class="rings-title">Today&#39;s Rings</div>
-      <svg class="rings-svg" viewBox="0 0 200 200" aria-hidden="true">
-        <circle class="track" cx="100" cy="100" r="82"/>
-        <circle class="track" cx="100" cy="100" r="64"/>
-        <circle class="track" cx="100" cy="100" r="46"/>
-        <circle class="fill r1" id="ring-r1" cx="100" cy="100" r="82" stroke-dasharray="515.22" stroke-dashoffset="515.22"/>
-        <circle class="fill r2" id="ring-r2" cx="100" cy="100" r="64" stroke-dasharray="402.12" stroke-dashoffset="402.12"/>
-        <circle class="fill r3" id="ring-r3" cx="100" cy="100" r="46" stroke-dasharray="289.03" stroke-dashoffset="289.03"/>
-      </svg>
-      <div class="rings-center">
-        <div class="cnum" id="rings-cnum">0</div>
-        <div class="clbl">KCAL TODAY</div>
+      <div class="rings-stage">
+        <svg class="rings-svg" viewBox="0 0 200 200" aria-hidden="true">
+          <circle class="track" cx="100" cy="100" r="82"/>
+          <circle class="track" cx="100" cy="100" r="64"/>
+          <circle class="track" cx="100" cy="100" r="46"/>
+          <circle class="fill r1" id="ring-r1" cx="100" cy="100" r="82" stroke-dasharray="515.22" stroke-dashoffset="515.22"/>
+          <circle class="fill r2" id="ring-r2" cx="100" cy="100" r="64" stroke-dasharray="402.12" stroke-dashoffset="402.12"/>
+          <circle class="fill r3" id="ring-r3" cx="100" cy="100" r="46" stroke-dasharray="289.03" stroke-dashoffset="289.03"/>
+        </svg>
+        <div class="rings-center">
+          <div class="cnum" id="rings-cnum">0</div>
+          <div class="clbl">KCAL TODAY</div>
+        </div>
       </div>
       <div class="rings-legend">
         <div class="ring-leg"><span class="sw r1"></span><span id="ring-lbl-1">Kcal 0/0</span></div>
@@ -2588,30 +2595,37 @@ function setPhase(n) {
   currentPhase = n;
   currentDay = 0;
   document.querySelectorAll('.phase-tab').forEach((t, i) => t.classList.toggle('active', i === n - 1));
-  document.getElementById('lock-overlay').style.display = 'none';
-  document.getElementById('phase-info').style.display = '';
-  document.getElementById('day-tabs').style.display = '';
-  document.getElementById('workout-content').style.display = '';
-  document.getElementById('progression-content').style.display = '';
+  const _ids = ['lock-overlay','phase-info','day-tabs','workout-content','progression-content'];
+  _ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (i === 0 ? 'none' : '');
+  });
   renderTraining();
 }
 
 function renderTraining() {
   const p = phases[currentPhase];
+  if (!p) return;
 
   // Phase info cards
-  document.getElementById('phase-info').innerHTML = p.info.map(i => `
-    <div class="info-card">
-      <div class="info-card-label">${i.label}</div>
-      <div class="info-card-val">${i.val}</div>
-      <div class="info-card-desc">${i.desc}</div>
-    </div>
-  `).join('');
+  const phaseInfoEl = document.getElementById('phase-info');
+  if (phaseInfoEl) {
+    phaseInfoEl.innerHTML = p.info.map(i => `
+      <div class="info-card">
+        <div class="info-card-label">${i.label}</div>
+        <div class="info-card-val">${i.val}</div>
+        <div class="info-card-desc">${i.desc}</div>
+      </div>
+    `).join('');
+  }
 
   // Day tabs
-  document.getElementById('day-tabs').innerHTML = p.days.map((d, i) => `
-    <button class="day-tab ${i === currentDay ? 'active' : ''}" onclick="setDay(${i})">${d.label}</button>
-  `).join('');
+  const dayTabsEl = document.getElementById('day-tabs');
+  if (dayTabsEl) {
+    dayTabsEl.innerHTML = p.days.map((d, i) => `
+      <button class="day-tab ${i === currentDay ? 'active' : ''}" onclick="setDay(${i})">${d.label}</button>
+    `).join('');
+  }
 
   renderDay();
 }
