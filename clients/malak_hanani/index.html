@@ -1096,6 +1096,110 @@
   .scroll-hint { display: none !important; }
 
   /* ═══════════════════════════════════════════════════════════════════════
+     SHOP — Fortnight shopping list
+     ═══════════════════════════════════════════════════════════════════════ */
+  .shop-pills { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+  .shop-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 100px;
+    padding: 0.55rem 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+  .shop-pill.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.3);
+  }
+  .shop-cat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+  .shop-cat-header {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.02em;
+  }
+  .shop-item {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.25rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.15s, opacity 0.2s;
+  }
+  .shop-item:hover { background: var(--surface2); }
+  .shop-item .shop-cb { font-size: 1.15rem; color: var(--muted); }
+  .shop-item .shop-name { font-size: 0.9rem; color: var(--text); }
+  .shop-item .shop-qty {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .shop-item.checked { opacity: 0.45; }
+  .shop-item.checked .shop-name { text-decoration: line-through; }
+  .shop-item.checked .shop-cb { color: var(--accent3, #10B981); }
+  .shop-share {
+    display: block;
+    width: 100%;
+    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 1.5rem;
+    box-shadow: 0 4px 12px rgba(37,211,102,0.3);
+    transition: transform 0.15s;
+  }
+  .shop-share:hover { transform: translateY(-1px); }
+  .shop-empty {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .shop-summary {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .shop-summary span { color: var(--accent2); }
+
+  /* ═══════════════════════════════════════════════════════════════════════
      TRIAL-UI NEW COMPONENTS — meal cards, week/day pills, workout cards
      ═══════════════════════════════════════════════════════════════════════ */
 
@@ -1948,6 +2052,16 @@
     <div class="supp-card"><div class="supp-name">Vitamin D3</div><div class="supp-when">Morning with food</div><div class="supp-why">Most adults dip below optimal in winter. Vit D matters for testosterone, mood, and recovery. A daily 1000–2000 IU is cheap insurance.</div></div>
     <div class="supp-card"><div class="supp-name">Magnesium Glycinate</div><div class="supp-when">Before bed</div><div class="supp-why">Improves sleep quality and recovery. Helps hit that 7–8hrs target.</div></div>
   </div>
+</section>
+
+<!-- SHOP — Fortnight shopping list -->
+<section class="section" id="section-shop">
+  <div class="section-header">
+    <div class="section-tag">Groceries</div>
+    <h2 class="section-title">FORTNIGHT SHOPPING LIST</h2>
+    <p class="section-desc">Auto-built from your meal plan. Pick a fortnight, tap items to check them off, share the list to WhatsApp.</p>
+  </div>
+  <div id="shop-main"></div>
 </section>
 
 <!-- LIFESTYLE -->
@@ -5451,6 +5565,7 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
   <button class="bottom-nav-item active" id="bnav-home" onclick="showSection('home');updateBottomNav('home');"><div class="icon">🏠</div><div class="label">Home</div></button>
   <button class="bottom-nav-item" id="bnav-training" onclick="showSection('training');updateBottomNav('training');"><div class="icon">🏋️</div><div class="label">Train</div></button>
   <button class="bottom-nav-item" id="bnav-nutrition" onclick="tryNavLock('nutrition');updateBottomNav('nutrition');"><div class="icon">🍽️</div><div class="label">Meals</div></button>
+  <button class="bottom-nav-item" id="bnav-shop" onclick="showSection('shop');updateBottomNav('shop');"><div class="icon">🛒</div><div class="label">Shop</div></button>
   <button class="bottom-nav-item" id="bnav-lifestyle" onclick="showSection('lifestyle');updateBottomNav('lifestyle');"><div class="icon">💤</div><div class="label">Life</div></button>
   <button class="bottom-nav-item" id="bnav-tracker" onclick="showSection('tracker');updateBottomNav('tracker');"><div class="icon">📈</div><div class="label">Track</div></button>
 </nav>
@@ -5479,6 +5594,363 @@ function updateBottomNav(id) {
   const t = (un.textContent || '').trim();
   const first = t.split(/\s+/)[0] || t;
   un.textContent = first;
+})();
+
+// ═════════════════════════════════════════════════════════════════════════
+// SHOP — Fortnight shopping list (additive; reads existing mealPlan)
+// ═════════════════════════════════════════════════════════════════════════
+(function shopFeature(){
+  const SHOP_CATEGORIES = {
+    protein: { label: 'Protein',     icon: '🍗' },
+    carbs:   { label: 'Carbs',       icon: '🍚' },
+    veg:     { label: 'Veg',         icon: '🥦' },
+    dairy:   { label: 'Dairy',       icon: '🥛' },
+    fruit:   { label: 'Fruit',       icon: '🍎' },
+    fats:    { label: 'Nuts / Fats', icon: '🥜' },
+    pantry:  { label: 'Pantry',      icon: '🧂' },
+    other:   { label: 'Other',       icon: '📦' }
+  };
+
+  // Order matters — more specific keywords must come FIRST so they win the match.
+  const SHOP_INGREDIENTS = [
+    // Specific compound names
+    { key: 'rice_cakes',    name: 'Rice cakes',        kws: ['rice cake'],                                       cat: 'carbs',   unit: 'count' },
+    { key: 'sweet_potato',  name: 'Sweet potato',      kws: ['sweet potato'],                                    cat: 'carbs',   unit: 'g' },
+    { key: 'cottage_cheese',name: 'Cottage cheese',    kws: ['cottage cheese'],                                  cat: 'dairy',   unit: 'g' },
+    { key: 'egg_whites',    name: 'Egg whites',        kws: ['egg white'],                                       cat: 'protein', unit: 'count' },
+    { key: 'peanut_butter', name: 'Peanut butter',     kws: ['peanut butter', 'peanut', 'pb'],                   cat: 'fats',    unit: 'g' },
+    { key: 'medjool_dates', name: 'Medjool dates',     kws: ['medjool', 'dates', 'date'],                        cat: 'fruit',   unit: 'count' },
+    { key: 'rokeby_milk',   name: 'Rokeby milk',       kws: ['rokeby'],                                          cat: 'dairy',   unit: 'ml' },
+    { key: 'greek_yogurt',  name: 'Greek yogurt',      kws: ['greek yogurt', 'chobani', 'yopro', 'yogurt'],      cat: 'dairy',   unit: 'g' },
+    { key: 'hot_sauce',     name: 'Hot sauce',         kws: ['hot sauce', 'sriracha'],                           cat: 'pantry',  unit: 'ml' },
+    { key: 'soy_sauce',     name: 'Soy sauce',         kws: ['soy sauce'],                                       cat: 'pantry',  unit: 'ml' },
+    { key: 'olive_oil',     name: 'Olive oil',         kws: ['olive oil'],                                       cat: 'fats',    unit: 'ml' },
+    { key: 'bell_pepper',   name: 'Capsicum',          kws: ['bell pepper', 'capsicum'],                         cat: 'veg',     unit: 'count' },
+    { key: 'salad_greens',  name: 'Salad greens',      kws: ['mixed greens', 'salad', 'lettuce', 'greens'],      cat: 'veg',     unit: 'count' },
+    { key: 'salt_pepper',   name: 'Salt & pepper',     kws: ['salt/pepper', 'salt & pepper'],                    cat: 'pantry',  unit: 'count' },
+    // Proteins
+    { key: 'chicken',       name: 'Chicken breast',    kws: ['chicken breast', 'chicken'],                       cat: 'protein', unit: 'g' },
+    { key: 'beef_mince',    name: 'Beef mince',        kws: ['beef mince', 'mince'],                             cat: 'protein', unit: 'g' },
+    { key: 'steak',         name: 'Steak',             kws: ['steak', 'sirloin', 'ribeye'],                      cat: 'protein', unit: 'g' },
+    { key: 'salmon',        name: 'Salmon',            kws: ['salmon'],                                          cat: 'protein', unit: 'g' },
+    { key: 'tuna',          name: 'Tuna',              kws: ['tuna'],                                            cat: 'protein', unit: 'g' },
+    { key: 'fish',          name: 'Fish',              kws: ['fish'],                                            cat: 'protein', unit: 'g' },
+    { key: 'eggs',          name: 'Eggs',              kws: ['eggs', 'egg'],                                     cat: 'protein', unit: 'count' },
+    { key: 'whey',          name: 'Whey protein',      kws: ['whey'],                                            cat: 'protein', unit: 'g' },
+    { key: 'casein',        name: 'Casein',            kws: ['casein'],                                          cat: 'protein', unit: 'g' },
+    // Carbs
+    { key: 'rice',          name: 'Jasmine rice',      kws: ['jasmine rice', 'basmati', 'white rice', 'rice'],   cat: 'carbs',   unit: 'g' },
+    { key: 'potato',        name: 'Potato',            kws: ['potato', 'mash'],                                  cat: 'carbs',   unit: 'g' },
+    { key: 'oats',          name: 'Oats',              kws: ['oats', 'oatmeal', 'porridge'],                     cat: 'carbs',   unit: 'g' },
+    { key: 'wraps',         name: 'Wraps',             kws: ['wrap', 'tortilla'],                                cat: 'carbs',   unit: 'count' },
+    { key: 'pasta',         name: 'Pasta',             kws: ['pasta', 'penne', 'spaghetti'],                     cat: 'carbs',   unit: 'g' },
+    { key: 'granola',       name: 'Granola',           kws: ['granola'],                                         cat: 'carbs',   unit: 'g' },
+    { key: 'bread',         name: 'Bread',             kws: ['bread', 'toast'],                                  cat: 'carbs',   unit: 'count' },
+    // Veg
+    { key: 'broccoli',      name: 'Broccoli',          kws: ['broccoli'],                                        cat: 'veg',     unit: 'count' },
+    { key: 'spinach',       name: 'Spinach',           kws: ['spinach'],                                         cat: 'veg',     unit: 'count' },
+    { key: 'tomato',        name: 'Tomato',            kws: ['tomato'],                                          cat: 'veg',     unit: 'count' },
+    { key: 'cucumber',      name: 'Cucumber',          kws: ['cucumber'],                                        cat: 'veg',     unit: 'count' },
+    { key: 'zucchini',      name: 'Zucchini',          kws: ['zucchini'],                                        cat: 'veg',     unit: 'count' },
+    { key: 'onion',         name: 'Onion',             kws: ['onion'],                                           cat: 'veg',     unit: 'count' },
+    { key: 'garlic',        name: 'Garlic cloves',     kws: ['garlic'],                                          cat: 'veg',     unit: 'count' },
+    { key: 'mushroom',      name: 'Mushrooms',         kws: ['mushroom'],                                        cat: 'veg',     unit: 'g' },
+    { key: 'avocado',       name: 'Avocado',           kws: ['avocado'],                                         cat: 'fats',    unit: 'count' },
+    // Fruit
+    { key: 'banana',        name: 'Banana',            kws: ['banana'],                                          cat: 'fruit',   unit: 'count' },
+    { key: 'apple',         name: 'Apple',             kws: ['apple'],                                           cat: 'fruit',   unit: 'count' },
+    { key: 'berries',       name: 'Berries',           kws: ['blueberries', 'strawberries', 'berries', 'berry'], cat: 'fruit',   unit: 'g' },
+    { key: 'orange',        name: 'Orange',            kws: ['orange'],                                          cat: 'fruit',   unit: 'count' },
+    { key: 'mango',         name: 'Mango',             kws: ['mango'],                                           cat: 'fruit',   unit: 'count' },
+    // Dairy (base — after Rokeby/greek/cottage which came first)
+    { key: 'milk',          name: 'Milk',              kws: ['milk'],                                            cat: 'dairy',   unit: 'ml' },
+    { key: 'cheese',        name: 'Cheese',            kws: ['cheese'],                                          cat: 'dairy',   unit: 'g' },
+    // Nuts / fats
+    { key: 'almonds',       name: 'Almonds',           kws: ['almond'],                                          cat: 'fats',    unit: 'g' },
+    { key: 'cashews',       name: 'Cashews',           kws: ['cashew'],                                          cat: 'fats',    unit: 'g' },
+    { key: 'olives',        name: 'Olives',            kws: ['olive'],                                           cat: 'fats',    unit: 'g' },
+    { key: 'seeds',         name: 'Seeds',             kws: ['seeds', 'seed'],                                   cat: 'fats',    unit: 'g' },
+    { key: 'honey',         name: 'Honey',             kws: ['honey'],                                           cat: 'fats',    unit: 'g' },
+    { key: 'maple',         name: 'Maple syrup',       kws: ['maple'],                                           cat: 'fats',    unit: 'ml' },
+    // Pantry
+    { key: 'salt',          name: 'Salt',              kws: ['salt'],                                            cat: 'pantry',  unit: 'count' },
+    { key: 'pepper',        name: 'Pepper',            kws: ['pepper'],                                          cat: 'pantry',  unit: 'count' },
+    { key: 'spices',        name: 'Spices',            kws: ['spice', 'seasoning'],                              cat: 'pantry',  unit: 'count' },
+    { key: 'cinnamon',      name: 'Cinnamon',          kws: ['cinnamon'],                                        cat: 'pantry',  unit: 'count' },
+    { key: 'cocoa',         name: 'Cocoa',             kws: ['cocoa'],                                           cat: 'pantry',  unit: 'count' },
+    { key: 'coffee',        name: 'Coffee',            kws: ['coffee'],                                          cat: 'pantry',  unit: 'count' },
+    { key: 'tea',           name: 'Tea',               kws: ['tea'],                                             cat: 'pantry',  unit: 'count' }
+  ];
+
+  let _currentShopWeek = null; // resolved lazily
+
+  function _parseFrac(s) {
+    if (s == null) return NaN;
+    s = String(s).trim();
+    if (s.indexOf('/') >= 0) {
+      const [a, b] = s.split('/');
+      const n = parseFloat(a), d = parseFloat(b);
+      return (isFinite(n) && isFinite(d) && d !== 0) ? n / d : NaN;
+    }
+    return parseFloat(s);
+  }
+
+  function _parseIngredient(text) {
+    if (!text) return null;
+    const raw = text.trim();
+    if (!raw) return null;
+    // Leading qty + optional unit. Accept "200g", "500ml", "3/4 cup", "1 tbsp", "3 medjool", "3 boiled".
+    const qtyRe = /^(\d+(?:\.\d+)?|\d+\/\d+)\s*(kg|g|ml|l|cup|cups|tbsp|tsp|slice|slices|scoop|scoops)?\b\s*/i;
+    let qty = 1, unit = '', rest = raw, hadNumber = false;
+    const m = raw.match(qtyRe);
+    if (m) {
+      const parsed = _parseFrac(m[1]);
+      if (isFinite(parsed)) { qty = parsed; hadNumber = true; }
+      unit = (m[2] || '').toLowerCase();
+      rest = raw.slice(m[0].length).trim();
+    }
+    const lower = rest.toLowerCase();
+    for (const def of SHOP_INGREDIENTS) {
+      for (const kw of def.kws) {
+        if (lower.indexOf(kw) >= 0) return { def, qty, unit, hadNumber, raw };
+      }
+    }
+    return { def: null, qty, unit, hadNumber, raw };
+  }
+
+  function _convertToBase(qty, unit, baseUnit) {
+    const u = (unit || '').toLowerCase();
+    if (baseUnit === 'g') {
+      if (u === 'g') return qty;
+      if (u === 'kg') return qty * 1000;
+      if (u === 'cup' || u === 'cups') return qty * 150;   // dry approx
+      if (u === 'tbsp') return qty * 15;
+      if (u === 'tsp') return qty * 5;
+      return 0;
+    }
+    if (baseUnit === 'ml') {
+      if (u === 'ml') return qty;
+      if (u === 'l')  return qty * 1000;
+      if (u === 'cup' || u === 'cups') return qty * 250;
+      if (u === 'tbsp') return qty * 15;
+      if (u === 'tsp') return qty * 5;
+      return 0;
+    }
+    return qty; // count
+  }
+
+  function _aggregateShop(startWk) {
+    const wks = [startWk, startWk + 1];
+    const bucket = {};
+    wks.forEach(w => {
+      if (typeof mealPlan === 'undefined' || !mealPlan[w]) return;
+      const days = mealPlan[w];
+      days.forEach(day => {
+        (day.meals || []).forEach(m => {
+          const desc = String(m && m.desc || '');
+          if (!desc) return;
+          const parts = desc.split(/\s*\+\s*/);
+          parts.forEach(p => {
+            const s = p.trim();
+            if (!s) return;
+            const parsed = _parseIngredient(s);
+            if (!parsed || !parsed.def) {
+              const key = 'other::' + s.toLowerCase();
+              if (!bucket[key]) bucket[key] = { name: s, cat: 'other', unit: 'occ', total: 0, occ: 0 };
+              bucket[key].occ += 1;
+              return;
+            }
+            const def = parsed.def;
+            if (!bucket[def.key]) bucket[def.key] = { name: def.name, cat: def.cat, unit: def.unit, total: 0, occ: 0 };
+            bucket[def.key].occ += 1;
+            const converted = _convertToBase(parsed.qty, parsed.unit, def.unit);
+            bucket[def.key].total += converted;
+          });
+        });
+      });
+    });
+    return bucket;
+  }
+
+  function _fmtQty(item) {
+    if (item.unit === 'g') {
+      if (item.total >= 1000) return (item.total / 1000).toFixed(item.total >= 10000 ? 0 : 1) + ' kg';
+      if (item.total > 0) return Math.round(item.total) + ' g';
+      return item.occ + '×';
+    }
+    if (item.unit === 'ml') {
+      if (item.total >= 1000) return (item.total / 1000).toFixed(item.total >= 10000 ? 0 : 1) + ' L';
+      if (item.total > 0) return Math.round(item.total) + ' ml';
+      return item.occ + '×';
+    }
+    if (item.unit === 'count') {
+      const n = Math.round(item.total);
+      return n + (n === 1 ? '' : '');
+    }
+    // 'occ'
+    return item.occ + '×';
+  }
+
+  function _shopMaxWeek() {
+    if (typeof mealPlan === 'undefined') return 0;
+    let max = 0;
+    for (let w = 1; w <= 60; w++) if (mealPlan[w]) max = w;
+    return max;
+  }
+
+  function _shopFortnights() {
+    const max = _shopMaxWeek();
+    const out = [];
+    for (let s = 1; s <= max; s += 2) out.push(s);
+    return out;
+  }
+
+  function _computeCurrentShopStart() {
+    try {
+      const s = (typeof CLIENT_CONFIG !== 'undefined' && CLIENT_CONFIG && CLIENT_CONFIG.programStartDate) || '';
+      if (s) {
+        const start = new Date(s);
+        if (!isNaN(start.getTime())) {
+          const days = Math.floor((Date.now() - start.getTime()) / 86400000);
+          let wk = Math.max(1, (Math.floor(days / 7) + 1));
+          const max = _shopMaxWeek() || 1;
+          if (wk > max) wk = max;
+          // snap down to odd (fortnight start)
+          wk = wk - ((wk - 1) % 2);
+          return wk;
+        }
+      }
+    } catch (e) {}
+    return 1;
+  }
+
+  function _shopKey(startWk) {
+    const base = (typeof CLIENT_CONFIG !== 'undefined' && CLIENT_CONFIG && CLIENT_CONFIG.client && CLIENT_CONFIG.client.storageKey) || 'client';
+    return base + '_shop_checked_' + startWk + '_' + (startWk + 1);
+  }
+  function _loadShopChecks(startWk) {
+    try { return JSON.parse(localStorage.getItem(_shopKey(startWk)) || '{}'); } catch (e) { return {}; }
+  }
+  function _saveShopChecks(startWk, obj) {
+    try { localStorage.setItem(_shopKey(startWk), JSON.stringify(obj)); } catch (e) {}
+  }
+
+  function _escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function _groupByCategory(bucket) {
+    const by = {};
+    Object.keys(bucket).forEach(k => {
+      const b = bucket[k];
+      if (!by[b.cat]) by[b.cat] = [];
+      by[b.cat].push(Object.assign({ key: k }, b));
+    });
+    Object.keys(by).forEach(c => by[c].sort((a, b) => a.name.localeCompare(b.name)));
+    return by;
+  }
+
+  function renderShopSection() {
+    const container = document.getElementById('shop-main');
+    if (!container) return;
+    if (_currentShopWeek == null) _currentShopWeek = _computeCurrentShopStart();
+    const start = _currentShopWeek;
+    const forts = _shopFortnights();
+    const pills = forts.map(s => {
+      const active = s === start ? ' active' : '';
+      return '<button class="shop-pill' + active + '" onclick="window._shopSetWeek(' + s + ')">WK ' + s + '-' + (s + 1) + '</button>';
+    }).join('');
+
+    const bucket = _aggregateShop(start);
+    const byCat = _groupByCategory(bucket);
+    const state = _loadShopChecks(start);
+
+    const catOrder = ['protein', 'carbs', 'veg', 'dairy', 'fruit', 'fats', 'pantry', 'other'];
+    const totalItems = Object.keys(bucket).length;
+    const checkedCount = Object.keys(state).filter(k => state[k] && bucket[k]).length;
+
+    let body = '';
+    if (totalItems === 0) {
+      body = '<div class="shop-empty">No meal plan data for Week ' + start + '-' + (start + 1) + ' yet.</div>';
+    } else {
+      body = catOrder.map(cat => {
+        const items = byCat[cat];
+        if (!items || !items.length) return '';
+        const info = SHOP_CATEGORIES[cat];
+        const rows = items.map(item => {
+          const checked = !!state[item.key];
+          const cls = 'shop-item' + (checked ? ' checked' : '');
+          const box = checked ? '☑' : '☐';
+          return '<div class="' + cls + '" onclick="window._shopToggle(\'' + _escHtml(item.key).replace(/'/g, '&#39;') + '\')">'
+            + '<div class="shop-cb">' + box + '</div>'
+            + '<div class="shop-name">' + _escHtml(item.name) + '</div>'
+            + '<div class="shop-qty">' + _escHtml(_fmtQty(item)) + '</div>'
+            + '</div>';
+        }).join('');
+        return '<div class="shop-cat"><div class="shop-cat-header">' + info.icon + '  ' + info.label + '</div>' + rows + '</div>';
+      }).join('');
+    }
+
+    const summary = '<div class="shop-summary">'
+      + '<div>ITEMS <span>' + totalItems + '</span></div>'
+      + '<div>CHECKED <span>' + checkedCount + '</span></div>'
+      + '<div>WEEKS <span>' + start + '–' + (start + 1) + '</span></div>'
+      + '</div>';
+
+    container.innerHTML =
+      '<div class="shop-pills">' + pills + '</div>'
+      + summary
+      + body
+      + (totalItems > 0 ? '<button class="shop-share" onclick="window._shopShareWA()">Share to WhatsApp 📱</button>' : '');
+  }
+
+  function shopShareWhatsApp() {
+    const start = _currentShopWeek == null ? _computeCurrentShopStart() : _currentShopWeek;
+    const bucket = _aggregateShop(start);
+    const byCat = _groupByCategory(bucket);
+    const catOrder = ['protein', 'carbs', 'veg', 'dairy', 'fruit', 'fats', 'pantry', 'other'];
+    const client = (typeof CLIENT_CONFIG !== 'undefined' && CLIENT_CONFIG && CLIENT_CONFIG.client && CLIENT_CONFIG.client.firstName) || '';
+    let text = '🛒 Shopping List — Wk ' + start + '-' + (start + 1);
+    if (client) text += ' (' + client + ')';
+    text += '\n\n';
+    catOrder.forEach(cat => {
+      const items = byCat[cat];
+      if (!items || !items.length) return;
+      const info = SHOP_CATEGORIES[cat];
+      text += info.icon + ' ' + info.label + '\n';
+      items.forEach(i => { text += '- ' + i.name + ' — ' + _fmtQty(i) + '\n'; });
+      text += '\n';
+    });
+    const url = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(url, '_blank');
+  }
+
+  window._shopSetWeek = function(startWk) {
+    _currentShopWeek = startWk;
+    renderShopSection();
+  };
+  window._shopToggle = function(key) {
+    const start = _currentShopWeek == null ? _computeCurrentShopStart() : _currentShopWeek;
+    const state = _loadShopChecks(start);
+    state[key] = !state[key];
+    _saveShopChecks(start, state);
+    renderShopSection();
+  };
+  window._shopShareWA = shopShareWhatsApp;
+  window.renderShopSection = renderShopSection;
+
+  // Hook into showSection to render on tab activation (additive, preserves prior wrapper)
+  try {
+    const _prior = window.showSection;
+    if (typeof _prior === 'function') {
+      window.showSection = function(id) {
+        _prior.apply(this, arguments);
+        if (id === 'shop') { try { renderShopSection(); } catch (e) {} }
+      };
+    }
+  } catch (e) {}
 })();
 </script>
 </body>
