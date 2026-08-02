@@ -971,6 +971,7 @@ const COACH = {
     { storageKey: 'jad_elali',      displayName: 'Jad Elali',      programType: 'Aggressive Cut',      startWeight: 125,  goalWeight: 110, startDate: '2026-07-27', programUrl: 'clients/jad_elali/',      phone: '' },
     { storageKey: 'dib_kerdy',      displayName: 'Dib Kerdy',      programType: 'Knockout Peak — Oct 3', startWeight: 65.3, goalWeight: 58, startDate: '2026-07-31', programUrl: 'clients/dib_kerdy/',      phone: '+61473960408' },
     { storageKey: 'mohammed_taleb', displayName: 'Mohammed Taleb', programType: '12-Wk Abs Cut',       startWeight: 85,   goalWeight: 73, startDate: '2026-07-31', programUrl: 'clients/mohammed_taleb/', phone: '+61449795318' },
+    { storageKey: 'mohammed_hardani', displayName: 'Mohammed Hardani', programType: '12-Wk Obesity Cut', startWeight: 124.4, goalWeight: 110, startDate: '2026-07-31', programUrl: 'clients/mohammed_hardani/', phone: '+61414726069' },
   ],
   get clients() { return loadClients(); },
 };
@@ -1550,6 +1551,30 @@ const BASELINE_MACROS = {
       "c": 214,
       "f": 55,
       "deficit": 896
+    }
+  },
+  "mohammed_hardani": {
+    "tdee": 3606,
+    "p1": {
+      "cal": 2400,
+      "p": 249,
+      "c": 169,
+      "f": 81,
+      "deficit": 800
+    },
+    "p2": {
+      "cal": 2200,
+      "p": 249,
+      "c": 119,
+      "f": 81,
+      "deficit": 1000
+    },
+    "p3": {
+      "cal": 2000,
+      "p": 249,
+      "c": 69,
+      "f": 81,
+      "deficit": 1200
     }
   }
 };
