@@ -5532,6 +5532,107 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
 
 })();
 
+// ═════════════════════════════════════════════════════════════════════════
+// CLOUD RESTORE — hydrate localStorage from server if wiped
+// Fixes iOS Safari's 7-day localStorage purge for PWAs. If a client hasn't
+// opened the app in a week, iOS wipes their local logs. Their data is still
+// on the Google Sheet, so on next open we fetch the dashboard endpoint and
+// rebuild meal_log + workout_log locally. Silent + safe (only fills empty).
+// ═════════════════════════════════════════════════════════════════════════
+(function cloudRestore(){
+  const KEY_MEAL = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_meal_log';
+  const KEY_WORKOUT = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_workout_log';
+  const KEY_LAST_RESTORE = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_last_restore_ts';
+
+  function hydrateFromCloud() {
+    if (typeof CLIENT_CONFIG === 'undefined' || !CLIENT_CONFIG.sheetsWebhookUrl) return;
+    const clientKey = CLIENT_CONFIG.client && CLIENT_CONFIG.client.storageKey;
+    if (!clientKey) return;
+
+    // Only restore when local logs are empty (data wiped by iOS or fresh install)
+    let mealsEmpty = true, workoutsEmpty = true;
+    try {
+      const m = JSON.parse(localStorage.getItem(KEY_MEAL()) || '{}');
+      mealsEmpty = Object.keys(m).length === 0;
+    } catch(e){}
+    try {
+      const w = JSON.parse(localStorage.getItem(KEY_WORKOUT()) || '{}');
+      workoutsEmpty = Object.keys(w).length === 0;
+    } catch(e){}
+    if (!mealsEmpty && !workoutsEmpty) return; // nothing to do
+
+    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard';
+    fetch(url).then(r => r.json()).then(data => {
+      const c = data && data[clientKey];
+      if (!c) return;
+      let restoredCount = 0;
+
+      // Rebuild meal_log if wiped
+      if (mealsEmpty && Array.isArray(c.recentMeals) && c.recentMeals.length) {
+        const meals = {};
+        c.recentMeals.forEach(m => {
+          if (m.week == null || m.dayIdx == null || m.mealIdx == null) return;
+          const id = 'w' + m.week + '.d' + m.dayIdx + '.m' + m.mealIdx;
+          meals[id] = {
+            week: m.week, dayIdx: m.dayIdx, mealIdx: m.mealIdx,
+            mealName: m.mealName || '', status: m.status || 'ate',
+            swapDesc: m.swapDesc || '',
+            cal: Number(m.calActual) || Number(m.cal) || 0,
+            p:   Number(m.pActual)   || Number(m.p)   || 0,
+            c:   Number(m.cActual)   || Number(m.c)   || 0,
+            f:   Number(m.fActual)   || Number(m.f)   || 0,
+            ts:  m.timestamp,
+          };
+        });
+        if (Object.keys(meals).length) {
+          try { localStorage.setItem(KEY_MEAL(), JSON.stringify(meals)); } catch(e){}
+          restoredCount += Object.keys(meals).length;
+        }
+      }
+
+      // Rebuild workout_log if wiped
+      if (workoutsEmpty && Array.isArray(c.recentWorkouts) && c.recentWorkouts.length) {
+        const workouts = {};
+        c.recentWorkouts.forEach(w => {
+          if (w.phase == null || w.dayIdx == null || !w.exerciseName) return;
+          const id = 'p' + w.phase + '.d' + w.dayIdx + '.' + w.exerciseName;
+          workouts[id] = {
+            phase: w.phase, dayIdx: w.dayIdx, exerciseName: w.exerciseName,
+            setsActual:   w.setsActual   || '',
+            repsActual:   w.repsActual   || '',
+            weightActual: w.weightActual || '',
+            rpeActual:    w.rpeActual    || '',
+            notes:        w.notes        || '',
+            ts:           w.timestamp,
+          };
+        });
+        if (Object.keys(workouts).length) {
+          try { localStorage.setItem(KEY_WORKOUT(), JSON.stringify(workouts)); } catch(e){}
+          restoredCount += Object.keys(workouts).length;
+        }
+      }
+
+      try { localStorage.setItem(KEY_LAST_RESTORE(), String(Date.now())); } catch(e){}
+
+      // Re-render home if we actually restored something (so rings + heatmap refresh)
+      if (restoredCount > 0) {
+        setTimeout(() => {
+          try { if (typeof renderHome === 'function') renderHome(); } catch(e){}
+          try { if (typeof renderMealSection === 'function') renderMealSection(); } catch(e){}
+          try { if (typeof renderTraining === 'function') renderTraining(); } catch(e){}
+        }, 300);
+        console.log('[cloudRestore] restored ' + restoredCount + ' entries from Sheet');
+      }
+    }).catch(() => {}); // silent on network fail
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(hydrateFromCloud, 800);
+  } else {
+    window.addEventListener('DOMContentLoaded', () => setTimeout(hydrateFromCloud, 800));
+  }
+})();
+
 
 </script>
 

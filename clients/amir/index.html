@@ -1099,8 +1099,6 @@
      SHOP — Fortnight shopping list
      ═══════════════════════════════════════════════════════════════════════ */
   .shop-pills { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
-  .shop-price { font-size:0.72rem; color:var(--accent,#FF6B35); text-decoration:none; margin-left:0.3rem; opacity:0.85; white-space:nowrap; }
-  .shop-price:hover { text-decoration:underline; opacity:1; }
   .shop-pill {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -2195,19 +2193,19 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;">
       <div>
-        <input type="file" accept="image/*" id="input-photo-front-file" onchange="handlePhotoPicked(event, 'front')" style="display:none;"/>
+        <input type="file" accept="image/*" capture="user" id="input-photo-front-file" onchange="handlePhotoPicked(event, 'front')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-front-file').click()" id="photo-btn-front" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
           <span id="photo-prompt-front">📷<br>FRONT<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
         </button>
       </div>
       <div>
-        <input type="file" accept="image/*" id="input-photo-side-file" onchange="handlePhotoPicked(event, 'side')" style="display:none;"/>
+        <input type="file" accept="image/*" capture="user" id="input-photo-side-file" onchange="handlePhotoPicked(event, 'side')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-side-file').click()" id="photo-btn-side" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
           <span id="photo-prompt-side">📷<br>SIDE<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
         </button>
       </div>
       <div>
-        <input type="file" accept="image/*" id="input-photo-back-file" onchange="handlePhotoPicked(event, 'back')" style="display:none;"/>
+        <input type="file" accept="image/*" capture="user" id="input-photo-back-file" onchange="handlePhotoPicked(event, 'back')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-back-file').click()" id="photo-btn-back" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
           <span id="photo-prompt-back">📷<br>BACK<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
         </button>
@@ -5533,6 +5531,107 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
 
 })();
 
+// ═════════════════════════════════════════════════════════════════════════
+// CLOUD RESTORE — hydrate localStorage from server if wiped
+// Fixes iOS Safari's 7-day localStorage purge for PWAs. If a client hasn't
+// opened the app in a week, iOS wipes their local logs. Their data is still
+// on the Google Sheet, so on next open we fetch the dashboard endpoint and
+// rebuild meal_log + workout_log locally. Silent + safe (only fills empty).
+// ═════════════════════════════════════════════════════════════════════════
+(function cloudRestore(){
+  const KEY_MEAL = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_meal_log';
+  const KEY_WORKOUT = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_workout_log';
+  const KEY_LAST_RESTORE = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_last_restore_ts';
+
+  function hydrateFromCloud() {
+    if (typeof CLIENT_CONFIG === 'undefined' || !CLIENT_CONFIG.sheetsWebhookUrl) return;
+    const clientKey = CLIENT_CONFIG.client && CLIENT_CONFIG.client.storageKey;
+    if (!clientKey) return;
+
+    // Only restore when local logs are empty (data wiped by iOS or fresh install)
+    let mealsEmpty = true, workoutsEmpty = true;
+    try {
+      const m = JSON.parse(localStorage.getItem(KEY_MEAL()) || '{}');
+      mealsEmpty = Object.keys(m).length === 0;
+    } catch(e){}
+    try {
+      const w = JSON.parse(localStorage.getItem(KEY_WORKOUT()) || '{}');
+      workoutsEmpty = Object.keys(w).length === 0;
+    } catch(e){}
+    if (!mealsEmpty && !workoutsEmpty) return; // nothing to do
+
+    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard';
+    fetch(url).then(r => r.json()).then(data => {
+      const c = data && data[clientKey];
+      if (!c) return;
+      let restoredCount = 0;
+
+      // Rebuild meal_log if wiped
+      if (mealsEmpty && Array.isArray(c.recentMeals) && c.recentMeals.length) {
+        const meals = {};
+        c.recentMeals.forEach(m => {
+          if (m.week == null || m.dayIdx == null || m.mealIdx == null) return;
+          const id = 'w' + m.week + '.d' + m.dayIdx + '.m' + m.mealIdx;
+          meals[id] = {
+            week: m.week, dayIdx: m.dayIdx, mealIdx: m.mealIdx,
+            mealName: m.mealName || '', status: m.status || 'ate',
+            swapDesc: m.swapDesc || '',
+            cal: Number(m.calActual) || Number(m.cal) || 0,
+            p:   Number(m.pActual)   || Number(m.p)   || 0,
+            c:   Number(m.cActual)   || Number(m.c)   || 0,
+            f:   Number(m.fActual)   || Number(m.f)   || 0,
+            ts:  m.timestamp,
+          };
+        });
+        if (Object.keys(meals).length) {
+          try { localStorage.setItem(KEY_MEAL(), JSON.stringify(meals)); } catch(e){}
+          restoredCount += Object.keys(meals).length;
+        }
+      }
+
+      // Rebuild workout_log if wiped
+      if (workoutsEmpty && Array.isArray(c.recentWorkouts) && c.recentWorkouts.length) {
+        const workouts = {};
+        c.recentWorkouts.forEach(w => {
+          if (w.phase == null || w.dayIdx == null || !w.exerciseName) return;
+          const id = 'p' + w.phase + '.d' + w.dayIdx + '.' + w.exerciseName;
+          workouts[id] = {
+            phase: w.phase, dayIdx: w.dayIdx, exerciseName: w.exerciseName,
+            setsActual:   w.setsActual   || '',
+            repsActual:   w.repsActual   || '',
+            weightActual: w.weightActual || '',
+            rpeActual:    w.rpeActual    || '',
+            notes:        w.notes        || '',
+            ts:           w.timestamp,
+          };
+        });
+        if (Object.keys(workouts).length) {
+          try { localStorage.setItem(KEY_WORKOUT(), JSON.stringify(workouts)); } catch(e){}
+          restoredCount += Object.keys(workouts).length;
+        }
+      }
+
+      try { localStorage.setItem(KEY_LAST_RESTORE(), String(Date.now())); } catch(e){}
+
+      // Re-render home if we actually restored something (so rings + heatmap refresh)
+      if (restoredCount > 0) {
+        setTimeout(() => {
+          try { if (typeof renderHome === 'function') renderHome(); } catch(e){}
+          try { if (typeof renderMealSection === 'function') renderMealSection(); } catch(e){}
+          try { if (typeof renderTraining === 'function') renderTraining(); } catch(e){}
+        }, 300);
+        console.log('[cloudRestore] restored ' + restoredCount + ' entries from Sheet');
+      }
+    }).catch(() => {}); // silent on network fail
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(hydrateFromCloud, 800);
+  } else {
+    window.addEventListener('DOMContentLoaded', () => setTimeout(hydrateFromCloud, 800));
+  }
+})();
+
 
 </script>
 
@@ -5601,69 +5700,6 @@ function updateBottomNav(id) {
 // SHOP — Fortnight shopping list (additive; reads existing mealPlan)
 // ═════════════════════════════════════════════════════════════════════════
 (function shopFeature(){
-
-  // Woolworths prices (AUD, ~current) + search terms
-  const WOOLWORTHS_PRICES = {
-    rice_cakes:     { price: '~$3.50', q: 'rice cakes' },
-    sweet_potato:   { price: '~$4/kg', q: 'sweet potato' },
-    cottage_cheese: { price: '~$4.50', q: 'cottage cheese' },
-    egg_whites:     { price: '~$6.00', q: 'egg whites liquid' },
-    peanut_butter:  { price: '~$4.50', q: 'peanut butter' },
-    medjool_dates:  { price: '~$7.00', q: 'medjool dates' },
-    rokeby_milk:    { price: '~$3.50', q: 'rokeby farms protein milk' },
-    greek_yogurt:   { price: '~$5.00', q: 'greek yogurt chobani' },
-    hot_sauce:      { price: '~$3.50', q: 'hot sauce sriracha' },
-    soy_sauce:      { price: '~$2.50', q: 'soy sauce' },
-    olive_oil:      { price: '~$6.00', q: 'olive oil' },
-    bell_pepper:    { price: '~$3.50', q: 'capsicum' },
-    salad_greens:   { price: '~$4.00', q: 'salad mix leaves' },
-    salt_pepper:    { price: '~$2.00', q: 'salt pepper' },
-    chicken:        { price: '~$8/kg', q: 'chicken breast' },
-    beef_mince:     { price: '~$7/500g', q: 'beef mince' },
-    steak:          { price: '~$12/kg', q: 'beef steak' },
-    salmon:         { price: '~$10.00', q: 'salmon fillet' },
-    tuna:           { price: '~$2.50', q: 'tuna canned' },
-    fish:           { price: '~$8.00', q: 'white fish fillet' },
-    eggs:           { price: '~$5.50/doz', q: 'eggs dozen' },
-    whey:           { price: '~$35.00', q: 'whey protein powder' },
-    casein:         { price: '~$40.00', q: 'casein protein powder' },
-    rice:           { price: '~$3/kg', q: 'jasmine rice' },
-    potato:         { price: '~$3.50/kg', q: 'potatoes' },
-    oats:           { price: '~$3.50', q: 'rolled oats' },
-    wraps:          { price: '~$4.00', q: 'wraps tortilla' },
-    pasta:          { price: '~$1.50', q: 'pasta' },
-    granola:        { price: '~$5.00', q: 'granola' },
-    bread:          { price: '~$3.50', q: 'bread loaf' },
-    broccoli:       { price: '~$3.00', q: 'broccoli' },
-    spinach:        { price: '~$3.50', q: 'baby spinach' },
-    tomato:         { price: '~$1.50', q: 'tomatoes' },
-    cucumber:       { price: '~$2.00', q: 'cucumber' },
-    zucchini:       { price: '~$2.50', q: 'zucchini' },
-    onion:          { price: '~$2.50/kg', q: 'brown onion' },
-    garlic:         { price: '~$3.00', q: 'garlic bulb' },
-    mushroom:       { price: '~$4.00', q: 'mushrooms' },
-    avocado:        { price: '~$2.00', q: 'avocado' },
-    banana:         { price: '~$3/kg', q: 'bananas' },
-    apple:          { price: '~$5/kg', q: 'apples' },
-    berries:        { price: '~$5.00', q: 'mixed berries frozen' },
-    orange:         { price: '~$4/kg', q: 'oranges' },
-    mango:          { price: '~$2.50', q: 'mango' },
-    milk:           { price: '~$2.50/2L', q: 'full cream milk' },
-    cheese:         { price: '~$4.50', q: 'cheese block' },
-    almonds:        { price: '~$5.50', q: 'almonds' },
-    cashews:        { price: '~$5.00', q: 'cashews' },
-    olives:         { price: '~$4.00', q: 'olives' },
-    seeds:          { price: '~$4.00', q: 'mixed seeds' },
-    honey:          { price: '~$6.00', q: 'honey' },
-    maple:          { price: '~$6.50', q: 'maple syrup' },
-    salt:           { price: '~$1.50', q: 'salt' },
-    pepper:         { price: '~$2.50', q: 'black pepper' },
-    spices:         { price: '~$3.00', q: 'mixed spices seasoning' },
-    cinnamon:       { price: '~$2.50', q: 'cinnamon' },
-    cocoa:          { price: '~$4.00', q: 'cocoa powder' },
-    coffee:         { price: '~$8.00', q: 'instant coffee' },
-    tea:            { price: '~$4.00', q: 'tea bags' },
-  };
   const SHOP_CATEGORIES = {
     protein: { label: 'Protein',     icon: '🍗' },
     carbs:   { label: 'Carbs',       icon: '🍚' },
@@ -5947,11 +5983,9 @@ function updateBottomNav(id) {
           const checked = !!state[item.key];
           const cls = 'shop-item' + (checked ? ' checked' : '');
           const box = checked ? '☑' : '☐';
-          const _wp = WOOLWORTHS_PRICES[item.key];
-          const _priceTag = _wp ? '<a class="shop-price" href="https://www.woolworths.com.au/shop/search/products?searchTerm=' + encodeURIComponent(_wp.q) + '" target="_blank" onclick="event.stopPropagation()">' + _wp.price + ' ↗</a>' : '';
           return '<div class="' + cls + '" onclick="window._shopToggle(\'' + _escHtml(item.key).replace(/'/g, '&#39;') + '\')">'
             + '<div class="shop-cb">' + box + '</div>'
-            + '<div class="shop-name">' + _escHtml(item.name) + _priceTag + '</div>'
+            + '<div class="shop-name">' + _escHtml(item.name) + '</div>'
             + '<div class="shop-qty">' + _escHtml(_fmtQty(item)) + '</div>'
             + '</div>';
         }).join('');

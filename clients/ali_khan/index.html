@@ -1099,8 +1099,6 @@
      SHOP — Fortnight shopping list
      ═══════════════════════════════════════════════════════════════════════ */
   .shop-pills { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
-  .shop-price { font-size:0.72rem; color:var(--accent,#FF6B35); text-decoration:none; margin-left:0.3rem; opacity:0.85; white-space:nowrap; }
-  .shop-price:hover { text-decoration:underline; opacity:1; }
   .shop-pill {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -2195,19 +2193,19 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;">
       <div>
-        <input type="file" accept="image/*" id="input-photo-front-file" onchange="handlePhotoPicked(event, 'front')" style="display:none;"/>
+        <input type="file" accept="image/*" capture="user" id="input-photo-front-file" onchange="handlePhotoPicked(event, 'front')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-front-file').click()" id="photo-btn-front" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
           <span id="photo-prompt-front">📷<br>FRONT<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
         </button>
       </div>
       <div>
-        <input type="file" accept="image/*" id="input-photo-side-file" onchange="handlePhotoPicked(event, 'side')" style="display:none;"/>
+        <input type="file" accept="image/*" capture="user" id="input-photo-side-file" onchange="handlePhotoPicked(event, 'side')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-side-file').click()" id="photo-btn-side" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
           <span id="photo-prompt-side">📷<br>SIDE<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
         </button>
       </div>
       <div>
-        <input type="file" accept="image/*" id="input-photo-back-file" onchange="handlePhotoPicked(event, 'back')" style="display:none;"/>
+        <input type="file" accept="image/*" capture="user" id="input-photo-back-file" onchange="handlePhotoPicked(event, 'back')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-back-file').click()" id="photo-btn-back" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
           <span id="photo-prompt-back">📷<br>BACK<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
         </button>
@@ -2465,252 +2463,261 @@ const howTos = {
 // ╚═════════════════════════════════════════════════════════════════════════╝
 const phases = {
   1: {
-    label: "Foundation", weeks: "1–4",
-    desc: "Build the habit. Machines + cables ONLY — safer at your bodyweight, easier to feel the muscle work, less form-dependent than free weights. Every session ends with a 10-15 min cardio finisher (bike, incline treadmill, or stairs) — that's the fat-loss lever.",
+    label: "Foundation", weeks: "1-4",
+    desc: "PPL split - Push, Pull, Legs, Push, Pull. Cable + machine bias for T1D safety at late-night training. 2x push + 2x pull per week hits each muscle twice for better hypertrophy (Schoenfeld 2016 meta). Legs 1x/wk trade-off. Cardio finisher 10-15 min each day (bike or incline walk - blood sugar stable).",
     info: [
-      { label: "Weeks", val: "1–4", desc: "Foundation phase — habit + form" },
-      { label: "Intensity", val: "RPE 7", desc: "Moderate — 3 reps in reserve, groove the movement" },
-      { label: "Focus", val: "Consistency", desc: "5 sessions/wk + cardio finishers = the whole game" },
+      { label: "Weeks", val: "1-4", desc: "Foundation - groove PPL pattern" },
+      { label: "Intensity", val: "RPE 7", desc: "Moderate - 3 reps in reserve" },
+      { label: "Focus", val: "PPL x 5 days", desc: "2 push + 2 pull + 1 legs" },
     ],
     days: [
       {
-        label: "Day 1 — Lower (Quad Focus, Machine)",
-        badge: "QUAD",
-        exercises: [
-          { name: "Leg Press", sets: "3", reps: "12", weight: "90kg", rest: "90s", rpe: "7" },
-          { name: "Machine Hack Squat (or Smith Squat)", sets: "3", reps: "10–12", weight: "57.5kg", rest: "90s", rpe: "7" },
-          { name: "Leg Extension", sets: "3", reps: "12–15", weight: "40kg", rest: "60s", rpe: "8" },
-          { name: "Standing Calf Raise (Machine)", sets: "4", reps: "12–15", weight: "67.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Crunch (Rope)", sets: "3", reps: "15", weight: "27.5kg", rest: "45s", rpe: "7" },
-          { name: "Cardio Finisher — Incline Treadmill Walk", sets: "1", reps: "12 min", weight: "12% incline · 4.5 km/h", rest: "—", rpe: "6" },
-        ]
-      },
-      {
-        label: "Day 2 — Push (Chest, Delts, Tris — Machine + Cable)",
+        label: "Day 1 - Push (Chest Priority)",
         badge: "PUSH",
         exercises: [
-          { name: "Machine Chest Press", sets: "3", reps: "10–12", weight: "45kg", rest: "90s", rpe: "7" },
-          { name: "Smith Machine Incline Bench", sets: "3", reps: "10", weight: "45kg", rest: "90s", rpe: "7" },
-          { name: "Cable Chest Fly (Mid)", sets: "3", reps: "12–15", weight: "12.5kg", rest: "60s", rpe: "8" },
-          { name: "Machine Shoulder Press", sets: "3", reps: "10–12", weight: "40kg", rest: "90s", rpe: "7" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "15", weight: "7.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Rope Tricep Pushdown", sets: "3", reps: "12–15", weight: "22.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Overhead Tricep Extension", sets: "2", reps: "12", weight: "17.5kg", rest: "60s", rpe: "8" },
+          { name: "Machine Chest Press",              sets: "4", reps: "8-10", weight: "57.5kg",  rest: "90s", rpe: "7" },
+          { name: "Incline DB Press",                 sets: "3", reps: "10",   weight: "20kg ea", rest: "90s", rpe: "7" },
+          { name: "Machine Shoulder Press",           sets: "3", reps: "10-12",weight: "40kg",  rest: "90s", rpe: "7" },
+          { name: "Cable Lateral Raise",              sets: "3", reps: "12-15",weight: "10kg",   rest: "45s", rpe: "8" },
+          { name: "Cable Rope Tricep Pushdown",       sets: "3", reps: "12",   weight: "25kg",rest: "60s", rpe: "7" },
+          { name: "Overhead Cable Tricep Ext",        sets: "3", reps: "10-12",weight: "22.5kg",  rest: "60s", rpe: "7" },
+          { name: "Cardio Finisher - Incline Walk",   sets: "1", reps: "12 min", weight: "12% / 4.5 km/h", rest: "-", rpe: "6" },
         ]
       },
       {
-        label: "Day 3 — Pull (Back, Bis, Rear Delts — Cable + Machine)",
+        label: "Day 2 - Pull (Back + Biceps)",
         badge: "PULL",
         exercises: [
-          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "10–12", weight: "50kg", rest: "90s", rpe: "7" },
-          { name: "Seated Cable Row (Neutral Grip)", sets: "3", reps: "10–12", weight: "50kg", rest: "90s", rpe: "8" },
-          { name: "Chest-Supported Machine Row", sets: "3", reps: "10–12", weight: "40kg", rest: "90s", rpe: "8" },
-          { name: "Cable Face Pulls (Rope)", sets: "3", reps: "15", weight: "17.5kg", rest: "45s", rpe: "7" },
-          { name: "Cable Bicep Curl (Bar)", sets: "3", reps: "10–12", weight: "22.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Rope Hammer Curl", sets: "2", reps: "12", weight: "22.5kg", rest: "60s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)",         sets: "4", reps: "8-10", weight: "57.5kg",  rest: "90s", rpe: "7" },
+          { name: "Seated Cable Row (Neutral)",       sets: "4", reps: "8-10", weight: "57.5kg",  rest: "90s", rpe: "7" },
+          { name: "Chest-Supported Machine Row",      sets: "3", reps: "10",   weight: "45kg",  rest: "90s", rpe: "8" },
+          { name: "Cable Face Pulls (Rope)",          sets: "3", reps: "12-15",weight: "17.5kg",  rest: "45s", rpe: "7" },
+          { name: "Bayesian Cable Curl",              sets: "3", reps: "10-12",weight: "12.5kg",  rest: "60s", rpe: "8" },
+          { name: "Cable Rope Hammer Curl",           sets: "3", reps: "12",   weight: "22.5kg",  rest: "60s", rpe: "7" },
+          { name: "Cardio Finisher - Bike",           sets: "1", reps: "12 min", weight: "steady", rest: "-", rpe: "6" },
         ]
       },
       {
-        label: "Day 4 — Lower (Posterior/Glutes — Machine + Cable)",
-        badge: "POSTERIOR",
+        label: "Day 3 - Legs",
+        badge: "LEGS",
         exercises: [
-          { name: "Machine Hip Thrust (or Smith Hip Thrust)", sets: "3", reps: "10–12", weight: "67.5kg", rest: "90s", rpe: "8" },
-          { name: "Lying Leg Curl (Machine)", sets: "3", reps: "10–12", weight: "35kg", rest: "60s", rpe: "8" },
-          { name: "Cable Glute Kickback", sets: "3", reps: "12 each", weight: "17.5kg", rest: "60s", rpe: "8" },
-          { name: "Seated Leg Curl (Machine)", sets: "3", reps: "12", weight: "35kg", rest: "60s", rpe: "8" },
-          { name: "Seated Calf Raise (Machine)", sets: "4", reps: "15", weight: "40kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — Bike Intervals", sets: "1", reps: "10 min", weight: "1 min hard / 1 min easy", rest: "—", rpe: "7" },
+          { name: "Leg Press",                        sets: "4", reps: "10-12",weight: "112.5kg", rest: "2 min", rpe: "7" },
+          { name: "Hack Squat Machine",               sets: "3", reps: "10",   weight: "67.5kg",  rest: "90s", rpe: "8" },
+          { name: "Leg Extension",                    sets: "3", reps: "12-15",weight: "45kg",  rest: "60s", rpe: "8" },
+          { name: "Lying Leg Curl (Machine)",         sets: "4", reps: "10-12",weight: "40kg",  rest: "60s", rpe: "8" },
+          { name: "Standing Calf Raise (Machine)",    sets: "4", reps: "12-15",weight: "67.5kg",  rest: "45s", rpe: "8" },
+          { name: "Cable Crunch (Rope)",              sets: "3", reps: "15",   weight: "27.5kg",  rest: "45s", rpe: "7" },
+          { name: "Cardio Finisher - Incline Walk",   sets: "1", reps: "15 min", weight: "12% / 4.5 km/h", rest: "-", rpe: "6" },
         ]
       },
       {
-        label: "Day 5 — Full Body Circuit + Arms + Cardio",
-        badge: "METABOLIC",
+        label: "Day 4 - Push (Delts Priority)",
+        badge: "PUSH",
         exercises: [
-          { name: "Machine Chest Press", sets: "2", reps: "12–15", weight: "40kg", rest: "60s", rpe: "8" },
-          { name: "Lat Pulldown", sets: "2", reps: "12–15", weight: "45kg", rest: "60s", rpe: "8" },
-          { name: "Leg Press", sets: "2", reps: "15", weight: "80kg", rest: "60s", rpe: "8" },
-          { name: "Cable Bicep Curl", sets: "3", reps: "12", weight: "22.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "12", weight: "25kg", rest: "60s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "15", weight: "7.5kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — StairMaster or Incline Walk", sets: "1", reps: "15 min", weight: "steady pace", rest: "—", rpe: "6" },
+          { name: "DB Shoulder Press",                sets: "4", reps: "8-10", weight: "17.5kg ea", rest: "90s", rpe: "7" },
+          { name: "Machine Chest Press",              sets: "3", reps: "10-12",weight: "50kg",  rest: "90s", rpe: "7" },
+          { name: "Cable Chest Fly (Mid)",            sets: "3", reps: "12-15",weight: "12.5kg",  rest: "60s", rpe: "8" },
+          { name: "Cable Lateral Raise",              sets: "4", reps: "12-15",weight: "10kg",   rest: "45s", rpe: "8" },
+          { name: "DB Rear Delt Fly",                 sets: "3", reps: "12-15",weight: "10kg ea", rest: "45s", rpe: "8" },
+          { name: "Cable Rope Tricep Pushdown",       sets: "3", reps: "12-15",weight: "25kg",rest: "60s", rpe: "8" },
+          { name: "Cardio Finisher - Bike",           sets: "1", reps: "12 min", weight: "steady", rest: "-", rpe: "6" },
+        ]
+      },
+      {
+        label: "Day 5 - Pull (Bis Priority)",
+        badge: "PULL",
+        exercises: [
+          { name: "Lat Pulldown (Neutral Grip)",      sets: "4", reps: "10-12",weight: "50kg",  rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Machine Row",      sets: "4", reps: "10",   weight: "50kg",  rest: "90s", rpe: "8" },
+          { name: "Straight-Arm Cable Pulldown",      sets: "3", reps: "12-15",weight: "22.5kg",  rest: "60s", rpe: "8" },
+          { name: "Reverse Pec Deck",                 sets: "3", reps: "12-15",weight: "35kg",  rest: "45s", rpe: "8" },
+          { name: "Bayesian Cable Curl",              sets: "4", reps: "12",   weight: "12.5kg",  rest: "60s", rpe: "8" },
+          { name: "Cable Rope Hammer Curl",           sets: "3", reps: "12-15",weight: "22.5kg",  rest: "60s", rpe: "8" },
+          { name: "Cardio Finisher - StairMaster",    sets: "1", reps: "12 min", weight: "steady", rest: "-", rpe: "6" },
         ]
       },
     ],
     progression: [
       ["Exercise", "Week 1", "Week 2", "Week 3", "Week 4"],
-      ["Leg Press", "90kg", "102.5kg", "112.5kg", "125kg"],
-      ["Machine Chest Press", "45kg", "47.5kg", "50kg", "55kg"],
-      ["Smith Incline Bench", "45kg", "47.5kg", "50kg", "55kg"],
-      ["Lat Pulldown", "50kg", "55kg", "57.5kg", "60kg"],
-      ["Seated Cable Row", "50kg", "55kg", "57.5kg", "60kg"],
-      ["Machine Hip Thrust", "67.5kg", "72.5kg", "80kg", "85kg"],
-      ["Cable Bicep Curl", "22.5kg", "25kg", "27.5kg", "27.5kg"],
+      ["Machine Chest Press",     "57.5kg", "60kg", "62.5kg", "65kg"],
+      ["Lat Pulldown",            "57.5kg", "60kg", "62.5kg", "65kg"],
+      ["Seated Cable Row",        "57.5kg", "60kg", "62.5kg", "65kg"],
+      ["Leg Press",               "112.5kg","125kg", "135kg","147.5kg"],
+      ["Hack Squat",              "67.5kg", "72.5kg",   "80kg", "85kg"],
+      ["DB Shoulder Press",       "17.5kg", "20kg",   "20kg", "22.5kg"],
+      ["Bayesian Cable Curl",     "12.5kg", "15kg",   "15kg", "17.5kg"],
     ]
   },
   2: {
-    label: "Acceleration", weeks: "5–8",
-    desc: "Bigger deficit + longer cardio finishers. Loads bumped 15–20% on primaries — you're stronger now, use it. Rest periods drop on isolations to keep heart rate up.",
+    label: "Acceleration", weeks: "5-8",
+    desc: "Same PPL structure. Loads bumped ~15% on primaries. Longer cardio finishers (15-20 min). Rest periods trimmed on isolations to raise density.",
     info: [
-      { label: "Weeks", val: "5–8", desc: "Acceleration phase — bigger deficit" },
-      { label: "Intensity", val: "RPE 7–8", desc: "Harder — 1–2 reps in reserve on primaries" },
+      { label: "Weeks", val: "5-8", desc: "Acceleration - bigger deficit" },
+      { label: "Intensity", val: "RPE 8", desc: "1-2 reps in reserve on primaries" },
       { label: "Focus", val: "Density + Cardio", desc: "Shorter rest + longer finishers" },
     ],
     days: [
       {
-        label: "Day 1 — Lower (Quad Focus, Machine)",
-        badge: "QUAD",
-        exercises: [
-          { name: "Leg Press", sets: "4", reps: "10", weight: "125kg", rest: "90s", rpe: "8" },
-          { name: "Machine Hack Squat (or Smith Squat)", sets: "3", reps: "10", weight: "72.5kg", rest: "90s", rpe: "8" },
-          { name: "Leg Extension", sets: "3", reps: "12", weight: "50kg", rest: "45s", rpe: "8" },
-          { name: "Standing Calf Raise (Machine)", sets: "4", reps: "12", weight: "85kg", rest: "45s", rpe: "8" },
-          { name: "Cable Crunch (Rope)", sets: "3", reps: "15", weight: "35kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — Incline Treadmill", sets: "1", reps: "15 min", weight: "12% incline · 5.0 km/h", rest: "—", rpe: "7" },
-        ]
-      },
-      {
-        label: "Day 2 — Push (Chest, Delts, Tris)",
+        label: "Day 1 - Push (Chest Priority)",
         badge: "PUSH",
         exercises: [
-          { name: "Machine Chest Press", sets: "4", reps: "8–10", weight: "62.5kg", rest: "90s", rpe: "8" },
-          { name: "Smith Machine Incline Bench", sets: "3", reps: "8", weight: "60kg", rest: "90s", rpe: "8" },
-          { name: "Cable Chest Fly (Mid)", sets: "3", reps: "12", weight: "15kg", rest: "45s", rpe: "8" },
-          { name: "Machine Shoulder Press", sets: "3", reps: "8–10", weight: "50kg", rest: "90s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12", weight: "10kg", rest: "45s", rpe: "8" },
-          { name: "Cable Rope Tricep Pushdown", sets: "3", reps: "12", weight: "27.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Overhead Tricep Extension", sets: "3", reps: "10", weight: "22.5kg", rest: "45s", rpe: "8" },
+          { name: "Machine Chest Press",              sets: "4", reps: "6-8",  weight: "72.5kg",  rest: "2 min", rpe: "8" },
+          { name: "Incline DB Press",                 sets: "4", reps: "8",    weight: "25kg ea", rest: "90s", rpe: "8" },
+          { name: "Machine Shoulder Press",           sets: "3", reps: "8-10", weight: "50kg",  rest: "90s", rpe: "8" },
+          { name: "Cable Lateral Raise",              sets: "4", reps: "12",   weight: "12.5kg",  rest: "45s", rpe: "8" },
+          { name: "Cable Rope Tricep Pushdown",       sets: "3", reps: "10",   weight: "30kg",rest: "45s", rpe: "8" },
+          { name: "Overhead Cable Tricep Ext",        sets: "3", reps: "10",   weight: "27.5kg",  rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Incline Walk",   sets: "1", reps: "15 min", weight: "12% / 5.0 km/h", rest: "-", rpe: "7" },
         ]
       },
       {
-        label: "Day 3 — Pull (Back, Bis, Rear Delts)",
+        label: "Day 2 - Pull (Back + Biceps)",
         badge: "PULL",
         exercises: [
-          { name: "Lat Pulldown (Wide Grip)", sets: "4", reps: "8–10", weight: "62.5kg", rest: "90s", rpe: "8" },
-          { name: "Seated Cable Row (Neutral Grip)", sets: "3", reps: "8–10", weight: "62.5kg", rest: "90s", rpe: "8" },
-          { name: "Chest-Supported Machine Row", sets: "3", reps: "10", weight: "50kg", rest: "60s", rpe: "8" },
-          { name: "Cable Face Pulls (Rope)", sets: "3", reps: "12", weight: "22.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Bicep Curl (Bar)", sets: "3", reps: "10", weight: "27.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Rope Hammer Curl", sets: "3", reps: "10", weight: "27.5kg", rest: "45s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)",         sets: "4", reps: "6-8",  weight: "70kg",rest: "2 min", rpe: "8" },
+          { name: "Seated Cable Row (Neutral)",       sets: "4", reps: "8",    weight: "67.5kg",  rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Machine Row",      sets: "3", reps: "8-10", weight: "57.5kg",  rest: "90s", rpe: "8" },
+          { name: "Cable Face Pulls (Rope)",          sets: "3", reps: "12",   weight: "22.5kg",  rest: "45s", rpe: "8" },
+          { name: "Bayesian Cable Curl",              sets: "4", reps: "10",   weight: "17.5kg",  rest: "60s", rpe: "8" },
+          { name: "Cable Rope Hammer Curl",           sets: "3", reps: "10-12",weight: "27.5kg",  rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Bike",           sets: "1", reps: "15 min", weight: "steady",  rest: "-", rpe: "7" },
         ]
       },
       {
-        label: "Day 4 — Lower (Posterior/Glutes)",
-        badge: "POSTERIOR",
+        label: "Day 3 - Legs",
+        badge: "LEGS",
         exercises: [
-          { name: "Machine Hip Thrust", sets: "4", reps: "8–10", weight: "90kg", rest: "90s", rpe: "8" },
-          { name: "Lying Leg Curl (Machine)", sets: "3", reps: "10", weight: "45kg", rest: "45s", rpe: "8" },
-          { name: "Cable Glute Kickback", sets: "3", reps: "10 each", weight: "22.5kg", rest: "45s", rpe: "8" },
-          { name: "Seated Leg Curl (Machine)", sets: "3", reps: "10", weight: "45kg", rest: "45s", rpe: "8" },
-          { name: "Seated Calf Raise (Machine)", sets: "4", reps: "12", weight: "50kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — Bike Intervals", sets: "1", reps: "15 min", weight: "1 min hard / 1 min easy", rest: "—", rpe: "8" },
+          { name: "Leg Press",                        sets: "4", reps: "8-10", weight: "147.5kg", rest: "2 min", rpe: "8" },
+          { name: "Hack Squat Machine",               sets: "4", reps: "8",    weight: "90kg",  rest: "90s", rpe: "8" },
+          { name: "Leg Extension",                    sets: "3", reps: "10-12",weight: "57.5kg",  rest: "45s", rpe: "8" },
+          { name: "Lying Leg Curl (Machine)",         sets: "4", reps: "10",   weight: "50kg",  rest: "45s", rpe: "8" },
+          { name: "Standing Calf Raise (Machine)",    sets: "4", reps: "10-12",weight: "85kg",  rest: "45s", rpe: "8" },
+          { name: "Cable Crunch (Rope)",              sets: "3", reps: "15",   weight: "35kg",  rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Bike Intervals", sets: "1", reps: "18 min", weight: "1 hard / 1 easy", rest: "-", rpe: "8" },
         ]
       },
       {
-        label: "Day 5 — Full Body Circuit + Arms + Cardio",
-        badge: "METABOLIC",
+        label: "Day 4 - Push (Delts Priority)",
+        badge: "PUSH",
         exercises: [
-          { name: "Machine Chest Press", sets: "3", reps: "12", weight: "50kg", rest: "45s", rpe: "8" },
-          { name: "Lat Pulldown", sets: "3", reps: "12", weight: "57.5kg", rest: "45s", rpe: "8" },
-          { name: "Leg Press", sets: "3", reps: "15", weight: "102.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Bicep Curl", sets: "3", reps: "10", weight: "27.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "10", weight: "30kg", rest: "45s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12", weight: "10kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — StairMaster", sets: "1", reps: "20 min", weight: "steady pace", rest: "—", rpe: "7" },
+          { name: "DB Shoulder Press",                sets: "4", reps: "6-8",  weight: "22.5kg ea", rest: "2 min", rpe: "8" },
+          { name: "Machine Chest Press",              sets: "4", reps: "10",   weight: "62.5kg",  rest: "90s", rpe: "8" },
+          { name: "Cable Chest Fly (Mid)",            sets: "3", reps: "12",   weight: "15kg",rest: "45s", rpe: "8" },
+          { name: "Cable Lateral Raise",              sets: "4", reps: "12",   weight: "12.5kg",  rest: "45s", rpe: "8" },
+          { name: "DB Rear Delt Fly",                 sets: "3", reps: "12",   weight: "12.5kg ea", rest: "45s", rpe: "8" },
+          { name: "Cable Rope Tricep Pushdown",       sets: "3", reps: "12",   weight: "30kg",rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - StairMaster",    sets: "1", reps: "15 min", weight: "steady",  rest: "-", rpe: "7" },
+        ]
+      },
+      {
+        label: "Day 5 - Pull (Bis Priority)",
+        badge: "PULL",
+        exercises: [
+          { name: "Lat Pulldown (Neutral Grip)",      sets: "4", reps: "8-10", weight: "65kg",rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Machine Row",      sets: "4", reps: "8-10", weight: "62.5kg",  rest: "90s", rpe: "8" },
+          { name: "Straight-Arm Cable Pulldown",      sets: "3", reps: "12",   weight: "27.5kg",  rest: "45s", rpe: "8" },
+          { name: "Reverse Pec Deck",                 sets: "3", reps: "12-15",weight: "40kg",  rest: "45s", rpe: "8" },
+          { name: "Bayesian Cable Curl",              sets: "4", reps: "10-12",weight: "17.5kg",  rest: "60s", rpe: "8" },
+          { name: "Cable Rope Hammer Curl",           sets: "3", reps: "12",   weight: "27.5kg",  rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Incline Walk",   sets: "1", reps: "18 min", weight: "12% / 5 km/h", rest: "-", rpe: "7" },
         ]
       },
     ],
     progression: [
       ["Exercise", "Week 5", "Week 6", "Week 7", "Week 8"],
-      ["Leg Press", "125kg", "135kg", "147.5kg", "157.5kg"],
-      ["Machine Chest Press", "62.5kg", "67.5kg", "70kg", "72.5kg"],
-      ["Smith Incline Bench", "60kg", "62.5kg", "65kg", "67.5kg"],
-      ["Lat Pulldown", "62.5kg", "65kg", "67.5kg", "70kg"],
-      ["Seated Cable Row", "62.5kg", "65kg", "67.5kg", "70kg"],
-      ["Machine Hip Thrust", "90kg", "100kg", "105kg", "112.5kg"],
-      ["Cable Bicep Curl", "27.5kg", "30kg", "35kg", "35kg"],
+      ["Machine Chest Press",     "72.5kg", "77.5kg", "80kg", "82.5kg"],
+      ["Lat Pulldown",            "70kg","72.5kg",  "77.5kg","80kg"],
+      ["Seated Cable Row",        "67.5kg", "70kg", "72.5kg", "77.5kg"],
+      ["Leg Press",               "147.5kg","157.5kg", "170kg","182.5kg"],
+      ["Hack Squat",              "90kg", "97.5kg",   "102.5kg", "107.5kg"],
+      ["DB Shoulder Press",       "22.5kg", "25kg",   "25kg", "27.5kg"],
+      ["Bayesian Cable Curl",     "17.5kg", "20kg",   "20kg", "22.5kg"],
     ]
   },
   3: {
-    label: "Final Push", weeks: "9–12",
-    desc: "Biggest deficit + longest cardio + drop sets on isolations. Strength holds via top sets on primaries. This is the phase where the scale drops fastest and the mirror changes most.",
+    label: "Final Push", weeks: "9-12",
+    desc: "Peak cut phase. Heavier top sets on primaries + drop sets on isolations. Longest cardio finishers. Strength holds via low-rep primaries, hypertrophy accumulates via higher-rep accessories with drops.",
     info: [
-      { label: "Weeks", val: "9–12", desc: "Final Push — largest deficit" },
-      { label: "Intensity", val: "RPE 8–9", desc: "Hard sets — 0–1 reps in reserve on primaries" },
-      { label: "Focus", val: "Peak fat loss", desc: "Drop sets + 20 min cardio finishers" },
+      { label: "Weeks", val: "9-12", desc: "Final Push - largest deficit" },
+      { label: "Intensity", val: "RPE 8-9", desc: "0-1 reps in reserve on primaries" },
+      { label: "Focus", val: "Peak fat loss", desc: "Drop sets + 20 min finishers" },
     ],
     days: [
       {
-        label: "Day 1 — Lower (Quad Focus, Machine)",
-        badge: "QUAD",
-        exercises: [
-          { name: "Leg Press", sets: "4", reps: "8", weight: "157.5kg", rest: "2 min", rpe: "8–9" },
-          { name: "Machine Hack Squat", sets: "3", reps: "10", weight: "90kg", rest: "90s", rpe: "8" },
-          { name: "Leg Extension (drop set on last)", sets: "3", reps: "10 + drop", weight: "62.5kg", rest: "45s", rpe: "9" },
-          { name: "Standing Calf Raise (Machine)", sets: "4", reps: "10", weight: "102.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Crunch (Rope)", sets: "3", reps: "15", weight: "40kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — Incline Treadmill", sets: "1", reps: "20 min", weight: "12% incline · 5.5 km/h", rest: "—", rpe: "7" },
-        ]
-      },
-      {
-        label: "Day 2 — Push",
+        label: "Day 1 - Push (Chest Priority)",
         badge: "PUSH",
         exercises: [
-          { name: "Machine Chest Press", sets: "4", reps: "6–8", weight: "72.5kg", rest: "2 min", rpe: "8–9" },
-          { name: "Smith Machine Incline Bench", sets: "3", reps: "6–8", weight: "67.5kg", rest: "90s", rpe: "8" },
-          { name: "Cable Chest Fly (drop set)", sets: "3", reps: "10 + drop", weight: "17.5kg", rest: "45s", rpe: "9" },
-          { name: "Machine Shoulder Press", sets: "3", reps: "8", weight: "60kg", rest: "90s", rpe: "8" },
-          { name: "Cable Lateral Raise (drop set)", sets: "3", reps: "10 + drop", weight: "12.5kg", rest: "45s", rpe: "9" },
-          { name: "Cable Rope Tricep Pushdown", sets: "3", reps: "10", weight: "35kg", rest: "45s", rpe: "8" },
-          { name: "Cable Overhead Tricep Extension", sets: "3", reps: "10", weight: "27.5kg", rest: "45s", rpe: "8" },
+          { name: "Machine Chest Press",              sets: "5", reps: "5-6",  weight: "85kg",  rest: "2 min", rpe: "8-9" },
+          { name: "Incline DB Press",                 sets: "4", reps: "6-8",  weight: "30kg ea", rest: "2 min", rpe: "8" },
+          { name: "Machine Shoulder Press",           sets: "3", reps: "8",    weight: "60kg",rest: "90s", rpe: "8" },
+          { name: "Cable Lateral Raise (drop set)",   sets: "3", reps: "10 + drop", weight: "12.5kg",  rest: "45s", rpe: "9" },
+          { name: "Cable Rope Tricep Pushdown",       sets: "4", reps: "10",   weight: "35kg",  rest: "45s", rpe: "8" },
+          { name: "Overhead Cable Tricep Ext",        sets: "3", reps: "10",   weight: "30kg",rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Incline Walk",   sets: "1", reps: "20 min", weight: "12% / 5.5 km/h", rest: "-", rpe: "7" },
         ]
       },
       {
-        label: "Day 3 — Pull",
+        label: "Day 2 - Pull (Back + Biceps)",
         badge: "PULL",
         exercises: [
-          { name: "Lat Pulldown (Wide Grip)", sets: "5", reps: "6–8", weight: "70kg", rest: "2 min", rpe: "8–9" },
-          { name: "Seated Cable Row", sets: "3", reps: "8", weight: "70kg", rest: "90s", rpe: "8" },
-          { name: "Chest-Supported Machine Row", sets: "3", reps: "8–10", weight: "57.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Face Pulls (Rope)", sets: "3", reps: "12", weight: "27.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Bicep Curl (drop set)", sets: "3", reps: "10 + drop", weight: "35kg", rest: "45s", rpe: "9" },
-          { name: "Cable Rope Hammer Curl", sets: "3", reps: "10", weight: "30kg", rest: "45s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)",         sets: "5", reps: "5-6",  weight: "82.5kg",rest: "2 min", rpe: "8-9" },
+          { name: "Seated Cable Row (Neutral)",       sets: "4", reps: "6-8",  weight: "80kg",  rest: "2 min", rpe: "8" },
+          { name: "Chest-Supported Machine Row",      sets: "3", reps: "8-10", weight: "62.5kg",  rest: "90s", rpe: "8" },
+          { name: "Cable Face Pulls (Rope)",          sets: "3", reps: "12",   weight: "27.5kg",  rest: "45s", rpe: "8" },
+          { name: "Bayesian Cable Curl (drop set)",   sets: "3", reps: "10 + drop", weight: "20kg",  rest: "60s", rpe: "9" },
+          { name: "Cable Rope Hammer Curl",           sets: "3", reps: "12",   weight: "30kg",rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Bike Intervals", sets: "1", reps: "20 min", weight: "1 hard / 1 easy", rest: "-", rpe: "8" },
         ]
       },
       {
-        label: "Day 4 — Lower (Posterior/Glutes)",
-        badge: "POSTERIOR",
+        label: "Day 3 - Legs",
+        badge: "LEGS",
         exercises: [
-          { name: "Machine Hip Thrust", sets: "4", reps: "6–8", weight: "112.5kg", rest: "2 min", rpe: "8–9" },
-          { name: "Lying Leg Curl (Machine)", sets: "3", reps: "10", weight: "57.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Glute Kickback", sets: "3", reps: "10 each", weight: "25kg", rest: "45s", rpe: "8" },
-          { name: "Seated Leg Curl (Machine)", sets: "3", reps: "10", weight: "57.5kg", rest: "45s", rpe: "8" },
-          { name: "Seated Calf Raise (Machine)", sets: "4", reps: "10", weight: "62.5kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — Bike Intervals", sets: "1", reps: "20 min", weight: "1 min hard / 1 min easy", rest: "—", rpe: "8" },
+          { name: "Leg Press",                        sets: "5", reps: "6-8",  weight: "182.5kg", rest: "2 min", rpe: "8-9" },
+          { name: "Hack Squat Machine",               sets: "4", reps: "8",    weight: "112.5kg", rest: "2 min", rpe: "8" },
+          { name: "Leg Extension (drop set)",         sets: "3", reps: "10 + drop", weight: "67.5kg",  rest: "45s", rpe: "9" },
+          { name: "Lying Leg Curl (Machine)",         sets: "4", reps: "10",   weight: "62.5kg",  rest: "45s", rpe: "8" },
+          { name: "Standing Calf Raise (Machine)",    sets: "4", reps: "10",   weight: "102.5kg",  rest: "45s", rpe: "8" },
+          { name: "Cable Crunch (Rope)",              sets: "3", reps: "15",   weight: "40kg",  rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - StairMaster",    sets: "1", reps: "25 min", weight: "steady",  rest: "-", rpe: "7" },
         ]
       },
       {
-        label: "Day 5 — Full Body Circuit + Arms + Long Cardio",
-        badge: "METABOLIC",
+        label: "Day 4 - Push (Delts Priority)",
+        badge: "PUSH",
         exercises: [
-          { name: "Machine Chest Press", sets: "3", reps: "10", weight: "62.5kg", rest: "45s", rpe: "8" },
-          { name: "Lat Pulldown", sets: "3", reps: "10", weight: "65kg", rest: "45s", rpe: "8" },
-          { name: "Leg Press", sets: "3", reps: "12", weight: "125kg", rest: "45s", rpe: "8" },
-          { name: "Cable Bicep Curl", sets: "3", reps: "10", weight: "35kg", rest: "45s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "10", weight: "37.5kg", rest: "45s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12", weight: "12.5kg", rest: "45s", rpe: "8" },
-          { name: "Cardio Finisher — StairMaster or Incline Walk", sets: "1", reps: "25 min", weight: "steady", rest: "—", rpe: "7" },
+          { name: "DB Shoulder Press",                sets: "5", reps: "5-6",  weight: "27.5kg ea", rest: "2 min", rpe: "8-9" },
+          { name: "Machine Chest Press",              sets: "4", reps: "10",   weight: "67.5kg",  rest: "90s", rpe: "8" },
+          { name: "Cable Chest Fly (drop set)",       sets: "3", reps: "10 + drop", weight: "17.5kg",  rest: "45s", rpe: "9" },
+          { name: "Cable Lateral Raise",              sets: "4", reps: "10-12",weight: "12.5kg",  rest: "45s", rpe: "8" },
+          { name: "DB Rear Delt Fly",                 sets: "3", reps: "12",   weight: "12.5kg ea", rest: "45s", rpe: "8" },
+          { name: "Cable Rope Tricep Pushdown",       sets: "3", reps: "12",   weight: "35kg",  rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Bike",           sets: "1", reps: "20 min", weight: "steady",  rest: "-", rpe: "7" },
+        ]
+      },
+      {
+        label: "Day 5 - Pull (Bis Priority)",
+        badge: "PULL",
+        exercises: [
+          { name: "Lat Pulldown (Neutral Grip)",      sets: "5", reps: "6-8",  weight: "77.5kg",rest: "2 min", rpe: "8" },
+          { name: "Chest-Supported Machine Row",      sets: "4", reps: "8-10", weight: "67.5kg",  rest: "90s", rpe: "8" },
+          { name: "Straight-Arm Cable Pulldown",      sets: "3", reps: "12",   weight: "30kg",rest: "45s", rpe: "8" },
+          { name: "Reverse Pec Deck",                 sets: "3", reps: "12",   weight: "45kg",  rest: "45s", rpe: "8" },
+          { name: "Bayesian Cable Curl (drop set)",   sets: "4", reps: "10 + drop", weight: "20kg",  rest: "60s", rpe: "9" },
+          { name: "Cable Rope Hammer Curl",           sets: "3", reps: "12",   weight: "30kg",rest: "45s", rpe: "8" },
+          { name: "Cardio Finisher - Incline Walk",   sets: "1", reps: "20 min", weight: "12% / 5 km/h", rest: "-", rpe: "7" },
         ]
       },
     ],
     progression: [
       ["Exercise", "Week 9", "Week 10", "Week 11", "Week 12"],
-      ["Leg Press", "157.5kg", "170kg", "182.5kg", "192.5kg"],
-      ["Machine Chest Press", "72.5kg", "77.5kg", "80kg", "82.5kg"],
-      ["Smith Incline Bench", "67.5kg", "70kg", "72.5kg", "77.5kg"],
-      ["Lat Pulldown", "70kg", "72.5kg", "77.5kg", "80kg"],
-      ["Seated Cable Row", "70kg", "72.5kg", "77.5kg", "80kg"],
-      ["Machine Hip Thrust", "112.5kg", "122.5kg", "127.5kg", "135kg"],
-      ["Cable Bicep Curl", "35kg", "37.5kg", "37.5kg", "40kg"],
+      ["Machine Chest Press",     "85kg", "87.5kg", "90kg", "92.5kg"],
+      ["Lat Pulldown",            "82.5kg","85kg",  "87.5kg","90kg"],
+      ["Seated Cable Row",        "80kg", "82.5kg", "85kg", "87.5kg"],
+      ["Leg Press",               "182.5kg","192.5kg", "205kg","215kg"],
+      ["Hack Squat",              "112.5kg","120kg", "125kg","130kg"],
+      ["DB Shoulder Press",       "27.5kg", "27.5kg",   "30kg", "30kg"],
+      ["Bayesian Cable Curl",     "20kg", "22.5kg",   "22.5kg", "25kg"],
     ]
   },
 };
@@ -5564,6 +5571,107 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
 
 })();
 
+// ═════════════════════════════════════════════════════════════════════════
+// CLOUD RESTORE — hydrate localStorage from server if wiped
+// Fixes iOS Safari's 7-day localStorage purge for PWAs. If a client hasn't
+// opened the app in a week, iOS wipes their local logs. Their data is still
+// on the Google Sheet, so on next open we fetch the dashboard endpoint and
+// rebuild meal_log + workout_log locally. Silent + safe (only fills empty).
+// ═════════════════════════════════════════════════════════════════════════
+(function cloudRestore(){
+  const KEY_MEAL = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_meal_log';
+  const KEY_WORKOUT = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_workout_log';
+  const KEY_LAST_RESTORE = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_last_restore_ts';
+
+  function hydrateFromCloud() {
+    if (typeof CLIENT_CONFIG === 'undefined' || !CLIENT_CONFIG.sheetsWebhookUrl) return;
+    const clientKey = CLIENT_CONFIG.client && CLIENT_CONFIG.client.storageKey;
+    if (!clientKey) return;
+
+    // Only restore when local logs are empty (data wiped by iOS or fresh install)
+    let mealsEmpty = true, workoutsEmpty = true;
+    try {
+      const m = JSON.parse(localStorage.getItem(KEY_MEAL()) || '{}');
+      mealsEmpty = Object.keys(m).length === 0;
+    } catch(e){}
+    try {
+      const w = JSON.parse(localStorage.getItem(KEY_WORKOUT()) || '{}');
+      workoutsEmpty = Object.keys(w).length === 0;
+    } catch(e){}
+    if (!mealsEmpty && !workoutsEmpty) return; // nothing to do
+
+    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard';
+    fetch(url).then(r => r.json()).then(data => {
+      const c = data && data[clientKey];
+      if (!c) return;
+      let restoredCount = 0;
+
+      // Rebuild meal_log if wiped
+      if (mealsEmpty && Array.isArray(c.recentMeals) && c.recentMeals.length) {
+        const meals = {};
+        c.recentMeals.forEach(m => {
+          if (m.week == null || m.dayIdx == null || m.mealIdx == null) return;
+          const id = 'w' + m.week + '.d' + m.dayIdx + '.m' + m.mealIdx;
+          meals[id] = {
+            week: m.week, dayIdx: m.dayIdx, mealIdx: m.mealIdx,
+            mealName: m.mealName || '', status: m.status || 'ate',
+            swapDesc: m.swapDesc || '',
+            cal: Number(m.calActual) || Number(m.cal) || 0,
+            p:   Number(m.pActual)   || Number(m.p)   || 0,
+            c:   Number(m.cActual)   || Number(m.c)   || 0,
+            f:   Number(m.fActual)   || Number(m.f)   || 0,
+            ts:  m.timestamp,
+          };
+        });
+        if (Object.keys(meals).length) {
+          try { localStorage.setItem(KEY_MEAL(), JSON.stringify(meals)); } catch(e){}
+          restoredCount += Object.keys(meals).length;
+        }
+      }
+
+      // Rebuild workout_log if wiped
+      if (workoutsEmpty && Array.isArray(c.recentWorkouts) && c.recentWorkouts.length) {
+        const workouts = {};
+        c.recentWorkouts.forEach(w => {
+          if (w.phase == null || w.dayIdx == null || !w.exerciseName) return;
+          const id = 'p' + w.phase + '.d' + w.dayIdx + '.' + w.exerciseName;
+          workouts[id] = {
+            phase: w.phase, dayIdx: w.dayIdx, exerciseName: w.exerciseName,
+            setsActual:   w.setsActual   || '',
+            repsActual:   w.repsActual   || '',
+            weightActual: w.weightActual || '',
+            rpeActual:    w.rpeActual    || '',
+            notes:        w.notes        || '',
+            ts:           w.timestamp,
+          };
+        });
+        if (Object.keys(workouts).length) {
+          try { localStorage.setItem(KEY_WORKOUT(), JSON.stringify(workouts)); } catch(e){}
+          restoredCount += Object.keys(workouts).length;
+        }
+      }
+
+      try { localStorage.setItem(KEY_LAST_RESTORE(), String(Date.now())); } catch(e){}
+
+      // Re-render home if we actually restored something (so rings + heatmap refresh)
+      if (restoredCount > 0) {
+        setTimeout(() => {
+          try { if (typeof renderHome === 'function') renderHome(); } catch(e){}
+          try { if (typeof renderMealSection === 'function') renderMealSection(); } catch(e){}
+          try { if (typeof renderTraining === 'function') renderTraining(); } catch(e){}
+        }, 300);
+        console.log('[cloudRestore] restored ' + restoredCount + ' entries from Sheet');
+      }
+    }).catch(() => {}); // silent on network fail
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(hydrateFromCloud, 800);
+  } else {
+    window.addEventListener('DOMContentLoaded', () => setTimeout(hydrateFromCloud, 800));
+  }
+})();
+
 
 </script>
 
@@ -5632,69 +5740,6 @@ function updateBottomNav(id) {
 // SHOP — Fortnight shopping list (additive; reads existing mealPlan)
 // ═════════════════════════════════════════════════════════════════════════
 (function shopFeature(){
-
-  // Woolworths prices (AUD, ~current) + search terms
-  const WOOLWORTHS_PRICES = {
-    rice_cakes:     { price: '~$3.50', q: 'rice cakes' },
-    sweet_potato:   { price: '~$4/kg', q: 'sweet potato' },
-    cottage_cheese: { price: '~$4.50', q: 'cottage cheese' },
-    egg_whites:     { price: '~$6.00', q: 'egg whites liquid' },
-    peanut_butter:  { price: '~$4.50', q: 'peanut butter' },
-    medjool_dates:  { price: '~$7.00', q: 'medjool dates' },
-    rokeby_milk:    { price: '~$3.50', q: 'rokeby farms protein milk' },
-    greek_yogurt:   { price: '~$5.00', q: 'greek yogurt chobani' },
-    hot_sauce:      { price: '~$3.50', q: 'hot sauce sriracha' },
-    soy_sauce:      { price: '~$2.50', q: 'soy sauce' },
-    olive_oil:      { price: '~$6.00', q: 'olive oil' },
-    bell_pepper:    { price: '~$3.50', q: 'capsicum' },
-    salad_greens:   { price: '~$4.00', q: 'salad mix leaves' },
-    salt_pepper:    { price: '~$2.00', q: 'salt pepper' },
-    chicken:        { price: '~$8/kg', q: 'chicken breast' },
-    beef_mince:     { price: '~$7/500g', q: 'beef mince' },
-    steak:          { price: '~$12/kg', q: 'beef steak' },
-    salmon:         { price: '~$10.00', q: 'salmon fillet' },
-    tuna:           { price: '~$2.50', q: 'tuna canned' },
-    fish:           { price: '~$8.00', q: 'white fish fillet' },
-    eggs:           { price: '~$5.50/doz', q: 'eggs dozen' },
-    whey:           { price: '~$35.00', q: 'whey protein powder' },
-    casein:         { price: '~$40.00', q: 'casein protein powder' },
-    rice:           { price: '~$3/kg', q: 'jasmine rice' },
-    potato:         { price: '~$3.50/kg', q: 'potatoes' },
-    oats:           { price: '~$3.50', q: 'rolled oats' },
-    wraps:          { price: '~$4.00', q: 'wraps tortilla' },
-    pasta:          { price: '~$1.50', q: 'pasta' },
-    granola:        { price: '~$5.00', q: 'granola' },
-    bread:          { price: '~$3.50', q: 'bread loaf' },
-    broccoli:       { price: '~$3.00', q: 'broccoli' },
-    spinach:        { price: '~$3.50', q: 'baby spinach' },
-    tomato:         { price: '~$1.50', q: 'tomatoes' },
-    cucumber:       { price: '~$2.00', q: 'cucumber' },
-    zucchini:       { price: '~$2.50', q: 'zucchini' },
-    onion:          { price: '~$2.50/kg', q: 'brown onion' },
-    garlic:         { price: '~$3.00', q: 'garlic bulb' },
-    mushroom:       { price: '~$4.00', q: 'mushrooms' },
-    avocado:        { price: '~$2.00', q: 'avocado' },
-    banana:         { price: '~$3/kg', q: 'bananas' },
-    apple:          { price: '~$5/kg', q: 'apples' },
-    berries:        { price: '~$5.00', q: 'mixed berries frozen' },
-    orange:         { price: '~$4/kg', q: 'oranges' },
-    mango:          { price: '~$2.50', q: 'mango' },
-    milk:           { price: '~$2.50/2L', q: 'full cream milk' },
-    cheese:         { price: '~$4.50', q: 'cheese block' },
-    almonds:        { price: '~$5.50', q: 'almonds' },
-    cashews:        { price: '~$5.00', q: 'cashews' },
-    olives:         { price: '~$4.00', q: 'olives' },
-    seeds:          { price: '~$4.00', q: 'mixed seeds' },
-    honey:          { price: '~$6.00', q: 'honey' },
-    maple:          { price: '~$6.50', q: 'maple syrup' },
-    salt:           { price: '~$1.50', q: 'salt' },
-    pepper:         { price: '~$2.50', q: 'black pepper' },
-    spices:         { price: '~$3.00', q: 'mixed spices seasoning' },
-    cinnamon:       { price: '~$2.50', q: 'cinnamon' },
-    cocoa:          { price: '~$4.00', q: 'cocoa powder' },
-    coffee:         { price: '~$8.00', q: 'instant coffee' },
-    tea:            { price: '~$4.00', q: 'tea bags' },
-  };
   const SHOP_CATEGORIES = {
     protein: { label: 'Protein',     icon: '🍗' },
     carbs:   { label: 'Carbs',       icon: '🍚' },
@@ -5978,11 +6023,9 @@ function updateBottomNav(id) {
           const checked = !!state[item.key];
           const cls = 'shop-item' + (checked ? ' checked' : '');
           const box = checked ? '☑' : '☐';
-          const _wp = WOOLWORTHS_PRICES[item.key];
-          const _priceTag = _wp ? '<a class="shop-price" href="https://www.woolworths.com.au/shop/search/products?searchTerm=' + encodeURIComponent(_wp.q) + '" target="_blank" onclick="event.stopPropagation()">' + _wp.price + ' ↗</a>' : '';
           return '<div class="' + cls + '" onclick="window._shopToggle(\'' + _escHtml(item.key).replace(/'/g, '&#39;') + '\')">'
             + '<div class="shop-cb">' + box + '</div>'
-            + '<div class="shop-name">' + _escHtml(item.name) + _priceTag + '</div>'
+            + '<div class="shop-name">' + _escHtml(item.name) + '</div>'
             + '<div class="shop-qty">' + _escHtml(_fmtQty(item)) + '</div>'
             + '</div>';
         }).join('');
