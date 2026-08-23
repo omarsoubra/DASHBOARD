@@ -946,7 +946,7 @@ const COACH = {
     // { storageKey, displayName, programType, startWeight, goalWeight, startDate, programUrl, phone (E.164 e.g. +61412345678) }
     // ─── Original cohort (May-June starts) ────────────────────────────────
     { storageKey: 'amir',           displayName: 'Amir',           programType: 'Strength Cut',      startWeight: 90,   goalWeight: 80,  startDate: '2026-05-10', programUrl: 'clients/amir/',           phone: '' },
-    { storageKey: 'lana',           displayName: 'Lana',           programType: 'Transformation',    startWeight: 102,  goalWeight: 90,  startDate: '2026-05-25', programUrl: 'clients/lana/',           phone: '' },
+    { storageKey: 'lana',           displayName: 'Lana',           programType: 'Block 2 Gym + Glutes',   startWeight: 97, goalWeight: 85, startDate: '2026-08-17', programUrl: 'clients/lana/',           phone: '' },
     { storageKey: 'yusuf',          displayName: 'Yusuf',          programType: 'Lean Bulk',         startWeight: 67,   goalWeight: 72,  startDate: '2026-05-25', programUrl: 'clients/yusuf/',          phone: '' },
     { storageKey: 'abdullah',       displayName: 'Abdullah',       programType: 'Bulk + Build',      startWeight: 57,   goalWeight: 62,  startDate: '2026-05-25', programUrl: 'clients/abdullah/',       phone: '' },
     { storageKey: 'ilham',          displayName: 'Ilham',          programType: 'Recomp',            startWeight: 57,   goalWeight: 56,  startDate: '2026-05-25', programUrl: 'clients/ilham/',          phone: '' },
@@ -972,6 +972,8 @@ const COACH = {
     { storageKey: 'dib_kerdy',      displayName: 'Dib Kerdy',      programType: 'Knockout Peak — Oct 3', startWeight: 65.3, goalWeight: 58, startDate: '2026-07-31', programUrl: 'clients/dib_kerdy/',      phone: '+61473960408' },
     { storageKey: 'mohammed_taleb', displayName: 'Mohammed Taleb', programType: '12-Wk Abs Cut',       startWeight: 85,   goalWeight: 73, startDate: '2026-07-31', programUrl: 'clients/mohammed_taleb/', phone: '+61449795318' },
     { storageKey: 'mohammed_hardani', displayName: 'Mohammed Hardani', programType: '12-Wk Obesity Cut', startWeight: 124.4, goalWeight: 110, startDate: '2026-07-31', programUrl: 'clients/mohammed_hardani/', phone: '+61414726069' },
+    { storageKey: 'shkar_abubaker', displayName: 'Shkar Abubaker', programType: '12-Wk Cut + Recomp',  startWeight: 85.5, goalWeight: 76, startDate: '2026-08-24', programUrl: 'clients/shkar_abubaker/', phone: '+61407446398' },
+    { storageKey: 'faith_kainuku',  displayName: 'Faith Kainuku',  programType: '12-Wk Glute Lean Bulk', startWeight: 47, goalWeight: 52, startDate: '2026-08-24', programUrl: 'clients/faith_kainuku/', phone: '+61484038482' },
   ],
   get clients() { return loadClients(); },
 };
@@ -1218,27 +1220,27 @@ const BASELINE_MACROS = {
     }
   },
   "lana": {
-    "tdee": 2768,
+    "tdee": 2604,
     "p1": {
-      "cal": 2200,
+      "cal": 1900,
       "p": 184,
-      "c": 170,
-      "f": 87,
-      "deficit": 700
+      "c": 172,
+      "f": 53,
+      "deficit": 704
     },
     "p2": {
-      "cal": 2000,
+      "cal": 1750,
       "p": 184,
-      "c": 132,
-      "f": 82,
-      "deficit": 900
+      "c": 134,
+      "f": 53,
+      "deficit": 854
     },
     "p3": {
-      "cal": 1850,
+      "cal": 1600,
       "p": 184,
-      "c": 108,
-      "f": 76,
-      "deficit": 1100
+      "c": 97,
+      "f": 53,
+      "deficit": 1004
     }
   },
   "maddison": {
@@ -1576,6 +1578,18 @@ const BASELINE_MACROS = {
       "f": 81,
       "deficit": 1200
     }
+  },
+  "shkar_abubaker": {
+    "tdee": 2938,
+    "p1": { "cal": 2200, "p": 197, "c": 237, "f": 51, "deficit": 738 },
+    "p2": { "cal": 2050, "p": 197, "c": 199, "f": 51, "deficit": 888 },
+    "p3": { "cal": 1900, "p": 197, "c": 162, "f": 51, "deficit": 1038 }
+  },
+  "faith_kainuku": {
+    "tdee": 1955,
+    "p1": { "cal": 2100, "p": 94, "c": 357, "f": 33, "deficit": -145 },
+    "p2": { "cal": 2250, "p": 94, "c": 394, "f": 33, "deficit": -295 },
+    "p3": { "cal": 2400, "p": 94, "c": 432, "f": 33, "deficit": -445 }
   }
 };
 
