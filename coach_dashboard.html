@@ -98,6 +98,645 @@
   .sync-status.ok    { color: var(--accent3); border-color: rgba(0,229,160,0.4); }
   .sync-status.err   { color: var(--danger);  border-color: rgba(255,68,102,0.4); }
 
+  /* ─── COMMAND_CENTRE_v1_START ─────────────────────────────────────────── */
+  /* Coach Command Centre — the new default view. Additive; legacy view below. */
+  :root {
+    --cc-green: #2ea86e;    /* on track */
+    --cc-amber: #d99a2c;    /* watch */
+    --cc-red:   #d94848;    /* action required */
+    --cc-blue:  #4f7fff;    /* neutral interaction */
+    --cc-muted: #7c7c95;
+    --cc-text:  #e8e8f0;
+    --cc-surface: #14141d;
+    --cc-surface2: #1a1a24;
+    --cc-border: #262636;
+    --cc-border-strong: #333349;
+  }
+  .cc-section { margin-bottom: 2rem; }
+  .cc-h {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--cc-text);
+    margin: 0 0 0.8rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+  }
+  .cc-h .cc-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--cc-muted);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .cc-h .cc-link {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    color: var(--cc-blue);
+    text-decoration: none;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .cc-h .cc-link:hover { text-decoration: underline; }
+
+  .cc-summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1.75rem;
+  }
+  .cc-summary-card {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+  }
+  .cc-summary-card .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--cc-muted);
+    margin-bottom: 0.35rem;
+  }
+  .cc-summary-card .val {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--cc-text);
+    line-height: 1.1;
+  }
+  .cc-summary-card .val .val-suffix {
+    font-size: 0.9rem;
+    color: var(--cc-muted);
+    font-weight: 400;
+  }
+  .cc-summary-card .desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    color: var(--cc-muted);
+    margin-top: 0.25rem;
+  }
+  .cc-summary-card.attn .val { color: var(--cc-red); }
+  .cc-summary-card.watch .val { color: var(--cc-amber); }
+  .cc-summary-card.ok .val { color: var(--cc-green); }
+
+  /* Needs Attention list */
+  .cc-attn-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .cc-attn-empty {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    color: var(--cc-muted);
+    font-size: 0.88rem;
+  }
+  .cc-attn-row {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    border-left-width: 3px;
+    padding: 0.85rem 1rem;
+    display: grid;
+    grid-template-columns: 1.5fr 0.8fr 2fr auto;
+    gap: 1rem;
+    align-items: center;
+  }
+  .cc-attn-row.sev-red { border-left-color: var(--cc-red); }
+  .cc-attn-row.sev-amber { border-left-color: var(--cc-amber); }
+  .cc-attn-row.sev-blue { border-left-color: var(--cc-blue); }
+  .cc-attn-row .cc-name { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.95rem; color: var(--cc-text); }
+  .cc-attn-row .cc-name .cc-name-sub { display:block; font-size: 0.72rem; color: var(--cc-muted); font-weight: 400; margin-top: 2px; }
+  .cc-attn-row .cc-sev {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    text-transform: uppercase;
+  }
+  .cc-sev.sev-red { color: #fff; background: var(--cc-red); }
+  .cc-sev.sev-amber { color: #1a1200; background: var(--cc-amber); }
+  .cc-sev.sev-blue { color: #fff; background: var(--cc-blue); }
+  .cc-cat-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.66rem;
+    font-weight: 500;
+    color: var(--cc-muted);
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    padding: 0.14rem 0.4rem;
+    border-radius: 4px;
+  }
+  /* v2 attention row — name and reason are the visual anchor, badge is tertiary. */
+  .cc-attn-row.v2 {
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    padding: 0.95rem 1.1rem;
+  }
+  .cc-attn-row.v2 .cc-attn-body { display: block; }
+  .cc-attn-row.v2 .cc-attn-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.15rem;
+  }
+  .cc-attn-row.v2 .cc-name-lg {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--cc-text);
+    letter-spacing: -0.01em;
+  }
+  .cc-attn-row.v2 .cc-name-sub-inline {
+    font-size: 0.75rem;
+    color: var(--cc-muted);
+    font-weight: 400;
+  }
+  .cc-attn-row.v2 .cc-attn-reason-lg {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--cc-text);
+    margin-top: 0.15rem;
+    line-height: 1.35;
+  }
+  .cc-attn-row.v2 .cc-attn-support {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--cc-muted);
+    line-height: 1.45;
+  }
+  .cc-attn-row.v2 .cc-cat-badge {
+    margin-top: 0.5rem;
+    margin-left: 0;
+    display: inline-block;
+  }
+  .cc-attn-row .cc-reason {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.83rem;
+    color: var(--cc-text);
+  }
+  .cc-attn-row .cc-reason .cc-signals {
+    display: block;
+    color: var(--cc-muted);
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+  .cc-attn-row .cc-actions { display:flex; gap:0.4rem; }
+  .cc-btn {
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border-strong);
+    color: var(--cc-text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.42rem 0.85rem;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .cc-btn:hover { border-color: var(--cc-blue); color: var(--cc-blue); }
+  .cc-btn.primary { background: var(--cc-blue); border-color: var(--cc-blue); color: #fff; }
+  .cc-btn.primary:hover { background: #6f9fff; color: #fff; }
+  .cc-btn.ghost { background: transparent; }
+  .cc-btn.sm { font-size: 0.7rem; padding: 0.28rem 0.6rem; }
+
+  /* Compact roster table */
+  .cc-roster-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    align-items: center;
+  }
+  .cc-filter-chip {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .cc-filter-chip.active {
+    background: var(--cc-blue);
+    border-color: var(--cc-blue);
+    color: #fff;
+  }
+  .cc-filter-chip .chip-count {
+    opacity: 0.7;
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .cc-search {
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-text);
+    padding: 0.42rem 0.8rem;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+  }
+  .cc-search:focus { outline:none; border-color: var(--cc-blue); }
+  .cc-roster-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+  }
+  .cc-roster-table th, .cc-roster-table td {
+    padding: 0.7rem 0.9rem;
+    text-align: left;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--cc-border);
+  }
+  .cc-roster-table th {
+    background: var(--cc-surface2);
+    color: var(--cc-muted);
+    font-weight: 500;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .cc-roster-table tr:last-child td { border-bottom: none; }
+  .cc-roster-table tr:hover { background: rgba(79,127,255,0.05); }
+  .cc-roster-table td .cc-name { font-weight: 600; }
+  .cc-roster-table .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .cc-roster-table .trend-up { color: var(--cc-red); }
+  .cc-roster-table .trend-down { color: var(--cc-green); }
+  .cc-roster-table .trend-flat { color: var(--cc-muted); }
+  .cc-status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+  .cc-status-dot.ok { background: var(--cc-green); }
+  .cc-status-dot.watch { background: var(--cc-amber); }
+  .cc-status-dot.attn { background: var(--cc-red); }
+  .cc-status-dot.neutral { background: var(--cc-muted); }
+
+  /* Legacy section wrapper */
+  .cc-legacy {
+    margin-top: 2.5rem;
+    border-top: 1px solid var(--cc-border);
+    padding-top: 1.25rem;
+  }
+  .cc-legacy > summary {
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    color: var(--cc-muted);
+    padding: 0.35rem 0;
+    list-style: none;
+    user-select: none;
+  }
+  .cc-legacy > summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transform: rotate(0deg);
+    transition: transform 0.15s;
+  }
+  .cc-legacy[open] > summary::before { transform: rotate(90deg); }
+  .cc-legacy > summary:hover { color: var(--cc-blue); }
+
+  /* Modal for coach review actions */
+  .cc-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .cc-modal-overlay.open { display: flex; }
+  .cc-modal {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border-strong);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 480px;
+    font-family: 'Inter', sans-serif;
+  }
+  .cc-modal h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .cc-modal label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--cc-muted);
+    margin: 0.9rem 0 0.3rem 0;
+  }
+  .cc-modal input, .cc-modal textarea, .cc-modal select {
+    width: 100%;
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-text);
+    padding: 0.55rem 0.7rem;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+  }
+  .cc-modal textarea { min-height: 80px; resize: vertical; }
+  .cc-modal-buttons { display:flex; gap:0.5rem; justify-content: flex-end; margin-top: 1rem; }
+
+  /* Mobile */
+  @media (max-width: 720px) {
+    .cc-attn-row { grid-template-columns: 1fr; gap: 0.5rem; }
+    .cc-roster-table { font-size: 0.78rem; }
+    .cc-roster-table th:nth-child(4), .cc-roster-table td:nth-child(4),
+    .cc-roster-table th:nth-child(6), .cc-roster-table td:nth-child(6) { display:none; }
+  }
+
+
+  /* ─── WATCHLIST + DATA QUALITY (polish pass) ─────────────────────────── */
+  .cc-watch-list { display: flex; flex-direction: column; gap: 0.4rem; }
+  .cc-watch-empty {
+    background: var(--cc-surface);
+    border: 1px dashed var(--cc-border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    color: var(--cc-muted);
+    font-size: 0.85rem;
+  }
+  /* Watch rows: amber but calmer than attention. Lower contrast, thinner border. */
+  .cc-watch-row {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-left: 2px solid var(--cc-amber);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    display: grid;
+    grid-template-columns: 1.3fr 2fr auto;
+    gap: 0.8rem;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+  }
+  .cc-watch-row .w-name { font-weight: 600; color: var(--cc-text); }
+  .cc-watch-row .w-name .w-sub { display: block; font-size: 0.72rem; color: var(--cc-muted); font-weight: 400; margin-top: 1px; }
+  .cc-watch-row .w-reason { color: var(--cc-text); font-weight: 500; }
+  .cc-watch-row .w-reason .w-signal { display: block; color: var(--cc-muted); font-size: 0.75rem; font-weight: 400; margin-top: 2px; }
+  .cc-watch-row .w-actions { text-align: right; }
+
+  .cc-dq-section {
+    margin-top: 0.4rem;
+    margin-bottom: 1.75rem;
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 8px;
+    padding: 0.5rem 0.85rem;
+  }
+  .cc-dq-section > summary {
+    cursor: pointer;
+    list-style: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    color: var(--cc-muted);
+    padding: 0.15rem 0;
+    user-select: none;
+  }
+  .cc-dq-section > summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.15s;
+  }
+  .cc-dq-section[open] > summary::before {
+    transform: rotate(90deg);
+  }
+  .cc-dq-section > summary:hover { color: var(--cc-blue); }
+  .cc-dq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.55rem;
+    padding-top: 0.55rem;
+    border-top: 1px dashed var(--cc-border);
+  }
+  .cc-dq-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto auto;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.4rem 0.4rem;
+    font-size: 0.8rem;
+    color: var(--cc-muted);
+    border-radius: 4px;
+  }
+  .cc-dq-row:hover { background: var(--cc-surface2); }
+  .cc-dq-row .dq-name { color: var(--cc-text); font-weight: 500; }
+  .cc-dq-row .dq-issue { color: var(--cc-muted); }
+  .cc-dq-row .dq-tag {
+    font-size: 0.68rem;
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-muted);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
+  @media (max-width: 720px) {
+    .cc-watch-row { grid-template-columns: 1fr; gap: 0.4rem; }
+    .cc-watch-row .w-actions { text-align: left; }
+    .cc-dq-row { grid-template-columns: 1fr; gap: 0.2rem; }
+  }
+  /* ─── CHECKIN_QUEUE_v2_START ───────────────────────────────────────────── */
+  .cc-queue-tabs { display:flex; gap:0.35rem; margin-bottom: 0.7rem; flex-wrap: wrap; }
+  .cc-queue-tab {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .cc-queue-tab.active {
+    background: var(--cc-blue);
+    border-color: var(--cc-blue);
+    color: #fff;
+  }
+  .cc-queue-tab .queue-count {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    font-size: 0.72rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.15);
+    font-variant-numeric: tabular-nums;
+  }
+  .cc-queue-list { display: flex; flex-direction: column; gap: 0.55rem; }
+  .cc-queue-empty {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    color: var(--cc-muted);
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  .cc-queue-row {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    border-left-width: 3px;
+    padding: 0.75rem 1rem;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 2fr auto;
+    gap: 0.8rem;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+  }
+  .cc-queue-row.state-new { border-left-color: var(--cc-blue); }
+  .cc-queue-row.state-reviewed { border-left-color: var(--cc-green); opacity: 0.85; }
+  .cc-queue-row.state-overdue { border-left-color: var(--cc-red); }
+  .cc-queue-row.state-historical { border-left-color: var(--cc-muted); opacity: 0.7; }
+  .cc-queue-tab.muted {
+    color: var(--cc-muted);
+    background: transparent;
+    border-color: var(--cc-border);
+  }
+  .cc-queue-tab.muted.active {
+    color: #fff;
+    background: var(--cc-muted);
+    border-color: var(--cc-muted);
+    opacity: 0.9;
+  }
+  .cc-queue-row .qrow-name { font-weight: 600; color: var(--cc-text); }
+  .cc-queue-row .qrow-name .qrow-when { display: block; font-size: 0.72rem; color: var(--cc-muted); font-weight: 400; margin-top: 2px; }
+  .cc-queue-row .qrow-metrics { color: var(--cc-text); }
+  .cc-queue-row .qrow-metric { display: inline-block; margin-right: 0.9rem; font-variant-numeric: tabular-nums; }
+  .cc-queue-row .qrow-metric .lbl { color: var(--cc-muted); font-size: 0.72rem; margin-right: 4px; }
+  .cc-queue-row .qrow-metric .na { color: var(--cc-muted); font-style: italic; }
+  .cc-queue-row .qrow-flags .flag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    margin-right: 4px;
+    background: rgba(217,74,44,0.12);
+    color: var(--cc-red);
+    border: 1px solid rgba(217,74,44,0.3);
+  }
+  .cc-queue-row .qrow-flags .flag.amber {
+    background: rgba(217,154,44,0.12);
+    color: var(--cc-amber);
+    border-color: rgba(217,154,44,0.3);
+  }
+  .cc-queue-row .qrow-actions { text-align: right; }
+  .cc-queue-row .qrow-actions .cc-btn { margin-left: 6px; }
+
+  /* Check-in review modal — bigger + WoW columns */
+  .cc-ci-modal {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border-strong);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 780px;
+    max-height: 92vh;
+    overflow-y: auto;
+    font-family: 'Inter', sans-serif;
+  }
+  .cc-ci-modal h3 { font-size: 1.15rem; margin-bottom: 0.3rem; }
+  .cc-ci-modal .cc-ci-sub { font-size: 0.82rem; color: var(--cc-muted); margin-bottom: 1rem; }
+  .cc-ci-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .cc-ci-col {
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    border-radius: 8px;
+    padding: 0.8rem;
+  }
+  .cc-ci-col .col-title {
+    font-size: 0.7rem;
+    color: var(--cc-muted);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+  .cc-ci-metric {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    font-size: 0.85rem;
+    border-bottom: 1px dashed var(--cc-border);
+  }
+  .cc-ci-metric:last-child { border-bottom: none; }
+  .cc-ci-metric .m-label { color: var(--cc-muted); }
+  .cc-ci-metric .m-value { color: var(--cc-text); font-variant-numeric: tabular-nums; }
+  .cc-ci-delta { font-size: 0.78rem; margin-left: 6px; }
+  .cc-ci-delta.better { color: var(--cc-green); }
+  .cc-ci-delta.worse  { color: var(--cc-red); }
+  .cc-ci-delta.flat   { color: var(--cc-muted); }
+  .cc-ci-flags { margin-bottom: 0.8rem; }
+  .cc-ci-flags .flag { display: inline-block; margin-right: 6px; margin-bottom: 4px; }
+  .cc-ci-notes {
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    border-radius: 8px;
+    padding: 0.8rem;
+    font-size: 0.85rem;
+    color: var(--cc-text);
+    white-space: pre-wrap;
+    margin-bottom: 1rem;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .cc-ci-context {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+  }
+  .cc-ci-context .item {
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    border-radius: 6px;
+    padding: 0.55rem 0.75rem;
+  }
+  .cc-ci-context .item .lbl { font-size: 0.7rem; color: var(--cc-muted); margin-bottom: 2px; }
+
+  @media (max-width: 720px) {
+    .cc-queue-row {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+    }
+    .cc-queue-row .qrow-actions { text-align: left; }
+    .cc-ci-cols { grid-template-columns: 1fr; }
+  }
+  /* ─── CHECKIN_QUEUE_v2_END ─────────────────────────────────────────────── */
+  /* ─── COMMAND_CENTRE_v1_END ───────────────────────────────────────────── */
+
   /* Summary bar */
   .summary-row {
     display: grid;
@@ -848,45 +1487,542 @@
     </div>
   </div>
 
-  <!-- Add/Edit client modal -->
-  <div class="detail-overlay" id="client-form-overlay" onclick="if(event.target===this)closeClientForm()">
-    <div class="detail-panel" style="max-width:560px;">
-      <button class="detail-close" onclick="closeClientForm()">✕ CLOSE</button>
-      <div class="detail-header" style="margin-bottom:1rem;">
-        <h2 id="client-form-title">ADD CLIENT</h2>
-      </div>
-      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Storage key must match the <code style="color:var(--accent3);">storageKey</code> in the client's program JSON (also their localStorage prefix). The program URL is the relative path from the dashboard to the client's HTML file.</p>
-      <div style="display:grid;grid-template-columns:140px 1fr;gap:0.7rem 1rem;align-items:center;margin-bottom:1.5rem;">
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Storage key</label>
-        <input id="cf-storage" type="text" placeholder="e.g. amir" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Display name</label>
-        <input id="cf-name" type="text" placeholder="e.g. Amir" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Program type</label>
-        <input id="cf-type" type="text" placeholder="e.g. Strength Cut" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Start weight (kg)</label>
-        <input id="cf-start-weight" type="number" step="0.1" placeholder="e.g. 95" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Goal weight (kg)</label>
-        <input id="cf-goal-weight" type="number" step="0.1" placeholder="e.g. 80" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Start date</label>
-        <input id="cf-start-date" type="date" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Program URL</label>
-        <input id="cf-url" type="text" placeholder="e.g. clients/amir_program.html" />
-        <label style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Phone (optional)</label>
-        <input id="cf-phone" type="text" placeholder="e.g. +61412345678 (E.164)" />
-      </div>
-      <style>
-        #client-form-overlay input { background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.8rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.85rem; }
-        #client-form-overlay input:focus { outline:none;border-color:var(--accent); }
-      </style>
-      <div style="display:flex;gap:0.6rem;justify-content:space-between;flex-wrap:wrap;">
-        <button class="btn" onclick="resetClientsToDefault()" style="color:var(--warn);border-color:rgba(255,184,74,0.4);">↶ RESET TO DEFAULTS</button>
-        <div style="display:flex;gap:0.6rem;">
-          <button class="btn" onclick="closeClientForm()">CANCEL</button>
-          <button class="btn primary" onclick="saveClientForm()">SAVE</button>
+  <!-- ─── ADDEDIT_v2_START — redesigned Add/Edit modal ─────────────────── -->
+  <style>
+    /* Overlay uses flex centring so the panel actually fits and scrolls on
+       any viewport size, unlike the old fixed-position panel. */
+    #client-form-overlay.cf-v2 {
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px;
+      overflow-y: auto;
+    }
+    .cf-panel {
+      width: 100%;
+      max-width: 960px;
+      background: var(--surface, #14161c);
+      border: 1px solid var(--border, rgba(255,255,255,0.08));
+      border-radius: 12px;
+      color: var(--text, #f2f2f5);
+      font-family: 'Inter', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 48px);
+      overflow: hidden;
+    }
+    .cf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: var(--surface);
+      z-index: 2;
+    }
+    .cf-title { font-family: 'Inter', sans-serif; font-size: 1.05rem; font-weight: 600; letter-spacing: 0; margin: 0; }
+    .cf-mode-badge { font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(0,122,255,0.12); color: #6ea8ff; letter-spacing: 0.02em; font-weight: 500; }
+    .cf-mode-badge.edit  { background: rgba(255,184,74,0.14); color: #ffb84a; }
+    .cf-close { background: transparent; border: 0; color: var(--muted, #8a8f99); font-size: 0.9rem; cursor: pointer; padding: 4px 8px; }
+    .cf-close:hover { color: var(--text); }
+
+    .cf-body {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+      display: grid;
+      gap: 1.5rem;
+    }
+    .cf-section {
+      display: grid;
+      gap: 0.75rem;
+    }
+    .cf-section-h {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.01em;
+      margin: 0 0 0.15rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .cf-section-h .cf-section-hint {
+      font-weight: 400;
+      color: var(--muted, #8a8f99);
+      font-size: 0.72rem;
+    }
+    .cf-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem 1rem;
+    }
+    .cf-grid.macros { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cf-grid.single { grid-template-columns: 1fr; }
+    @media (max-width: 720px) {
+      .cf-grid, .cf-grid.macros { grid-template-columns: 1fr; }
+      .cf-panel { max-height: calc(100vh - 20px); border-radius: 8px; }
+      #client-form-overlay.cf-v2 { padding: 10px; }
+    }
+    .cf-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .cf-field label {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      color: var(--muted, #8a8f99);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .cf-field .cf-req { color: #ff5b5b; margin-left: 2px; }
+    .cf-field input,
+    .cf-field select,
+    .cf-field textarea {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.55rem 0.7rem;
+      border-radius: 6px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.9rem;
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+    .cf-field textarea { resize: vertical; min-height: 56px; }
+    .cf-field input:focus,
+    .cf-field select:focus,
+    .cf-field textarea:focus {
+      outline: none;
+      border-color: #6ea8ff;
+      box-shadow: 0 0 0 3px rgba(110,168,255,0.15);
+    }
+    .cf-field .cf-hint {
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .cf-field .cf-err {
+      font-size: 0.72rem;
+      color: #ff5b5b;
+      min-height: 0.9em;
+    }
+    .cf-field.readonly input,
+    .cf-field.readonly select {
+      background: rgba(255,255,255,0.015);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+    .cf-inline {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .cf-inline .cf-unit { font-size: 0.7rem; color: var(--muted); }
+
+    .cf-lifecycle-panel {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .cf-lifecycle-panel .cf-lifecycle-status {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .cf-lifecycle-panel .cf-lifecycle-status strong { color: var(--text); }
+    .cf-lifecycle-buttons { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .cf-lifecycle-buttons .btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0;
+      text-transform: none;
+      padding: 0.4rem 0.7rem;
+    }
+    .cf-access-panel { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+    .cf-program-info {
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+    }
+    .cf-program-info code {
+      color: #a8c8ff;
+      background: rgba(168,200,255,0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      word-break: break-all;
+    }
+    .cf-program-pending { color: #ffb84a; font-weight: 500; }
+
+    .cf-advanced summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding: 0.35rem 0;
+      user-select: none;
+    }
+    .cf-advanced summary::-webkit-details-marker { display: none; }
+    .cf-advanced summary::before { content: '▸ '; }
+    .cf-advanced[open] summary::before { content: '▾ '; }
+    .cf-advanced[open] summary { color: var(--text); }
+    .cf-advanced .cf-advanced-inner {
+      padding: 0.6rem;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .cf-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      padding: 0.9rem 1.25rem;
+      border-top: 1px solid var(--border);
+      position: sticky; bottom: 0;
+      background: var(--surface);
+      z-index: 2;
+    }
+    .cf-footer .cf-footer-left { margin-right: auto; }
+    .cf-footer .btn { font-family: 'Inter', sans-serif; font-size: 0.85rem; letter-spacing: 0; text-transform: none; }
+    .cf-footer .btn.primary { padding: 0.55rem 1.1rem; font-weight: 600; }
+    .cf-footer .btn.danger { color: #ff8a8a; border-color: rgba(255,138,138,0.35); background: transparent; opacity: 0.75; }
+    .cf-footer .btn.danger:hover { opacity: 1; }
+    .cf-form-error {
+      color: #ff5b5b;
+      font-size: 0.78rem;
+      padding: 0 1.25rem 0.5rem;
+    }
+  </style>
+
+  <div class="detail-overlay cf-v2" id="client-form-overlay" onclick="if(event.target===this)closeClientForm()" role="dialog" aria-modal="true" aria-labelledby="client-form-title">
+    <div class="cf-panel" onclick="event.stopPropagation();">
+      <!-- STICKY HEADER -->
+      <div class="cf-header">
+        <div style="display:flex;align-items:center;gap:0.6rem;min-width:0;">
+          <h2 class="cf-title" id="client-form-title">Add client</h2>
+          <span class="cf-mode-badge" id="cf-mode-badge">NEW</span>
         </div>
+        <button class="cf-close" onclick="closeClientForm()" aria-label="Close">✕ Close</button>
+      </div>
+
+      <!-- FORM BODY -->
+      <form id="cf-form" class="cf-body" onsubmit="event.preventDefault(); saveClientForm();" autocomplete="off">
+
+        <!-- SECTION 1 — CLIENT -->
+        <section class="cf-section" aria-labelledby="cf-h-client">
+          <h3 class="cf-section-h" id="cf-h-client">Client<span class="cf-section-hint">Basic identity</span></h3>
+          <div class="cf-grid">
+            <div class="cf-field">
+              <label for="cf-name">Display name <span class="cf-req">*</span></label>
+              <input id="cf-name" type="text" placeholder="e.g. Faith Kainuku" oninput="onDisplayNameChange()" autocomplete="off" required />
+              <div class="cf-err" id="cf-err-name"></div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-start-date">Start date</label>
+              <input id="cf-start-date" type="date" />
+              <div class="cf-hint">Used to age the program (Week N).</div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-email">Email <span class="cf-hint" style="display:inline;">(optional)</span></label>
+              <input id="cf-email" type="email" placeholder="faith@example.com" autocomplete="off" />
+              <div class="cf-err" id="cf-err-email"></div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-phone">Phone <span class="cf-hint" style="display:inline;">(optional, E.164)</span></label>
+              <input id="cf-phone" type="tel" placeholder="+61412345678" autocomplete="off" />
+              <div class="cf-err" id="cf-err-phone"></div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-checkin-day">Check-in day</label>
+              <select id="cf-checkin-day">
+                <option value="">— none —</option>
+                <option value="Sunday">Sunday</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+              </select>
+              <div class="cf-hint">Which day the coach expects a check-in.</div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-type">Program type</label>
+              <input id="cf-type" type="text" placeholder="e.g. Fat Loss, Lean Bulk, Recomp" />
+              <div class="cf-hint">Short label surfaced in the roster.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2 — GOAL -->
+        <section class="cf-section" aria-labelledby="cf-h-goal">
+          <h3 class="cf-section-h" id="cf-h-goal">Goal<span class="cf-section-hint">Baseline &amp; target — not overwritten on edit</span></h3>
+          <div class="cf-grid">
+            <div class="cf-field">
+              <label for="cf-start-weight">Start weight <span class="cf-unit">(kg)</span></label>
+              <input id="cf-start-weight" type="number" min="20" max="300" step="0.1" placeholder="e.g. 95" />
+              <div class="cf-err" id="cf-err-startw"></div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-goal-weight">Goal weight <span class="cf-unit">(kg)</span></label>
+              <input id="cf-goal-weight" type="number" min="20" max="300" step="0.1" placeholder="e.g. 80" />
+              <div class="cf-err" id="cf-err-goalw"></div>
+            </div>
+            <div class="cf-field" style="grid-column:1/-1;">
+              <label for="cf-goal">Specific goal <span class="cf-hint" style="display:inline;">(free text)</span></label>
+              <input id="cf-goal" type="text" placeholder="e.g. 75 kg by Oct 3 · Peak cut for fight · Nikkah lean-bulk" />
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3 — NUTRITION & ACTIVITY -->
+        <section class="cf-section" aria-labelledby="cf-h-nutrition">
+          <h3 class="cf-section-h" id="cf-h-nutrition">Nutrition &amp; activity<span class="cf-section-hint">Initial baseline targets</span></h3>
+          <div class="cf-grid">
+            <div class="cf-field">
+              <label for="cf-kcal">Kcal (P1) <span class="cf-unit">(kcal)</span></label>
+              <input id="cf-kcal" type="number" min="800" max="6000" step="10" placeholder="e.g. 2100" />
+              <div class="cf-err" id="cf-err-kcal"></div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-steps">Step target</label>
+              <input id="cf-steps" type="number" min="0" max="40000" step="500" placeholder="e.g. 8000" />
+            </div>
+          </div>
+          <div class="cf-grid macros" style="margin-top:0.25rem;">
+            <div class="cf-field">
+              <label for="cf-p">Protein <span class="cf-unit">(g)</span></label>
+              <input id="cf-p" type="number" min="0" max="400" step="1" placeholder="e.g. 180" />
+            </div>
+            <div class="cf-field">
+              <label for="cf-c">Carbs <span class="cf-unit">(g)</span></label>
+              <input id="cf-c" type="number" min="0" max="800" step="1" placeholder="e.g. 220" />
+            </div>
+            <div class="cf-field">
+              <label for="cf-f">Fat <span class="cf-unit">(g)</span></label>
+              <input id="cf-f" type="number" min="0" max="300" step="1" placeholder="e.g. 60" />
+            </div>
+          </div>
+          <div class="cf-err" id="cf-err-macros"></div>
+        </section>
+
+        <!-- SECTION 4 — TRAINING & PROGRAM -->
+        <section class="cf-section" aria-labelledby="cf-h-training">
+          <h3 class="cf-section-h" id="cf-h-training">Training &amp; program<span class="cf-section-hint">Where the program lives</span></h3>
+          <div class="cf-grid">
+            <div class="cf-field">
+              <label for="cf-phase">Training phase <span class="cf-hint" style="display:inline;">(coach override)</span></label>
+              <input id="cf-phase" type="text" placeholder="e.g. P1 Foundation" />
+              <div class="cf-hint">Leave blank to defer to the program's own phase metadata.</div>
+            </div>
+            <div class="cf-field">
+              <label>Program status</label>
+              <div class="cf-program-info" id="cf-program-info">
+                <span id="cf-program-info-label">Program pending</span>
+              </div>
+              <div class="cf-hint">URL is derived from the registry — never typed manually.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 5 — STATUS & ACCESS -->
+        <section class="cf-section" aria-labelledby="cf-h-status">
+          <h3 class="cf-section-h" id="cf-h-status">Status &amp; access<span class="cf-section-hint">Lifecycle transitions live on their own buttons</span></h3>
+
+          <!-- Lifecycle summary + explicit buttons (edit mode) -->
+          <div class="cf-lifecycle-panel">
+            <div class="cf-lifecycle-status">Coaching lifecycle: <strong id="cf-lifecycle-current">—</strong></div>
+            <div class="cf-lifecycle-buttons" id="cf-lifecycle-buttons"></div>
+            <div class="cf-hint" id="cf-lifecycle-hint">Lifecycle changes require confirmation. Onboarding = grace period, no overdue alerts. Paused = temporarily off the operational roster. Archived = historical only.</div>
+          </div>
+
+          <!-- Access state (flag only in this sprint) -->
+          <div class="cf-lifecycle-panel" style="margin-top:0.25rem;">
+            <div class="cf-lifecycle-status">Client access: <strong id="cf-access-current">Active</strong></div>
+            <div class="cf-access-panel" id="cf-access-buttons"></div>
+            <div class="cf-hint">Full server-side revocation is not yet enabled — flag only for now. Real enforcement ships in the follow-up sprint.</div>
+          </div>
+
+          <div class="cf-field">
+            <label for="cf-notes">Coach notes <span class="cf-hint" style="display:inline;">(optional)</span></label>
+            <textarea id="cf-notes" rows="3" placeholder="Anything worth remembering about this client…"></textarea>
+          </div>
+
+          <!-- Advanced — storage key + programUrl (read-only unless truly needed) -->
+          <details class="cf-advanced" id="cf-advanced">
+            <summary>Advanced</summary>
+            <div class="cf-advanced-inner">
+              <div class="cf-grid">
+                <div class="cf-field readonly">
+                  <label for="cf-storage">Storage key</label>
+                  <input id="cf-storage" type="text" readonly />
+                  <div class="cf-hint">Auto-derived from the display name. Immutable after creation — override only for a deliberate migration.</div>
+                </div>
+                <div class="cf-field readonly">
+                  <label for="cf-url">Program URL</label>
+                  <input id="cf-url" type="text" readonly />
+                  <div class="cf-hint">Derived from the registry.</div>
+                </div>
+              </div>
+              <label style="display:flex;gap:0.4rem;align-items:center;font-size:0.75rem;color:var(--muted);cursor:pointer;">
+                <input type="checkbox" id="cf-allow-key-override" style="width:auto;" onchange="onAllowKeyOverride()"/>
+                I know what I'm doing — allow storageKey override (migration only)
+              </label>
+            </div>
+          </details>
+
+          <!-- Legacy hidden lifecycle dropdown — kept for backwards-compat scripts
+               that still read `cf-status`. Never shown; lifecycle changes happen
+               through the explicit buttons above. -->
+          <select id="cf-status" style="display:none;" aria-hidden="true">
+            <option value="onboarding">onboarding</option>
+            <option value="active">active</option>
+            <option value="paused">paused</option>
+            <option value="archived">archived</option>
+          </select>
+          <!-- Legacy hidden mount for lifecycle actions; kept so old
+               _renderLifecycleActions callers don't error. -->
+          <div id="cf-lifecycle-actions" style="display:none;"></div>
+        </section>
+
+        <div class="cf-form-error" id="cf-form-error" role="alert" aria-live="polite"></div>
+      </form>
+
+      <!-- STICKY FOOTER -->
+      <div class="cf-footer">
+        <div class="cf-footer-left">
+          <button type="button" class="btn danger" onclick="dangerResetClientsToDefault()" title="Requires typed confirmation">↶ Reset roster</button>
+        </div>
+        <button type="button" class="btn" onclick="closeClientForm()">Cancel</button>
+        <button type="button" class="btn primary" id="cf-submit-btn" onclick="saveClientForm()">Create client</button>
       </div>
     </div>
   </div>
+  <!-- ─── ADDEDIT_v2_END ─────────────────────────────────────────────── -->
+
+  <!-- ─── COMMAND_CENTRE_v1_START ─────────────────────────────────────── -->
+  <!-- New Overview / Command Centre — the operational view of "who needs me". -->
+
+  <!-- Summary cards (5) -->
+  <div class="cc-summary-row" id="cc-summary-row"></div>
+
+  <!-- Needs Attention section -->
+  <div class="cc-section" id="cc-attn-section">
+    <div class="cc-h">
+      <span>Needs attention</span>
+      <span class="cc-sub" id="cc-attn-sub">—</span>
+    </div>
+    <div class="cc-attn-list" id="cc-attn-list"></div>
+  </div>
+
+  <!-- Watchlist — calmer amber tier, sits between Needs Attention and Check-in Queue -->
+  <div class="cc-section" id="cc-watch-section">
+    <div class="cc-h">
+      <span>Watchlist</span>
+      <span class="cc-sub" id="cc-watch-sub">—</span>
+    </div>
+    <div class="cc-watch-list" id="cc-watch-list"></div>
+  </div>
+
+  <!-- Data Quality — muted, collapsible. Never inflates urgent counts. -->
+  <details class="cc-dq-section" id="cc-dq-details">
+    <summary id="cc-dq-summary">Data Quality — 0 clients</summary>
+    <div class="cc-dq-list" id="cc-dq-list"></div>
+  </details>
+
+  <!-- ─── CHECKIN_QUEUE_v2_START ─────────────────────────────────────── -->
+  <div class="cc-section" id="cc-checkin-section">
+    <div class="cc-h">
+      <span>Check-in queue</span>
+      <span class="cc-sub" id="cc-ci-sub">—</span>
+    </div>
+    <div class="cc-queue-tabs" id="cc-ci-tabs"></div>
+    <div class="cc-queue-list" id="cc-ci-list"></div>
+  </div>
+
+  <!-- Check-in review modal -->
+  <div class="cc-modal-overlay" id="cc-ci-modal" onclick="if(event.target===this)closeCheckInReview()">
+    <div class="cc-ci-modal" id="cc-ci-modal-body"></div>
+  </div>
+  <!-- ─── CHECKIN_QUEUE_v2_END ───────────────────────────────────────── -->
+
+  <!-- Compact roster -->
+  <div class="cc-section" id="cc-roster-section">
+    <div class="cc-h">
+      <span>Roster</span>
+      <span class="cc-sub" id="cc-roster-sub">—</span>
+    </div>
+    <div class="cc-roster-controls">
+      <input class="cc-search" id="cc-search" type="text" placeholder="Search name or key…" oninput="renderCompactRoster()"/>
+      <span id="cc-filter-chips"></span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="cc-roster-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Status</th>
+            <th class="num">Current Wt</th>
+            <th class="num">7-Day Trend</th>
+            <th class="num">Adherence</th>
+            <th class="num">Check-in</th>
+            <th class="num">Last review</th>
+            <th>Next action</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cc-roster-body">
+          <tr><td colspan="9" style="text-align:center;color:var(--cc-muted);padding:2rem;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Coach review / Next action modal -->
+  <div class="cc-modal-overlay" id="cc-review-modal" onclick="if(event.target===this)closeReviewModal()">
+    <div class="cc-modal">
+      <h3 id="cc-review-title">Mark review complete</h3>
+      <p style="font-size:0.82rem;color:var(--cc-muted);margin:0.25rem 0 0.5rem 0;" id="cc-review-hint">Recording a meaningful coach review. This resets the review-overdue timer and appends to <code>coachReviewHistory</code>.</p>
+      <label>Outcome <span style="color:var(--cc-red);">*</span></label>
+      <select id="cc-review-outcome">
+        <option value="">— pick one —</option>
+        <option value="no_change">No change required</option>
+        <option value="nutrition_adjusted">Nutrition adjusted</option>
+        <option value="training_adjusted">Training adjusted</option>
+        <option value="activity_adjusted">Activity / steps adjusted</option>
+        <option value="checkin_feedback">Check-in feedback completed</option>
+        <option value="follow_up_task">Follow-up / task created</option>
+        <option value="other">Other</option>
+      </select>
+      <label>Note (optional)</label>
+      <textarea id="cc-review-note" placeholder="e.g. Reviewed 7-day weight trend, kcal steady, told her to bump steps to 9k…"></textarea>
+      <label>Next action (optional)</label>
+      <input id="cc-review-next-action" type="text" placeholder="e.g. Reassess weight trend Sunday"/>
+      <label>Next action due (optional)</label>
+      <input id="cc-review-next-due" type="date"/>
+      <div class="cc-modal-buttons">
+        <button class="cc-btn ghost" onclick="closeReviewModal()">Cancel</button>
+        <button class="cc-btn primary" onclick="submitReview()">Save review</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legacy view (collapsible) — every prior feature preserved unchanged. -->
+  <details class="cc-legacy" id="cc-legacy">
+    <summary>Legacy view — old summary cards, digest, activity feed, client cards</summary>
+  <!-- ─── COMMAND_CENTRE_v1_END ───────────────────────────────────────── -->
 
   <!-- SUMMARY BAR -->
   <div class="summary-row" id="summary-row"></div>
@@ -927,6 +2063,7 @@
   <div class="client-grid" id="client-grid">
     <div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:2rem;">Loading…</div>
   </div>
+  </details><!-- /cc-legacy -->
 
 </div>
 
@@ -1635,6 +2772,180 @@ async function pushRoster() {
   }
 }
 
+// ─── REGISTRY_v1_START — programs registry + safe merge ─────────────────────
+// clients_registry.json is generated by build_client_registry.py and lives
+// alongside coach_dashboard.html on GitHub Pages. It is the single source of
+// truth for "which programs exist, where they live, what type they are".
+//
+// Field ownership — enforced strictly by mergeRegistryIntoRoster:
+//   PROGRAM_OWNED  — comes from the client's JSON config / generated program.
+//                    Registry may overwrite these on every merge.
+//   DASHBOARD_OWNED — captured through the coach's UI. Registry NEVER touches
+//                     these. Overwriting them would silently destroy live
+//                     coaching state.
+const PROGRAM_OWNED_FIELDS = Object.freeze([
+  'displayName',
+  'programType',
+  'programGoal',
+  'programUrl',
+  'programUpdatedAt',
+  'programBuildHash',
+  'programSourcePath',
+  'phaseCount',
+  'durationWeeks',
+  'trainingDaysPerWeek',
+  'cuisine',
+]);
+const DASHBOARD_OWNED_FIELDS = Object.freeze([
+  // lifecycle
+  'programStatus', 'isPaused', 'pausedAt', 'resumeDate',
+  'archivedAt', 'archiveReason',
+  // access model (flag only in this sprint — no server-side enforcement yet)
+  'accessStatus', 'accessRevokedAt', 'accessRevokedReason', 'accessRestoredAt',
+  // coach review state
+  'coachReviewHistory', 'lastMeaningfulCoachReview', 'checkInReviews',
+  // coach actions / notes
+  'nextCoachAction', 'nextCoachActionDue', 'coachNotes',
+  // operational overrides — coach may edit these locally per-client
+  'phone', 'email', 'startDate', 'checkInDay',
+  'kcal', 'p', 'c', 'f', 'steps', 'goal', 'phase',
+  'startWeight', 'goalWeight',  // coach-edited overrides survive registry rebuild
+]);
+
+let _clientsRegistry = null;             // last-known registry payload
+let _registryFetchStatus = 'idle';       // 'idle' | 'ok' | 'err' | 'missing'
+let _registryLastFetchMs = 0;
+
+async function fetchClientsRegistry() {
+  // Resolve relative to the dashboard page itself — works both on
+  // omarsoubra.github.io/DASHBOARD/ and any local mirror.
+  const url = 'clients_registry.json?_=' + Date.now();
+  try {
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) {
+      _registryFetchStatus = resp.status === 404 ? 'missing' : 'err';
+      return null;
+    }
+    const data = await resp.json();
+    if (!data || !Array.isArray(data.clients)) {
+      _registryFetchStatus = 'err';
+      return null;
+    }
+    _clientsRegistry = data;
+    _registryFetchStatus = 'ok';
+    _registryLastFetchMs = Date.now();
+    return data;
+  } catch (e) {
+    console.warn('fetchClientsRegistry failed', e);
+    _registryFetchStatus = 'err';
+    return null;
+  }
+}
+
+/**
+ * Merge the client registry into the persisted roster.
+ * Rules:
+ *   - New key in registry, missing from roster → create a fresh onboarding entry.
+ *   - Key exists in both → overwrite only PROGRAM_OWNED_FIELDS. Everything else
+ *     is preserved untouched.
+ *   - Key in roster but missing from registry → keep the roster entry. Flag it
+ *     as programMissing = true so the UI can surface "Program pending / missing".
+ *   - Any registry fetch failure → this function is not called; persisted roster
+ *     stands as-is.
+ * Returns { list, added, updated, missing } for logging.
+ */
+function mergeRegistryIntoRoster(roster, registry) {
+  const list = Array.isArray(roster) ? roster.slice() : [];
+  const registryByKey = new Map();
+  (registry.clients || []).forEach(r => {
+    if (r && r.storageKey) registryByKey.set(r.storageKey, r);
+  });
+
+  const added = [];
+  const updated = [];
+  const missing = [];
+
+  // Apply registry to existing entries
+  const byKey = new Map(list.map(c => [c.storageKey, c]));
+  for (const [key, regEntry] of registryByKey.entries()) {
+    if (byKey.has(key)) {
+      const existing = byKey.get(key);
+      // Take only allow-listed fields off the registry entry
+      let touched = false;
+      for (const f of PROGRAM_OWNED_FIELDS) {
+        if (regEntry[f] === undefined || regEntry[f] === null) continue;
+        // startWeight/goalWeight are dashboard-owned — never overwrite them
+        // (they are ALSO in the registry as baseline, but the coach may have
+        // edited the live value; the registry supplies a fallback only).
+        if (existing[f] !== undefined && existing[f] !== null && existing[f] !== '') continue;
+        existing[f] = regEntry[f];
+        touched = true;
+      }
+      // Always refresh identity/URL fields — these ARE program-owned truth
+      const alwaysRefresh = ['programUrl', 'programUpdatedAt', 'programBuildHash', 'programSourcePath', 'programType', 'programGoal'];
+      for (const f of alwaysRefresh) {
+        if (regEntry[f] !== undefined && regEntry[f] !== null && existing[f] !== regEntry[f]) {
+          existing[f] = regEntry[f];
+          touched = true;
+        }
+      }
+      // Clear program-pending flag if present
+      if (existing.programPending) { delete existing.programPending; touched = true; }
+      if (existing.programMissing) { delete existing.programMissing; touched = true; }
+      if (touched) updated.push(key);
+    } else {
+      // New client program — bring them in as ONBOARDING so they never
+      // trigger operational alerts on day one.
+      const entry = { storageKey: key };
+      for (const f of PROGRAM_OWNED_FIELDS) {
+        if (regEntry[f] !== undefined && regEntry[f] !== null) entry[f] = regEntry[f];
+      }
+      // Bring baseline weights in as starting values (dashboard can edit later)
+      if (regEntry.startWeight != null) entry.startWeight = regEntry.startWeight;
+      if (regEntry.goalWeight != null)  entry.goalWeight  = regEntry.goalWeight;
+      // Optional contact info
+      if (regEntry.phone) entry.phone = regEntry.phone;
+      if (regEntry.email) entry.email = regEntry.email;
+      // Default lifecycle
+      entry.programStatus = 'onboarding';
+      entry.isPaused = false;
+      entry.accessStatus = 'active';
+      list.push(entry);
+      added.push(key);
+    }
+  }
+
+  // Flag roster entries whose program has disappeared from the registry
+  // (do NOT delete them — coach decides).
+  for (const c of list) {
+    if (!c || !c.storageKey) continue;
+    if (!registryByKey.has(c.storageKey)) {
+      c.programMissing = true;
+      missing.push(c.storageKey);
+    }
+  }
+
+  return { list, added, updated, missing };
+}
+
+/**
+ * Run the merge, save the result locally and push to cloud if anything changed.
+ */
+async function mergeAndPersistRegistry(registry) {
+  if (!registry || !Array.isArray(registry.clients)) return null;
+  const before = loadClients();
+  const { list, added, updated, missing } = mergeRegistryIntoRoster(before, registry);
+  if (added.length || updated.length || missing.length) {
+    saveClients(list);
+    COACH.clients = list;
+    // Fire-and-forget cloud push — non-blocking
+    pushRoster().catch(() => {});
+    console.info('[registry] merge result', { added, updated, missing });
+  }
+  return { added, updated, missing };
+}
+// ─── REGISTRY_v1_END ────────────────────────────────────────────────────────
+
 /**
  * Pull the roster from the Sheets Roster tab. If the cloud version is newer
  * than the local version, replace local. Returns true if local was updated.
@@ -1710,57 +3021,569 @@ async function resetClientsToDefault() {
   closeClientForm();
 }
 
-// ─── Client form (add/edit) ───
+// ─── ADDEDIT_v2 — client form (add/edit) ───────────────────────────────
 let _editingStorageKey = null;
+
+function _slugify(name) {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFKD')                     // strip diacritics
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+}
+function _deriveUniqueStorageKey(displayName, ignoreKey) {
+  const base = _slugify(displayName);
+  if (!base) return '';
+  const used = new Set(loadClients().map(c => c.storageKey).filter(k => k && k !== ignoreKey));
+  if (!used.has(base)) return base;
+  for (let i = 2; i < 100; i++) {
+    const k = base + '_' + i;
+    if (!used.has(k)) return k;
+  }
+  return base + '_' + Date.now();
+}
+function _emailLooksValid(s) {
+  s = (s || '').trim();
+  if (!s) return true; // optional
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+function _phoneLooksValid(s) {
+  s = (s || '').trim();
+  if (!s) return true; // optional
+  // Very permissive: at least 6 digits after optional +
+  return /^\+?[0-9\s\-()]{6,}$/.test(s);
+}
+
 function openClientForm(storageKey) {
   _editingStorageKey = storageKey || null;
-  if (storageKey) {
-    const c = loadClients().find(c => c.storageKey === storageKey);
-    document.getElementById('client-form-title').textContent = 'EDIT — ' + c.displayName.toUpperCase();
-    document.getElementById('cf-storage').value      = c.storageKey;
-    document.getElementById('cf-storage').disabled   = true;
-    document.getElementById('cf-name').value         = c.displayName;
-    document.getElementById('cf-type').value         = c.programType;
-    document.getElementById('cf-start-weight').value = c.startWeight;
-    document.getElementById('cf-goal-weight').value  = c.goalWeight;
-    document.getElementById('cf-start-date').value   = c.startDate;
-    document.getElementById('cf-url').value          = c.programUrl;
-    document.getElementById('cf-phone').value        = c.phone || '';
+  const $ = id => document.getElementById(id);
+  const isEdit = !!storageKey;
+
+  // Reset error slots
+  ['cf-err-name','cf-err-email','cf-err-phone','cf-err-startw','cf-err-goalw','cf-err-kcal','cf-err-macros','cf-form-error'].forEach(id => { const n = $(id); if (n) n.textContent = ''; });
+
+  if (isEdit) {
+    const c = loadClients().find(x => x.storageKey === storageKey) || {};
+    $('client-form-title').textContent = 'Edit — ' + (c.displayName || storageKey);
+    $('cf-mode-badge').textContent = 'EDIT'; $('cf-mode-badge').className = 'cf-mode-badge edit';
+    $('cf-submit-btn').textContent = 'Save changes';
+
+    $('cf-name').value         = c.displayName || '';
+    $('cf-email').value        = c.email || '';
+    $('cf-phone').value        = c.phone || '';
+    $('cf-start-date').value   = c.startDate || '';
+    $('cf-checkin-day').value  = c.checkInDay || '';
+    $('cf-type').value         = c.programType || '';
+    $('cf-start-weight').value = c.startWeight != null ? c.startWeight : '';
+    $('cf-goal-weight').value  = c.goalWeight != null ? c.goalWeight : '';
+    $('cf-goal').value         = c.goal || '';
+    $('cf-kcal').value         = c.initialKcal != null ? c.initialKcal : (c.kcal != null ? c.kcal : '');
+    $('cf-p').value            = c.initialP != null ? c.initialP : (c.p != null ? c.p : '');
+    $('cf-c').value            = c.initialC != null ? c.initialC : (c.c != null ? c.c : '');
+    $('cf-f').value            = c.initialF != null ? c.initialF : (c.f != null ? c.f : '');
+    $('cf-steps').value        = c.stepTarget || c.steps || '';
+    $('cf-phase').value        = c.trainingPhase || c.phase || '';
+    $('cf-notes').value        = c.coachIntroNote || c.coachNotes || '';
+
+    $('cf-storage').value      = c.storageKey || '';
+    $('cf-url').value          = c.programUrl || '(pending program generation)';
+    $('cf-allow-key-override').checked = false;
+    $('cf-storage').readOnly = true;
+
+    // Program presence info
+    _renderProgramInfo(c);
+
+    // Lifecycle status + explicit buttons
+    $('cf-lifecycle-current').textContent = _lifecycleLabel(c);
+    $('cf-status').value = _lifecycleLabel(c) === 'active' ? 'active' : (_lifecycleLabel(c));
+    _renderInlineLifecycleActions(c);
+    _renderInlineAccessActions(c);
   } else {
-    document.getElementById('client-form-title').textContent = 'ADD CLIENT';
-    document.getElementById('cf-storage').value      = '';
-    document.getElementById('cf-storage').disabled   = false;
-    document.getElementById('cf-name').value         = '';
-    document.getElementById('cf-type').value         = '';
-    document.getElementById('cf-start-weight').value = '';
-    document.getElementById('cf-goal-weight').value  = '';
-    document.getElementById('cf-start-date').value   = new Date().toISOString().slice(0,10);
-    document.getElementById('cf-url').value          = 'clients/_program.html';
-    document.getElementById('cf-phone').value        = '';
+    $('client-form-title').textContent = 'Add client';
+    $('cf-mode-badge').textContent = 'NEW'; $('cf-mode-badge').className = 'cf-mode-badge';
+    $('cf-submit-btn').textContent = 'Create client';
+
+    $('cf-name').value         = '';
+    $('cf-email').value        = '';
+    $('cf-phone').value        = '';
+    $('cf-start-date').value   = new Date().toISOString().slice(0,10);
+    $('cf-checkin-day').value  = 'Sunday';
+    $('cf-type').value         = '';
+    $('cf-start-weight').value = '';
+    $('cf-goal-weight').value  = '';
+    $('cf-goal').value         = '';
+    $('cf-kcal').value         = '';
+    $('cf-p').value            = '';
+    $('cf-c').value            = '';
+    $('cf-f').value            = '';
+    $('cf-steps').value        = 8000;
+    $('cf-phase').value        = '';
+    $('cf-notes').value        = '';
+
+    $('cf-storage').value      = '(auto — type a name)';
+    $('cf-url').value          = '(auto — after program is generated)';
+    $('cf-allow-key-override').checked = false;
+    $('cf-storage').readOnly = true;
+
+    _renderProgramInfo(null);
+    $('cf-lifecycle-current').textContent = 'onboarding (default for new clients)';
+    $('cf-status').value = 'onboarding';
+    _renderInlineLifecycleActions(null);
+    _renderInlineAccessActions(null);
   }
-  document.getElementById('client-form-overlay').classList.add('open');
+
+  $('client-form-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Focus the first meaningful input
+  setTimeout(() => { const n = $('cf-name'); if (n) n.focus(); }, 50);
 }
+
 function closeClientForm() {
   document.getElementById('client-form-overlay').classList.remove('open');
   document.body.style.overflow = '';
+  _editingStorageKey = null;
 }
+
+function onDisplayNameChange() {
+  // Live-derive storageKey preview when in ADD mode (or override enabled).
+  const $ = id => document.getElementById(id);
+  if (_editingStorageKey) return; // don't rewrite for edits
+  const name = $('cf-name').value;
+  if (!name.trim()) { $('cf-storage').value = '(auto — type a name)'; return; }
+  const derived = _deriveUniqueStorageKey(name);
+  $('cf-storage').value = derived || '(invalid — use letters/numbers)';
+  $('cf-url').value = derived ? ('clients/' + derived + '/') : '(auto — after program is generated)';
+}
+function onAllowKeyOverride() {
+  const $ = id => document.getElementById(id);
+  const allow = $('cf-allow-key-override').checked;
+  const editing = !!_editingStorageKey;
+  // In ADD mode, override unlocks the auto slug. In EDIT mode, storageKey is
+  // still immutable to protect historical data unless explicit override.
+  $('cf-storage').readOnly = !allow;
+  if (allow && !editing) {
+    const cur = $('cf-storage').value;
+    if (cur.startsWith('(')) $('cf-storage').value = _slugify($('cf-name').value) || '';
+  }
+}
+
+function _renderProgramInfo(c) {
+  const el = document.getElementById('cf-program-info-label');
+  if (!el) return;
+  if (!c) { el.innerHTML = '<span class="cf-program-pending">Program pending</span> — will be attached automatically once you generate their program HTML and rebuild the registry.'; return; }
+  if (c.programMissing) { el.innerHTML = '<span class="cf-program-pending">⚠ Program file missing</span> — registry has no entry for this storageKey. Regenerate the program or investigate. Their coaching history is preserved.'; return; }
+  if (c.programUrl) {
+    const url = c.programUrl.replace(/</g,'&lt;');
+    const ts = c.programUpdatedAt ? (' · updated ' + c.programUpdatedAt.slice(0,10)) : '';
+    const hash = c.programBuildHash ? (' · build ' + c.programBuildHash.slice(0,8)) : '';
+    el.innerHTML = '<strong style="color:#7fd28c;">Program ready</strong> · <code>' + url + '</code>' + ts + hash;
+  } else {
+    el.innerHTML = '<span class="cf-program-pending">Program pending</span>';
+  }
+}
+
+function _renderInlineLifecycleActions(c) {
+  const el = document.getElementById('cf-lifecycle-buttons');
+  if (!el) return;
+  el.innerHTML = '';
+  if (!c) {
+    el.innerHTML = '<span class="cf-hint" style="color:var(--muted);">New clients start in <strong style="color:var(--text);">Onboarding</strong>. Explicit lifecycle transitions unlock after saving.</span>';
+    // Also refresh legacy mount so old _renderLifecycleActions is fed too
+    const legacy = document.getElementById('cf-lifecycle-actions'); if (legacy) legacy.style.display = 'none';
+    return;
+  }
+  const key = c.storageKey;
+  const esc = s => String(s).replace(/'/g, "\\'");
+  const btn = (label, fn, primary) =>
+    `<button type="button" class="btn ${primary?'primary':''}" onclick="event.preventDefault(); ${fn}">${label}</button>`;
+  const parts = [];
+  if (_isOnboardingClient(c)) parts.push(btn('▶ Move to Active', `moveToActive('${esc(key)}')`, true));
+  if (!_isArchivedClient(c) && !_isPausedClient(c)) parts.push(btn('❚❚ Pause', `pauseClient('${esc(key)}')`));
+  if (_isPausedClient(c)) parts.push(btn('▶ Resume', `resumeClient('${esc(key)}')`, true));
+  if (!_isArchivedClient(c)) {
+    parts.push(btn('✓ Complete coaching', `completeCoaching('${esc(key)}')`));
+    parts.push(btn('🗄 Archive', `archiveClient('${esc(key)}', null)`));
+  } else {
+    parts.push(btn('↺ Restore from archive', `unarchiveClient('${esc(key)}')`, true));
+  }
+  el.innerHTML = parts.join(' ');
+}
+function _renderInlineAccessActions(c) {
+  const el = document.getElementById('cf-access-buttons');
+  const label = document.getElementById('cf-access-current');
+  if (!el || !label) return;
+  if (!c) {
+    label.textContent = 'Active (default for new clients)';
+    el.innerHTML = '<span class="cf-hint" style="color:var(--muted);">Access controls unlock after saving.</span>';
+    return;
+  }
+  label.textContent = _accessLabel(c);
+  const key = c.storageKey;
+  const esc = s => String(s).replace(/'/g, "\\'");
+  const btn = (label, fn, cls) =>
+    `<button type="button" class="btn ${cls||''}" onclick="event.preventDefault(); ${fn}">${label}</button>`;
+  const parts = [];
+  if (_isAccessActive(c)) {
+    parts.push(btn('Suspend access', `suspendAccess('${esc(key)}')`));
+    parts.push(btn('Revoke access', `revokeAccess('${esc(key)}')`));
+  } else {
+    parts.push(btn('Restore access', `restoreAccess('${esc(key)}')`, 'primary'));
+  }
+  el.innerHTML = parts.join(' ');
+}
+
 function saveClientForm() {
-  const c = {
-    storageKey:  document.getElementById('cf-storage').value.trim().toLowerCase(),
-    displayName: document.getElementById('cf-name').value.trim(),
-    programType: document.getElementById('cf-type').value.trim() || 'Program',
-    startWeight: parseFloat(document.getElementById('cf-start-weight').value) || 0,
-    goalWeight:  parseFloat(document.getElementById('cf-goal-weight').value) || 0,
-    startDate:   document.getElementById('cf-start-date').value,
-    programUrl:  document.getElementById('cf-url').value.trim(),
-    phone:       document.getElementById('cf-phone').value.trim(),
+  const $ = id => document.getElementById(id);
+  const setErr = (id, msg) => { const n = $(id); if (n) n.textContent = msg || ''; };
+  // Clear errors
+  ['cf-err-name','cf-err-email','cf-err-phone','cf-err-startw','cf-err-goalw','cf-err-kcal','cf-err-macros','cf-form-error'].forEach(id => setErr(id));
+
+  const isEdit = !!_editingStorageKey;
+
+  // ── Validation ──
+  const name = $('cf-name').value.trim();
+  if (!name) { setErr('cf-err-name', 'Display name is required.'); $('cf-name').focus(); return; }
+  const email = $('cf-email').value.trim();
+  if (!_emailLooksValid(email)) { setErr('cf-err-email', 'Email doesn\'t look valid.'); return; }
+  const phone = $('cf-phone').value.trim();
+  if (!_phoneLooksValid(phone)) { setErr('cf-err-phone', 'Phone doesn\'t look valid.'); return; }
+  const startW = $('cf-start-weight').value === '' ? null : parseFloat($('cf-start-weight').value);
+  if (startW !== null && (!Number.isFinite(startW) || startW <= 0 || startW > 400)) { setErr('cf-err-startw', 'Start weight must be a positive number ≤ 400.'); return; }
+  const goalW = $('cf-goal-weight').value === '' ? null : parseFloat($('cf-goal-weight').value);
+  if (goalW !== null && (!Number.isFinite(goalW) || goalW <= 0 || goalW > 400)) { setErr('cf-err-goalw', 'Goal weight must be a positive number ≤ 400.'); return; }
+  const kcal = $('cf-kcal').value === '' ? null : parseInt($('cf-kcal').value, 10);
+  if (kcal !== null && (!Number.isFinite(kcal) || kcal < 0 || kcal > 8000)) { setErr('cf-err-kcal', 'Kcal must be 0 – 8000.'); return; }
+  const p = $('cf-p').value === '' ? null : parseInt($('cf-p').value, 10);
+  const c_g = $('cf-c').value === '' ? null : parseInt($('cf-c').value, 10);
+  const f = $('cf-f').value === '' ? null : parseInt($('cf-f').value, 10);
+  if ([p,c_g,f].some(v => v !== null && (!Number.isFinite(v) || v < 0 || v > 1000))) { setErr('cf-err-macros', 'Macros must be non-negative and ≤ 1000 g each.'); return; }
+
+  // Storage key derivation
+  const overrideAllowed = $('cf-allow-key-override').checked;
+  let storageKey;
+  if (isEdit && !overrideAllowed) {
+    storageKey = _editingStorageKey; // immutable
+  } else if (overrideAllowed) {
+    storageKey = _slugify($('cf-storage').value);
+    if (!storageKey) { setErr('cf-form-error', 'Storage key is invalid after normalisation.'); return; }
+  } else {
+    storageKey = _deriveUniqueStorageKey(name);
+    if (!storageKey) { setErr('cf-form-error', 'Storage key could not be derived from the display name.'); return; }
+  }
+
+  // Collision guard (only for new / renamed)
+  if (!isEdit || (isEdit && storageKey !== _editingStorageKey)) {
+    const collide = loadClients().find(x => x.storageKey === storageKey && x.storageKey !== _editingStorageKey);
+    if (collide) {
+      setErr('cf-form-error', 'Storage key "' + storageKey + '" is already used by ' + (collide.displayName || storageKey) + '. Rename or open that client instead.');
+      return;
+    }
+  }
+
+  // Program URL — derived from registry or from storageKey; NEVER typed manually.
+  const existing = isEdit ? (loadClients().find(x => x.storageKey === _editingStorageKey) || {}) : {};
+  const registryUrl = (_clientsRegistry && Array.isArray(_clientsRegistry.clients))
+    ? (_clientsRegistry.clients.find(r => r.storageKey === storageKey) || {}).programUrl
+    : null;
+  const programUrl = registryUrl || existing.programUrl || ('clients/' + storageKey + '/');
+
+  // Merge over any existing client object so lifecycle metadata, coach
+  // review history, checkInReviews, access state etc. are preserved.
+  const patch = {
+    storageKey:    storageKey,
+    displayName:   name,
+    programType:   $('cf-type').value.trim() || existing.programType || 'Program',
+    startWeight:   startW != null ? startW : (existing.startWeight != null ? existing.startWeight : 0),
+    goalWeight:    goalW  != null ? goalW  : (existing.goalWeight  != null ? existing.goalWeight  : 0),
+    startDate:     $('cf-start-date').value || existing.startDate || '',
+    programUrl:    programUrl,
+    phone:         phone,
+    email:         email,
+    goal:          $('cf-goal').value.trim(),
+    checkInDay:    $('cf-checkin-day').value || '',
+    initialKcal:   kcal != null ? kcal : (existing.initialKcal || 0),
+    initialP:      p    != null ? p    : (existing.initialP || 0),
+    initialC:      c_g  != null ? c_g  : (existing.initialC || 0),
+    initialF:      f    != null ? f    : (existing.initialF || 0),
+    stepTarget:    parseInt($('cf-steps').value, 10) || 0,
+    trainingPhase: $('cf-phase').value.trim(),
+    coachIntroNote:$('cf-notes').value.trim(),
   };
-  if (!c.storageKey) { alert('Storage key required.'); return; }
-  if (!c.displayName) { alert('Display name required.'); return; }
+  // NEW clients default to onboarding + active access. Existing clients keep
+  // their lifecycle + access untouched — those change through explicit buttons.
+  const c = Object.assign({}, existing, patch);
+  if (!isEdit) {
+    c.programStatus = 'onboarding';
+    c.isPaused = false;
+    c.accessStatus = 'active';
+    _coachEventPush(c, 'client_created', {});
+  }
   addClient(c);
   closeClientForm();
 }
+
+// Esc closes the modal when open. Only fires when the overlay has the .open
+// class so it never fights other UI. Part 41 (accessibility).
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  const ov = document.getElementById('client-form-overlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  // Don't close if the user is mid-way through a destructive prompt (browser
+  // native alerts already block anyway; this is defensive).
+  closeClientForm();
+});
+
+// Guarded wrapper around the destructive Reset — Part 23 requires stronger friction.
+function dangerResetClientsToDefault() {
+  const answer = prompt(
+    'Reset entire roster to built-in defaults?\n\n' +
+    'This replaces every client currently in your dashboard with the ' +
+    'hardcoded default list. Weight logs / check-ins / meal logs in the ' +
+    'Google Sheet are UNCHANGED, but any coach notes, review history, and ' +
+    'lifecycle state stored on the roster JSON will be lost.\n\n' +
+    'Type RESET to confirm.'
+  );
+  if (answer !== 'RESET') return;
+  resetClientsToDefault();
+}
+
+// ─── LIFECYCLE_v1_START — client lifecycle actions ─────────────────────
+// State machine: onboarding → active ⇌ paused → archived
+// All mutations are additive on the existing roster JSON. Never hard-delete.
+function _lifecycleUpdate(storageKey, patch) {
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return false;
+  list[idx] = Object.assign({}, list[idx], patch);
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  if (typeof renderCommandCentre === 'function') renderCommandCentre();
+  return true;
+}
+function moveToActive(storageKey) {
+  if (!_lifecycleUpdate(storageKey, {
+    programStatus: 'active',
+    isPaused: false,
+    pausedAt: undefined,
+    resumeDate: undefined,
+    archivedAt: undefined,
+    archiveReason: undefined,
+  })) return;
+  // Re-render the edit form to reflect new state
+  openClientForm(storageKey);
+}
+function pauseClient(storageKey, resumeDate) {
+  if (!_lifecycleAccessPatch(storageKey, {
+    programStatus: 'paused',
+    isPaused: true,
+    pausedAt: new Date().toISOString(),
+    resumeDate: resumeDate || undefined,
+  }, 'client_paused', { resumeDate: resumeDate || undefined })) return;
+  openClientForm(storageKey);
+}
+function resumeClient(storageKey) {
+  if (!_lifecycleAccessPatch(storageKey, {
+    programStatus: 'active',
+    isPaused: false,
+    pausedAt: undefined,
+    resumeDate: undefined,
+  }, 'client_resumed', {})) return;
+  openClientForm(storageKey);
+}
+function completeCoaching(storageKey) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  if (!confirm('Mark ' + c.displayName + ' as COMPLETED?\n\n' +
+    'Their coaching arc is done. Historical data is preserved and they are removed from active coaching workflows. You can still search and view them under the Archived filter.')) return;
+  // Part 31: default YES to revoking client access when archiving.
+  const revoke = confirm('Also revoke client access?\n\n' +
+    '(Recommended when coaching ends. You can restore access later without ' +
+    'reactivating coaching. Cancel = keep access active.)');
+  const patch = {
+    programStatus: 'archived',
+    archivedAt: new Date().toISOString(),
+    archiveReason: 'completed',
+    isPaused: false,
+    pausedAt: undefined,
+    resumeDate: undefined,
+  };
+  if (revoke) {
+    patch.accessStatus = 'revoked';
+    patch.accessRevokedAt = new Date().toISOString();
+    patch.accessRevokedReason = 'coaching_completed';
+  }
+  _lifecycleAccessPatch(storageKey, patch, 'client_archived',
+    { reason: 'completed', accessRevoked: revoke });
+  closeClientForm();
+}
+function archiveClient(storageKey, reason) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  const msg = 'Archive ' + c.displayName + '?\n\n' +
+    'Their data will be preserved and they will be removed from active coaching workflows. You can still search and view them under the Archived filter. This is NOT a delete — nothing is destroyed.';
+  if (!confirm(msg)) return;
+  const r = (reason == null)
+    ? prompt('Archive reason?\n  goal_achieved | finished_block | cancelled | financial | unresponsive | injury_medical | other', '')
+    : reason;
+  // Part 31: default YES to access revocation on archive.
+  const revoke = confirm('Also revoke client access?\n\n' +
+    '(Recommended. Cancel = keep access active.)');
+  const patch = {
+    programStatus: 'archived',
+    archivedAt: new Date().toISOString(),
+    archiveReason: (r || '').trim() || undefined,
+    isPaused: false,
+    pausedAt: undefined,
+    resumeDate: undefined,
+  };
+  if (revoke) {
+    patch.accessStatus = 'revoked';
+    patch.accessRevokedAt = new Date().toISOString();
+    patch.accessRevokedReason = (r || '').trim() || 'archived';
+  }
+  _lifecycleAccessPatch(storageKey, patch, 'client_archived',
+    { reason: (r || '').trim() || undefined, accessRevoked: revoke });
+  closeClientForm();
+}
+function unarchiveClient(storageKey) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  if (!confirm('Restore ' + c.displayName + ' from archive back to active coaching?\n\n' +
+    'Note: this does NOT restore their access on its own. If their access was ' +
+    'revoked when they were archived, use Restore Access explicitly.')) return;
+  _lifecycleAccessPatch(storageKey, {
+    programStatus: 'active',
+    archivedAt: undefined,
+    archiveReason: undefined,
+  }, 'client_reactivated', {});
+  openClientForm(storageKey);
+}
+
+// Renders the action buttons inside the edit modal based on current state.
+function _renderLifecycleActions(c) {
+  const el = document.getElementById('cf-lifecycle-buttons');
+  if (!el) return;
+  const status = c.programStatus || (c.isPaused ? 'paused' : 'active');
+  const key = c.storageKey;
+  const esc = s => String(s).replace(/'/g, "\\'");
+  const btn = (label, fn, className) =>
+    `<button class="btn ${className || ''}" onclick="event.preventDefault(); ${fn}" style="font-family:'Inter',sans-serif;font-size:0.78rem;letter-spacing:0;text-transform:none;">${label}</button>`;
+  const parts = [];
+  if (status === 'onboarding') {
+    parts.push(btn('▶ Move to Active', `moveToActive('${esc(key)}')`, 'primary'));
+  }
+  if (status === 'active' || status === 'onboarding') {
+    parts.push(btn('❚❚ Pause', `pauseClient('${esc(key)}')`));
+  }
+  if (c.isPaused) {
+    parts.push(btn('▶ Resume', `resumeClient('${esc(key)}')`, 'primary'));
+  }
+  if (status !== 'archived') {
+    parts.push(btn('✓ Complete coaching', `completeCoaching('${esc(key)}')`));
+    parts.push(btn('🗄 Archive', `archiveClient('${esc(key)}', null)`));
+  } else {
+    parts.push(btn('↺ Restore from archive', `unarchiveClient('${esc(key)}')`, 'primary'));
+  }
+  const statusLabel = status === 'archived'
+    ? 'Archived' + (c.archiveReason ? ' — ' + c.archiveReason : '') + (c.archivedAt ? ' · ' + c.archivedAt.slice(0,10) : '')
+    : c.isPaused ? 'Paused' + (c.pausedAt ? ' since ' + c.pausedAt.slice(0,10) : '') + (c.resumeDate ? ' · resume ' + c.resumeDate : '')
+    : status.charAt(0).toUpperCase() + status.slice(1);
+  el.innerHTML =
+    '<div style="width:100%;font-family:\'Inter\',sans-serif;font-size:0.72rem;color:var(--cc-muted);margin-bottom:0.5rem;">Current status: <strong style="color:var(--cc-text);">' + statusLabel + '</strong></div>' +
+    parts.join(' ');
+}
+// ─── LIFECYCLE_v1_END ─────────────────────────────────────────────────
+
+// ─── ACCESS_v1_START — access-flag model (no server-side enforcement yet) ──
+// IMPORTANT: This sprint captures access state as data ONLY. The dashboard
+// tracks {accessStatus, accessRevokedAt, accessRevokedReason, accessRestoredAt}
+// and shows those states in the UI. It does NOT block the client from opening
+// their program URL — that requires a platform change tracked in the next
+// sprint. The revocation prompts here intentionally warn about that fact.
+const ACCESS_STATES = ['active', 'suspended', 'revoked'];
+function _accessLabel(c) {
+  if (!c) return 'unknown';
+  const s = c.accessStatus || 'active';
+  if (s === 'revoked')  return 'Revoked' + (c.accessRevokedAt ? ' · ' + c.accessRevokedAt.slice(0,10) : '');
+  if (s === 'suspended')return 'Suspended';
+  return 'Active';
+}
+function _isAccessActive(c) {
+  const s = c && c.accessStatus;
+  return !s || s === 'active';
+}
+// Coach-visible audit trail — append-only, capped so it never bloats roster JSON.
+function _coachEventPush(client, event, meta) {
+  if (!client || !event) return;
+  if (!Array.isArray(client.coachEventHistory)) client.coachEventHistory = [];
+  client.coachEventHistory.push(Object.assign({
+    at: new Date().toISOString(),
+    event: event,
+    source: 'coach',
+  }, meta || {}));
+  // Cap to last 200 events per client to keep roster JSON compact.
+  if (client.coachEventHistory.length > 200) {
+    client.coachEventHistory = client.coachEventHistory.slice(-200);
+  }
+}
+function _lifecycleAccessPatch(storageKey, patch, event, meta) {
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return false;
+  const cur = list[idx];
+  const next = Object.assign({}, cur, patch);
+  if (event) _coachEventPush(next, event, meta);
+  list[idx] = next;
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster().catch(() => {});
+  if (typeof renderCommandCentre === 'function') renderCommandCentre();
+  return true;
+}
+function suspendAccess(storageKey, reason) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  if (!confirm('Suspend ' + c.displayName + '\'s access?\n\n' +
+    'NOTE: full server-side revocation is not yet enabled — this records the ' +
+    'suspension in the roster and warns you in the dashboard. It does not yet ' +
+    'physically block them from opening their program URL.')) return;
+  const r = (reason == null) ? prompt('Optional reason:', '') : reason;
+  _lifecycleAccessPatch(storageKey, { accessStatus: 'suspended' },
+    'access_suspended', { reason: (r || '').trim() || undefined });
+}
+function revokeAccess(storageKey, reason) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  if (!confirm('Revoke ' + c.displayName + '\'s access?\n\n' +
+    'NOTE: full server-side revocation is not yet enabled. This records the ' +
+    'revocation and hides them from the coach dashboard. They may still be ' +
+    'able to open their program URL until server-side gating ships in the ' +
+    'next sprint.')) return;
+  const r = (reason == null) ? prompt('Optional reason (e.g. block ended, cancelled, dispute):', '') : reason;
+  _lifecycleAccessPatch(storageKey, {
+      accessStatus: 'revoked',
+      accessRevokedAt: new Date().toISOString(),
+      accessRevokedReason: (r || '').trim() || undefined,
+      accessRestoredAt: undefined,
+    }, 'access_revoked', { reason: (r || '').trim() || undefined });
+}
+function restoreAccess(storageKey) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  if (!confirm('Restore ' + c.displayName + '\'s access?\n\n' +
+    'This will NOT reactivate coaching. Their lifecycle status (paused / ' +
+    'archived / active) stays exactly as it was — you have to reactivate ' +
+    'coaching separately if you want them back on the operational roster.')) return;
+  _lifecycleAccessPatch(storageKey, {
+      accessStatus: 'active',
+      accessRestoredAt: new Date().toISOString(),
+      accessRevokedReason: undefined,
+    }, 'access_restored', {});
+}
+// ─── ACCESS_v1_END ──────────────────────────────────────────────────────────
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────
 function login() {
@@ -1812,14 +3635,22 @@ async function fetchDashboardData() {
 
 async function loadAll() {
   try {
-    // Pull roster + dashboard data in parallel — both use the same webhook.
-    const [rosterChanged, dashData] = await Promise.all([
-      pullRoster(),
+    // Pull roster + dashboard data + client registry in parallel.
+    // Each failure is contained: roster pull failing does not block the
+    // dashboard fetch, registry fetch failing preserves the persisted roster.
+    const [rosterChanged, dashData, registry] = await Promise.all([
+      pullRoster().catch(e => { console.warn('pullRoster err', e); return false; }),
       fetchDashboardData(),
+      fetchClientsRegistry().catch(e => { console.warn('registry err', e); return null; }),
     ]);
     _dashboardData = dashData;
     _lastSyncMs = Date.now();
     _syncStatus = 'ok';
+    // Merge the registry into the roster BEFORE rendering so new program
+    // files show up as onboarding without needing a manual reload.
+    if (registry) {
+      try { await mergeAndPersistRegistry(registry); } catch (e) { console.warn('merge err', e); }
+    }
     renderDashboard();
   } catch (e) {
     console.error('Dashboard fetch failed:', e);
@@ -2027,10 +3858,1690 @@ function checkForNewActivity() {
   localStorage.setItem('coach_last_seen', JSON.stringify(_lastSeen));
 }
 
+// ─── COMMAND_CENTRE_v1_START ───────────────────────────────────────────
+// Coach operating-system layer. All new state lives on the existing client
+// object (rides along inside the roster JSON blob via pushRoster). No backend
+// contract change required — Apps Script stores the whole array verbatim.
+//
+// New per-client fields (persisted through existing rosterPut):
+//   lastMeaningfulCoachReview  : ISO timestamp of last real coach action
+//   nextCoachAction            : short text — the "what's next"
+//   nextCoachActionDue         : ISO date
+//   coachNotes                 : array of {ts,text} — audit trail
+//   isPaused                   : bool (optional — pauses attention rules)
+// Storage: `coach_clients_v1` localStorage + cross-device via existing pushRoster.
+// TRADE-OFF: if Apps Script ever transitions from opaque JSON storage to a
+// column-per-field schema, these fields would need explicit columns added.
+// Today the entire array is JSON.stringify'd into a `roster_json` cell, so
+// the new fields survive round-trips without any Apps Script edits.
+
+const CC = {
+  filter: 'all',
+  search: '',
+  // ── Rollout baseline ────────────────────────────────────────────────
+  // Anchor date for existing clients that pre-date the review-tracking
+  // feature. Before this date the notion of "meaningful coach review"
+  // did not exist, so we do NOT count silence against those clients.
+  // Their effective review clock starts at ROLLOUT_DATE_ISO instead of
+  // 1970. Fabricating historical reviews is explicitly avoided.
+  // Change this one constant if the feature is re-launched or reset.
+  ROLLOUT_DATE_ISO: '2026-08-29',
+  // ── Thresholds — transparent + editable ─────────────────────────────
+  MEANINGFUL_REVIEW_STALE_DAYS: 7,
+  CHECKIN_STALE_DAYS: 7,
+  WEIGHIN_STALE_DAYS: 7,
+  WEIGHT_STALL_DAYS: 14,
+  ADHERENCE_MIN_LOGGED_DAYS: 5, // required before adherence % is judged
+  ENGAGED_MIN_ACTIVITY_DAYS: 3, // ≥N logged days in last 7 = "engaged"
+  DISENGAGED_MAX_ACTIVITY_DAYS: 1, // ≤N logged days in last 7 = "disengaged"
+  REVIEW_HISTORY_CAP: 100,
+  REVIEW_OUTCOMES: [
+    'no_change',
+    'nutrition_adjusted',
+    'training_adjusted',
+    'activity_adjusted',
+    'checkin_feedback',
+    'follow_up_task',
+    'other',
+  ],
+  REVIEW_OUTCOME_LABELS: {
+    no_change: 'No change required',
+    nutrition_adjusted: 'Nutrition adjusted',
+    training_adjusted: 'Training adjusted',
+    activity_adjusted: 'Activity / steps adjusted',
+    checkin_feedback: 'Check-in feedback completed',
+    follow_up_task: 'Follow-up / task created',
+    other: 'Other',
+  },
+};
+
+// ── Meaningful review helpers ──────────────────────────────────────────
+function _clientReviewTs(c) {
+  const t = c.lastMeaningfulCoachReview;
+  if (!t) return 0;
+  return new Date(t).getTime() || 0;
+}
+function _rolloutTs() { return new Date(CC.ROLLOUT_DATE_ISO).getTime() || 0; }
+// Effective clock for the "review overdue" rule.
+// Returns { days, historicalUnknown }:
+//   * If the client has NEVER had a meaningful review AND rollout is in the past,
+//     age is measured from ROLLOUT_DATE_ISO and historicalUnknown = true.
+//     No fabricated history. UI treats this as "unknown, becoming due" not "overdue since 1970".
+//   * If the client has a real review, age is measured from that timestamp, historicalUnknown = false.
+function _reviewClock(c) {
+  const real = _clientReviewTs(c);
+  if (real > 0) {
+    return { days: Math.floor((Date.now() - real) / 86400000), historicalUnknown: false };
+  }
+  const roll = _rolloutTs();
+  if (!roll || roll > Date.now()) return { days: 0, historicalUnknown: true };
+  return { days: Math.floor((Date.now() - roll) / 86400000), historicalUnknown: true };
+}
+// Kept for backward-compatibility (legacy chip counts). Returns null when never
+// reviewed so table can render "never" cell without triggering overdue logic.
+function _daysSinceReview(c) {
+  const t = _clientReviewTs(c);
+  if (!t) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+
+// Every meaningful review pushes an event onto coachReviewHistory. Structure:
+//   { ts, type, note, source: 'coach', outcome }
+// type is a short slug (e.g. 'review_marked_complete'), outcome is one of
+// CC.REVIEW_OUTCOMES. Capped at CC.REVIEW_HISTORY_CAP. Rides along inside the
+// existing roster JSON blob — no backend contract change tonight.
+function _appendReviewHistory(client, evt) {
+  client.coachReviewHistory = client.coachReviewHistory || [];
+  client.coachReviewHistory.push(evt);
+  if (client.coachReviewHistory.length > CC.REVIEW_HISTORY_CAP) {
+    client.coachReviewHistory = client.coachReviewHistory.slice(-CC.REVIEW_HISTORY_CAP);
+  }
+}
+
+function markReviewComplete(storageKey, opts) {
+  opts = opts || {};
+  // Outcome is mandatory — a review without a stated outcome is meaningless.
+  if (!opts.outcome || CC.REVIEW_OUTCOMES.indexOf(opts.outcome) < 0) {
+    alert('Pick a review outcome before saving.');
+    return false;
+  }
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return false;
+  const now = new Date().toISOString();
+  const evt = {
+    ts: now,
+    type: opts.type || 'review_marked_complete',
+    outcome: opts.outcome,
+    note: opts.note || '',
+    source: 'coach',
+  };
+  _appendReviewHistory(list[idx], evt);
+  // Only advance lastMeaningfulCoachReview on a successful, outcome-tagged review.
+  list[idx].lastMeaningfulCoachReview = now;
+  if (opts.nextAction) list[idx].nextCoachAction = opts.nextAction;
+  if (opts.nextActionDue) list[idx].nextCoachActionDue = opts.nextActionDue;
+  // Legacy free-form notes kept for backward compat with earlier v1.
+  if (opts.note) {
+    list[idx].coachNotes = list[idx].coachNotes || [];
+    list[idx].coachNotes.push({ ts: now, text: opts.note });
+    if (list[idx].coachNotes.length > 50) list[idx].coachNotes = list[idx].coachNotes.slice(-50);
+  }
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  renderCommandCentre();
+  return true;
+}
+
+// Explicit clear of the current next-action. Does NOT auto-fire on completion —
+// coach must invoke it. Preserves history by pushing a `next_action_cleared` event.
+function clearNextAction(storageKey, reason) {
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return;
+  const now = new Date().toISOString();
+  const prev = list[idx].nextCoachAction || '';
+  _appendReviewHistory(list[idx], {
+    ts: now, type: 'next_action_cleared', outcome: 'other',
+    note: (reason || 'cleared by coach') + (prev ? ' — was: ' + prev : ''),
+    source: 'coach',
+  });
+  list[idx].nextCoachAction = '';
+  list[idx].nextCoachActionDue = '';
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  renderCommandCentre();
+}
+
+function setNextAction(storageKey, action, dueIso) {
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return;
+  list[idx].nextCoachAction = action || '';
+  if (dueIso) list[idx].nextCoachActionDue = dueIso;
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  renderCommandCentre();
+}
+
+// ── Attention engine — transparent rules, missing-data-safe ────────────
+function _daysSinceIso(iso) {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!t) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+function _hasEnoughAdherenceData(metrics) {
+  // Only judge adherence if the client actually logged ≥N of last 7 days.
+  return (metrics.workoutDays7d + metrics.mealDays7d) >= CC.ADHERENCE_MIN_LOGGED_DAYS;
+}
+function _adherencePctSafe(metrics) {
+  if (!_hasEnoughAdherenceData(metrics)) return null;
+  const raw = Math.round((metrics.workoutDays7d + metrics.mealDays7d) / 14 * 100);
+  return Math.min(100, raw);
+}
+function _weightTrendKgLast14(sum) {
+  // Uses `weightHistory` (returned by /dashboard). Each entry is {ts, kg}.
+  const log = (sum && sum.weightHistory) || (sum && sum.weightLog) || [];
+  if (log.length < 4) return null;
+  const cutoff = Date.now() - 14 * 86400000;
+  const recent = log
+    .filter(w => new Date(w.ts || w.timestamp).getTime() >= cutoff)
+    .sort((a, b) => new Date(a.ts || a.timestamp) - new Date(b.ts || b.timestamp));
+  if (recent.length < 3) return null;
+  const first = Number(recent[0].kg ?? recent[0].weightKg);
+  const last  = Number(recent[recent.length - 1].kg ?? recent[recent.length - 1].weightKg);
+  if (!isFinite(first) || !isFinite(last)) return null;
+  return last - first;
+}
+function _lastCheckInIso(sum) {
+  // Dashboard endpoint returns latestCheckinTs; older detail endpoints returned recentCheckIns[].
+  if (!sum) return null;
+  if (sum.latestCheckinTs) return sum.latestCheckinTs;
+  const arr = sum.recentCheckIns || [];
+  return arr.length ? arr[0].timestamp : null;
+}
+function _lastWeighInIso(sum) {
+  if (!sum) return null;
+  if (sum.latestWeightTs) return sum.latestWeightTs;
+  const arr = sum.weightHistory || sum.weightLog || [];
+  return arr.length ? (arr[arr.length - 1].ts || arr[arr.length - 1].timestamp) : null;
+}
+// Attention rules are grouped into three orthogonal categories:
+//   COACH_ATTENTION   — coach hasn't done their part (review overdue, task overdue)
+//   CLIENT_ENGAGEMENT — client isn't showing up (missing check-in, no logs, no weigh-in)
+//   PROGRESS          — programmed outcome trending outside expectations
+//
+// AND classified into three tiers of urgency (added in noise-reduction pass):
+//   ACTION_NOW — strong evidence, coach must act. Feeds "Needs Attention".
+//   WATCH      — worth monitoring but not urgent. Feeds "Watch" count.
+//   INFO       — data-quality / rollout / historical unknown. Does NOT inflate
+//                Needs Attention or Watch counts.
+// Legacy-client protection: pre-rollout / long-standing clients whose absence
+// of history could be a data-quality problem (rather than genuine non-compliance)
+// are downgraded to INFO. See "legacyLikely" heuristic below.
+// Each attention row carries at most ONE primary reason per category to avoid
+// stacking redundant warnings for the same underlying problem.
+const CC_TIER = { ACTION: 'ACTION_NOW', WATCH: 'WATCH', INFO: 'INFO' };
+function _tierRank(t) { return t === CC_TIER.ACTION ? 3 : t === CC_TIER.WATCH ? 2 : t === CC_TIER.INFO ? 1 : 0; }
+function _sevRank(s)  { return s === 'red' ? 3 : s === 'amber' ? 2 : s === 'blue' ? 1 : 0; }
+function computeAttention(client, sum) {
+  // Return {severity, tier, category, reasons:[{cat,text,signal,level,tier,overdueDays}], primaryAction, ...}
+  const metrics = calculateMetrics(client, sum || {});
+  const reasons = [];
+  let sev = null;
+  let tier = null;
+  let primaryCat = null;
+  const bump = (level, cat, thisTier) => {
+    if (level === 'red') sev = 'red';
+    else if (level === 'amber' && sev !== 'red') sev = 'amber';
+    else if (level === 'blue' && !sev) sev = 'blue';
+    if (_tierRank(thisTier) > _tierRank(tier)) tier = thisTier;
+    if (!primaryCat && thisTier !== CC_TIER.INFO) primaryCat = cat;
+  };
+  const add = (cat, level, thisTier, text, signal, overdueDays) => reasons.push({ cat, level, tier: thisTier, text, signal, overdueDays: overdueDays || 0 });
+
+  // Lifecycle short-circuit — anything not currently active (onboarding,
+  // paused, archived, completed) produces no attention output.
+  if (!_isActiveClient(client)) {
+    return {
+      severity: null, tier: null, category: null, reasons: [],
+      primaryAction: null, metrics, adh: null, overdueDays: 0, evidence: 0,
+      _flags: {
+        paused:     _isPausedClient(client),
+        archived:   _isArchivedClient(client),
+        onboarding: _isOnboardingClient(client),
+      },
+    };
+  }
+
+  // ── Signals shared across rules
+  const lastCheckInIso = _lastCheckInIso(sum);
+  const daysSinceCheckIn = lastCheckInIso ? _daysSinceIso(lastCheckInIso) : null;
+  const lastWeighIso = _lastWeighInIso(sum);
+  const daysSinceWeigh = lastWeighIso ? _daysSinceIso(lastWeighIso) : null;
+  const activityDaysLast7 = metrics.workoutDays7d + metrics.mealDays7d;
+  // Broad recent-engagement signal — any of these count.
+  const isEngaged =
+    activityDaysLast7 >= CC.ENGAGED_MIN_ACTIVITY_DAYS ||
+    (daysSinceCheckIn !== null && daysSinceCheckIn <= CC.CHECKIN_STALE_DAYS) ||
+    (daysSinceWeigh   !== null && daysSinceWeigh   <= CC.WEIGHIN_STALE_DAYS);
+  // Disengagement is a STRONG classification — coach action required. It fires
+  // only when we have concrete evidence of staleness across multiple signals.
+  // Rollout does NOT rewrite time: pre-rollout activity is still "recent"
+  // behaviour for the purposes of engagement.
+  // Rules:
+  //   • null (no signal on file) is treated as "unknown", not "stale".
+  //   • A signal counts as STALE only when its real days-since exceeds
+  //     CC.DISENGAGE_STALE_DAYS (or CC.DISENGAGE_STALE_DAYS_PROTECTED during
+  //     the first CC.LEGACY_PROTECTION_DAYS after rollout — extra conservative).
+  //   • Fires only when at least TWO of {stale check-in, stale weigh-in,
+  //     zero last-week logs} are true AND at least one of {check-in,
+  //     weigh-in} is a non-null stale signal (so pure absence of data
+  //     alone cannot fire it).
+  // Compute protection-window flag inline (the same value is also assigned
+  // later in the legacy-client heuristic block; keeping both consistent).
+  const _rolloutTsEarly = _rolloutTs();
+  const _daysSinceRolloutEarly = _rolloutTsEarly ? Math.floor((Date.now() - _rolloutTsEarly) / 86400000) : 0;
+  const _inProtectionWindowEarly = _rolloutTsEarly > 0 && _daysSinceRolloutEarly >= 0 && _daysSinceRolloutEarly <= CC.LEGACY_PROTECTION_DAYS;
+  const _disStale = (_inProtectionWindowEarly ? CC.DISENGAGE_STALE_DAYS_PROTECTED : CC.DISENGAGE_STALE_DAYS);
+  // Fresh signals VETO disengagement. Any of:
+  //   fresh check-in (non-null, ≤ threshold), fresh weigh-in (non-null, ≤ threshold),
+  //   OR recent logs (activityDaysLast7 > 0)  →  NOT disengaged.
+  const _freshCheckIn = daysSinceCheckIn !== null && daysSinceCheckIn <= _disStale;
+  const _freshWeigh   = daysSinceWeigh   !== null && daysSinceWeigh   <= _disStale;
+  const _freshLogs    = activityDaysLast7 > 0;
+  const _anyFreshSignal = _freshCheckIn || _freshWeigh || _freshLogs;
+  // Stale signals — real days-since exceeding the disengagement threshold.
+  const _staleCheckIn = daysSinceCheckIn !== null && daysSinceCheckIn > _disStale;
+  const _staleWeigh   = daysSinceWeigh   !== null && daysSinceWeigh   > _disStale;
+  const _noRecentLogs = activityDaysLast7 === 0;
+  // Fires only when ALL three fronts (check-in, weigh-in, logs) are stale AND
+  // no fresh signal exists AND we have at least one non-null stale signal.
+  const isDisengaged = !_anyFreshSignal
+    && _staleCheckIn && _staleWeigh && _noRecentLogs
+    && (_staleCheckIn || _staleWeigh);
+  // ── Legacy-client heuristic (with expiry + current-period override) ──
+  // A client qualifies for legacy protection ONLY when:
+  //   • their program started before ROLLOUT_DATE_ISO
+  //   • we are still within CC.LEGACY_PROTECTION_DAYS of rollout
+  //   • they have ZERO current-period activity (no recent check-in, no recent
+  //     weigh-in, no recent workout/meal log — i.e. we have no fresh signal
+  //     to judge them by)
+  // After the protection window OR once any current-period data arrives,
+  // legacyLikely = false and normal engagement rules apply.
+  // Regardless, missing historical records remain visible as INFO / Data Quality.
+  const startTs = client.startDate ? new Date(client.startDate).getTime() : 0;
+  const rolloutTs = _rolloutTs();
+  const daysSinceRollout = rolloutTs ? Math.floor((Date.now() - rolloutTs) / 86400000) : 0;
+  const hasRecentCheckInList = !!(sum && Array.isArray(sum.recentCheckIns));
+  const hasAnyCheckIn = hasRecentCheckInList && sum.recentCheckIns.length > 0;
+  const hasCurrentPeriodActivity =
+    hasAnyCheckIn ||
+    (daysSinceCheckIn !== null && daysSinceCheckIn <= 30) ||
+    (daysSinceWeigh   !== null && daysSinceWeigh   <= 30) ||
+    activityDaysLast7 > 0;
+  const inProtectionWindow = rolloutTs > 0 && daysSinceRollout >= 0 && daysSinceRollout <= CC.LEGACY_PROTECTION_DAYS;
+  const legacyLikely =
+    !!startTs && !!rolloutTs && startTs < rolloutTs
+    && !hasCurrentPeriodActivity
+    && inProtectionWindow;
+  // Even after protection expires, we still want a "historical data unknown"
+  // flag on the client so the Data Quality panel can surface it.
+  const historicalGapOnly =
+    !!startTs && !!rolloutTs && startTs < rolloutTs
+    && !hasAnyCheckIn
+    && !inProtectionWindow;
+
+  // ── CATEGORY 1: COACH ATTENTION
+  // Rule 1a: Coach next-action overdue → ACTION_NOW (strong evidence, coach owes it)
+  if (client.nextCoachAction && client.nextCoachActionDue) {
+    const overdueDays = _daysSinceIso(client.nextCoachActionDue);
+    if (overdueDays !== null && overdueDays > 0) {
+      add('COACH_ATTENTION', 'red', CC_TIER.ACTION,
+        'Coach task overdue',
+        '"' + client.nextCoachAction + '" — ' + overdueDays + 'd overdue',
+        overdueDays);
+      bump('red', 'COACH_ATTENTION', CC_TIER.ACTION);
+    }
+  }
+  // Rule 1c: NEW check-in waiting on the coach → ACTION_NOW.
+  const newCis = typeof _newCheckInsForCoach === 'function' ? _newCheckInsForCoach(client, sum || {}) : [];
+  if (newCis.length > 0) {
+    const latest = newCis[0];
+    const ageStr = _fmtWhen ? _fmtWhen(latest.timestamp) : latest.timestamp;
+    const daysOld = _daysSinceIso(latest.timestamp) || 0;
+    add('COACH_ATTENTION', newCis.length >= 2 ? 'red' : 'amber', CC_TIER.ACTION,
+      newCis.length === 1 ? 'New check-in awaiting review' : (newCis.length + ' check-ins awaiting review'),
+      'Newest submitted ' + ageStr,
+      daysOld);
+    bump(newCis.length >= 2 ? 'red' : 'amber', 'COACH_ATTENTION', CC_TIER.ACTION);
+  }
+  // Rule 1b: Meaningful review status — tiered by materiality.
+  //   INFO   — historicalUnknown (pre-rollout client, never had a review yet)
+  //   WATCH  — review clock 8-13 days
+  //   ACTION — review clock ≥ 14 days (materially overdue)
+  const rc = _reviewClock(client);
+  if (!isDisengaged && rc.days > CC.MEANINGFUL_REVIEW_STALE_DAYS) {
+    if (rc.historicalUnknown) {
+      add('COACH_ATTENTION', 'blue', CC_TIER.INFO,
+        'Historical coach review unknown',
+        rc.days + 'd since rollout · pre-rollout client, no review recorded yet');
+      bump('blue', 'COACH_ATTENTION', CC_TIER.INFO);
+    } else if (rc.days >= 14) {
+      const t = isEngaged
+        ? 'Quiet client — coach review ' + rc.days + 'd overdue'
+        : 'Coach review materially overdue';
+      const sig = isEngaged
+        ? 'Client engaged (' + activityDaysLast7 + ' logs/14 slots last wk) · ' + rc.days + 'd since last review'
+        : rc.days + 'd since last review';
+      add('COACH_ATTENTION', 'red', CC_TIER.ACTION, t, sig, rc.days);
+      bump('red', 'COACH_ATTENTION', CC_TIER.ACTION);
+    } else {
+      add('COACH_ATTENTION', 'amber', CC_TIER.WATCH,
+        'Review approaching due',
+        rc.days + 'd since last review');
+      bump('amber', 'COACH_ATTENTION', CC_TIER.WATCH);
+    }
+  }
+
+  // ── CATEGORY 2: CLIENT ENGAGEMENT
+  // Only ONE engagement reason lands per client — the strongest applies.
+  let engagementFired = false;
+  // Rule 2a: fully disengaged → ACTION_NOW.
+  // Fires only when 2+ concrete stale signals exist (see isDisengaged above).
+  // Mere absence of data cannot fire this. Legacy-protection window uses a
+  // longer stale threshold so a rollout-adjacent quiet week is not urgent.
+  if (!engagementFired && isDisengaged && !legacyLikely) {
+    const bits = [];
+    if (_staleCheckIn) bits.push('check-in ' + daysSinceCheckIn + 'd');
+    if (_staleWeigh)   bits.push('weigh-in ' + daysSinceWeigh + 'd');
+    if (_noRecentLogs) bits.push('0 logs / 14 slots last wk');
+    add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
+      'Client disengaged',
+      bits.join(' · ') + ' · threshold ' + _disStale + 'd' + (_inProtectionWindowEarly ? ' (protected)' : ''),
+      Math.max(daysSinceCheckIn || 0, daysSinceWeigh || 0));
+    bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+    engagementFired = true;
+  }
+  // Rule 2b: check-in overdue — tiered.
+  //   INFO  — legacyLikely (no historical data flowing yet)
+  //   WATCH — 1 ≤ dueAge ≤ 14 days
+  //   ACTION — dueAge > 14 (well beyond the expected window)
+  if (!engagementFired) {
+    const dueAgeDays = typeof _checkInOverdueDays === 'function' ? _checkInOverdueDays(client, sum || {}) : 0;
+    const list = typeof _checkInsForClient === 'function' ? _checkInsForClient(sum || {}) : [];
+    const payloadGap = hasCheckInPayloadGap(sum || {});
+    if (dueAgeDays > 0) {
+      // With the payload-gap guard, list is empty ONLY when the client genuinely
+      // has no check-ins on the server. If latestCheckinTs proves they DID check
+      // in, dueAgeDays is derived from that timestamp via _checkInOverdueDays,
+      // and we fall through to the "Check-in due X days ago" branches — never
+      // the "No check-ins yet" branch.
+      if (!list.length && payloadGap) {
+        // Should be unreachable — _checkInOverdueDays only returns > 0 in this
+        // branch when latestCheckinTs itself is old. Treat as "Check-in due X".
+        add('CLIENT_ENGAGEMENT', dueAgeDays > 14 ? 'red' : 'amber', dueAgeDays > 14 ? CC_TIER.ACTION : CC_TIER.WATCH,
+          'Check-in due ' + dueAgeDays + ' days ago',
+          'Detail rows unavailable (backend payload gap) · derived from latestCheckinTs',
+          dueAgeDays);
+        bump(dueAgeDays > 14 ? 'red' : 'amber', 'CLIENT_ENGAGEMENT', dueAgeDays > 14 ? CC_TIER.ACTION : CC_TIER.WATCH);
+      } else if (!list.length && legacyLikely) {
+        add('CLIENT_ENGAGEMENT', 'blue', CC_TIER.INFO,
+          'Historical check-in data unavailable',
+          'Client started before rollout · dashboard has no recent check-in payload yet');
+        bump('blue', 'CLIENT_ENGAGEMENT', CC_TIER.INFO);
+      } else if (!list.length) {
+        // Truly new client whose program has run past the window with no submissions.
+        add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+          'No check-ins yet',
+          'Program started ' + (_daysSinceIso(client.startDate) || 0) + 'd ago · never checked in');
+        bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+      } else if (dueAgeDays > 14) {
+        add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
+          'Check-in due ' + dueAgeDays + ' days ago',
+          'Well beyond expected window (>2 weeks past 7-day due date)',
+          dueAgeDays);
+        bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+      } else {
+        add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+          'Check-in due ' + dueAgeDays + ' days ago',
+          'Original 7-day due date was ' + dueAgeDays + ' days ago');
+        bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+      }
+      engagementFired = true;
+    }
+    // Regardless of whether an engagement rule fired, if the backend payload
+    // gap is present we surface it as an INFO / Data Quality note (never a
+    // Needs-Attention or Watch driver). Self-resolves the moment recentCheckIns[]
+    // starts arriving.
+    if (payloadGap) {
+      const daysAgo = _daysSinceIso(sum.latestCheckinTs);
+      add('CLIENT_ENGAGEMENT', 'blue', CC_TIER.INFO,
+        'Check-in history unavailable — latest check-in timestamp exists',
+        'latestCheckinTs is ' + (daysAgo === null ? 'set' : daysAgo + 'd ago') + ' but recentCheckIns[] missing/empty — backend payload gap (re-deploy Apps Script)');
+      bump('blue', 'CLIENT_ENGAGEMENT', CC_TIER.INFO);
+    }
+  }
+  // Rule 2c: no recent weigh-in — tiered, and only when we have sufficient
+  // history to know weigh-ins are expected (client has logged ≥ 3 weigh-ins).
+  //   WATCH  — 8-14 days without weigh-in
+  //   ACTION — > 14 days without weigh-in AND ≥ 3 historical weigh-ins on file
+  if (!engagementFired && daysSinceWeigh !== null && daysSinceWeigh > CC.WEIGHIN_STALE_DAYS) {
+    const weighHistory = (sum && (sum.weightHistory || sum.weightLog)) || [];
+    const hasEnoughWeighHistory = weighHistory.length >= 3;
+    if (daysSinceWeigh > 14 && hasEnoughWeighHistory) {
+      add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
+        'No weigh-in for ' + daysSinceWeigh + ' days',
+        'Weigh-ins expected (≥ 3 on file) · last one ' + daysSinceWeigh + 'd ago',
+        daysSinceWeigh);
+      bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+    } else {
+      add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+        'No weigh-in for ' + daysSinceWeigh + ' days',
+        'Last weigh-in ' + daysSinceWeigh + 'd ago' + (hasEnoughWeighHistory ? '' : ' · limited weigh-in history'));
+      bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+    }
+    engagementFired = true;
+  }
+
+  // ── CATEGORY 3: PROGRESS
+  //   WATCH  — modest stall (|trend14| < 0.3kg) for non-bulk goals
+  //   ACTION — trend materially wrong-way: >0.6kg gain on a cut, or >0.6kg loss on a bulk
+  const trend14 = _weightTrendKgLast14(sum);
+  if (trend14 !== null) {
+    const goal = client.programGoal || '';
+    const isCut  = /fat_loss|cut/.test(goal);
+    const isBulk = /bulk|underweight/.test(goal);
+    if (isCut && trend14 > 0.6) {
+      add('PROGRESS', 'red', CC_TIER.ACTION,
+        'Weight trending wrong direction on a cut',
+        'Up ' + trend14.toFixed(2) + 'kg over 14 days');
+      bump('red', 'PROGRESS', CC_TIER.ACTION);
+    } else if (isBulk && trend14 < -0.6) {
+      add('PROGRESS', 'red', CC_TIER.ACTION,
+        'Weight dropping on a bulk',
+        'Down ' + Math.abs(trend14).toFixed(2) + 'kg over 14 days');
+      bump('red', 'PROGRESS', CC_TIER.ACTION);
+    } else if (Math.abs(trend14) < 0.3 && !isBulk) {
+      add('PROGRESS', 'amber', CC_TIER.WATCH,
+        'Weight trend stalled 14 days',
+        trend14.toFixed(2) + 'kg change over 14 days');
+      bump('amber', 'PROGRESS', CC_TIER.WATCH);
+    }
+  }
+
+  // Adherence — only when the client has enough logged days to judge fairly.
+  // Missing data never trips this rule. Now a WATCH item, not urgent.
+  const adh = _adherencePctSafe(metrics);
+  if (adh !== null && adh < 50 && !isDisengaged) {
+    add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+      'Low logged adherence',
+      'Adherence ' + adh + '% (based on ' + activityDaysLast7 + '/14 last-week slots)');
+    bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+  }
+
+  // Data-quality note: pre-rollout client whose historical check-in payload
+  // is still absent AFTER the protection window has expired. Always INFO,
+  // never actionable. Surfaces in the Data Quality panel.
+  if (historicalGapOnly) {
+    add('CLIENT_ENGAGEMENT', 'blue', CC_TIER.INFO,
+      'Historical check-in data unavailable',
+      'Pre-rollout client · no historical check-in payload flowing yet (rollout was ' + daysSinceRollout + 'd ago)');
+    bump('blue', 'CLIENT_ENGAGEMENT', CC_TIER.INFO);
+  }
+
+  const primaryAction = reasons.length ? 'Review' : null;
+  // Compute canonical overdueDays for sorting — the biggest tier-appropriate
+  // overdueDays across all reasons. Evidence-strength = number of ACTION_NOW reasons.
+  const actionReasons = reasons.filter(r => r.tier === CC_TIER.ACTION);
+  const overdueDays = reasons.reduce((max, r) => Math.max(max, r.overdueDays || 0), 0);
+  const evidence = actionReasons.length;
+  return {
+    severity: sev,
+    tier: tier || null,
+    category: primaryCat,
+    reasons,
+    primaryAction,
+    metrics,
+    adh,
+    overdueDays,
+    evidence,
+    _flags: {
+      historicalUnknown: rc.historicalUnknown,
+      engaged: isEngaged,
+      disengaged: isDisengaged,
+      legacyLikely,
+      historicalGapOnly,
+      inProtectionWindow,
+      daysSinceRollout,
+    },
+  };
+}
+
+// ─── Canonical lifecycle helpers ─────────────────────────────────────────
+// Onboarding, paused, and archived/completed clients are all excluded from
+// coaching operations (attention engine, weekly coverage, check-in queue).
+// Only "active" clients participate.
+function _isArchivedClient(c) {
+  if (!c) return true;
+  return c.programStatus === 'archived' || c.programStatus === 'completed';
+}
+function _isPausedClient(c) {
+  if (!c) return false;
+  return !!c.isPaused || c.programStatus === 'paused';
+}
+function _isOnboardingClient(c) {
+  if (!c) return false;
+  return c.programStatus === 'onboarding';
+}
+function _isActiveClient(c) {
+  if (!c) return false;
+  if (_isPausedClient(c)) return false;
+  if (_isArchivedClient(c)) return false;
+  if (_isOnboardingClient(c)) return false;
+  // Legacy roster entries with no programStatus are treated as active.
+  return true;
+}
+// True for anything still on the operational books — i.e. NOT archived.
+// Paused + onboarding clients are surfaced under "on-books" filters but
+// don't produce attention noise.
+function _isOnBooksClient(c) {
+  if (!c) return false;
+  return !_isArchivedClient(c);
+}
+// Human-readable lifecycle label — falls back to legacy heuristics for
+// pre-lifecycle roster entries.
+function _lifecycleLabel(c) {
+  if (!c) return 'unknown';
+  if (_isArchivedClient(c)) return 'archived';
+  if (_isPausedClient(c)) return 'paused';
+  if (_isOnboardingClient(c)) return 'onboarding';
+  return 'active';
+}
+// Weekly coverage counts ONLY real, outcome-tagged meaningful reviews from
+// coachReviewHistory (or the mirrored lastMeaningfulCoachReview timestamp).
+// It does NOT count client-page opens or any passive telemetry.
+function weeklyCoverage() {
+  const activeClients = COACH.clients.filter(_isActiveClient);
+  const reviewed = activeClients.filter(c => {
+    const age = _daysSinceReview(c); // null if never truly reviewed
+    return age !== null && age <= CC.MEANINGFUL_REVIEW_STALE_DAYS;
+  }).length;
+  return { reviewed, total: activeClients.length };
+}
+
+// ── RENDER: summary cards ──────────────────────────────────────────────
+function renderCcSummary() {
+  const el = document.getElementById('cc-summary-row');
+  if (!el) return;
+  const active = COACH.clients.filter(_isActiveClient).length;
+  // ── Noise-reduction pass: counts are now TIER-based ──
+  //   Needs Attention  = clients whose top tier is ACTION_NOW
+  //   Watch            = clients whose top tier is WATCH (no ACTION)
+  //   Informational    = clients whose top tier is INFO only (not surfaced as a card)
+  // "Check-ins due" and "Coach tasks due" remain factual counters.
+  let actionNow = 0, watch = 0, checkinsDue = 0, tasksDue = 0;
+  COACH.clients.forEach(c => {
+    if (!_isActiveClient(c)) return;
+    const sum = _dashboardData[c.storageKey] || {};
+    const a = computeAttention(c, sum);
+    if (a.tier === CC_TIER.ACTION) actionNow++;
+    else if (a.tier === CC_TIER.WATCH) watch++;
+    // INFO / null → not counted
+    const lastCiIso = _lastCheckInIso(sum);
+    const dsc = lastCiIso ? _daysSinceIso(lastCiIso) : null;
+    if (dsc !== null && dsc > CC.CHECKIN_STALE_DAYS) checkinsDue++;
+    if (c.nextCoachAction && c.nextCoachActionDue) {
+      const overdue = _daysSinceIso(c.nextCoachActionDue);
+      if (overdue !== null && overdue >= 0) tasksDue++;
+    }
+  });
+  const cov = weeklyCoverage();
+  const covPct = cov.total ? Math.round(cov.reviewed / cov.total * 100) : 0;
+  el.innerHTML = `
+    <div class="cc-summary-card">
+      <div class="lbl">Active clients</div>
+      <div class="val">${active}<span class="val-suffix"> / ${COACH.clients.length}</span></div>
+      <div class="desc">not paused</div>
+    </div>
+    <div class="cc-summary-card ${actionNow ? 'attn' : 'ok'}">
+      <div class="lbl">Needs attention</div>
+      <div class="val">${actionNow}</div>
+      <div class="desc">${actionNow ? 'action required today' : 'nothing on fire'}</div>
+    </div>
+    <div class="cc-summary-card ${watch ? 'watch' : 'ok'}">
+      <div class="lbl">Watch</div>
+      <div class="val">${watch}</div>
+      <div class="desc">${watch ? 'monitor — not urgent' : 'all steady'}</div>
+    </div>
+    <div class="cc-summary-card ${covPct < 80 ? 'watch' : 'ok'}">
+      <div class="lbl">Weekly coverage</div>
+      <div class="val">${cov.reviewed}<span class="val-suffix"> / ${cov.total}</span></div>
+      <div class="desc"><button class="cc-link" onclick="filterUnreviewed()">Show unreviewed</button></div>
+    </div>
+    <div class="cc-summary-card ${tasksDue ? 'attn' : 'ok'}">
+      <div class="lbl">Coach tasks due</div>
+      <div class="val">${tasksDue}</div>
+      <div class="desc">next-action overdue</div>
+    </div>
+  `;
+}
+
+// ── RENDER: Needs Attention list ───────────────────────────────────────
+// Only ACTION_NOW clients live here. WATCH and INFO clients are counted in
+// the summary tiles (Watch) but don't feed the primary list. Sort priority:
+//   1. severity        (red > amber)
+//   2. overdueDays     (largest first)
+//   3. evidence count  (more concurrent ACTION reasons wins tie)
+// Default view = top 8. "View all" toggles the full ACTION_NOW list.
+CC.attnShowAll = false;
+function toggleAttentionShowAll() { CC.attnShowAll = !CC.attnShowAll; renderCcAttention(); }
+function renderCcAttention() {
+  const allEntries = COACH.clients
+    .filter(_isActiveClient)
+    .map(c => ({ c, a: computeAttention(c, _dashboardData[c.storageKey] || {}) }));
+  const actionList = allEntries.filter(x => x.a.tier === CC_TIER.ACTION);
+  const watchCount = allEntries.filter(x => x.a.tier === CC_TIER.WATCH).length;
+  const infoCount  = allEntries.filter(x => x.a.tier === CC_TIER.INFO).length;
+  actionList.sort((x, y) => {
+    if (_sevRank(y.a.severity) !== _sevRank(x.a.severity)) return _sevRank(y.a.severity) - _sevRank(x.a.severity);
+    if ((y.a.overdueDays || 0) !== (x.a.overdueDays || 0)) return (y.a.overdueDays || 0) - (x.a.overdueDays || 0);
+    return (y.a.evidence || 0) - (x.a.evidence || 0);
+  });
+  const sub = document.getElementById('cc-attn-sub');
+  sub.textContent = actionList.length
+    ? actionList.length + ' action now · ' + watchCount + ' watch · ' + infoCount + ' info'
+    : '0 action now · ' + watchCount + ' watch · ' + infoCount + ' info';
+  const el = document.getElementById('cc-attn-list');
+  if (!actionList.length) {
+    el.innerHTML = `<div class="cc-attn-empty">Nothing needs immediate action. ${watchCount ? watchCount + ' clients on the Watch list — check when you have time.' : ''}</div>`;
+    return;
+  }
+  const CAP = 8;
+  const shownList = CC.attnShowAll ? actionList : actionList.slice(0, CAP);
+  const hidden = actionList.length - shownList.length;
+  const CAT_LABEL = {
+    COACH_ATTENTION: 'Coach attention',
+    CLIENT_ENGAGEMENT: 'Client engagement',
+    PROGRESS: 'Progress',
+  };
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows = shownList.map(({ c, a }) => {
+    const sev = a.severity;
+    const nameKey = esc(c.storageKey);
+    // Primary reason = the strongest ACTION_NOW reason (already sorted first).
+    const actionReasons = a.reasons.filter(r => r.tier === CC_TIER.ACTION);
+    const primary = actionReasons[0] || a.reasons[0] || { text: '', signal: '' };
+    // Supporting signals — up to 2 more distinct-category reasons.
+    const seen = { [primary.cat]: true };
+    const secondaryReasons = a.reasons
+      .filter(r => r !== primary && !seen[r.cat] && (seen[r.cat] = true))
+      .slice(0, 2);
+    const supportBits = [];
+    if (primary.signal) supportBits.push(esc(primary.signal));
+    secondaryReasons.forEach(r => supportBits.push(esc(CAT_LABEL[r.cat] || r.cat) + ': ' + esc(r.text)));
+    const catBadge = primary.cat ? `<span class="cc-cat-badge">${esc(CAT_LABEL[primary.cat] || primary.cat)}</span>` : '';
+    return `
+      <div class="cc-attn-row sev-${sev} v2">
+        <div class="cc-attn-body">
+          <div class="cc-attn-head">
+            <span class="cc-name-lg">${esc(c.displayName)}</span>
+            <span class="cc-name-sub-inline">${esc(c.programType || '')}</span>
+          </div>
+          <div class="cc-attn-reason-lg">${esc(primary.text)}</div>
+          ${supportBits.length ? '<div class="cc-attn-support">' + supportBits.join(' · ') + '</div>' : ''}
+          ${catBadge}
+        </div>
+        <div class="cc-actions">
+          <button class="cc-btn primary sm" onclick="openReviewModal('${nameKey}')">Review</button>
+          <button class="cc-btn sm ghost" onclick="openDetail('${nameKey}')">Open</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  const viewAllBtn = actionList.length > CAP
+    ? `<div style="text-align:center;margin-top:0.6rem;">
+         <button class="cc-btn sm ghost" onclick="toggleAttentionShowAll()">
+           ${CC.attnShowAll ? 'Show top ' + CAP + ' only' : 'View all ' + actionList.length + ' (' + hidden + ' more)'}
+         </button>
+       </div>`
+    : '';
+  el.innerHTML = rows + viewAllBtn;
+}
+
+// ── RENDER: Compact roster ─────────────────────────────────────────────
+function renderCcFilterChips(counts) {
+  const chips = [
+    { k: 'all', label: 'All' },
+    { k: 'attention', label: 'Needs Attention' },
+    { k: 'watch', label: 'Watch' },
+    { k: 'ontrack', label: 'On Track' },
+    { k: 'checkin_overdue', label: 'Check-in Overdue' },
+    { k: 'unreviewed', label: 'Not Reviewed This Week' },
+    // Lifecycle filters — muted styling, operational management only.
+    { k: 'lc_active',     label: 'Active' },
+    { k: 'lc_onboarding', label: 'Onboarding' },
+    { k: 'lc_paused',     label: 'Paused' },
+    { k: 'lc_archived',   label: 'Archived' },
+  ];
+  document.getElementById('cc-filter-chips').innerHTML = chips.map(x => {
+    const n = counts[x.k] != null ? `<span class="chip-count">${counts[x.k]}</span>` : '';
+    return `<button class="cc-filter-chip ${CC.filter === x.k ? 'active' : ''}" onclick="setCcFilter('${x.k}')">${x.label}${n}</button>`;
+  }).join(' ');
+}
+function setCcFilter(k) { CC.filter = k; renderCompactRoster(); }
+function filterUnreviewed() { CC.filter = 'unreviewed'; renderCompactRoster(); document.getElementById('cc-roster-section').scrollIntoView({behavior:'smooth'}); }
+function renderCompactRoster() {
+  const search = (document.getElementById('cc-search')?.value || '').trim().toLowerCase();
+  const rows = COACH.clients.map(c => {
+    const sum = _dashboardData[c.storageKey] || {};
+    const a = computeAttention(c, sum);
+    return { c, sum, a };
+  });
+  // Counts per filter for chip badges
+  const counts = { all: rows.length, attention: 0, watch: 0, ontrack: 0, checkin_overdue: 0, unreviewed: 0,
+                   lc_active: 0, lc_onboarding: 0, lc_paused: 0, lc_archived: 0 };
+  rows.forEach(({ c, sum, a }) => {
+    if (a.severity === 'red') counts.attention++;
+    else if (a.severity === 'amber') counts.watch++;
+    else if (!a.severity && _isActiveClient(c)) counts.ontrack++;
+    const lastCiIso = _lastCheckInIso(sum);
+    const dsc = lastCiIso ? _daysSinceIso(lastCiIso) : null;
+    // Check-in-overdue count only fires for clients we actually EXPECT
+    // check-ins from — onboarding / paused / archived get a pass.
+    if (_clientExpectsCheckIns(c) && (dsc === null || dsc > CC.CHECKIN_STALE_DAYS)) counts.checkin_overdue++;
+    // "Unreviewed this week" only tracks active clients — reviewing a
+    // paused / archived / onboarding client isn't part of weekly coverage.
+    const rcl = _reviewClock(c);
+    if (_isActiveClient(c) && rcl.days > CC.MEANINGFUL_REVIEW_STALE_DAYS) counts.unreviewed++;
+    // Lifecycle buckets — canonical helpers, single source of truth.
+    if      (_isArchivedClient(c))   counts.lc_archived++;
+    else if (_isPausedClient(c))     counts.lc_paused++;
+    else if (_isOnboardingClient(c)) counts.lc_onboarding++;
+    else                             counts.lc_active++;
+  });
+  renderCcFilterChips(counts);
+
+  let list = rows.slice();
+  if (search) {
+    list = list.filter(({ c }) =>
+      c.displayName.toLowerCase().includes(search) ||
+      c.storageKey.toLowerCase().includes(search) ||
+      (c.programType || '').toLowerCase().includes(search)
+    );
+  }
+  if (CC.filter === 'attention') list = list.filter(x => x.a.severity === 'red');
+  else if (CC.filter === 'watch') list = list.filter(x => x.a.severity === 'amber');
+  else if (CC.filter === 'ontrack') list = list.filter(x => !x.a.severity && _isActiveClient(x.c));
+  else if (CC.filter === 'lc_active')     list = list.filter(x => _isActiveClient(x.c));
+  else if (CC.filter === 'lc_onboarding') list = list.filter(x => _isOnboardingClient(x.c));
+  else if (CC.filter === 'lc_paused')     list = list.filter(x => _isPausedClient(x.c));
+  else if (CC.filter === 'lc_archived')   list = list.filter(x => _isArchivedClient(x.c));
+  else if (CC.filter === 'checkin_overdue') list = list.filter(({ c, sum }) => {
+    const lastCiIso = _lastCheckInIso(sum);
+    const dsc = lastCiIso ? _daysSinceIso(lastCiIso) : null;
+    return dsc === null || dsc > CC.CHECKIN_STALE_DAYS;
+  });
+  else if (CC.filter === 'unreviewed') list = list.filter(({ c }) => {
+    const rcl = _reviewClock(c);
+    return rcl.days > CC.MEANINGFUL_REVIEW_STALE_DAYS;
+  });
+
+  document.getElementById('cc-roster-sub').textContent = list.length + ' of ' + rows.length + ' shown';
+  const body = document.getElementById('cc-roster-body');
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--cc-muted);padding:2rem;">No clients match this filter.</td></tr>`;
+    return;
+  }
+
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  body.innerHTML = list.map(({ c, sum, a }) => {
+    const cur = (sum.latestWeight || '—');
+    const trend = _weightTrendKgLast14(sum);
+    let trendCell = '<span class="trend-flat">—</span>';
+    if (trend !== null) {
+      const cls = trend > 0.15 ? 'trend-up' : trend < -0.15 ? 'trend-down' : 'trend-flat';
+      const arr = trend > 0.15 ? '▲' : trend < -0.15 ? '▼' : '·';
+      trendCell = `<span class="${cls}">${arr} ${Math.abs(trend).toFixed(2)}kg</span>`;
+    }
+    const adh = a.adh != null ? a.adh + '%' : '<span style="color:var(--cc-muted)">—</span>';
+    const lastCiIso = _lastCheckInIso(sum);
+    const dsc = lastCiIso ? _daysSinceIso(lastCiIso) : null;
+    const ciCell = dsc === null ? '<span style="color:var(--cc-muted)">—</span>' : (dsc > CC.CHECKIN_STALE_DAYS ? `<span style="color:var(--cc-amber)">${dsc}d</span>` : dsc + 'd');
+    const rev = _daysSinceReview(c);
+    const rc = _reviewClock(c);
+    let revCell;
+    if (rev === null) {
+      // Never truly reviewed. Show historical-unknown label with tooltip so it's not
+      // conflated with "overdue since 1970". Amber only if rollout window elapsed.
+      const stale = rc.days > CC.MEANINGFUL_REVIEW_STALE_DAYS;
+      revCell = `<span style="color:${stale ? 'var(--cc-amber)' : 'var(--cc-muted)'}" title="No meaningful review recorded since Command Centre rollout (${CC.ROLLOUT_DATE_ISO}). ${rc.days}d since rollout.">unknown · ${rc.days}d</span>`;
+    } else {
+      revCell = rev > CC.MEANINGFUL_REVIEW_STALE_DAYS
+        ? `<span style="color:var(--cc-amber)">${rev}d</span>`
+        : rev + 'd';
+    }
+    let nextTxt = c.nextCoachAction ? esc(c.nextCoachAction) : '<span style="color:var(--cc-muted)">—</span>';
+    let nextDueTxt = '';
+    if (c.nextCoachActionDue) {
+      const overdueDays = _daysSinceIso(c.nextCoachActionDue);
+      if (overdueDays !== null && overdueDays > 0) {
+        nextDueTxt = ` <span style="color:var(--cc-red);font-size:0.72rem;font-weight:600;">(${overdueDays}d overdue)</span>`;
+      } else if (overdueDays !== null) {
+        nextDueTxt = ` <span style="color:var(--cc-muted);font-size:0.72rem;">(due ${c.nextCoachActionDue})</span>`;
+      }
+    }
+    if (c.nextCoachAction) {
+      nextTxt += ` <button class="cc-btn sm ghost" style="padding:0.1rem 0.35rem;font-size:0.65rem;margin-left:4px;" onclick="clearNextAction('${esc(c.storageKey)}')">clear</button>`;
+    }
+    const sev = a.severity;
+    const statusDot = sev === 'red' ? 'attn' : (sev === 'amber' ? 'watch' : (c.isPaused ? 'neutral' : 'ok'));
+    const statusLabel = c.isPaused ? 'Paused' : (sev === 'red' ? 'Action' : (sev === 'amber' ? 'Watch' : 'On Track'));
+    return `
+      <tr>
+        <td class="cc-name">${esc(c.displayName)}</td>
+        <td><span class="cc-status-dot ${statusDot}"></span>${statusLabel}</td>
+        <td class="num">${cur === '—' ? '<span style="color:var(--cc-muted)">—</span>' : (cur + 'kg')}</td>
+        <td class="num">${trendCell}</td>
+        <td class="num">${adh}</td>
+        <td class="num">${ciCell}</td>
+        <td class="num">${revCell}</td>
+        <td>${nextTxt}${nextDueTxt}</td>
+        <td style="text-align:right;">
+          <button class="cc-btn sm" onclick="openReviewModal('${esc(c.storageKey)}')">Review</button>
+          <button class="cc-btn sm ghost" onclick="openDetail('${esc(c.storageKey)}')">Open</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── Review modal wiring ────────────────────────────────────────────────
+let _cc_activeReviewKey = null;
+function openReviewModal(storageKey) {
+  _cc_activeReviewKey = storageKey;
+  const c = COACH.clients.find(x => x.storageKey === storageKey);
+  if (!c) return;
+  document.getElementById('cc-review-title').textContent = 'Mark review complete — ' + c.displayName;
+  document.getElementById('cc-review-outcome').value = '';
+  document.getElementById('cc-review-note').value = '';
+  document.getElementById('cc-review-next-action').value = c.nextCoachAction || '';
+  document.getElementById('cc-review-next-due').value = c.nextCoachActionDue || '';
+  document.getElementById('cc-review-modal').classList.add('open');
+}
+function closeReviewModal() {
+  document.getElementById('cc-review-modal').classList.remove('open');
+  _cc_activeReviewKey = null;
+}
+function submitReview() {
+  if (!_cc_activeReviewKey) return;
+  const outcome = document.getElementById('cc-review-outcome').value;
+  if (!outcome) {
+    alert('Pick an outcome before saving — a review without an outcome is meaningless.');
+    return;
+  }
+  const note = document.getElementById('cc-review-note').value.trim();
+  const nextAction = document.getElementById('cc-review-next-action').value.trim();
+  const nextDue = document.getElementById('cc-review-next-due').value;
+  const ok = markReviewComplete(_cc_activeReviewKey, { outcome, note, nextAction, nextActionDue: nextDue });
+  if (ok) closeReviewModal();
+}
+
+// ─── CHECKIN_QUEUE_v2_START ─────────────────────────────────────────────
+// Sprint 2 — closed-loop check-in workflow.
+// PERSISTENCE: check-in review metadata is stored per-client on the roster
+// object under `client.checkInReviews`, keyed by the stable check-in id
+// (`storageKey::ISO_TIMESTAMP`). The original CheckIns sheet row is NEVER
+// modified — we only tag reviews in the roster JSON blob (which already
+// round-trips via the existing pushRoster/rosterPut contract).
+// Structure per client:
+//   client.checkInReviews = {
+//     "faith_kainuku::2026-08-28T09:00:00.000Z": {
+//        reviewedTs: ISO, outcome: <enum>, note: string,
+//        historyLink: ISO (points at the coachReviewHistory event)
+//     }, ...
+//   }
+// Check-in overdue math — one definition used by both the queue and the attention engine.
+//   • expected interval = 7 days (client is expected to check in weekly)
+//   • grace             = 2 days (silence for the first 2 days after the due date)
+//   • alert begins      = day 10 (any daysSince > 9)
+//   • "Due X days ago"  = the age of the ORIGINAL 7-day due date, i.e. daysSince − 7
+//   • wording           = "Due X days ago" everywhere (never "X days overdue")
+CC.CHECKIN_EXPECTED_INTERVAL_DAYS = 7;
+CC.CHECKIN_GRACE_DAYS = 2;
+CC.CHECKIN_REVIEW_CAP = 104;             // ~2 years of weekly check-ins per client
+// Legacy-protection expiry.
+// A pre-rollout client is EXCUSED from "missing recent history" engagement
+// alerts only when: (a) they started before ROLLOUT_DATE_ISO, AND (b) we're
+// within LEGACY_PROTECTION_DAYS of rollout, AND (c) they have zero
+// post-rollout activity signals in the current payload.
+// After the window, missing historical records are STILL surfaced as
+// INFO / Data Quality (never actionable), but current-period behaviour
+// (no check-in, no weigh-in, no logs since rollout) starts to trip
+// normal engagement rules as it would for any other client.
+CC.LEGACY_PROTECTION_DAYS = 14;
+CC.WATCH_DEFAULT_LIMIT = 5;              // default rows shown in Watchlist
+// Disengagement thresholds — MUCH higher than the WATCH 7-day threshold.
+// Disengagement is a strong statement ("client is not showing up") and must
+// require concrete stale evidence across multiple signals. Absence of data
+// (null) is NEVER counted as staleness.
+CC.DISENGAGE_STALE_DAYS = 14;                 // normal operating threshold
+CC.DISENGAGE_STALE_DAYS_PROTECTED = 21;       // higher during rollout protection window
+
+// ── Check-in identifier + review metadata helpers ──
+function _ciId(storageKey, isoTs) { return storageKey + '::' + isoTs; }
+// Rollout-boundary comparison for check-ins.
+// CC.ROLLOUT_DATE_ISO may be a date-only string ('YYYY-MM-DD'). Normalise it
+// once here to the intended boundary: START OF DAY in TIMEZONE (Sydney), so
+// any check-in submitted on or after 00:00 Sydney time on the rollout date
+// counts as post-rollout. Full ISO strings are honoured verbatim.
+// Docs: a check-in whose submission ts < this boundary is HISTORICAL —
+// the review-tracking system did not exist yet, so a missing checkInReviews
+// entry is not a coach obligation; it is data pre-dating the feature.
+function _rolloutBoundaryMs() {
+  const raw = CC.ROLLOUT_DATE_ISO || '';
+  if (!raw) return 0;
+  // Date-only? append the Sydney midnight offset. Australia/Sydney is
+  // UTC+10 (AEST) or UTC+11 (AEDT). We use +10:00 as a safe conservative
+  // boundary: any check-in submitted on the rollout date after 00:00 Sydney
+  // AEST (= 14:00 UTC previous day) is treated as post-rollout. In practice
+  // both DST offsets differ by 1h, well inside the day-level tolerance we
+  // need for "pre-rollout vs post-rollout".
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date(raw + 'T00:00:00+10:00').getTime();
+  const t = new Date(raw).getTime();
+  return isNaN(t) ? 0 : t;
+}
+function _isPreRolloutIso(iso) {
+  if (!iso) return false;
+  const boundary = _rolloutBoundaryMs();
+  if (!boundary) return false;
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return false;
+  return t < boundary;
+}
+// State of an individual check-in row:
+//   'reviewed'   — explicit checkInReviews metadata exists (always wins)
+//   'new'        — post-rollout ts, no review metadata
+//   'historical' — pre-rollout ts, no review metadata (feature didn't exist yet)
+function _ciState(client, ci) {
+  if (_ciReviewMeta(client, ci.timestamp)) return 'reviewed';
+  if (_isPreRolloutIso(ci.timestamp)) return 'historical';
+  return 'new';
+}
+function _ciReviewMeta(client, isoTs) {
+  const map = client.checkInReviews || {};
+  return map[_ciId(client.storageKey, isoTs)] || null;
+}
+// In-place mutator: write review metadata to the given client and cap the
+// checkInReviews map at CC.CHECKIN_REVIEW_CAP by reviewedTs. Does NOT save or
+// push — callers are expected to persist once, at the end of the batch, so a
+// single review triggers a single roster write. See submitCheckInReview.
+// The newly-written entry is guaranteed to survive the cap because it is
+// (by definition of "just written") the newest reviewedTs.
+function _writeCiReviewMetaInPlace(client, isoTs, meta) {
+  client.checkInReviews = client.checkInReviews || {};
+  const id = _ciId(client.storageKey, isoTs);
+  client.checkInReviews[id] = meta;
+  // Cap: keep newest CC.CHECKIN_REVIEW_CAP entries by reviewedTs.
+  const entries = Object.entries(client.checkInReviews);
+  if (entries.length > CC.CHECKIN_REVIEW_CAP) {
+    entries.sort((a, b) => new Date(b[1].reviewedTs) - new Date(a[1].reviewedTs));
+    const kept = entries.slice(0, CC.CHECKIN_REVIEW_CAP);
+    client.checkInReviews = Object.fromEntries(kept);
+    // Safety net: even if timestamps are quirky, guarantee the entry we just
+    // wrote is not evicted (the caller expects it to persist).
+    if (!(id in client.checkInReviews)) {
+      client.checkInReviews[id] = meta;
+    }
+  }
+}
+// Standalone entry-point retained for compatibility with any single-shot
+// caller. Performs mutation + save + push in one hop.
+function _setCiReviewMeta(storageKey, isoTs, meta) {
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return false;
+  _writeCiReviewMetaInPlace(list[idx], isoTs, meta);
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  return true;
+}
+
+function _checkInsForClient(sum) {
+  const arr = (sum && sum.recentCheckIns) || [];
+  // Newest first for consistent WoW math (index 0 = most recent).
+  return arr.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
+
+// ── Backend payload-shape guard ──
+// TRUE when the dashboard says the client HAS checked in (latestCheckinTs is
+// present) but did NOT include a recentCheckIns[] array (missing / non-array /
+// empty). This happens when the deployed Apps Script pre-dates the Sprint 2
+// widening — the payload proves the client checked in, we just don't have the
+// row detail on hand yet. In this state we must NOT label the client "no
+// check-ins yet" and must NOT fabricate a client-level OVERDUE from the
+// missing array. Self-resolves once recentCheckIns[] starts arriving.
+function hasCheckInPayloadGap(sum) {
+  if (!sum) return false;
+  if (!sum.latestCheckinTs) return false;
+  const arr = sum.recentCheckIns;
+  return !Array.isArray(arr) || arr.length === 0;
+}
+
+// ── Overdue rule for the QUEUE (transparent) ──
+// A client is expected to check in if:
+//   - not paused / completed
+//   - startDate is set AND rollout is in the past AND at least one full expected
+//     interval has elapsed since startDate
+// A "missing check-in" is OVERDUE only when:
+//   - the last successful check-in timestamp is older than
+//     (EXPECTED_INTERVAL_DAYS + GRACE_DAYS)
+//   - OR the client has never checked in but their program is older than the
+//     grace-adjusted expected interval
+// Brand-new clients within their first expected window are NOT overdue.
+function _clientExpectsCheckIns(c) {
+  if (!_isActiveClient(c)) return false;
+  // Lifecycle-sprint: ONBOARDING clients are in a grace period. No overdue,
+  // no engagement alerts, no coach-review overdue. Coach explicitly moves
+  // them to 'active' when ready.
+  if (c.programStatus === 'onboarding') return false;
+  if (!c.startDate) return false;
+  const age = _daysSinceIso(c.startDate);
+  if (age === null) return false;
+  // Must be at least one expected interval old before we can call anything overdue.
+  return age >= (CC.CHECKIN_EXPECTED_INTERVAL_DAYS - CC.CHECKIN_GRACE_DAYS);
+}
+function _checkInOverdueDays(c, sum) {
+  if (!_clientExpectsCheckIns(c)) return 0;
+  // Payload-gap guard — if the backend proves the client checked in
+  // (latestCheckinTs present) but didn't ship recentCheckIns[], we must not
+  // fabricate an overdue from an "empty" list. Fall back to latestCheckinTs
+  // for the same daysSinceLast calculation so legitimate overdue still fires
+  // when the last check-in really is old.
+  if (hasCheckInPayloadGap(sum)) {
+    const daysSinceLast = _daysSinceIso(sum.latestCheckinTs);
+    if (daysSinceLast === null) return 0;
+    const window = CC.CHECKIN_EXPECTED_INTERVAL_DAYS + CC.CHECKIN_GRACE_DAYS;
+    return daysSinceLast > window ? daysSinceLast - CC.CHECKIN_EXPECTED_INTERVAL_DAYS : 0;
+  }
+  const list = _checkInsForClient(sum);
+  const window = CC.CHECKIN_EXPECTED_INTERVAL_DAYS + CC.CHECKIN_GRACE_DAYS;
+  if (!list.length) {
+    const age = _daysSinceIso(c.startDate) || 0;
+    return age > window ? age - CC.CHECKIN_EXPECTED_INTERVAL_DAYS : 0;
+  }
+  const daysSinceLast = _daysSinceIso(list[0].timestamp);
+  if (daysSinceLast === null) return 0;
+  return daysSinceLast > window ? daysSinceLast - CC.CHECKIN_EXPECTED_INTERVAL_DAYS : 0;
+}
+function _newCheckInsForCoach(c, sum) {
+  // A NEW check-in is a submitted check-in with no review metadata AND
+  // submitted at or after ROLLOUT. Historical rows are explicitly excluded
+  // — the review-tracking system did not exist when they were submitted,
+  // so a missing metadata row is not a coach obligation.
+  return _checkInsForClient(sum).filter(ci =>
+    !_ciReviewMeta(c, ci.timestamp) && !_isPreRolloutIso(ci.timestamp)
+  );
+}
+
+// ── Queue state selection ──
+CC.queueTab = 'new';
+function switchQueueTab(state) { CC.queueTab = state; renderCheckInQueue(); }
+
+function _queueAllRows() {
+  // Returns [{client, sum, ci, state}] for every recent check-in across all clients.
+  // state ∈ {'reviewed','new','historical','overdue'}. HISTORICAL is a fourth
+  // state applied to any pre-rollout check-in without review metadata; it is
+  // never labelled NEW and never counts as coach work.
+  const rows = [];
+  COACH.clients.forEach(c => {
+    if (!_isActiveClient(c)) return; // paused / completed excluded
+    const sum = _dashboardData[c.storageKey] || {};
+    _checkInsForClient(sum).forEach(ci => {
+      const meta = _ciReviewMeta(c, ci.timestamp);
+      const state = _ciState(c, ci);
+      rows.push({ client: c, sum, ci, state, meta });
+    });
+    // Overdue "virtual" row per client (client-level, not per-checkin).
+    // The payload-gap guard prevents an OVERDUE card from being fabricated
+    // solely because `recentCheckIns[]` is missing. When latestCheckinTs is
+    // present and old, _checkInOverdueDays already falls back to it, so a
+    // legitimate overdue still surfaces; when latestCheckinTs is present and
+    // fresh, dueAgeDays === 0 and no card is pushed.
+    const overdueDays = _checkInOverdueDays(c, sum);
+    if (overdueDays > 0) {
+      rows.push({ client: c, sum, ci: null, state: 'overdue', overdueDays });
+    }
+  });
+  return rows;
+}
+
+// ── Rendering ──
+function _fmt(n, digits) { return (n === null || n === undefined || Number.isNaN(n)) ? null : Number(n).toFixed(digits || 0); }
+function _fmtWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const days = _daysSinceIso(iso);
+  const dstr = d.toLocaleDateString(undefined, { day:'numeric', month:'short' });
+  const t = d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+  return dstr + ' · ' + t + (days === 0 ? ' · today' : days === 1 ? ' · yesterday' : ' · ' + days + 'd ago');
+}
+function _na(str) { return str === null || str === undefined || str === '' ? '<span class="na">unavailable</span>' : str; }
+
+function renderCheckInQueue() {
+  const rows = _queueAllRows();
+  const counts = { new: 0, reviewed: 0, overdue: 0, historical: 0 };
+  rows.forEach(r => counts[r.state]++);
+  // Historical is intentionally deprioritised — it's a secondary filter tab,
+  // never inflates the primary New count, never surfaces as ACTION_NOW.
+  const tabs = [
+    { k: 'new',        label: 'New' },
+    { k: 'reviewed',   label: 'Reviewed' },
+    { k: 'overdue',    label: 'Overdue' },
+    { k: 'historical', label: 'Historical', muted: true },
+  ];
+  document.getElementById('cc-ci-tabs').innerHTML = tabs.map(t =>
+    `<button class="cc-queue-tab ${CC.queueTab === t.k ? 'active' : ''} ${t.muted ? 'muted' : ''}" onclick="switchQueueTab('${t.k}')">${t.label}<span class="queue-count">${counts[t.k]}</span></button>`
+  ).join('');
+  const filtered = rows
+    .filter(r => r.state === CC.queueTab)
+    .sort((a, b) => {
+      if (a.state === 'overdue' || b.state === 'overdue') {
+        return (b.overdueDays || 0) - (a.overdueDays || 0);
+      }
+      return new Date(b.ci.timestamp) - new Date(a.ci.timestamp);
+    });
+  document.getElementById('cc-ci-sub').textContent =
+    counts.new + ' new · ' + counts.reviewed + ' reviewed · ' + counts.overdue + ' overdue · ' + counts.historical + ' historical';
+  const el = document.getElementById('cc-ci-list');
+  if (!filtered.length) {
+    const msg = CC.queueTab === 'new' ? 'No new check-ins waiting on you. Nice.'
+             : CC.queueTab === 'reviewed' ? 'No reviewed check-ins in the last 90 days.'
+             : CC.queueTab === 'historical' ? 'No pre-rollout check-ins on file.'
+             : 'No overdue check-ins.';
+    el.innerHTML = `<div class="cc-queue-empty">${msg}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(r => r.state === 'overdue' ? _renderQueueRowOverdue(r) : _renderQueueRow(r)).join('');
+}
+
+function _renderQueueRow(r) {
+  const { client: c, sum, ci, state } = r;
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const wt = ci.weightKg;
+  // 7-day trend from weightHistory
+  const trend = _weightTrendKgLast14(sum);
+  const trendStr = trend === null ? _na('') : (trend > 0.15 ? '▲' : trend < -0.15 ? '▼' : '·') + ' ' + Math.abs(trend).toFixed(2) + 'kg';
+  const nAdh = ci.dietAdherence1to10;
+  const tAdh = ci.trainingAdherence1to10;
+  const sleep = ci.sleepHours;
+  const stress = ci.stress1to10;
+  const energy = ci.energy1to10;
+  // Major flags (transparent thresholds — subjective only, never from missing data)
+  const flags = [];
+  if (sleep !== null && sleep !== undefined && sleep < 6) flags.push({ level:'red', text:'sleep low ('+sleep+'h)' });
+  if (stress !== null && stress !== undefined && stress >= 8) flags.push({ level:'red', text:'stress high ('+stress+'/10)' });
+  if (nAdh !== null && nAdh !== undefined && nAdh <= 4) flags.push({ level:'amber', text:'nutrition adherence low ('+nAdh+'/10)' });
+  if (tAdh !== null && tAdh !== undefined && tAdh <= 4) flags.push({ level:'amber', text:'training adherence low ('+tAdh+'/10)' });
+  const flagsHtml = flags.length ? flags.map(f => `<span class="flag ${f.level==='amber'?'amber':''}">${esc(f.text)}</span>`).join('') : '<span class="na">no major flags</span>';
+  const key = esc(c.storageKey);
+  const iso = esc(ci.timestamp);
+  const reviewedBadge = state === 'reviewed' && r.meta
+    ? `<span class="cc-cat-badge" style="margin-left:6px;">${_labelForOutcome(r.meta.outcome)}</span>`
+    : state === 'historical'
+      ? `<span class="cc-cat-badge" style="margin-left:6px;">Historical · pre-rollout</span>`
+      : '';
+  return `
+    <div class="cc-queue-row state-${state}">
+      <div class="qrow-name">${esc(c.displayName)}${reviewedBadge}<span class="qrow-when">${esc(_fmtWhen(ci.timestamp))}${ci.week ? ' · wk ' + ci.week : ''}</span></div>
+      <div class="qrow-metrics">
+        <span class="qrow-metric"><span class="lbl">wt</span>${wt ? wt + 'kg' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">Δ7d</span>${trendStr}</span>
+      </div>
+      <div class="qrow-metrics">
+        <span class="qrow-metric"><span class="lbl">nutr</span>${nAdh ? nAdh + '/10' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">train</span>${tAdh ? tAdh + '/10' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">sleep</span>${sleep ? sleep + 'h' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">stress</span>${stress ? stress + '/10' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">energy</span>${energy ? energy + '/10' : _na('')}</span>
+        <div class="qrow-flags" style="margin-top:4px;">${flagsHtml}</div>
+      </div>
+      <div class="qrow-actions">
+        ${state === 'new'
+          ? `<button class="cc-btn primary sm" onclick="openCheckInReview('${key}','${iso}')">Review</button>`
+          : `<button class="cc-btn sm" onclick="openCheckInReview('${key}','${iso}')">View</button>`}
+        <button class="cc-btn sm ghost" onclick="openDetail('${key}')">Open</button>
+      </div>
+    </div>
+  `;
+}
+
+function _renderQueueRowOverdue(r) {
+  // r.overdueDays is _checkInOverdueDays() = daysSinceLast − 7. It represents
+  // the age of the ORIGINAL 7-day scheduled date. Alert only appears after
+  // the 2-day grace has elapsed (day 10+), matching the attention engine.
+  const { client: c, overdueDays: dueAgeDays } = r;
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const key = esc(c.storageKey);
+  return `
+    <div class="cc-queue-row state-overdue">
+      <div class="qrow-name">${esc(c.displayName)}<span class="qrow-when">No submitted check-in in this window</span></div>
+      <div class="qrow-metrics"><span class="qrow-metric"><span class="lbl">due</span><span style="color:var(--cc-red);font-weight:600;">${dueAgeDays} days ago</span></span></div>
+      <div class="qrow-metrics">
+        <span class="qrow-flags"><span class="flag">Due ${dueAgeDays} days ago</span></span>
+      </div>
+      <div class="qrow-actions">
+        <button class="cc-btn sm" onclick="openDetail('${key}')">Open client</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Review view ──
+function _labelForOutcome(o) { return (CC.REVIEW_OUTCOME_LABELS || {})[o] || o || ''; }
+function _delta(prev, curr, digits, invertBad) {
+  // Returns HTML fragment for a WoW delta arrow. invertBad=true when lower is
+  // worse (e.g. sleep). Returns '' when either value is missing.
+  if (prev == null || curr == null || Number.isNaN(prev) || Number.isNaN(curr)) return '';
+  const diff = curr - prev;
+  const abs = Math.abs(diff);
+  if (abs < 0.05) return '<span class="cc-ci-delta flat">→</span>';
+  const worse = invertBad ? diff < 0 : diff > 0;
+  const arrow = diff > 0 ? '↑' : '↓';
+  return `<span class="cc-ci-delta ${worse ? 'worse' : 'better'}">${arrow} ${diff > 0 ? '+' : ''}${diff.toFixed(digits || 1)}</span>`;
+}
+
+let _cc_activeCiKey = null;
+let _cc_activeCiIso = null;
+function openCheckInReview(storageKey, iso) {
+  const c = COACH.clients.find(x => x.storageKey === storageKey);
+  if (!c) return;
+  const sum = _dashboardData[storageKey] || {};
+  const list = _checkInsForClient(sum);
+  const idx = list.findIndex(x => x.timestamp === iso);
+  if (idx < 0) return;
+  const curr = list[idx];
+  const prev = list[idx + 1] || null;
+  _cc_activeCiKey = storageKey;
+  _cc_activeCiIso = iso;
+  const meta = _ciReviewMeta(c, iso);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const trend14 = _weightTrendKgLast14(sum);
+
+  const row = (label, currVal, prevVal, unit, digits, invertBad) => {
+    const currStr = currVal == null ? '<span class="na">unavailable</span>' : (currVal + (unit || ''));
+    const prevStr = prevVal == null ? '<span class="na">unavailable</span>' : (prevVal + (unit || ''));
+    return {
+      curr: `<div class="cc-ci-metric"><span class="m-label">${label}</span><span class="m-value">${currStr}${_delta(prevVal, currVal, digits, invertBad)}</span></div>`,
+      prev: `<div class="cc-ci-metric"><span class="m-label">${label}</span><span class="m-value">${prevStr}</span></div>`,
+    };
+  };
+  const rows = [
+    row('Weight',        curr.weightKg,               prev && prev.weightKg,               'kg', 2, false),
+    row('Nutrition',     curr.dietAdherence1to10,     prev && prev.dietAdherence1to10,     '/10', 0, true),
+    row('Training',      curr.trainingAdherence1to10, prev && prev.trainingAdherence1to10, '/10', 0, true),
+    row('Sleep',         curr.sleepHours,             prev && prev.sleepHours,             'h', 1, true),
+    row('Stress',        curr.stress1to10,            prev && prev.stress1to10,            '/10', 0, false),
+    row('Energy',        curr.energy1to10,            prev && prev.energy1to10,            '/10', 0, true),
+  ];
+  const currCol = rows.map(r => r.curr).join('');
+  const prevCol = rows.map(r => r.prev).join('');
+  const weekStr = curr.week ? ' · wk ' + curr.week : '';
+  const flags = [];
+  if (curr.sleepHours != null && curr.sleepHours < 6) flags.push('Sleep low');
+  if (curr.stress1to10 != null && curr.stress1to10 >= 8) flags.push('Stress high');
+  if (curr.dietAdherence1to10 != null && curr.dietAdherence1to10 <= 4) flags.push('Nutrition adherence low');
+  if (curr.trainingAdherence1to10 != null && curr.trainingAdherence1to10 <= 4) flags.push('Training adherence low');
+  const flagsHtml = flags.length ? flags.map(f => `<span class="flag">${esc(f)}</span>`).join('') : '<span class="na">no major flags</span>';
+
+  // Context: current nutrition targets from BASELINE_MACROS, current next action, coach flags
+  const macros = (typeof BASELINE_MACROS !== 'undefined' && BASELINE_MACROS[storageKey]) || null;
+  const macrosHtml = macros
+    ? '<div class="item"><div class="lbl">Current nutrition target</div>P1 ' + (macros.p1?.kcal || '—') + 'kcal · ' + (macros.p1?.p || '—') + 'p / ' + (macros.p1?.c || '—') + 'c / ' + (macros.p1?.f || '—') + 'f</div>'
+    : '<div class="item"><div class="lbl">Current nutrition target</div><span class="na">unavailable</span></div>';
+  const phase = c.programType || 'unknown phase';
+  const nextAct = c.nextCoachAction
+    ? esc(c.nextCoachAction) + (c.nextCoachActionDue ? ' <span class="cc-ci-delta flat">(due ' + esc(c.nextCoachActionDue) + ')</span>' : '')
+    : '<span class="na">no next action set</span>';
+
+  // Meta if already reviewed
+  const alreadyReviewedBadge = meta
+    ? `<div class="cc-ci-context" style="margin-bottom:0.5rem;">
+         <div class="item"><div class="lbl">Reviewed</div>${esc(_fmtWhen(meta.reviewedTs))}</div>
+         <div class="item"><div class="lbl">Outcome</div>${esc(_labelForOutcome(meta.outcome))}</div>
+         ${meta.note ? '<div class="item" style="grid-column:1/-1;"><div class="lbl">Note</div>' + esc(meta.note) + '</div>' : ''}
+       </div>`
+    : '';
+
+  document.getElementById('cc-ci-modal-body').innerHTML = `
+    <button class="cc-btn ghost sm" style="float:right;" onclick="closeCheckInReview()">✕ Close</button>
+    <h3>${esc(c.displayName)} — check-in ${esc(_fmtWhen(iso))}${esc(weekStr)}</h3>
+    <div class="cc-ci-sub">${meta ? 'Already reviewed — read-only unless you resubmit.' : 'Awaiting your review.'}</div>
+    ${alreadyReviewedBadge}
+    <div class="cc-ci-flags">${flagsHtml}</div>
+    <div class="cc-ci-cols">
+      <div class="cc-ci-col">
+        <div class="col-title">THIS WEEK</div>
+        ${currCol}
+      </div>
+      <div class="cc-ci-col">
+        <div class="col-title">PREVIOUS WEEK</div>
+        ${prev ? prevCol : '<div class="na">No prior check-in on file</div>'}
+      </div>
+    </div>
+    <div class="cc-ci-context">
+      <div class="item"><div class="lbl">14-day weight trend</div>${trend14 === null ? '<span class="na">unavailable</span>' : trend14.toFixed(2) + 'kg'}</div>
+      <div class="item"><div class="lbl">Current phase / program</div>${esc(phase)}</div>
+      <div class="item"><div class="lbl">Current next action</div>${nextAct}</div>
+      ${macrosHtml}
+    </div>
+    ${curr.notes ? '<div class="cc-ci-notes"><strong style="color:var(--cc-muted);font-size:0.72rem;text-transform:uppercase;">Client notes</strong><br/>' + esc(curr.notes) + '</div>' : ''}
+    <label>Outcome <span style="color:var(--cc-red);">*</span></label>
+    <select id="cc-ci-outcome">
+      <option value="">— pick one —</option>
+      <option value="no_change">No change required</option>
+      <option value="nutrition_adjusted">Nutrition adjusted</option>
+      <option value="training_adjusted">Training adjusted</option>
+      <option value="activity_adjusted">Activity / steps adjusted</option>
+      <option value="follow_up_task">Follow-up / task created</option>
+      <option value="other">Other</option>
+    </select>
+    <label>Coach note (optional)</label>
+    <textarea id="cc-ci-note" placeholder="Two lines max — the decision + why."></textarea>
+    <label>Next action (optional)</label>
+    <input id="cc-ci-next-action" type="text" placeholder="e.g. Reassess weight trend Sunday"/>
+    <label>Next action due (optional)</label>
+    <input id="cc-ci-next-due" type="date"/>
+    <div class="cc-modal-buttons">
+      <button class="cc-btn ghost" onclick="closeCheckInReview()">Cancel</button>
+      <button class="cc-btn primary" onclick="submitCheckInReview()">Save review</button>
+    </div>
+  `;
+  document.getElementById('cc-ci-outcome').value = meta ? meta.outcome : '';
+  document.getElementById('cc-ci-note').value = meta ? (meta.note || '') : '';
+  document.getElementById('cc-ci-next-action').value = c.nextCoachAction || '';
+  document.getElementById('cc-ci-next-due').value = c.nextCoachActionDue || '';
+  document.getElementById('cc-ci-modal').classList.add('open');
+}
+function closeCheckInReview() {
+  document.getElementById('cc-ci-modal').classList.remove('open');
+  _cc_activeCiKey = null;
+  _cc_activeCiIso = null;
+}
+function submitCheckInReview() {
+  if (!_cc_activeCiKey || !_cc_activeCiIso) return;
+  const outcome = document.getElementById('cc-ci-outcome').value;
+  if (!outcome) { alert('Pick an outcome before saving.'); return; }
+  const note = document.getElementById('cc-ci-note').value.trim();
+  const nextAction = document.getElementById('cc-ci-next-action').value.trim();
+  const nextDue = document.getElementById('cc-ci-next-due').value;
+  const nowIso = new Date().toISOString();
+  const key = _cc_activeCiKey;
+  const iso = _cc_activeCiIso;
+  // ── Batch every mutation onto the SAME roster snapshot, then do exactly one
+  //    saveClients() + one pushRoster() at the end. Previously we called
+  //    _setCiReviewMeta() (write+push) followed by markReviewComplete()
+  //    (write+push) — two cloud writes for one review. Now: one.
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === key);
+  if (idx < 0) return;
+  const client = list[idx];
+  // 1. Check-in review metadata (with cap applied in _writeCiReviewMetaInPlace)
+  _writeCiReviewMetaInPlace(client, iso, {
+    reviewedTs: nowIso, outcome, note, historyLink: nowIso,
+  });
+  // 2. coachReviewHistory event linked to this specific check-in id
+  _appendReviewHistory(client, {
+    ts: nowIso,
+    type: 'checkin_reviewed',
+    outcome,
+    note,
+    source: 'coach',
+  });
+  // 3. Advance lastMeaningfulCoachReview
+  client.lastMeaningfulCoachReview = nowIso;
+  // 4. Optional legacy free-form note bucket (kept for backward compat)
+  if (note) {
+    client.coachNotes = client.coachNotes || [];
+    client.coachNotes.push({ ts: nowIso, text: note });
+    if (client.coachNotes.length > 50) client.coachNotes = client.coachNotes.slice(-50);
+  }
+  // 5. Optional next action / due date
+  if (nextAction) client.nextCoachAction = nextAction;
+  if (nextDue) client.nextCoachActionDue = nextDue;
+  // 6. ONE save + ONE push
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  closeCheckInReview();
+  renderCommandCentre();
+}
+// ─── CHECKIN_QUEUE_v2_END ───────────────────────────────────────────────
+
+// ── RENDER: Watchlist (calmer amber tier, sits below Needs Attention) ──
+// Only clients whose top tier === WATCH land here. Sorting is proximity to
+// ACTION_NOW promotion first, then reason duration, then evidence strength.
+// Default view = top CC.WATCH_DEFAULT_LIMIT rows; "View all" reveals the rest.
+CC.watchShowAll = false;
+function toggleWatchShowAll() { CC.watchShowAll = !CC.watchShowAll; renderCcWatch(); }
+// "Closeness to ACTION_NOW" heuristic — smaller = closer to promotion.
+// For each rule surface we know how many days from ACTION would fire:
+//   review clock  → ACTION at 14d, so distance = 14 − rc.days
+//   check-in due  → ACTION at 15 (14+1 day margin), distance = 15 − dueAgeDays
+//   weigh-in gap  → ACTION at 15d, distance = 15 − daysSinceWeigh
+// If no distance can be computed, use +999 so it sorts last.
+function _watchProximity(entry) {
+  const { c, a } = entry;
+  const reasons = a.reasons.filter(r => r.tier === CC_TIER.WATCH);
+  let best = 999;
+  reasons.forEach(r => {
+    const t = (r.text || '').toLowerCase();
+    if (t.startsWith('review approaching')) {
+      const rc = _reviewClock(c);
+      best = Math.min(best, Math.max(0, 14 - rc.days));
+    } else if (t.startsWith('check-in due')) {
+      best = Math.min(best, Math.max(0, 15 - (r.overdueDays || 0)));
+    } else if (t.startsWith('no weigh-in')) {
+      const m = t.match(/(\d+)\s*days/);
+      const d = m ? parseInt(m[1], 10) : 0;
+      best = Math.min(best, Math.max(0, 15 - d));
+    } else if (t.startsWith('no check-ins yet') || t.startsWith('weight trend stalled') || t.startsWith('low logged adherence')) {
+      // Softer WATCHes — treat as further from promotion
+      best = Math.min(best, 10);
+    }
+  });
+  return best;
+}
+function renderCcWatch() {
+  const el = document.getElementById('cc-watch-list');
+  const sub = document.getElementById('cc-watch-sub');
+  if (!el || !sub) return;
+  const list = COACH.clients
+    .filter(_isActiveClient)
+    .map(c => ({ c, a: computeAttention(c, _dashboardData[c.storageKey] || {}) }))
+    .filter(x => x.a.tier === CC_TIER.WATCH);
+  list.forEach(e => { e._proximity = _watchProximity(e); });
+  list.sort((x, y) => {
+    if (x._proximity !== y._proximity) return x._proximity - y._proximity;
+    if ((y.a.overdueDays || 0) !== (x.a.overdueDays || 0)) return (y.a.overdueDays || 0) - (x.a.overdueDays || 0);
+    return (y.a.evidence || 0) - (x.a.evidence || 0);
+  });
+  sub.textContent = list.length ? list.length + ' watching' : '0 watching';
+  if (!list.length) {
+    el.innerHTML = `<div class="cc-watch-empty">Nothing on the watchlist right now.</div>`;
+    return;
+  }
+  const LIMIT = CC.WATCH_DEFAULT_LIMIT;
+  const shown = CC.watchShowAll ? list : list.slice(0, LIMIT);
+  const hidden = list.length - shown.length;
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows = shown.map(({ c, a }) => {
+    const primary = a.reasons.find(r => r.tier === CC_TIER.WATCH) || { text: '', signal: '' };
+    const key = esc(c.storageKey);
+    return `
+      <div class="cc-watch-row">
+        <div class="w-name">${esc(c.displayName)}<span class="w-sub">${esc(c.programType || '')}</span></div>
+        <div class="w-reason">${esc(primary.text)}<span class="w-signal">${esc(primary.signal || '')}</span></div>
+        <div class="w-actions">
+          <button class="cc-btn sm" onclick="openReviewModal('${key}')">Review</button>
+          <button class="cc-btn sm ghost" onclick="openDetail('${key}')">Open</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  const toggle = list.length > LIMIT
+    ? `<div style="text-align:center;margin-top:0.55rem;">
+         <button class="cc-btn sm ghost" onclick="toggleWatchShowAll()">
+           ${CC.watchShowAll ? 'Show top ' + LIMIT + ' only' : 'View all ' + list.length + ' (' + hidden + ' more)'}
+         </button>
+       </div>`
+    : '';
+  el.innerHTML = rows + toggle;
+}
+
+// ── RENDER: Data Quality (muted, collapsible; never inflates urgent counts) ──
+function renderCcDataQuality() {
+  const el = document.getElementById('cc-dq-list');
+  const summary = document.getElementById('cc-dq-summary');
+  const section = document.getElementById('cc-dq-details');
+  if (!el || !summary || !section) return;
+  // Any client whose top tier is INFO, OR whose reasons include an INFO issue.
+  const entries = [];
+  COACH.clients.filter(_isActiveClient).forEach(c => {
+    const a = computeAttention(c, _dashboardData[c.storageKey] || {});
+    a.reasons.filter(r => r.tier === CC_TIER.INFO).forEach(r => {
+      const isRollout = /historical|rollout/i.test(r.text) || (a._flags && (a._flags.historicalUnknown || a._flags.legacyLikely || a._flags.historicalGapOnly));
+      entries.push({ client: c, issue: r.text, signal: r.signal || '', isRollout });
+    });
+  });
+  // Sort: issue type A→Z then client name A→Z.
+  entries.sort((x, y) => {
+    if (x.issue !== y.issue) return x.issue.localeCompare(y.issue);
+    return x.client.displayName.localeCompare(y.client.displayName);
+  });
+  summary.textContent = 'Data Quality — ' + entries.length + ' client' + (entries.length === 1 ? '' : 's') + ' with incomplete historical data';
+  if (!entries.length) {
+    el.innerHTML = '<div style="color:var(--cc-muted);font-size:0.8rem;">No data-quality issues currently detected.</div>';
+    return;
+  }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el.innerHTML = entries.map(e => `
+    <div class="cc-dq-row">
+      <span class="dq-name">${esc(e.client.displayName)}</span>
+      <span class="dq-issue">${esc(e.issue)}</span>
+      <span class="dq-tag">${e.isRollout ? 'rollout' : 'other'}</span>
+      <button class="cc-btn sm ghost" onclick="openDetail('${esc(e.client.storageKey)}')">Open</button>
+    </div>
+  `).join('');
+}
+
+function renderCommandCentre() {
+  renderCcSummary();
+  renderCcAttention();
+  renderCcWatch();
+  renderCcDataQuality();
+  renderCheckInQueue();
+  renderCompactRoster();
+}
+
+// ─── TEMPORARY DIAGNOSTICS (Sprint 2 data-path audit) ─────────────────
+// Usage: paste `ccDiagnostics()` into the browser console on the live
+// dashboard. Prints a full data-path audit per active client — no UI
+// change, no state mutation, safe to run anytime.
+window.ccDiagnostics = function ccDiagnostics() {
+  console.group('%cCC data-path diagnostics','font-weight:bold;color:#4f7fff;');
+  console.log('ROLLOUT_DATE_ISO:', CC.ROLLOUT_DATE_ISO);
+  console.log('LEGACY_PROTECTION_DAYS:', CC.LEGACY_PROTECTION_DAYS);
+  console.log('CHECKIN_EXPECTED_INTERVAL_DAYS:', CC.CHECKIN_EXPECTED_INTERVAL_DAYS);
+  console.log('CHECKIN_GRACE_DAYS:', CC.CHECKIN_GRACE_DAYS);
+  const rosterKeys = new Set(COACH.clients.map(c => c.storageKey));
+  const rosterKeysCI = new Set(COACH.clients.map(c => c.storageKey.toLowerCase()));
+  const table = [];
+  let bpNoList = 0, bpEmptyList = 0, bpHasList = 0, mismatchKeys = new Set();
+  COACH.clients.filter(_isActiveClient).forEach(c => {
+    const sum = _dashboardData[c.storageKey] || {};
+    const rcArray = Array.isArray(sum.recentCheckIns) ? sum.recentCheckIns : null;
+    const nCi = rcArray ? rcArray.length : 0;
+    const latestFromArray = nCi ? sum.recentCheckIns[0].timestamp : null;
+    const latestTs = sum.latestCheckinTs || null;
+    const backendGap = latestTs && (!rcArray || nCi === 0);
+    if (backendGap) bpNoList++;
+    if (rcArray && nCi === 0) bpEmptyList++;
+    if (nCi > 0) bpHasList++;
+    table.push({
+      storageKey: c.storageKey,
+      displayName: c.displayName,
+      isPaused: !!c.isPaused,
+      hasLatestCheckinTs: !!latestTs,
+      latestCheckinTs: latestTs,
+      recentCheckInsField: rcArray === null ? 'undefined' : ('array(' + nCi + ')'),
+      firstRecentCheckInTs: latestFromArray,
+      backendGap: backendGap ? 'YES ← latestCheckinTs present but recentCheckIns[] missing' : '',
+    });
+  });
+  console.table(table);
+  console.log('%cBackend payload-shape summary','font-weight:bold;color:#d99a2c;');
+  // Categorise every active client into the three buckets requested by the
+  // data-quality guard spec.
+  let latestNoList = 0, populated = 0, neither = 0;
+  COACH.clients.filter(_isActiveClient).forEach(c => {
+    const sum = _dashboardData[c.storageKey] || {};
+    const hasLatest = !!sum.latestCheckinTs;
+    const arr = sum.recentCheckIns;
+    const hasArrItems = Array.isArray(arr) && arr.length > 0;
+    if (hasLatest && !hasArrItems) latestNoList++;
+    else if (hasArrItems) populated++;
+    else if (!hasLatest && !hasArrItems) neither++;
+  });
+  console.log('  A. latestCheckinTs present + recentCheckIns missing/empty:', latestNoList,
+              latestNoList > 0 ? '  ← payload-gap guard is now suppressing false alarms' : '');
+  console.log('  B. recentCheckIns populated (queue + WoW work normally):  ', populated);
+  console.log('  C. neither latestCheckinTs nor recentCheckIns:            ', neither);
+  console.log('  ---');
+  console.log('  clients with recentCheckIns having entries:  ', bpHasList);
+  console.log('  clients with recentCheckIns present but empty:', bpEmptyList);
+  console.log('  clients missing recentCheckIns entirely:      ', bpNoList,
+              bpNoList > 0 ? '  ← DEPLOYED APPS SCRIPT likely pre-Sprint-2 (redeploy required)' : '');
+  // Roster ↔ CheckIns identifier joins (if we had a full CheckIns payload we could
+  // list unmatched CheckIns rows — but Apps Script doesn't expose that until redeploy.
+  // For now we can only inspect what the coach dashboard sees per known client.)
+  console.log('%cRoster identifier hygiene','font-weight:bold;color:#d99a2c;');
+  const dupCI = COACH.clients.map(c => c.storageKey.toLowerCase())
+    .filter((k, i, a) => a.indexOf(k) !== i);
+  console.log('  storageKey collisions when case-folded:', dupCI.length ? dupCI : 'none');
+  const trailing = COACH.clients.filter(c => /\s|[A-Z]/.test(c.storageKey));
+  console.log('  storageKeys containing whitespace or uppercase:',
+      trailing.length ? trailing.map(c => c.storageKey) : 'none');
+  console.groupEnd();
+  return { summary: { bpHasList, bpEmptyList, bpNoList }, rows: table };
+};
+// Also expose a matcher that, once Apps Script is redeployed, verifies
+// every client sheet identifier resolves to a roster storageKey. Runs a
+// dry pass over recentCheckIns[] and reports any orphans.
+window.ccIdentifierAudit = function ccIdentifierAudit() {
+  const rosterKeys = new Set(COACH.clients.map(c => c.storageKey));
+  const orphans = {};
+  Object.keys(_dashboardData).forEach(k => {
+    if (!rosterKeys.has(k)) orphans[k] = _dashboardData[k];
+  });
+  const orphanKeys = Object.keys(orphans);
+  console.log('Dashboard-payload identifiers not present in roster:', orphanKeys.length ? orphanKeys : 'none');
+  return orphanKeys;
+};
+// ─── COMMAND_CENTRE_v1_END ─────────────────────────────────────────────
+
 // ─── RENDER: DASHBOARD ────────────────────────────────────────────────────
 function renderDashboard() {
   updateSyncStatus();
   updateNotifToggleUI();
+  // NEW — Command Centre first (primary view)
+  renderCommandCentre();
+  // LEGACY — kept, but now inside a collapsible <details id="cc-legacy">
   renderSummary();
   renderDigestPanel();
   renderAlerts();
