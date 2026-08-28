@@ -4599,6 +4599,7 @@ function renderCcAttention() {
         <div class="cc-actions">
           <button class="cc-btn primary sm" onclick="openReviewModal('${nameKey}')">Review</button>
           <button class="cc-btn sm ghost" onclick="openDetail('${nameKey}')">Open</button>
+          <button class="cc-btn sm ghost" onclick="openClientForm('${nameKey}')" title="Edit client — Lifecycle &amp; Access controls live here">Edit</button>
         </div>
       </div>
     `;
@@ -4751,9 +4752,10 @@ function renderCompactRoster() {
         <td class="num">${ciCell}</td>
         <td class="num">${revCell}</td>
         <td>${nextTxt}${nextDueTxt}</td>
-        <td style="text-align:right;">
+        <td style="text-align:right;white-space:nowrap;">
           <button class="cc-btn sm" onclick="openReviewModal('${esc(c.storageKey)}')">Review</button>
           <button class="cc-btn sm ghost" onclick="openDetail('${esc(c.storageKey)}')">Open</button>
+          <button class="cc-btn sm ghost" onclick="openClientForm('${esc(c.storageKey)}')" title="Edit client — Lifecycle &amp; Access controls live here">Edit</button>
         </td>
       </tr>
     `;
@@ -5390,6 +5392,7 @@ function renderCcWatch() {
         <div class="w-actions">
           <button class="cc-btn sm" onclick="openReviewModal('${key}')">Review</button>
           <button class="cc-btn sm ghost" onclick="openDetail('${key}')">Open</button>
+          <button class="cc-btn sm ghost" onclick="openClientForm('${key}')" title="Edit client — Lifecycle &amp; Access controls live here">Edit</button>
         </div>
       </div>
     `;
