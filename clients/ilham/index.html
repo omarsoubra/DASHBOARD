@@ -1797,11 +1797,23 @@
   <div style="text-align:center;"><div style="font-size:1.1rem;font-weight:600;letter-spacing:0.02em;">LOCKED IN</div><div style="margin-top:0.4rem;color:#8a8f99;font-size:0.85rem;">Connecting…</div></div>
 </div>
 <div id="gate-login" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:#08090d;color:#f2f2f5;z-index:99999;font-family:Inter,system-ui,sans-serif;padding:24px;">
-  <div style="max-width:360px;width:100%;background:#14161c;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1.4rem 1.2rem;">
+  <div style="max-width:380px;width:100%;background:#14161c;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1.4rem 1.2rem;">
     <div style="font-size:1.1rem;font-weight:600;letter-spacing:0.02em;">CLIENT ACCESS</div>
-    <div style="margin-top:0.4rem;color:#8a8f99;font-size:0.85rem;">Paste the access link your coach sent you.</div>
-    <input id="gate-login-input" type="text" placeholder="https://…/?t=…" style="margin-top:1rem;width:100%;box-sizing:border-box;background:rgba(255,255,255,0.03);color:#f2f2f5;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:0.6rem 0.7rem;font-family:inherit;font-size:16px;" />
-    <button id="gate-login-btn" style="margin-top:0.7rem;width:100%;background:#6ea8ff;color:#0e1015;border:0;border-radius:8px;padding:0.65rem 1rem;font-weight:600;cursor:pointer;font-family:inherit;">Continue</button>
+    <div style="margin-top:0.4rem;color:#8a8f99;font-size:0.85rem;line-height:1.4;">Paste the access link your coach sent you. If you already opened it in Safari, tap <strong>Paste from clipboard</strong> below.</div>
+    <input id="gate-login-input" type="text" placeholder="https://…/?t=…" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-top:1rem;width:100%;box-sizing:border-box;background:rgba(255,255,255,0.03);color:#f2f2f5;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:0.6rem 0.7rem;font-family:inherit;font-size:16px;" />
+    <button id="gate-paste-btn" style="margin-top:0.55rem;width:100%;background:transparent;color:#6ea8ff;border:1px solid rgba(110,168,255,0.35);border-radius:8px;padding:0.55rem 1rem;font-weight:500;cursor:pointer;font-family:inherit;">📋 Paste from clipboard</button>
+    <button id="gate-login-btn" style="margin-top:0.55rem;width:100%;background:#6ea8ff;color:#0e1015;border:0;border-radius:8px;padding:0.65rem 1rem;font-weight:600;cursor:pointer;font-family:inherit;">Continue</button>
+  </div>
+</div>
+<div id="sbo-install-hint" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;background:rgba(20,22,28,0.98);color:#f2f2f5;border:1px solid rgba(110,168,255,0.35);border-radius:10px;padding:0.75rem 0.9rem;font-family:Inter,system-ui,sans-serif;font-size:0.82rem;line-height:1.35;z-index:9998;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.6rem;">
+    <div>
+      <strong>📌 Add to your home screen</strong> — tap the Share icon (□↑) → Add to Home Screen. When you open it from the home screen the first time, tap <strong>Paste from clipboard</strong> on the sign-in screen.
+    </div>
+    <button id="sbo-install-close" aria-label="Close" style="background:transparent;border:0;color:#8a8f99;font-size:1rem;padding:0 0.3rem;cursor:pointer;">✕</button>
+  </div>
+  <div style="margin-top:0.55rem;">
+    <button id="sbo-copy-link" style="background:#6ea8ff;color:#0e1015;border:0;border-radius:6px;padding:0.4rem 0.7rem;font-weight:600;cursor:pointer;font-family:inherit;font-size:0.8rem;">Copy my access link</button>
   </div>
 </div>
 <div id="gate-suspended" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:#08090d;color:#f2f2f5;z-index:99999;font-family:Inter,system-ui,sans-serif;padding:24px;">
@@ -1934,13 +1946,19 @@
   }
   // Bootstrap: read magic-link URL, then LS, then IDB. Whichever wins is
   // mirrored into LS so the fat program's downstream code (which reads LS
-  // synchronously) works as-is.
+  // synchronously) works as-is. `window.__sboFreshFromLink` records whether
+  // this launch just consumed a magic-link URL (used to show the "Save to
+  // Home Screen" hint in Safari after first auth).
   async function _bootstrapToken(){
     try{
       const u = new URL(location.href);
       const magic = u.searchParams.get('t');
       if (magic){
         await _persistToken(magic);
+        window.__sboFreshFromLink = true;
+        // Preserve token in a sessionStorage cache so the coach can offer
+        // "Copy link" from within the app without re-encoding.
+        try{ sessionStorage.setItem('sbo_last_magic', location.origin + location.pathname + '?t=' + encodeURIComponent(magic)); }catch(_){}
         u.searchParams.delete('t');
         history.replaceState(null,'', u.pathname + (u.search||'') + u.hash);
         return magic;
@@ -1951,6 +1969,17 @@
     const idb = await _idbGet(STORAGE_KEY);
     if (idb) { _lsSet(idb); return idb; }
     return '';
+  }
+
+  // Detect iOS standalone (home-screen PWA) vs. Safari tab.
+  function _isStandalone(){
+    try{
+      return (window.navigator && window.navigator.standalone === true)
+          || window.matchMedia('(display-mode: standalone)').matches;
+    }catch(_){ return false; }
+  }
+  function _isIOS(){
+    try { return /iP(hone|ad|od)/.test(navigator.userAgent); } catch(_) { return false; }
   }
   async function apiPost(type, body){
     // Retry up to 3 times with backoff — Apps Script deployments intermittently
@@ -2060,6 +2089,14 @@
       // Successful auth — make sure BOTH stores have the token (Safari→PWA
       // context transitions may otherwise re-orphan it on the next launch).
       await _persistToken(token);
+      // Ask the OS to mark our origin's storage as PERSISTENT so iOS/browsers
+      // won't evict LS/IDB under memory pressure. Only meaningful once the
+      // client has authed once — installers of PWAs are the biggest wins.
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          navigator.storage.persist().then(() => {}).catch(() => {});
+        }
+      } catch(_) {}
       const prog = await apiPost('clientProgram', {});
       if (!prog || prog.ok === false){
         if (prog && prog.error === 'access_suspended') return showGate('gate-suspended');
@@ -2071,6 +2108,7 @@
       window.__DATA = prog.program || {};
       showApp();
       await bootDeferred();
+      _maybeShowInstallHint();
     }catch(e){
       console.error('boot', e);
       showGate('gate-error', 'Connection error. Reload to try again.');
@@ -2080,6 +2118,7 @@
   function bindLogin(){
     const btn = el('gate-login-btn');
     const inp = el('gate-login-input');
+    const paste = el('gate-paste-btn');
     async function tryLogin(){
       const raw = (inp && inp.value || '').trim();
       if (!raw){ inp && inp.focus(); return; }
@@ -2092,8 +2131,47 @@
       window._sbo_boot_started = false;
       boot();
     }
-    if (btn) btn.addEventListener('click', tryLogin);
-    if (inp) inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') tryLogin(); });
+    async function pasteFromClipboard(){
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && inp) { inp.value = text.trim(); tryLogin(); }
+      } catch(e){
+        if (inp) { inp.focus(); }
+        alert('Tap and hold the box below, then choose Paste.');
+      }
+    }
+    if (btn)   btn.addEventListener('click', tryLogin);
+    if (paste) paste.addEventListener('click', pasteFromClipboard);
+    if (inp)   inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') tryLogin(); });
+  }
+
+  // Install hint — shown after a successful magic-link auth in Safari
+  // (not standalone) on iOS. Explains the one-time paste flow that Apple's
+  // storage-context isolation forces on us for standalone PWAs.
+  function _maybeShowInstallHint(){
+    if (!window.__sboFreshFromLink) return;
+    if (_isStandalone()) return;
+    if (!_isIOS()) return;
+    try {
+      if (sessionStorage.getItem('sbo_hint_dismissed') === '1') return;
+    } catch(_){}
+    const hint = el('sbo-install-hint'); if (!hint) return;
+    hint.style.display = 'block';
+    const close = el('sbo-install-close');
+    const copy  = el('sbo-copy-link');
+    if (close) close.addEventListener('click', () => {
+      hint.style.display = 'none';
+      try{ sessionStorage.setItem('sbo_hint_dismissed', '1'); }catch(_){}
+    });
+    if (copy) copy.addEventListener('click', async () => {
+      const link = sessionStorage.getItem('sbo_last_magic') || (location.origin + location.pathname);
+      try {
+        await navigator.clipboard.writeText(link);
+        copy.textContent = '✓ Link copied — paste when you first open from home screen';
+      } catch(_){
+        window.prompt('Copy this access link:', link);
+      }
+    });
   }
   document.addEventListener('DOMContentLoaded', () => { bindLogin(); boot(); });
 
