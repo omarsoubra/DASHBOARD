@@ -1929,9 +1929,14 @@
       if (!auth || auth.ok === false){
         if (auth && auth.error === 'access_suspended') return showGate('gate-suspended');
         if (auth && auth.error === 'access_revoked')  return showGate('gate-revoked');
-        // bad_token / anything else → forget token, force fresh login
-        try{ localStorage.removeItem(LS_TOKEN); }catch(e){}
-        return showGate('gate-login');
+        // Only nuke the token on definitive-invalid errors. Transient errors
+        // (use_post redirect race, unknown_type after backend deploy, network
+        // blips) must PRESERVE the token so a plain reload recovers.
+        if (auth && (auth.error === 'bad_token' || auth.error === 'unknown_client')){
+          try{ localStorage.removeItem(LS_TOKEN); }catch(e){}
+          return showGate('gate-login');
+        }
+        return showGate('gate-error', 'Sign-in failed: ' + ((auth && auth.error) || 'unknown') + '. Reload to try again.');
       }
       const prog = await apiPost('clientProgram', {});
       if (!prog || prog.ok === false){
