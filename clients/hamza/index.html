@@ -364,6 +364,8 @@ async function _purgeStaleServiceWorkers() {
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
     for (const r of regs) {
+      // NOTE: This does NOT touch localStorage. Client auth token at
+      // 'sbo_client_token_<key>' is preserved across purge + reload.
       try { await r.unregister(); } catch (_) {}
     }
     if (window.caches && caches.keys) {
@@ -371,6 +373,24 @@ async function _purgeStaleServiceWorkers() {
       await Promise.all(keys.map((k) => caches.delete(k).catch(() => {})));
     }
   } catch (e) { /* best-effort; never block boot */ }
+}
+
+// LOCKED IN Sprint — Update-available banner.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (evt) => {
+    if (evt && evt.data && evt.data.type === 'sw_updated') { _showUpdateBanner(); }
+  });
+}
+let _updateBannerShown = false;
+function _showUpdateBanner() {
+  if (_updateBannerShown) return;
+  _updateBannerShown = true;
+  const bar = document.createElement('div');
+  bar.setAttribute('role', 'status');
+  bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:rgba(20,22,28,0.98);color:#f2f2f5;border:1px solid rgba(110,168,255,0.35);border-radius:10px;padding:0.75rem 0.9rem;display:flex;gap:0.75rem;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-family:Inter,system-ui,sans-serif;font-size:0.85rem;';
+  bar.innerHTML = '<span>LOCKED IN has been updated. Reload to get the latest version.</span><button type=\"button\" style=\"background:#6ea8ff;color:#0e1015;border:0;border-radius:6px;padding:0.45rem 0.9rem;font-weight:600;cursor:pointer;\">Update now</button>';
+  bar.querySelector('button').addEventListener('click', () => window.location.reload());
+  document.body.appendChild(bar);
 }
 
 async function boot() {
