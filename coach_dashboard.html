@@ -2285,7 +2285,9 @@
 // Default clients — used on first boot. After that, the dashboard reads/writes
 // from localStorage so adding/removing/editing happens directly in-app.
 const COACH = {
-  password: 'OMARTRAINS',
+  // Sprint 5: coach password is verified server-side. It no longer appears
+  // here in plaintext. localStorage['sbo_coach_token'] holds a signed token
+  // issued by the backend after successful authCoach.
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec',
   defaultClients: [
     // { storageKey, displayName, programType, startWeight, goalWeight, startDate, programUrl, phone (E.164 e.g. +61412345678) }
@@ -2963,17 +2965,11 @@ function saveClients(list) {
  * Non-blocking; fires the request and returns.
  */
 async function pushRoster() {
-  if (!COACH.webhookUrl) return;
+  if (!COACH.webhookUrl || !_coachToken()) return;
   const roster = loadClients();
   const ts = localStorage.getItem(LS_CLIENTS_TS) || String(Date.now());
   try {
-    // Use no-cors + text/plain to avoid preflight (Apps Script accepts it).
-    await fetch(COACH.webhookUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type: 'rosterPut', ts: Number(ts), roster: roster }),
-    });
+    await coachFetch('rosterPut', { ts: Number(ts), roster: roster });
     localStorage.setItem(LS_ROSTER_SYNCED, String(Date.now()));
   } catch (e) {
     console.warn('pushRoster failed', e);
@@ -3159,12 +3155,9 @@ async function mergeAndPersistRegistry(registry) {
  * than the local version, replace local. Returns true if local was updated.
  */
 async function pullRoster() {
-  if (!COACH.webhookUrl) return false;
+  if (!COACH.webhookUrl || !_coachToken()) return false;
   try {
-    const url = COACH.webhookUrl + '?type=rosterGet&_=' + Date.now();
-    const resp = await fetch(url, { cache: 'no-store' });
-    if (!resp.ok) return false;
-    const data = await resp.json();
+    const data = await coachFetch('rosterGet');
     if (!data || !data.roster || !Array.isArray(data.roster)) return false;
     const cloudTs = Number(data.ts) || 0;
     const localTs = Number(localStorage.getItem(LS_CLIENTS_TS)) || 0;
@@ -3439,6 +3432,8 @@ function _renderInlineAccessActions(c) {
   } else {
     parts.push(btn('Restore access', `restoreAccess('${esc(key)}')`, 'primary'));
   }
+  // Sprint 5: rotate is always available. Compromised link → issue new one.
+  parts.push(btn('Rotate access', `rotateAccess('${esc(key)}')`));
   el.innerHTML = parts.join(' ');
 }
 
@@ -3751,26 +3746,39 @@ function _lifecycleAccessPatch(storageKey, patch, event, meta) {
   if (typeof renderCommandCentre === 'function') renderCommandCentre();
   return true;
 }
-function suspendAccess(storageKey, reason) {
+// ─── Sprint 5 access controls — real backend enforcement ───────────────
+// These now POST to Apps Script's setAccessStatus / issueClientToken. The
+// Access sheet is the source of truth; the roster mirror is a UI convenience.
+async function _backendSetAccessStatus(storageKey, status, reason) {
+  try {
+    const r = await coachFetch('setAccessStatus', { storageKey: storageKey, status: status, reason: reason || '' });
+    if (!r || r.ok === false) throw new Error((r && r.error) || 'backend refused');
+    return true;
+  } catch (e) {
+    alert('Backend access change failed: ' + e.message + '\n\nRoster state NOT updated. Reload and try again.');
+    return false;
+  }
+}
+async function suspendAccess(storageKey, reason) {
   const c = loadClients().find(x => x.storageKey === storageKey);
   if (!c) return;
   if (!confirm('Suspend ' + c.displayName + '\'s access?\n\n' +
-    'NOTE: full server-side revocation is not yet enabled — this records the ' +
-    'suspension in the roster and warns you in the dashboard. It does not yet ' +
-    'physically block them from opening their program URL.')) return;
+    'They will be blocked from opening their program until you restore access.')) return;
   const r = (reason == null) ? prompt('Optional reason:', '') : reason;
+  const ok = await _backendSetAccessStatus(storageKey, 'suspended', (r || '').trim());
+  if (!ok) return;
   _lifecycleAccessPatch(storageKey, { accessStatus: 'suspended' },
     'access_suspended', { reason: (r || '').trim() || undefined });
 }
-function revokeAccess(storageKey, reason) {
+async function revokeAccess(storageKey, reason) {
   const c = loadClients().find(x => x.storageKey === storageKey);
   if (!c) return;
   if (!confirm('Revoke ' + c.displayName + '\'s access?\n\n' +
-    'NOTE: full server-side revocation is not yet enabled. This records the ' +
-    'revocation and hides them from the coach dashboard. They may still be ' +
-    'able to open their program URL until server-side gating ships in the ' +
-    'next sprint.')) return;
+    'They will be blocked from opening their program immediately. Their ' +
+    'history stays intact and you can restore access later.')) return;
   const r = (reason == null) ? prompt('Optional reason (e.g. block ended, cancelled, dispute):', '') : reason;
+  const ok = await _backendSetAccessStatus(storageKey, 'revoked', (r || '').trim());
+  if (!ok) return;
   _lifecycleAccessPatch(storageKey, {
       accessStatus: 'revoked',
       accessRevokedAt: new Date().toISOString(),
@@ -3778,41 +3786,122 @@ function revokeAccess(storageKey, reason) {
       accessRestoredAt: undefined,
     }, 'access_revoked', { reason: (r || '').trim() || undefined });
 }
-function restoreAccess(storageKey) {
+async function restoreAccess(storageKey) {
   const c = loadClients().find(x => x.storageKey === storageKey);
   if (!c) return;
   if (!confirm('Restore ' + c.displayName + '\'s access?\n\n' +
     'This will NOT reactivate coaching. Their lifecycle status (paused / ' +
     'archived / active) stays exactly as it was — you have to reactivate ' +
     'coaching separately if you want them back on the operational roster.')) return;
+  const ok = await _backendSetAccessStatus(storageKey, 'active', 'restored_by_coach');
+  if (!ok) return;
   _lifecycleAccessPatch(storageKey, {
       accessStatus: 'active',
       accessRestoredAt: new Date().toISOString(),
       accessRevokedReason: undefined,
     }, 'access_restored', {});
 }
+// Sprint 5: rotate a client's access token. Old magic link stops working.
+// Backend issues a new token, we surface a fresh magic link for the coach
+// to copy/send. The RAW token is never persisted in the dashboard.
+async function rotateAccess(storageKey) {
+  const c = loadClients().find(x => x.storageKey === storageKey);
+  if (!c) return;
+  if (!confirm('Rotate ' + c.displayName + '\'s access?\n\n' +
+    'Their current magic link stops working immediately. You will need to ' +
+    'send them a new one. Their history stays intact.')) return;
+  try {
+    const r = await coachFetch('issueClientToken', { storageKey: storageKey });
+    if (!r || !r.ok || !r.token) throw new Error((r && r.error) || 'backend refused');
+    const url = c.programUrl || ('clients/' + storageKey + '/');
+    const link = window.location.origin + '/' + url + '?t=' + encodeURIComponent(r.token);
+    _lifecycleAccessPatch(storageKey, { accessStatus: 'active', accessRestoredAt: new Date().toISOString() },
+      'access_rotated', { reason: 'coach_rotation' });
+    // Show once, then discard. Coach copies to WhatsApp.
+    prompt('New magic link for ' + c.displayName + ' (copy + send now — will not be shown again):', link);
+  } catch (e) {
+    alert('Rotate failed: ' + e.message);
+  }
+}
 // ─── ACCESS_v1_END ──────────────────────────────────────────────────────────
 
-// ─── LOGIN ────────────────────────────────────────────────────────────────
-function login() {
+// ─── COACH_AUTH_v2_START — backend-issued coach token ───────────────────
+// Sprint 5. Coach password is verified server-side (AppsScript_v5_secure.gs
+// → POST type=authCoach). Backend returns a signed coach token (JWT-style
+// HMAC) that we store in localStorage['sbo_coach_token']. Every subsequent
+// data call POSTs { coachToken: <token>, type: '...', ... } to the webhook.
+//
+// The coach dashboard NEVER stores the password. Rotation = coach edits
+// the COACH_PASSWORD_HASH in Apps Script Script Properties; existing
+// tokens naturally expire (30d TTL) or can be revoked by rotating
+// COACH_TOKEN_SECRET.
+const LS_COACH_TOKEN = 'sbo_coach_token';
+function _coachToken() { try { return localStorage.getItem(LS_COACH_TOKEN) || ''; } catch (e) { return ''; } }
+function _setCoachToken(t) { try { localStorage.setItem(LS_COACH_TOKEN, t); } catch (e) {} }
+function _clearCoachToken() { try { localStorage.removeItem(LS_COACH_TOKEN); } catch (e) {} }
+
+// coachFetch(type, body?) — POST { coachToken, type, ...body } to webhook.
+// On 401/unauthorized: clears the token and forces re-login.
+async function coachFetch(type, body) {
+  const url = COACH.webhookUrl;
+  const payload = Object.assign({ type: type, coachToken: _coachToken() }, body || {});
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoid CORS preflight on Apps Script
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const json = await resp.json();
+  if (json && json.ok === false && (json.error === 'unauthorized' || json.error === 'no_credential' )) {
+    _clearCoachToken();
+    _showCoachLogin();
+    throw new Error('unauthorized');
+  }
+  return json;
+}
+
+async function login() {
+  const errEl = document.getElementById('login-err');
+  if (errEl) errEl.style.display = 'none';
   const pw = document.getElementById('login-input').value;
-  if (pw === COACH.password) {
-    sessionStorage.setItem('coach_unlocked', '1');
-    document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('dashboard').style.display = '';
+  if (!pw) { if (errEl) errEl.style.display = 'block'; return; }
+  try {
+    const resp = await fetch(COACH.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'authCoach', password: pw }),
+      cache: 'no-store',
+    });
+    const json = await resp.json();
+    if (!json || !json.ok || !json.coachToken) {
+      if (errEl) errEl.style.display = 'block';
+      return;
+    }
+    _setCoachToken(json.coachToken);
+    _hideCoachLogin();
     loadAll();
-  } else {
-    document.getElementById('login-err').style.display = 'block';
+  } catch (e) {
+    console.error('login err', e);
+    if (errEl) errEl.style.display = 'block';
   }
 }
 function logout() {
-  sessionStorage.removeItem('coach_unlocked');
+  _clearCoachToken();
   location.reload();
 }
-if (sessionStorage.getItem('coach_unlocked') === '1') {
-  document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('dashboard').style.display = '';
+function _showCoachLogin() {
+  const ov = document.getElementById('login-overlay'); if (ov) ov.style.display = '';
+  const d  = document.getElementById('dashboard');     if (d)  d.style.display  = 'none';
 }
+function _hideCoachLogin() {
+  const ov = document.getElementById('login-overlay'); if (ov) ov.style.display = 'none';
+  const d  = document.getElementById('dashboard');     if (d)  d.style.display  = '';
+}
+// Boot: if a token exists, show the dashboard optimistically and let
+// coachFetch push us back to login on the first 401.
+if (_coachToken()) _hideCoachLogin(); else _showCoachLogin();
+// ─── COACH_AUTH_v2_END ──────────────────────────────────────────────────
 
 // ─── DATA LAYER ───────────────────────────────────────────────────────────
 let _dashboardData = {};
@@ -3835,12 +3924,9 @@ function updateSyncStatus() {
 }
 
 async function fetchDashboardData() {
-  const url = COACH.webhookUrl + '?type=dashboard&_=' + Date.now();
-  const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
-  return await resp.json();
+  if (!_coachToken()) throw new Error('unauthorized');
+  return await coachFetch('dashboard');
 }
-
 async function loadAll() {
   try {
     // Pull roster + dashboard data + client registry in parallel.
@@ -6693,9 +6779,8 @@ function closeDetail() {
 async function buildWeightChart(c, sum) {
   // Fetch full weight history for this client
   try {
-    const url = COACH.webhookUrl + '?type=weightLog&client=' + encodeURIComponent(c.storageKey) + '&_=' + Date.now();
-    const resp = await fetch(url, { cache: 'no-store' });
-    const log = await resp.json();
+    // Sprint 5: coach-authed via coachFetch. Backend returns log for storageKey.
+    const log = await coachFetch('weightLog', { client: c.storageKey, storageKey: c.storageKey });
     const data = log
       .filter(r => r.weightKg)
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
@@ -7440,9 +7525,8 @@ function renderMacroEditorSection(c) {
 
 async function loadMacroOverrides(storageKey) {
   try {
-    const url = COACH.webhookUrl + '?type=overrideGet&client=' + encodeURIComponent(storageKey) + '&_=' + Date.now();
-    const resp = await fetch(url, { cache: 'no-store' });
-    const overrides = await resp.json();
+    // Sprint 5: coach-authed via coachFetch.
+    const overrides = await coachFetch('overrideGet', { client: storageKey, storageKey: storageKey });
     // If any macros.pN keys exist, overwrite baseline values with them
     ['1','2','3'].forEach(phase => {
       const key = 'macros.p' + phase;
@@ -7494,16 +7578,9 @@ async function saveMacroRow(storageKey, phase) {
     if (!proceed) return;
   }
   try {
-    await fetch(COACH.webhookUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        type: 'overridePut',
-        client: storageKey,
-        key: 'macros.p' + phase,
-        value: { cal, p, c, f, deficit: 0 },
-      }),
+    await coachFetch('overridePut', {
+      client: storageKey, storageKey: storageKey,
+      key: 'macros.p' + phase, value: { cal, p, c, f, deficit: 0 },
     });
     _macroEditorStatus(storageKey, '✓ Phase ' + phase + ' saved to cloud — client picks up on next sync', 'var(--accent3)');
     // Update visual state — highlight as overridden
@@ -7521,16 +7598,9 @@ async function resetMacroRow(storageKey, phase) {
   const b = BASELINE_MACROS[storageKey];
   if (!b) return;
   try {
-    await fetch(COACH.webhookUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        type: 'overridePut',
-        client: storageKey,
-        key: 'macros.p' + phase,
-        value: null,   // null = delete override
-      }),
+    await coachFetch('overridePut', {
+      client: storageKey, storageKey: storageKey,
+      key: 'macros.p' + phase, value: null,
     });
     // Restore baseline in UI
     const row = document.querySelector('#macro-editor-' + storageKey + ' tr[data-phase="' + phase + '"]');
@@ -7881,9 +7951,8 @@ async function loadClientPhotos(storageKey) {
   const bodyEl = document.getElementById('photo-timeline-body-' + storageKey);
   if (!bodyEl) return;
   try {
-    const url = COACH.webhookUrl + '?type=photosGet&client=' + encodeURIComponent(storageKey) + '&_=' + Date.now();
-    const resp = await fetch(url, { cache: 'no-store' });
-    const data = await resp.json();
+    // Sprint 5: coach-authed via coachFetch.
+    const data = await coachFetch('photosGet', { client: storageKey, storageKey: storageKey });
     const photos = (data && data.photos) || [];
     if (!photos.length) {
       const c = COACH.clients.find(c => c.storageKey === storageKey);
@@ -7967,7 +8036,10 @@ function renderMealLogTable(rows) {
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────
-if (sessionStorage.getItem('coach_unlocked') === '1') {
+// Sprint 5: boot on presence of the backend-issued coach token instead of
+// the old sessionStorage flag. coachFetch handles invalid tokens by
+// clearing storage and forcing re-login on the first 401.
+if (_coachToken()) {
   loadAll();
   setInterval(() => {
     if (!document.hidden) loadAll();
