@@ -1825,6 +1825,12 @@
     <button onclick="location.reload()" style="margin-top:1.2rem;background:#6ea8ff;color:#0e1015;border:0;border-radius:8px;padding:0.55rem 1rem;font-weight:600;cursor:pointer;font-family:inherit;">Reload</button>
   </div>
 </div>
+<div id="gate-session-expired" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:#08090d;color:#f2f2f5;z-index:99999;font-family:Inter,system-ui,sans-serif;padding:24px;">
+  <div style="max-width:400px;text-align:center;">
+    <div style="font-size:1.05rem;font-weight:600;color:#ffb84a;">SESSION EXPIRED</div>
+    <div style="margin-top:0.5rem;color:#8a8f99;">Your access has expired. Open the latest secure link from your coach.</div>
+  </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1838,32 +1844,113 @@
   const WEBHOOK = 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec';
   const STORAGE_KEY = 'mohammed_hardani';
   const LS_TOKEN = 'sbo_client_token_' + STORAGE_KEY;
+  const IDB_NAME = 'sbo_session_v1';
+  const IDB_STORE = 'tokens';
 
   function el(id){return document.getElementById(id);}
   function showGate(state, msg){
-    ['gate-loading','gate-login','gate-suspended','gate-revoked','gate-error'].forEach(k=>{
+    ['gate-loading','gate-login','gate-suspended','gate-revoked','gate-error','gate-session-expired'].forEach(k=>{
       const n = el(k); if (n) n.style.display = (k===state)?'flex':'none';
     });
     const app = el('sbo-app-root'); if (app) app.style.display = 'none';
     if (msg && state==='gate-error'){ const e = el('gate-error-msg'); if (e) e.textContent = msg; }
   }
   function showApp(){
-    ['gate-loading','gate-login','gate-suspended','gate-revoked','gate-error'].forEach(k=>{
+    ['gate-loading','gate-login','gate-suspended','gate-revoked','gate-error','gate-session-expired'].forEach(k=>{
       const n = el(k); if (n) n.style.display = 'none';
     });
     const app = el('sbo-app-root'); if (app) app.style.display = '';
   }
-  function readAndCleanToken(){
+
+  // ── LOCKED IN Sprint 6 — cross-context session persistence ─────────────
+  // iOS Safari + standalone PWA can partition localStorage between contexts.
+  // A client auths in Safari, then adds to Home Screen, and the standalone
+  // launch sees an empty localStorage and asks for the magic link again.
+  // IndexedDB is more reliable across the Safari↔standalone boundary. We
+  // write the session token to BOTH stores and read from either.
+  //
+  // The token itself is what the backend already knows. We are not putting
+  // a NEW secret anywhere; we are just persisting the existing one in a
+  // storage layer that survives iOS's context split.
+  function _idbOpen(){
+    return new Promise((resolve) => {
+      try{
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          try { req.result.createObjectStore(IDB_STORE); } catch(_){}
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch(_){ resolve(null); }
+    });
+  }
+  async function _idbPut(key, value){
+    const db = await _idbOpen(); if (!db) return;
+    return new Promise((resolve) => {
+      try{
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch(_){ resolve(); }
+    });
+  }
+  async function _idbGet(key){
+    const db = await _idbOpen(); if (!db) return null;
+    return new Promise((resolve) => {
+      try{
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      } catch(_){ resolve(null); }
+    });
+  }
+  async function _idbDel(key){
+    const db = await _idbOpen(); if (!db) return;
+    return new Promise((resolve) => {
+      try{
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch(_){ resolve(); }
+    });
+  }
+  function _lsSet(t){ try{ localStorage.setItem(LS_TOKEN, t); }catch(_){} }
+  function _lsGet(){ try{ return localStorage.getItem(LS_TOKEN) || ''; }catch(_){ return ''; } }
+  function _lsDel(){ try{ localStorage.removeItem(LS_TOKEN); }catch(_){} }
+
+  // Persist a fresh token to BOTH stores. Idempotent.
+  async function _persistToken(t){
+    if (!t) return;
+    _lsSet(t);
+    await _idbPut(STORAGE_KEY, t);
+  }
+  // Wipe both stores — used only by explicit logout or backend-confirmed revoke.
+  async function _wipeToken(){
+    _lsDel();
+    await _idbDel(STORAGE_KEY);
+  }
+  // Bootstrap: read magic-link URL, then LS, then IDB. Whichever wins is
+  // mirrored into LS so the fat program's downstream code (which reads LS
+  // synchronously) works as-is.
+  async function _bootstrapToken(){
     try{
       const u = new URL(location.href);
-      const t = u.searchParams.get('t');
-      if (t){
-        localStorage.setItem(LS_TOKEN, t);
+      const magic = u.searchParams.get('t');
+      if (magic){
+        await _persistToken(magic);
         u.searchParams.delete('t');
         history.replaceState(null,'', u.pathname + (u.search||'') + u.hash);
+        return magic;
       }
-    }catch(e){}
-    try{ return localStorage.getItem(LS_TOKEN) || ''; }catch(e){ return ''; }
+    }catch(_){}
+    const ls = _lsGet();
+    if (ls) { await _idbPut(STORAGE_KEY, ls); return ls; } // keep IDB in sync
+    const idb = await _idbGet(STORAGE_KEY);
+    if (idb) { _lsSet(idb); return idb; }
+    return '';
   }
   async function apiPost(type, body){
     // Retry up to 3 times with backoff — Apps Script deployments intermittently
@@ -1900,8 +1987,8 @@
     }
     throw lastErr || new Error('apiPost exhausted retries');
   }
-  function logout(){
-    try{ localStorage.removeItem(LS_TOKEN); }catch(e){}
+  async function logout(){
+    await _wipeToken();
     try{
       // Clear runtime keys the fat program created too (checkins, weight etc)
       Object.keys(localStorage).forEach(k => {
@@ -1951,25 +2038,32 @@
     if (window._sbo_boot_started) return;
     window._sbo_boot_started = true;
     showGate('gate-loading');
-    const token = readAndCleanToken();
+    const token = await _bootstrapToken();
     if (!token){ showGate('gate-login'); return; }
     try{
       const auth = await apiPost('authClient', {});
       if (!auth || auth.ok === false){
         if (auth && auth.error === 'access_suspended') return showGate('gate-suspended');
-        if (auth && auth.error === 'access_revoked')  return showGate('gate-revoked');
-        // Never auto-delete the token. Apps Script deployment cache
-        // propagation can return bad_token/use_post/HTML-redirect for a
-        // valid token during the first minutes after a redeploy. Silent
-        // deletion here caused clients to fall back to the login screen
-        // during migration. Preserve the token; ask the user to reload;
-        // explicit logout is the only path that clears it.
+        if (auth && auth.error === 'access_revoked')  { await _wipeToken(); return showGate('gate-revoked'); }
+        // bad_token / no_credential_issued from backend AFTER we had a
+        // stored token means the session is genuinely dead (revoke +
+        // rotation invalidates hashes). Wipe both stores and show the
+        // session-expired gate. Transient error signatures (use_post,
+        // unknown_type, HTML redirect) were already retried inside apiPost.
+        if (auth && (auth.error === 'bad_token' || auth.error === 'no_credential_issued' || auth.error === 'unknown_client')){
+          await _wipeToken();
+          return showGate('gate-session-expired');
+        }
+        // Genuinely unknown backend state — preserve token, show reload.
         return showGate('gate-error', 'Sign-in failed: ' + ((auth && auth.error) || 'unknown') + '. Reload to try again.');
       }
+      // Successful auth — make sure BOTH stores have the token (Safari→PWA
+      // context transitions may otherwise re-orphan it on the next launch).
+      await _persistToken(token);
       const prog = await apiPost('clientProgram', {});
       if (!prog || prog.ok === false){
         if (prog && prog.error === 'access_suspended') return showGate('gate-suspended');
-        if (prog && prog.error === 'access_revoked')  return showGate('gate-revoked');
+        if (prog && prog.error === 'access_revoked')  { await _wipeToken(); return showGate('gate-revoked'); }
         return showGate('gate-error', 'Program unavailable — ' + ((prog && prog.error) || 'unknown'));
       }
       // Backend's client-facing allow-list may drop fields; we need the full
@@ -1992,7 +2086,10 @@
       let extracted = raw;
       const m = raw.match(/[?&]t=([^&\s]+)/);
       if (m) extracted = m[1];
-      try{ localStorage.setItem(LS_TOKEN, extracted); }catch(e){}
+      // Persist to BOTH stores so PWA context recovers.
+      await _persistToken(extracted);
+      // Reset the boot guard so we can re-attempt after manual login.
+      window._sbo_boot_started = false;
       boot();
     }
     if (btn) btn.addEventListener('click', tryLogin);
