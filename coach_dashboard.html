@@ -1487,6 +1487,214 @@
     </div>
   </div>
 
+  <!-- ─── CLIENT_DETAIL_V2 CSS ─────────────────────────────────────────── -->
+  <style>
+    /* Detail overlay + panel — respect the pre-existing .detail-overlay
+       positioning; only tighten what's inside. */
+    #detail-panel {
+      display: flex; flex-direction: column;
+      max-height: calc(100vh - 32px);
+      overflow: hidden;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    .cd-close {
+      position: absolute; top: 12px; right: 14px; z-index: 3;
+      background: transparent; border: 0; color: var(--muted, #8a8f99);
+      font-size: 0.85rem; cursor: pointer; padding: 4px 8px;
+    }
+    .cd-close:hover { color: var(--text); }
+
+    /* HEADER ---------------------------------------------------------- */
+    .cd-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 1rem; flex-wrap: wrap;
+      padding: 1rem 1.25rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--surface, #14161c); z-index: 2;
+    }
+    .cd-header-left { flex: 1 1 320px; min-width: 0; }
+    .cd-name-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .cd-name {
+      font-family: 'Inter', sans-serif; font-size: 1.15rem; font-weight: 600;
+      letter-spacing: 0; margin: 0; color: var(--text);
+    }
+    .cd-meta-row {
+      margin-top: 4px; font-size: 0.82rem; color: var(--muted);
+      display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+    }
+    .cd-meta-sep { color: var(--muted); opacity: 0.6; }
+    .cd-program-type { color: var(--text); font-weight: 500; }
+    .cd-trend { color: var(--text); }
+    .cd-next-action {
+      margin-top: 6px; font-size: 0.8rem; color: var(--muted);
+      background: rgba(255,255,255,0.03); padding: 5px 9px;
+      border-radius: 6px; border: 1px dashed var(--border);
+      display: inline-block; max-width: 100%;
+    }
+    .cd-next-action strong { color: var(--text); font-weight: 500; }
+
+    .cd-header-actions {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+    }
+    .cd-btn {
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; letter-spacing: 0;
+      background: rgba(255,255,255,0.05); color: var(--text);
+      border: 1px solid var(--border); padding: 0.42rem 0.85rem;
+      border-radius: 6px; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; text-transform: none;
+    }
+    .cd-btn:hover { background: rgba(255,255,255,0.09); }
+    .cd-btn.primary { background: #6ea8ff; color: #001a3f; border-color: #6ea8ff; font-weight: 600; }
+    .cd-btn.primary:hover { background: #8fbaff; }
+    .cd-btn.ghost { background: transparent; }
+    .cd-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+    .cd-chip {
+      display: inline-flex; align-items: center; padding: 3px 8px;
+      border-radius: 999px; font-size: 0.7rem; letter-spacing: 0.02em;
+      font-weight: 500; line-height: 1.3; border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .cd-chip-good   { background: rgba(127,210,140,0.14); color: #7fd28c; }
+    .cd-chip-watch  { background: rgba(255,184,74,0.14);  color: #ffb84a; }
+    .cd-chip-action { background: rgba(255,91,91,0.14);   color: #ff5b5b; }
+    .cd-chip-info   { background: rgba(110,168,255,0.14); color: #6ea8ff; }
+    .cd-chip-muted  { background: rgba(255,255,255,0.06); color: var(--muted); }
+
+    /* TABS ------------------------------------------------------------ */
+    .cd-tabs {
+      display: flex; align-items: center; gap: 4px; overflow-x: auto;
+      padding: 0.5rem 1rem 0; border-bottom: 1px solid var(--border);
+      background: var(--surface, #14161c);
+      position: sticky; top: 0; z-index: 1;
+      scrollbar-width: thin;
+    }
+    .cd-tab {
+      background: transparent; border: 0; color: var(--muted);
+      padding: 0.55rem 0.85rem; font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; font-weight: 500; cursor: pointer;
+      border-bottom: 2px solid transparent; letter-spacing: 0;
+      white-space: nowrap; text-transform: none;
+    }
+    .cd-tab:hover { color: var(--text); }
+    .cd-tab.active { color: var(--text); border-bottom-color: #6ea8ff; }
+
+    /* PANEL / SECTIONS ----------------------------------------------- */
+    .cd-tabpanel { flex: 1 1 auto; overflow-y: auto; }
+    .cd-panel-body { padding: 1rem 1.25rem 1.5rem; display: grid; gap: 1rem; }
+    .cd-section { display: grid; gap: 0.5rem; }
+    .cd-section-h {
+      font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); text-transform: none; letter-spacing: 0.01em;
+      margin: 0.35rem 0 0.1rem;
+    }
+    .cd-empty {
+      display: block; padding: 0.55rem 0.75rem; font-size: 0.82rem;
+      color: var(--muted); background: rgba(255,255,255,0.02);
+      border: 1px dashed var(--border); border-radius: 6px;
+    }
+    .cd-chart-wrap {
+      background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.75rem;
+      height: 320px; max-width: 100%;
+    }
+    .cd-chart-wrap canvas { max-width: 100%; }
+    .cd-history-list { display: grid; gap: 0.35rem; }
+    .cd-history-row {
+      display: grid; grid-template-columns: 90px 1fr; gap: 0.5rem;
+      padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.82rem; color: var(--text);
+    }
+    .cd-history-when {
+      color: var(--muted); font-size: 0.75rem; font-family: 'Inter', sans-serif;
+    }
+    .cd-history-body { min-width: 0; word-break: break-word; }
+    .cd-audit strong { font-weight: 600; text-transform: none; }
+
+    /* Sprint 4 macro-editor visual pass — align to Add/Edit v2 look
+       without changing the section's internal render behaviour. */
+    .cd-nutrition .log-section {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin: 0;
+    }
+    .cd-nutrition .log-section h3 {
+      font-family: 'Inter', sans-serif; font-size: 0.85rem;
+      font-weight: 600; letter-spacing: 0; color: var(--text);
+      margin: 0 0 0.7rem;
+    }
+    .cd-nutrition input[type="number"],
+    .cd-nutrition input[type="text"] {
+      background: rgba(255,255,255,0.03) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      padding: 0.42rem 0.55rem !important;
+      border-radius: 6px !important;
+      font-family: 'Inter', system-ui, sans-serif !important;
+      font-size: 0.85rem !important;
+    }
+    .cd-nutrition input[type="number"]:focus,
+    .cd-nutrition input[type="text"]:focus {
+      outline: none !important;
+      border-color: #6ea8ff !important;
+      box-shadow: 0 0 0 3px rgba(110,168,255,0.15) !important;
+    }
+    .cd-nutrition .log-empty {
+      background: rgba(255,255,255,0.02) !important;
+      border: 1px dashed var(--border) !important;
+      color: var(--muted) !important;
+      padding: 0.55rem 0.7rem !important;
+      font-size: 0.82rem !important;
+      border-radius: 6px !important;
+    }
+
+    /* RESPONSIVE — 1440 / 1280 / 1024 / 768 / 430 / 390 ----------------- */
+    @media (max-width: 1440px) {
+      #detail-panel { max-width: 1160px; }
+    }
+    @media (max-width: 1280px) {
+      #detail-panel { max-width: 1040px; }
+      .cd-chart-wrap { height: 300px; }
+    }
+    @media (max-width: 1024px) {
+      #detail-panel { max-width: 96vw; }
+      .cd-header { padding: 0.85rem 1rem 0.75rem; }
+      .cd-tabs { padding: 0.4rem 0.75rem 0; }
+      .cd-panel-body { padding: 0.85rem 1rem 1.25rem; }
+      .cd-chart-wrap { height: 280px; }
+    }
+    @media (max-width: 768px) {
+      #detail-panel {
+        max-width: 100vw; max-height: 100vh; border-radius: 0;
+      }
+      .cd-header { flex-direction: column; gap: 0.6rem; }
+      .cd-header-actions { width: 100%; }
+      .cd-name { font-size: 1.02rem; }
+      .cd-chart-wrap { height: 240px; padding: 0.5rem; }
+      .cd-history-row { grid-template-columns: 68px 1fr; }
+    }
+    @media (max-width: 430px) {
+      .cd-panel-body { padding: 0.75rem 0.8rem 1rem; }
+      .cd-tabs { gap: 2px; }
+      .cd-tab { padding: 0.5rem 0.65rem; font-size: 0.78rem; }
+      .cd-btn { padding: 0.38rem 0.7rem; font-size: 0.78rem; }
+      .cd-name { font-size: 0.98rem; }
+      .cd-chart-wrap { height: 220px; }
+      .cd-history-row {
+        grid-template-columns: 1fr; gap: 2px;
+      }
+      .cd-history-when { font-size: 0.7rem; }
+    }
+    @media (max-width: 390px) {
+      .cd-tab { padding: 0.45rem 0.55rem; font-size: 0.75rem; }
+      .cd-btn { font-size: 0.75rem; }
+      .cd-chart-wrap { height: 200px; }
+    }
+  </style>
+
   <!-- ─── ADDEDIT_v2_START — redesigned Add/Edit modal ─────────────────── -->
   <style>
     /* Overlay uses flex centring so the panel actually fits and scrolls on
@@ -3876,7 +4084,7 @@ function checkForNewActivity() {
 // the new fields survive round-trips without any Apps Script edits.
 
 const CC = {
-  filter: 'all',
+  filter: 'lc_current',  // Sprint 4-A: default operational view excludes archived.
   search: '',
   // ── Rollout baseline ────────────────────────────────────────────────
   // Anchor date for existing clients that pre-date the review-tracking
@@ -4616,18 +4824,22 @@ function renderCcAttention() {
 
 // ── RENDER: Compact roster ─────────────────────────────────────────────
 function renderCcFilterChips(counts) {
+  // Sprint 4-A: 'Current' is the default view. It shows anyone still on the
+  // operational books (active + onboarding + paused) and excludes archived.
+  // 'All' is retained for full-roster searches.
   const chips = [
-    { k: 'all', label: 'All' },
-    { k: 'attention', label: 'Needs Attention' },
-    { k: 'watch', label: 'Watch' },
-    { k: 'ontrack', label: 'On Track' },
+    { k: 'lc_current',    label: 'Current' },
+    { k: 'attention',     label: 'Needs Attention' },
+    { k: 'watch',         label: 'Watch' },
+    { k: 'ontrack',       label: 'On Track' },
     { k: 'checkin_overdue', label: 'Check-in Overdue' },
-    { k: 'unreviewed', label: 'Not Reviewed This Week' },
-    // Lifecycle filters — muted styling, operational management only.
+    { k: 'unreviewed',    label: 'Not Reviewed This Week' },
+    // Lifecycle filters — muted, operational management.
     { k: 'lc_active',     label: 'Active' },
     { k: 'lc_onboarding', label: 'Onboarding' },
     { k: 'lc_paused',     label: 'Paused' },
     { k: 'lc_archived',   label: 'Archived' },
+    { k: 'all',           label: 'All (incl. archived)' },
   ];
   document.getElementById('cc-filter-chips').innerHTML = chips.map(x => {
     const n = counts[x.k] != null ? `<span class="chip-count">${counts[x.k]}</span>` : '';
@@ -4644,7 +4856,7 @@ function renderCompactRoster() {
     return { c, sum, a };
   });
   // Counts per filter for chip badges
-  const counts = { all: rows.length, attention: 0, watch: 0, ontrack: 0, checkin_overdue: 0, unreviewed: 0,
+  const counts = { all: rows.length, lc_current: 0, attention: 0, watch: 0, ontrack: 0, checkin_overdue: 0, unreviewed: 0,
                    lc_active: 0, lc_onboarding: 0, lc_paused: 0, lc_archived: 0 };
   rows.forEach(({ c, sum, a }) => {
     if (a.severity === 'red') counts.attention++;
@@ -4664,6 +4876,8 @@ function renderCompactRoster() {
     else if (_isPausedClient(c))     counts.lc_paused++;
     else if (_isOnboardingClient(c)) counts.lc_onboarding++;
     else                             counts.lc_active++;
+    // Sprint 4-A: 'Current' = anyone still on operational books (not archived).
+    if (_isOnBooksClient(c)) counts.lc_current++;
   });
   renderCcFilterChips(counts);
 
@@ -4678,6 +4892,8 @@ function renderCompactRoster() {
   if (CC.filter === 'attention') list = list.filter(x => x.a.severity === 'red');
   else if (CC.filter === 'watch') list = list.filter(x => x.a.severity === 'amber');
   else if (CC.filter === 'ontrack') list = list.filter(x => !x.a.severity && _isActiveClient(x.c));
+  // Sprint 4-A: default view. Current = anyone on operational books, archived excluded.
+  else if (CC.filter === 'lc_current')    list = list.filter(x => _isOnBooksClient(x.c));
   else if (CC.filter === 'lc_active')     list = list.filter(x => _isActiveClient(x.c));
   else if (CC.filter === 'lc_onboarding') list = list.filter(x => _isOnboardingClient(x.c));
   else if (CC.filter === 'lc_paused')     list = list.filter(x => _isPausedClient(x.c));
@@ -6184,73 +6400,295 @@ function renderPRSection(sum) {
 
 // ─── DETAIL PANEL ─────────────────────────────────────────────────────────
 let _detailChart = null;
+// ─── CLIENT_DETAIL_V2_START — tabbed detail view ────────────────────────
+// Overview / Progress / Nutrition / Training / Check-ins / Photos / History.
+// Composes existing render helpers into a tabbed shell — none of the business
+// logic (macro editor, decision card, response templates, chart, photos, PRs,
+// adherence, weight save/reset, PDF export, WhatsApp/SMS, lifecycle & access
+// controls) is rewritten. Sprint 5 secure access work is not touched.
+const CD_TABS = [
+  { k: 'overview',  label: 'Overview' },
+  { k: 'progress',  label: 'Progress' },
+  { k: 'nutrition', label: 'Nutrition' },
+  { k: 'training',  label: 'Training' },
+  { k: 'checkins',  label: 'Check-ins' },
+  { k: 'photos',    label: 'Photos' },
+  { k: 'history',   label: 'History' },
+];
+
+// Persist selected tab per open client — object keyed by storageKey.
+// (Deliberately not persisted across sessions — this is per-open ephemeral.)
+if (typeof CC !== 'undefined') CC.detailTab = CC.detailTab || {};
+
+const _esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function _cdChip(label, variant, title) {
+  return `<span class="cd-chip cd-chip-${variant || 'neutral'}"${title ? ' title="' + _esc(title) + '"' : ''}>${_esc(label)}</span>`;
+}
+function _cdLifecycleChip(c) {
+  const label = _lifecycleLabel(c);
+  const variant = _isArchivedClient(c) ? 'muted'
+    : _isPausedClient(c) ? 'watch'
+    : _isOnboardingClient(c) ? 'info'
+    : 'good';
+  return _cdChip(label, variant);
+}
+function _cdAccessChip(c) {
+  const s = c.accessStatus || 'active';
+  const variant = s === 'revoked' ? 'action' : (s === 'suspended' ? 'watch' : 'good');
+  return _cdChip('access · ' + s, variant, s === 'revoked' ? 'Flag-only until Sprint 5 lands server-side gating' : '');
+}
+function _cdWeekBadge(c) {
+  if (!c.startDate) return '';
+  const w = programWeek(c.startDate);
+  const dur = c.durationWeeks || 12;
+  return _cdChip('Week ' + w + '/' + dur, 'muted');
+}
+function _cdTrendLine(c, sum) {
+  const cur = (sum && sum.latestWeight) || c.startWeight;
+  if (!cur) return '';
+  const delta = (c.startWeight - cur);
+  const sign = delta > 0 ? '−' : (delta < 0 ? '+' : '±');
+  const abs = Math.abs(delta).toFixed(1);
+  return _esc(cur + ' kg') + ' <span class="cd-meta-sep">·</span> goal ' + _esc(c.goalWeight + ' kg') + ' <span class="cd-meta-sep">·</span> Δ ' + sign + abs + ' kg';
+}
+function _cdEmpty(label) {
+  return '<div class="cd-empty">' + _esc(label) + '</div>';
+}
+function _cdRenderTabButtons(activeKey, storageKey) {
+  return CD_TABS.map(t =>
+    `<button class="cd-tab ${t.k === activeKey ? 'active' : ''}" onclick="switchDetailTab('${_esc(storageKey)}','${t.k}')" role="tab" aria-selected="${t.k === activeKey}">${t.label}</button>`
+  ).join('');
+}
+
+// ── Individual tab panels ─────────────────────────────────────────────
+function _cdPanelOverview(c, sum, metrics30) {
+  // Overview = coach decision card + response templates. That's the daily
+  // driver — everything else moves to its own tab.
+  return `
+    <div class="cd-panel-body">
+      ${renderCoachDecisionV2Card(c, sum, metrics30)}
+      ${renderResponseTemplatesSection(c, sum)}
+    </div>
+  `;
+}
+function _cdPanelProgress(c, sum, metrics30) {
+  const hasHistory = (sum && Array.isArray(sum.weightHistory) && sum.weightHistory.length > 0)
+    || !!(sum && sum.latestWeight);
+  return `
+    <div class="cd-panel-body">
+      <div class="cd-section">
+        <div class="cd-section-h">Weight trend</div>
+        ${hasHistory
+          ? '<div class="cd-chart-wrap"><canvas id="detail-chart"></canvas></div>'
+          : _cdEmpty('No weight history yet.')}
+      </div>
+      <div class="cd-section">
+        <div class="cd-section-h">Adherence (last 30 days)</div>
+        ${renderAdherenceSection(metrics30)}
+      </div>
+    </div>
+  `;
+}
+function _cdPanelNutrition(c, sum) {
+  const meals = (sum && sum.recentMeals) || [];
+  return `
+    <div class="cd-panel-body cd-nutrition">
+      <div class="cd-section">
+        ${renderMacroEditorSection(c)}
+      </div>
+      <div class="cd-section">
+        <div class="cd-section-h">Today's macro tally</div>
+        ${renderMacroTallySection(sum)}
+      </div>
+      <div class="cd-section">
+        <div class="cd-section-h">Recent meals (last 15)</div>
+        ${meals.length ? renderMealLogTable(meals) : _cdEmpty('No meals logged yet.')}
+      </div>
+    </div>
+  `;
+}
+function _cdPanelTraining(c, sum) {
+  const workouts = (sum && sum.recentWorkouts) || [];
+  return `
+    <div class="cd-panel-body">
+      <div class="cd-section">
+        <div class="cd-section-h">Personal records</div>
+        ${renderPRSection(sum)}
+      </div>
+      <div class="cd-section">
+        <div class="cd-section-h">Recent workouts (last 10)</div>
+        ${workouts.length ? renderWorkoutLogTable(workouts) : _cdEmpty('No workouts logged yet.')}
+      </div>
+    </div>
+  `;
+}
+function _cdPanelCheckins(c, sum) {
+  const latest = sum && sum.latestCheckIn;
+  const list = (sum && Array.isArray(sum.recentCheckIns)) ? sum.recentCheckIns : [];
+  const latestFromArr = !latest && list.length ? list[0] : null;
+  const shown = latest || latestFromArr;
+  const rest  = list.filter(ci => shown && ci.timestamp !== shown.timestamp);
+  return `
+    <div class="cd-panel-body">
+      <div class="cd-section">
+        <div class="cd-section-h">Latest check-in${shown ? ' · ' + _esc(fmtAgo(shown.timestamp)) : ''}</div>
+        ${shown ? renderCheckIn(shown) : _cdEmpty('No check-in submitted yet.')}
+      </div>
+      ${rest.length ? `
+        <div class="cd-section">
+          <div class="cd-section-h">Earlier check-ins (${rest.length})</div>
+          <div class="cd-history-list">
+            ${rest.slice(0, 12).map(ci => `
+              <div class="cd-history-row">
+                <span class="cd-history-when">${_esc(fmtAgo(ci.timestamp))}</span>
+                <span class="cd-history-body">Wk ${_esc(ci.week || '—')} · ${_esc((ci.weightKg != null ? ci.weightKg + 'kg' : '—'))} · diet ${_esc(ci.dietAdherence1to10 || '—')}/10 · train ${_esc(ci.trainingAdherence1to10 || '—')}/10 · sleep ${_esc(ci.sleepHours || '—')}h · energy ${_esc(ci.energy1to10 || '—')}/10</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+function _cdPanelPhotos(c, sum) {
+  return `
+    <div class="cd-panel-body">
+      <div class="cd-section">
+        ${renderPhotoTimelineSection(c, sum)}
+      </div>
+    </div>
+  `;
+}
+function _cdPanelHistory(c) {
+  const reviewEvents = (c.coachReviewHistory || []).slice().sort((a, b) => new Date(b.iso || b.at || 0) - new Date(a.iso || a.at || 0));
+  const audit = (c.coachEventHistory || []).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  if (!reviewEvents.length && !audit.length) {
+    return `<div class="cd-panel-body">${_cdEmpty('No coaching history recorded yet.')}</div>`;
+  }
+  const revRows = reviewEvents.slice(0, 20).map(e => `
+    <div class="cd-history-row">
+      <span class="cd-history-when">${_esc((e.iso || e.at || '').slice(0, 10))}</span>
+      <span class="cd-history-body">${_esc(e.outcome || 'review')}${e.note ? ' — ' + _esc(e.note) : ''}${e.nextAction ? ' <em style="opacity:.7">· next: ' + _esc(e.nextAction) + '</em>' : ''}</span>
+    </div>
+  `).join('');
+  const auditRows = audit.slice(0, 30).map(e => `
+    <div class="cd-history-row">
+      <span class="cd-history-when">${_esc((e.at || '').slice(0, 10))}</span>
+      <span class="cd-history-body cd-audit"><strong>${_esc(e.event || '—')}</strong>${e.reason ? ' · ' + _esc(e.reason) : ''}${e.source ? ' <em style="opacity:.7">· ' + _esc(e.source) + '</em>' : ''}</span>
+    </div>
+  `).join('');
+  return `
+    <div class="cd-panel-body">
+      ${reviewEvents.length ? `
+        <div class="cd-section">
+          <div class="cd-section-h">Coach reviews (${reviewEvents.length})</div>
+          <div class="cd-history-list">${revRows}</div>
+        </div>` : ''}
+      ${audit.length ? `
+        <div class="cd-section">
+          <div class="cd-section-h">Lifecycle &amp; access events (${audit.length})</div>
+          <div class="cd-history-list">${auditRows}</div>
+        </div>` : ''}
+    </div>
+  `;
+}
+
+function _cdRenderPanel(tabKey, c, sum, metrics30) {
+  switch (tabKey) {
+    case 'progress':  return _cdPanelProgress(c, sum, metrics30);
+    case 'nutrition': return _cdPanelNutrition(c, sum);
+    case 'training':  return _cdPanelTraining(c, sum);
+    case 'checkins':  return _cdPanelCheckins(c, sum);
+    case 'photos':    return _cdPanelPhotos(c, sum);
+    case 'history':   return _cdPanelHistory(c);
+    case 'overview':
+    default:          return _cdPanelOverview(c, sum, metrics30);
+  }
+}
+
+function _cdNextActionLine(c) {
+  const na = c.nextCoachAction;
+  if (!na) return '';
+  const due = c.nextCoachActionDue ? ' <span class="cd-meta-sep">·</span> due ' + _esc(String(c.nextCoachActionDue).slice(0, 10)) : '';
+  return '<div class="cd-next-action">Next action: <strong>' + _esc(na) + '</strong>' + due + '</div>';
+}
+
+function renderClientDetailV2(storageKey) {
+  const c = COACH.clients.find(c => c.storageKey === storageKey);
+  if (!c) return '';
+  const sum = _dashboardData[storageKey] || {};
+  const metrics30 = build30DayMetrics(sum);
+  const tabKey = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
+  const canOpenProgram = !!(c.programUrl && !c.programMissing);
+  const openBtn = canOpenProgram
+    ? `<a class="cd-btn primary" href="${_esc(c.programUrl)}" target="_blank" rel="noopener">Open program ↗</a>`
+    : `<button class="cd-btn ghost" disabled title="Program pending — generate + push registry to attach">Open program</button>`;
+  return `
+    <button class="cd-close" onclick="closeDetail()" aria-label="Close">✕ Close</button>
+    <div class="cd-header">
+      <div class="cd-header-left">
+        <div class="cd-name-row">
+          <h2 class="cd-name">${_esc(c.displayName || storageKey)}</h2>
+          ${_cdLifecycleChip(c)}
+          ${_cdAccessChip(c)}
+          ${_cdWeekBadge(c)}
+        </div>
+        <div class="cd-meta-row">
+          <span class="cd-program-type">${_esc(c.programType || 'Program')}</span>
+          <span class="cd-meta-sep">·</span>
+          <span class="cd-trend">${_cdTrendLine(c, sum)}</span>
+        </div>
+        ${_cdNextActionLine(c)}
+      </div>
+      <div class="cd-header-actions">
+        <button class="cd-btn" onclick="openReviewModal('${_esc(storageKey)}')">Review</button>
+        <button class="cd-btn" onclick="openClientForm('${_esc(storageKey)}')">Edit</button>
+        ${openBtn}
+        <button class="cd-btn ghost" onclick="window.print()" id="report-btn" title="Export current view to PDF">Export PDF</button>
+      </div>
+    </div>
+    <div class="cd-tabs" role="tablist">
+      ${_cdRenderTabButtons(tabKey, storageKey)}
+    </div>
+    <div class="cd-tabpanel" role="tabpanel" data-tab="${_esc(tabKey)}">
+      ${_cdRenderPanel(tabKey, c, sum, metrics30)}
+    </div>
+  `;
+}
+
+function switchDetailTab(storageKey, tabKey) {
+  CC.detailTab = CC.detailTab || {};
+  CC.detailTab[storageKey] = tabKey;
+  const panel = document.getElementById('detail-panel');
+  if (!panel) return;
+  panel.innerHTML = renderClientDetailV2(storageKey);
+  // Rebuild the chart if we're on the Progress tab
+  if (tabKey === 'progress') {
+    const c = COACH.clients.find(x => x.storageKey === storageKey);
+    const sum = _dashboardData[storageKey] || {};
+    setTimeout(() => buildWeightChart(c, sum), 0);
+  }
+}
+
 function openDetail(storageKey) {
   const c = COACH.clients.find(c => c.storageKey === storageKey);
   if (!c) return;
-  const sum = _dashboardData[storageKey] || {};
-
-  const checkin = sum.latestCheckIn;
-  const week = programWeek(c.startDate);
-  const cur = sum.latestWeight || c.startWeight;
-  const delta = (c.startWeight - cur).toFixed(1);
-
-  const metrics30 = build30DayMetrics(sum);
-
-  document.getElementById('detail-panel').innerHTML = `
-    <button class="detail-close" onclick="closeDetail()">✕ CLOSE</button>
-    <div class="detail-header">
-      <div>
-        <h2>${c.displayName.toUpperCase()}</h2>
-        <div class="meta">${c.programType} · Week ${week}/12 · ${cur}kg / goal ${c.goalWeight}kg · Δ ${delta < 0 ? '+' : '−'}${Math.abs(delta)}kg</div>
-      </div>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-        <button class="open-program-btn" onclick="window.print()" id="report-btn" style="background:var(--accent2);">📄 EXPORT PDF</button>
-        <a class="open-program-btn" href="${c.programUrl}" target="_blank">OPEN PROGRAM →</a>
-      </div>
-    </div>
-
-    ${renderDecisionTreeSection(c, sum, metrics30)}
-
-    ${renderMacroEditorSection(c)}
-
-    ${renderResponseTemplatesSection(c, sum)}
-
-    ${renderPhotoTimelineSection(c, sum)}
-
-    <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
-
-    ${renderMacroTallySection(sum)}
-
-    ${renderPRSection(sum)}
-
-    ${renderAdherenceSection(metrics30)}
-
-    <div class="log-section">
-      <h3>Latest check-in${checkin ? ' · ' + fmtAgo(checkin.timestamp) : ''}</h3>
-      ${checkin ? renderCheckIn(checkin) : '<div class="log-empty">No check-in submitted yet.</div>'}
-    </div>
-
-    <div class="log-section">
-      <h3>Recent workouts (last 10)</h3>
-      ${renderWorkoutLogTable(sum.recentWorkouts || [])}
-    </div>
-
-    <div class="log-section">
-      <h3>Recent meals (last 15)</h3>
-      ${renderMealLogTable(sum.recentMeals || [])}
-    </div>
-  `;
+  document.getElementById('detail-panel').innerHTML = renderClientDetailV2(storageKey);
   document.getElementById('detail-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  // Build the chart after innerHTML settles
-  setTimeout(() => buildWeightChart(c, sum), 0);
+  // Build the chart if we boot on Progress
+  const activeTab = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
+  if (activeTab === 'progress') {
+    const sum = _dashboardData[storageKey] || {};
+    setTimeout(() => buildWeightChart(c, sum), 0);
+  }
 }
-
 function closeDetail() {
   document.getElementById('detail-overlay').classList.remove('open');
   document.body.style.overflow = '';
   if (_detailChart) { _detailChart.destroy(); _detailChart = null; }
 }
+// ─── CLIENT_DETAIL_V2_END ────────────────────────────────────────────────
 
 async function buildWeightChart(c, sum) {
   // Fetch full weight history for this client
@@ -6331,7 +6769,472 @@ function renderCheckIn(ci) {
   `;
 }
 
-// ─── DECISION TREE (auto-suggests what to do this week) ─────────────────
+// ─── DECISION_v2_START — Sprint 4 deterministic coach decision engine ──
+// Design intent:
+//   - Observation → Interpretation → Action, kept separate.
+//   - Data sufficiency first. Missing data ≠ poor adherence.
+//   - Goal-aware target rates (fat_loss vs lean_bulk vs recomp, etc.).
+//   - Recent plan-change protection: don't stack changes on top of changes.
+//   - Adherence gate: don't cut kcal on a client who isn't executing.
+//   - Confidence (HIGH / MEDIUM / LOW) always attached.
+//   - Templates are DERIVED FROM the decision, never independent.
+const DEC_STATUS = {
+  INSUFFICIENT: 'INSUFFICIENT_DATA',
+  ON_TRACK:     'ON_TRACK',
+  WATCH:        'WATCH',
+  ACTION:       'ACTION',
+};
+const DEC_CONF = { HIGH: 'HIGH', MEDIUM: 'MEDIUM', LOW: 'LOW' };
+
+// Target weekly rate as % bodyweight per week, per goal.
+// Down goals: negative numbers. Up goals: positive numbers. Hold: near-zero band.
+// Sources: Aragon lean-gain review 2013; Helms/Aragon/Fitschen cutting model;
+// generally accepted evidence-based rates.
+const GOAL_RATE = {
+  fat_loss:              { dir: 'down', ideal: -0.6,  minMag: 0.3, maxMag: 1.0 },
+  fat_loss_female:       { dir: 'down', ideal: -0.55, minMag: 0.25, maxMag: 0.9 },
+  cut:                   { dir: 'down', ideal: -0.6,  minMag: 0.3, maxMag: 1.0 },
+  fighter_cut:           { dir: 'down', ideal: -0.9,  minMag: 0.4, maxMag: 1.3 },
+  lean_bulk:             { dir: 'up',   ideal:  0.35, minMag: 0.15, maxMag: 0.7 },
+  lean_bulk_underweight: { dir: 'up',   ideal:  0.5,  minMag: 0.25, maxMag: 0.9 },
+  recomp:                { dir: 'hold', ideal:  0.0,  minMag: 0.0, maxMag: 0.2 },
+  recomp_glute_focus:    { dir: 'hold', ideal:  0.0,  minMag: 0.0, maxMag: 0.2 },
+};
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+function _dv2_daysAgo(iso) {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+function _dv2_uniqDayCount(arr, tsField, windowDays) {
+  if (!Array.isArray(arr)) return 0;
+  const cutoff = Date.now() - windowDays * 86400000;
+  const days = new Set();
+  arr.forEach(x => {
+    const t = x && x[tsField];
+    if (!t) return;
+    const ms = new Date(t).getTime();
+    if (ms >= cutoff) days.add(new Date(t).toISOString().slice(0, 10));
+  });
+  return days.size;
+}
+function _dv2_weightsInWindow(hist, windowDays) {
+  if (!Array.isArray(hist) || !hist.length) return [];
+  const cutoff = Date.now() - windowDays * 86400000;
+  return hist
+    .filter(h => h && h.ts && new Date(h.ts).getTime() >= cutoff && Number.isFinite(Number(h.kg)))
+    .map(h => ({ ts: h.ts, ms: new Date(h.ts).getTime(), kg: Number(h.kg) }))
+    .sort((a, b) => a.ms - b.ms);
+}
+// Trend over N days: linear fit slope × N, or fall back to first/last delta
+// if there are only two points. Returns kg over the window (signed).
+function _dv2_trendKg(hist, windowDays) {
+  const pts = _dv2_weightsInWindow(hist, windowDays);
+  if (pts.length < 2) return null;
+  const n = pts.length;
+  // Least-squares slope with x = days since first sample.
+  const x0 = pts[0].ms;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  pts.forEach(p => {
+    const x = (p.ms - x0) / 86400000;
+    sx  += x; sy  += p.kg; sxx += x * x; sxy += x * p.kg;
+  });
+  const denom = (n * sxx) - (sx * sx);
+  const slope = denom === 0 ? 0 : ((n * sxy) - (sx * sy)) / denom;   // kg/day
+  const spanDays = (pts[n - 1].ms - pts[0].ms) / 86400000;
+  // Prefer slope × min(spanDays, windowDays) so we don't over-extrapolate.
+  const projDays = Math.min(spanDays, windowDays);
+  return slope * projDays;
+}
+function _dv2_trendPct(hist, windowDays, currentKg) {
+  const trend = _dv2_trendKg(hist, windowDays);
+  if (trend == null || !currentKg) return null;
+  return (trend / currentKg) * 100;
+}
+// Weekly-rate expressed as %BW/week from a 14-day trend.
+function _dv2_weeklyPct(trendPctOverWindow, windowDays) {
+  if (trendPctOverWindow == null) return null;
+  return trendPctOverWindow * (7 / Math.max(1, windowDays));
+}
+function _dv2_recentPlanChangeIso(c) {
+  if (!c) return null;
+  const events = Array.isArray(c.coachEventHistory) ? c.coachEventHistory : [];
+  // Explicit plan-change events (macros/steps/training) if the coach ever
+  // logs them via the UI. Fall back to legacy macroOverrides.setAt if present.
+  const planEvents = events.filter(e => {
+    if (!e || !e.event) return false;
+    return /macro|plan_changed|steps_changed|training_changed|macros_updated/i.test(e.event);
+  });
+  if (planEvents.length) {
+    return planEvents.reduce((max, e) => (!max || e.at > max ? e.at : max), null);
+  }
+  if (c.macroOverrides && c.macroOverrides.updatedAt) return c.macroOverrides.updatedAt;
+  return null;
+}
+function _dv2_programGoalKey(c) {
+  const k = (c && c.programGoal) || '';
+  if (GOAL_RATE[k]) return k;
+  // Fall back on start→goal direction if programGoal is unknown.
+  if (Number.isFinite(c && c.startWeight) && Number.isFinite(c && c.goalWeight)) {
+    if (c.goalWeight < c.startWeight - 1) return 'fat_loss';
+    if (c.goalWeight > c.startWeight + 1) return 'lean_bulk';
+    return 'recomp';
+  }
+  return 'fat_loss';
+}
+// Judge the observed weekly-rate (%BW/wk) against the target band.
+// Returns 'excess' | 'wrong_direction' | 'below_target' | 'on_target' | 'above_target' | 'insufficient'
+function _dv2_classifyTrend(weeklyPctBW, rates) {
+  if (weeklyPctBW == null) return 'insufficient';
+  const mag = Math.abs(weeklyPctBW);
+  const sign = weeklyPctBW > 0 ? 'up' : (weeklyPctBW < 0 ? 'down' : 'flat');
+  const goalDir = rates.dir; // 'down' | 'up' | 'hold'
+  // Recomp: within ±maxMag = on_target; anything else = wrong direction (either way)
+  if (goalDir === 'hold') {
+    if (mag <= rates.maxMag) return 'on_target';
+    return 'excess';
+  }
+  const rightDirection = (goalDir === 'down' && sign === 'down') || (goalDir === 'up' && sign === 'up');
+  if (!rightDirection) {
+    // Weight essentially flat while goal is directional
+    if (mag < rates.minMag) return 'below_target';
+    return 'wrong_direction';
+  }
+  if (mag > rates.maxMag) return 'excess';
+  if (mag < rates.minMag) return 'below_target';
+  if (mag > rates.ideal * (goalDir === 'down' ? -1.15 : 1.15) * (goalDir === 'down' ? 1 : 1)) {
+    // heuristic: on the "hot" side of ideal but still safe → above_target (faster than ideal)
+    return 'above_target';
+  }
+  return 'on_target';
+}
+
+// ── The engine ─────────────────────────────────────────────────────────
+// Returns a fully-structured decision. UI + templates consume ONLY this.
+function computeCoachDecisionV2(client, sum, metrics30) {
+  const c = client || {};
+  const S = sum || {};
+  const hist = Array.isArray(S.weightHistory) ? S.weightHistory : [];
+  const cur = Number(S.latestWeight || c.startWeight || 0) || null;
+  const goalKey = _dv2_programGoalKey(c);
+  const rates = GOAL_RATE[goalKey];
+
+  // Evidence signals
+  const w14 = _dv2_weightsInWindow(hist, 14).length;
+  const w7  = _dv2_weightsInWindow(hist, 7).length;
+  const ciTs = S.latestCheckinTs || null;
+  const daysSinceCi = _dv2_daysAgo(ciTs);
+  const mealDays14 = _dv2_uniqDayCount(S.recentMeals || [], 'timestamp', 14);
+  const workoutDays14 = _dv2_uniqDayCount(S.recentWorkouts || [], 'timestamp', 14);
+  const trainTarget = Number(c.trainingDaysPerWeek) || 4;
+  const trainExpected14 = trainTarget * 2;
+  const nutritionAdhPct = Math.round((mealDays14 / 14) * 100);
+  const trainingAdhPct = Math.round(Math.min(1, workoutDays14 / trainExpected14) * 100);
+
+  // Weight trend
+  const trend14Kg = _dv2_trendKg(hist, 14);
+  const trend14Pct = trend14Kg != null && cur ? (trend14Kg / cur) * 100 : null;
+  const weekly14Pct = _dv2_weeklyPct(trend14Pct, 14); // %BW/wk
+
+  // Data gaps
+  const gaps = [];
+  if (w14 < 2) gaps.push('Fewer than 2 weigh-ins in the last 14 days (need at least 2 for a trend).');
+  if (!ciTs)   gaps.push('No check-in on record.');
+  else if (daysSinceCi > 10) gaps.push('Last check-in was ' + daysSinceCi + ' days ago.');
+  if (mealDays14 < 4) gaps.push('Only ' + mealDays14 + ' days of meal logs in the last 14.');
+  if (workoutDays14 < Math.max(2, trainExpected14 - 3)) gaps.push('Only ' + workoutDays14 + ' training days logged in the last 14.');
+
+  // Recent plan change
+  const planChangeIso = _dv2_recentPlanChangeIso(c);
+  const planChangeDays = _dv2_daysAgo(planChangeIso);
+
+  // Confidence
+  let confidence = DEC_CONF.LOW;
+  if (w14 >= 2 && (daysSinceCi != null && daysSinceCi <= 14) && mealDays14 >= 3) confidence = DEC_CONF.MEDIUM;
+  if (w14 >= 3 && (daysSinceCi != null && daysSinceCi <= 8)  && mealDays14 >= 6 && workoutDays14 >= Math.max(2, trainExpected14 - 2)) confidence = DEC_CONF.HIGH;
+
+  // Common observation packet
+  const obs = [];
+  if (weekly14Pct != null) {
+    const kg = trend14Kg.toFixed(2);
+    obs.push('Weight trend (14 d): ' + (trend14Kg >= 0 ? '+' : '') + kg + ' kg  (' + (weekly14Pct >= 0 ? '+' : '') + weekly14Pct.toFixed(2) + '% BW / wk)');
+  } else if (w14 === 1) {
+    obs.push('Only 1 weigh-in in the last 14 days — no trend yet.');
+  } else if (w14 === 0) {
+    obs.push('No weigh-ins in the last 14 days.');
+  }
+  obs.push('Nutrition logs: ' + mealDays14 + '/14 days (' + nutritionAdhPct + '%).');
+  obs.push('Training: ' + workoutDays14 + '/' + trainExpected14 + ' expected sessions in 14 d (' + trainingAdhPct + '%).');
+  if (daysSinceCi != null) obs.push('Last check-in: ' + daysSinceCi + ' d ago.');
+  if (planChangeDays != null) obs.push('Plan last changed ' + planChangeDays + ' d ago.');
+
+  const templateVars = {
+    name:           (c.displayName || '').split(' ')[0] || c.displayName || 'mate',
+    trendKg14:      trend14Kg != null ? +trend14Kg.toFixed(2) : null,
+    trendPct14Wk:   weekly14Pct != null ? +weekly14Pct.toFixed(2) : null,
+    mealDays14, workoutDays14, trainExpected14,
+    nutritionAdhPct, trainingAdhPct,
+    daysSinceCi, planChangeDays,
+    goalKey,
+    currentKg: cur,
+    goalWeight: c.goalWeight,
+    startWeight: c.startWeight,
+  };
+
+  // ── SUFFICIENCY GATE ──
+  // Without ≥2 weigh-ins in 14 d OR any check-in ever (after week 1), we
+  // don't make a confident coaching change.
+  if (w14 < 2) {
+    return {
+      status: DEC_STATUS.INSUFFICIENT,
+      confidence: DEC_CONF.LOW,
+      observations: obs,
+      interpretation: 'Not enough weigh-ins to read a trend. A single reading fluctuates by more than the change we\'d be trying to detect.',
+      action: 'Hold the current plan. Ask ' + templateVars.name + ' for daily-ish weigh-ins this week; reassess once we have 3+.',
+      why: 'Adjusting macros off one data point trades a real plan for noise.',
+      dataGaps: gaps,
+      template: 'insufficient_data',
+      templateVars,
+    };
+  }
+
+  // ── RECENT-CHANGE PROTECTION ──
+  if (planChangeDays != null && planChangeDays < 10) {
+    return {
+      status: DEC_STATUS.ON_TRACK,
+      confidence: confidence === DEC_CONF.LOW ? DEC_CONF.LOW : DEC_CONF.MEDIUM,
+      observations: obs,
+      interpretation: 'Plan was adjusted ' + planChangeDays + ' d ago — still inside the settle-in window.',
+      action: 'Hold everything. Reassess after 10–14 days on the current plan.',
+      why: 'Stacking changes on top of a recent one makes it impossible to tell what actually worked.',
+      dataGaps: gaps,
+      template: 'plan_change_hold',
+      templateVars,
+    };
+  }
+
+  // ── NO CHECK-IN CHASE ──
+  if (!ciTs) {
+    return {
+      status: DEC_STATUS.ACTION,
+      confidence: DEC_CONF.LOW,
+      observations: obs,
+      interpretation: 'No check-in on record. Progress can\'t be judged without their subjective inputs.',
+      action: 'Message ' + templateVars.name + ' for a check-in (weight, energy, sleep, adherence, notes).',
+      why: 'A check-in gives us the context that weigh-ins alone don\'t.',
+      dataGaps: gaps,
+      template: 'no_checkin',
+      templateVars,
+    };
+  }
+
+  // ── TREND CLASSIFICATION ──
+  const trendClass = _dv2_classifyTrend(weekly14Pct, rates);
+  const goalDir = rates.dir;
+  const goodNutritionAdh = nutritionAdhPct >= 70;
+  const okTraining = workoutDays14 >= Math.max(2, trainExpected14 - 2);
+
+  // Excess (too fast in the goal direction)
+  if (trendClass === 'excess') {
+    return {
+      status: DEC_STATUS.ACTION,
+      confidence,
+      observations: obs,
+      interpretation: goalDir === 'down'
+        ? 'Losing faster than the target range for a ' + _dv2_readableGoal(goalKey) + '. Faster loss risks muscle and sleep.'
+        : 'Gaining faster than target — surplus is running above what the goal calls for.',
+      action: goalDir === 'down'
+        ? 'Add ~100 kcal (carbs) to slow the rate into the target band. Hold training.'
+        : 'Drop ~100 kcal (carbs) to bring the rate back into range. Hold training.',
+      why: 'A rate outside the safe band has downstream costs (muscle loss / avoidable fat gain) that outweigh slightly slower progress.',
+      dataGaps: gaps,
+      template: goalDir === 'down' ? 'losing_too_fast' : 'gaining_too_fast',
+      templateVars,
+    };
+  }
+
+  // Wrong direction
+  if (trendClass === 'wrong_direction') {
+    if (!goodNutritionAdh) {
+      return {
+        status: DEC_STATUS.ACTION,
+        confidence,
+        observations: obs,
+        interpretation: 'Weight is moving against the goal, but nutrition adherence is only ' + nutritionAdhPct + '%.',
+        action: 'Hold macros. Priority this week: log every meal and hit protein daily. Reassess in 7–10 days.',
+        why: 'Changing the plan before the client is executing the current plan hides what actually works.',
+        dataGaps: gaps,
+        template: 'slow_progress_poor_adherence',
+        templateVars,
+      };
+    }
+    return {
+      status: DEC_STATUS.ACTION,
+      confidence,
+      observations: obs,
+      interpretation: goalDir === 'down'
+        ? 'Weight is up despite good adherence to a fat-loss plan — need a small nudge.'
+        : 'Weight is down despite good adherence to a lean-bulk — likely under-eating vs actual burn.',
+      action: goalDir === 'down'
+        ? 'Drop ~150 kcal (carbs). Keep protein + training the same.'
+        : 'Add ~200 kcal (carbs). Ask for 3 days of meal-log screenshots to verify tracking.',
+      why: 'Adherence is decent; the plan itself needs a small adjustment.',
+      dataGaps: gaps,
+      template: goalDir === 'down' ? 'weight_gain_on_cut' : 'not_gaining_on_bulk',
+      templateVars,
+    };
+  }
+
+  // Below target (right direction, too slow)
+  if (trendClass === 'below_target') {
+    if (!goodNutritionAdh) {
+      return {
+        status: DEC_STATUS.WATCH,
+        confidence,
+        observations: obs,
+        interpretation: 'Rate is slower than target and nutrition adherence is only ' + nutritionAdhPct + '%.',
+        action: 'Hold calories. This week: tighten meal logging and daily protein. Reassess in 7–10 days.',
+        why: 'Changing calories before execution improves would make it harder to identify whether the current plan works.',
+        dataGaps: gaps,
+        template: 'slow_progress_poor_adherence',
+        templateVars,
+      };
+    }
+    // Good adherence, slow progress — nudge cautiously.
+    return {
+      status: DEC_STATUS.WATCH,
+      confidence,
+      observations: obs,
+      interpretation: 'Rate is below target range but execution is solid.',
+      action: goalDir === 'down'
+        ? 'Small nudge: drop 100 kcal (carbs) OR add 1,000 steps/day. Pick one, not both.'
+        : 'Small nudge: add 100 kcal (carbs) to push the rate into the target band.',
+      why: 'One lever at a time makes the next check-in actually diagnostic.',
+      dataGaps: gaps,
+      template: 'slow_progress_good_adherence',
+      templateVars,
+    };
+  }
+
+  // On target / above target (safe): watch training + nutrition consistency
+  if (!okTraining) {
+    return {
+      status: DEC_STATUS.WATCH,
+      confidence,
+      observations: obs,
+      interpretation: 'Weight trend is on target, but training adherence is soft (' + workoutDays14 + '/' + trainExpected14 + ' sessions in 14 d).',
+      action: 'No macro change. Chase training this week — a session missed now compounds later.',
+      why: 'Weight moving without training in a cut = muscle at risk; in a bulk = quality of gain drops.',
+      dataGaps: gaps,
+      template: 'training_adherence_issue',
+      templateVars,
+    };
+  }
+  if (!goodNutritionAdh) {
+    return {
+      status: DEC_STATUS.WATCH,
+      confidence,
+      observations: obs,
+      interpretation: 'Trend is on target but only ' + nutritionAdhPct + '% of meals were logged. Progress may not hold if logging slips further.',
+      action: 'Hold plan. Focus this week: log every meal so we can trust next week\'s decision.',
+      why: 'Logging is what turns weight-only data into diagnostic data.',
+      dataGaps: gaps,
+      template: 'nutrition_adherence_issue',
+      templateVars,
+    };
+  }
+
+  return {
+    status: DEC_STATUS.ON_TRACK,
+    confidence,
+    observations: obs,
+    interpretation: 'Weight trend, nutrition, and training are all inside range.',
+    action: 'Hold the current plan. No changes this week.',
+    why: 'If it\'s working, don\'t touch it — collect one more week of data.',
+    dataGaps: gaps,
+    template: 'good_progress',
+    templateVars,
+  };
+}
+
+function _dv2_readableGoal(k) {
+  return ({
+    fat_loss: 'fat-loss', fat_loss_female: 'fat-loss',
+    cut: 'cut', fighter_cut: 'fight cut',
+    lean_bulk: 'lean bulk', lean_bulk_underweight: 'lean bulk',
+    recomp: 'recomp', recomp_glute_focus: 'recomp',
+  })[k] || 'coaching goal';
+}
+
+// ── Card render — replaces the legacy renderDecisionTreeSection ────────
+function renderCoachDecisionV2Card(c, sum, metrics30) {
+  const d = computeCoachDecisionV2(c, sum, metrics30);
+  const palette = {
+    INSUFFICIENT_DATA: { color: '#8a8f99', icon: 'ℹ', label: 'INSUFFICIENT DATA' },
+    ON_TRACK:          { color: 'var(--accent3, #7fd28c)', icon: '✓', label: 'ON TRACK' },
+    WATCH:             { color: 'var(--warn, #ffb84a)',   icon: '⚠', label: 'WATCH' },
+    ACTION:            { color: 'var(--danger, #ff5b5b)', icon: '⛔', label: 'ACTION' },
+  }[d.status] || { color: '#8a8f99', icon: 'ℹ', label: d.status };
+
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const obsHtml = (d.observations || []).map(o => '<li>' + esc(o) + '</li>').join('');
+  const gapsHtml = (d.dataGaps || []).map(g => '<li>' + esc(g) + '</li>').join('');
+
+  return `
+    <div class="log-section dv2-card" style="background:linear-gradient(135deg,rgba(0,0,0,0.4),rgba(0,0,0,0.6));border:1px solid ${palette.color};border-radius:12px;padding:1.3rem 1.5rem;margin-top:1rem;font-family:'Inter',sans-serif;">
+      <div style="display:flex;align-items:baseline;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.6rem;">
+        <h3 style="color:${palette.color};margin:0;font-size:1rem;letter-spacing:0.03em;">${palette.icon} Coach decision — ${palette.label}</h3>
+        <span style="font-size:0.72rem;color:var(--muted);letter-spacing:0.05em;">Confidence: <strong style="color:var(--text);">${esc(d.confidence)}</strong></span>
+      </div>
+
+      <div class="dv2-block">
+        <div class="dv2-h">What happened</div>
+        <ul class="dv2-list">${obsHtml}</ul>
+      </div>
+
+      <div class="dv2-block">
+        <div class="dv2-h">What it means</div>
+        <div class="dv2-body">${esc(d.interpretation)}</div>
+      </div>
+
+      <div class="dv2-block">
+        <div class="dv2-h">Recommended action</div>
+        <div class="dv2-body" style="color:var(--text);font-weight:500;">${esc(d.action)}</div>
+      </div>
+
+      <div class="dv2-block">
+        <div class="dv2-h">Why</div>
+        <div class="dv2-body" style="color:var(--muted);">${esc(d.why)}</div>
+      </div>
+
+      ${gapsHtml ? `
+      <div class="dv2-block">
+        <div class="dv2-h" style="color:var(--warn);">Data gaps</div>
+        <ul class="dv2-list" style="color:var(--warn);">${gapsHtml}</ul>
+      </div>` : ''}
+
+      ${d.template ? `<button onclick="useTemplate('${esc(c.storageKey)}','${esc(d.template)}')" style="margin-top:0.6rem;background:${palette.color};color:#000;border:none;padding:0.55rem 1rem;border-radius:6px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;letter-spacing:0.02em;">Draft message from this decision →</button>` : ''}
+    </div>
+    <style>
+      .dv2-card .dv2-block { margin-top: 0.75rem; }
+      .dv2-card .dv2-h {
+        font-size: 0.68rem; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 0.08em; margin-bottom: 0.2rem;
+      }
+      .dv2-card .dv2-body { font-size: 0.92rem; color: var(--text); line-height: 1.5; }
+      .dv2-card .dv2-list {
+        margin: 0.2rem 0 0 1rem; padding: 0; font-size: 0.85rem;
+        color: var(--text); line-height: 1.55;
+      }
+      .dv2-card .dv2-list li { margin: 0.15rem 0; }
+    </style>
+  `;
+}
+// ─── DECISION_v2_END ─────────────────────────────────────────────────────
+
+// ─── DECISION TREE (auto-suggests what to do this week) — LEGACY ────────
+// Kept for reference and as an emergency fallback. New code paths route
+// through computeCoachDecisionV2 + renderCoachDecisionV2Card.
 function analyzeClientState(c, sum, metrics30) {
   // Compute weekly weight trend (kg/wk avg over last 3 weigh-ins if available)
   const hist = (sum.weightHistory || []).slice().sort((a,b) => new Date(a.ts) - new Date(b.ts));
@@ -6646,11 +7549,18 @@ async function resetMacroRow(storageKey, phase) {
 // ─── END MACRO EDITOR ─────────────────────────────────────────────────
 
 function renderResponseTemplatesSection(c, sum) {
-  const options = Object.entries(RESPONSE_TEMPLATES)
+  // Sprint 4: v2 templates first (decision-driven), legacy underneath.
+  const v2Options = Object.entries(RESPONSE_TEMPLATES_V2)
     .map(([k, t]) => `<option value="${k}">${t.label}</option>`)
     .join('');
-  const state = analyzeClientState(c, sum, build30DayMetrics(sum));
-  const hasTrend = state.weeklyRate !== null;
+  const legacyOptions = Object.entries(RESPONSE_TEMPLATES)
+    .map(([k, t]) => `<option value="${k}">Legacy · ${t.label}</option>`)
+    .join('');
+  const options = v2Options + legacyOptions;
+  // Sprint 4: use the v2 decision for the "no trend" gate — richer signal.
+  const _dec = computeCoachDecisionV2(c, sum, build30DayMetrics(sum));
+  const hasTrend = _dec.status !== 'INSUFFICIENT_DATA';
+  const suggested = _dec.template;
   return `
     <div class="log-section" style="border-top:2px solid var(--border);padding-top:1.5rem;">
       <h3>📝 RESPONSE TEMPLATES</h3>
@@ -6690,23 +7600,215 @@ function useTemplate(storageKey, templateId) {
   document.getElementById('template-output-' + storageKey).scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+// ─── TEMPLATES_v2_START — decision-driven response drafts ─────────────
+// Architecture: CLIENT DATA → COACH DECISION → RESPONSE DRAFT.
+// Every draft is generated from the SAME decision the coach sees on-screen,
+// so the draft can never contradict the recommendation. Templates take the
+// decision + its templateVars and emit a personalised, natural message.
+// Sentences whose data doesn't exist are OMITTED, never faked.
+const RESPONSE_TEMPLATES_V2 = {
+  good_progress: {
+    label: 'Good progress · hold plan',
+    build: (v) => _dv2_paragraph([
+      _dv2_ack(v, 'good'),
+      _dv2_trendLine(v),
+      _dv2_adhLine(v),
+      "i'm keeping macros where they are — if it's working we don't touch it.",
+      _dv2_focusLine(v, 'good'),
+    ]),
+  },
+  slow_progress_good_adherence: {
+    label: 'Slow progress · good adherence',
+    build: (v) => _dv2_paragraph([
+      _dv2_ack(v, 'ok'),
+      _dv2_trendLine(v) + " that's slower than target but ur execution has been solid.",
+      _dv2_adhLine(v),
+      v.goalKey && GOAL_RATE[v.goalKey] && GOAL_RATE[v.goalKey].dir === 'down'
+        ? "small nudge this week: dropping carbs by ~100 kcal, protein and training stay the same."
+        : "small nudge this week: adding ~100 kcal to carbs to push the rate into range.",
+      "one lever at a time so we can actually tell what's moving the needle.",
+    ]),
+  },
+  slow_progress_poor_adherence: {
+    label: 'Slow progress · poor adherence',
+    build: (v) => _dv2_paragraph([
+      _dv2_ack(v, 'coach'),
+      _dv2_trendLine(v),
+      "adherence has been " + v.nutritionAdhPct + "% on nutrition logging — that's the biggest lever before we change anything.",
+      "not touching macros this week. focus is: log every meal and hit protein daily.",
+      "if we're above 80% next check-in and the trend's still off, then we change something.",
+    ]),
+  },
+  weight_gain_on_cut: {
+    label: 'Weight up on cut · adjust cautiously',
+    build: (v) => _dv2_paragraph([
+      _dv2_ack(v, 'ok'),
+      "weight went up " + Math.abs(v.trendKg14 || 0).toFixed(2) + "kg over the last 2 weeks while we're supposed to be losing.",
+      _dv2_adhLine(v),
+      "dropping ~150 kcal from carbs. protein and training unchanged.",
+      "next 2 weeks: same routine + logging every meal. we'll see if this is the plan or the tracking.",
+    ]),
+  },
+  losing_too_fast: {
+    label: 'Losing too fast · add kcal',
+    build: (v) => _dv2_paragraph([
+      "quick adjust bro.",
+      "u dropped " + Math.abs(v.trendKg14 || 0).toFixed(2) + "kg over the last 2 weeks — that's " + (Math.abs(v.trendPct14Wk || 0)).toFixed(2) + "% BW/wk which is above the safe zone.",
+      "losing this fast means some of the drop is muscle, not just fat.",
+      "adding ~100 kcal to carbs to slow it back into range. protein + training stay the same.",
+    ]),
+  },
+  not_gaining_on_bulk: {
+    label: 'Not gaining on bulk · verify + add',
+    build: (v) => _dv2_paragraph([
+      "weight went the wrong way this week bro, dropped when we wanted it going up.",
+      "either the calorie target isn't being hit, tracking's off, or the burn's higher than we thought.",
+      "two things: send me 3 days of ur meal-log screenshots, and i'm adding ~200 kcal to carbs (rice, oats, banana).",
+      "let's catch up next week.",
+    ]),
+  },
+  gaining_too_fast: {
+    label: 'Bulking too fast · trim',
+    build: (v) => _dv2_paragraph([
+      "u put on " + (v.trendKg14 || 0).toFixed(2) + "kg over the last 2 weeks — a bit fast for a lean bulk.",
+      "we want the surplus small enough that gains are muscle-biased, not fat-biased.",
+      "dropping ~100 kcal from carbs to pull the rate back into the target band. training unchanged.",
+    ]),
+  },
+  training_adherence_issue: {
+    label: 'Training adherence issue',
+    build: (v) => _dv2_paragraph([
+      "quick one bro — nutrition and weight trend are actually on target this week.",
+      "but training was " + v.workoutDays14 + "/" + v.trainExpected14 + " sessions over the last 2 weeks. that's the piece that needs to move.",
+      "no macro change. focus this week is getting the sessions in.",
+      "if the schedule isn't working tell me and we adjust the split — better we run 4 solid sessions than plan 5 and hit 2.",
+    ]),
+  },
+  nutrition_adherence_issue: {
+    label: 'Nutrition logging soft',
+    build: (v) => _dv2_paragraph([
+      _dv2_ack(v, 'ok'),
+      _dv2_trendLine(v),
+      "logging was only " + v.nutritionAdhPct + "% though — we're a bit blind on what's actually going in.",
+      "no changes to the plan. just tighten meal logging this week so next check-in gives us clean data to work with.",
+    ]),
+  },
+  no_checkin: {
+    label: 'No check-in · chase-up',
+    build: (v) => _dv2_paragraph([
+      "hey " + v.name + " haven't seen ur check-in yet.",
+      "send it through when u get a sec — weight, energy, sleep, adherence, any notes.",
+      "can't call anything from just weigh-ins so want the full picture before we decide the week.",
+    ]),
+  },
+  insufficient_data: {
+    label: 'Insufficient data · hold + gather',
+    build: (v) => _dv2_paragraph([
+      "quick note " + v.name + " — we don't have enough weigh-ins yet to read a trend properly.",
+      "keeping everything the same for now.",
+      "aim for a weigh-in most mornings this week (fasted, after toilet, before food). once we've got 3+ we can actually make a real call.",
+    ]),
+  },
+  plan_change_hold: {
+    label: 'Recent change · hold and reassess',
+    build: (v) => _dv2_paragraph([
+      "just checking in " + v.name + ".",
+      "we adjusted the plan " + v.planChangeDays + " days ago so still inside the window where we should be watching, not changing.",
+      "everything stays the same this week — logging, sessions, macros. next check-in we'll actually be able to tell if the change did what we wanted.",
+    ]),
+  },
+  general_weekly: {
+    label: 'General weekly feedback',
+    build: (v) => _dv2_paragraph([
+      _dv2_ack(v, 'ok'),
+      _dv2_trendLine(v),
+      _dv2_adhLine(v),
+      "plan stays the same this week — talk soon.",
+    ]),
+  },
+};
+
+// Small building blocks used by build() functions above.
+// Every helper omits itself if the required data is missing.
+function _dv2_paragraph(parts) {
+  return parts.filter(p => typeof p === 'string' && p.trim()).join(' ');
+}
+function _dv2_ack(v, tone) {
+  const name = v.name || 'mate';
+  if (tone === 'good') return 'sick week bro 👊';
+  if (tone === 'coach') return 'yo ' + name + ' — need a real chat about this week.';
+  return 'hey ' + name + ' —';
+}
+function _dv2_trendLine(v) {
+  if (v.trendKg14 == null) return '';
+  const kg = v.trendKg14;
+  const dir = kg > 0 ? 'up' : (kg < 0 ? 'down' : 'flat');
+  if (dir === 'flat') return "weight's been flat over the last 2 weeks.";
+  return "weight's " + dir + " " + Math.abs(kg).toFixed(2) + "kg over the last 2 weeks.";
+}
+function _dv2_adhLine(v) {
+  const parts = [];
+  if (v.mealDays14 != null) parts.push("meals logged " + v.mealDays14 + "/14 days");
+  if (v.workoutDays14 != null && v.trainExpected14) parts.push("training " + v.workoutDays14 + "/" + v.trainExpected14);
+  if (!parts.length) return '';
+  return parts.join(', ') + '.';
+}
+function _dv2_focusLine(v, tone) {
+  if (tone === 'good') return "next-week focus: same routine, keep the logs tight.";
+  return '';
+}
+
+/**
+ * Public: build the response draft for a client. If the client has a
+ * currently-computed coach decision, we use its template + templateVars.
+ * Otherwise we fall back to a legacy template id if the caller passed one.
+ */
+function buildResponseDraftV2(client, sum, templateIdHint) {
+  const dec = computeCoachDecisionV2(client, sum, build30DayMetrics(sum));
+  const templateId = templateIdHint || dec.template || 'general_weekly';
+  const tpl = RESPONSE_TEMPLATES_V2[templateId];
+  if (tpl && typeof tpl.build === 'function') {
+    // T. safety: if the decision is INSUFFICIENT_DATA, force the uncertain
+    // template regardless of what the coach clicked. Never fabricate.
+    if (dec.status === 'INSUFFICIENT_DATA' && templateId !== 'insufficient_data') {
+      return {
+        text: RESPONSE_TEMPLATES_V2.insufficient_data.build(dec.templateVars),
+        template: 'insufficient_data',
+        note: 'Decision confidence is LOW — switched to the uncertainty template.',
+      };
+    }
+    return { text: tpl.build(dec.templateVars), template: templateId, note: '' };
+  }
+  // Fall back to legacy templates if a caller hardcoded an id we don't have.
+  const legacy = RESPONSE_TEMPLATES[templateId];
+  if (legacy) {
+    const vars = {
+      name: (client.displayName || '').split(' ')[0],
+      weeklyRate: dec.templateVars.trendKg14 || 0,
+      stalledWeeks: 0,
+      adherence: (dec.templateVars.nutritionAdhPct || 0) / 100,
+      PHASE_CODE: (client.storageKey.toUpperCase().replace(/[^A-Z]/g, '') + '20').slice(0, 12),
+    };
+    let text = typeof legacy.text === 'function' ? legacy.text(vars) : legacy.text;
+    text = text.replace(/\{\{name\}\}/g, vars.name).replace(/\{\{PHASE_CODE\}\}/g, vars.PHASE_CODE);
+    return { text, template: templateId, note: 'legacy template' };
+  }
+  return { text: RESPONSE_TEMPLATES_V2.general_weekly.build(dec.templateVars), template: 'general_weekly', note: '' };
+}
+// ─── TEMPLATES_v2_END ────────────────────────────────────────────────────
+
 function loadTemplate(storageKey, templateId) {
   if (!templateId) return;
-  const tpl = RESPONSE_TEMPLATES[templateId];
-  if (!tpl) return;
   const c = COACH.clients.find(c => c.storageKey === storageKey);
   const sum = _dashboardData[storageKey] || {};
-  const state = analyzeClientState(c, sum, build30DayMetrics(sum));
-  const vars = {
-    name: c.displayName.split(' ')[0],
-    weeklyRate: state.weeklyRate || 0,
-    stalledWeeks: state.stalledWeeks || 0,
-    adherence: state.adherence || 0,
-    PHASE_CODE: (c.storageKey.toUpperCase().replace(/[^A-Z]/g, '') + '20').slice(0, 12),
-  };
-  let text = typeof tpl.text === 'function' ? tpl.text(vars) : tpl.text;
-  text = text.replace(/\{\{name\}\}/g, vars.name).replace(/\{\{PHASE_CODE\}\}/g, vars.PHASE_CODE);
-  document.getElementById('template-output-' + storageKey).value = text;
+  const draft = buildResponseDraftV2(c, sum, templateId);
+  const out = document.getElementById('template-output-' + storageKey);
+  if (out) out.value = draft.text;
+  // Small non-blocking note if we swapped templates for safety
+  if (draft.note) {
+    const noteEl = document.getElementById('template-note-' + storageKey);
+    if (noteEl) noteEl.textContent = draft.note;
+  }
 }
 
 function copyTemplateText(storageKey) {
