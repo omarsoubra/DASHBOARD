@@ -32,6 +32,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Sprint 5.1 hardening: never let a stale HTML shell get served from browser cache. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>StrengthByO</title>
 <link rel="manifest" href="../manifest.json">
 <meta name="theme-color" content="#0e1015">
@@ -351,7 +355,27 @@ let CURRENT_DAY_IDX = 0; // 0=today's day-of-week
 let CURRENT_WEEK = 1;
 
 document.addEventListener('DOMContentLoaded', boot);
+
+// ── Sprint 5.1: Purge any stale service-worker + old cache from earlier
+// sprints. Old PWA installs from Sprint 3 could otherwise serve a cached
+// fat program forever. Runs once per shell load; no-op after cleanup.
+async function _purgeStaleServiceWorkers() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) {
+      try { await r.unregister(); } catch (_) {}
+    }
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k).catch(() => {})));
+    }
+  } catch (e) { /* best-effort; never block boot */ }
+}
+
 async function boot() {
+  // Fire-and-forget SW/cache purge before we touch the backend.
+  _purgeStaleServiceWorkers();
   const token = _readToken();
   if (!token) { show('screen-login'); return; }
   try {

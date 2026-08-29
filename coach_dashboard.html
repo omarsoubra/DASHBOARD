@@ -3744,7 +3744,28 @@ function _lifecycleAccessPatch(storageKey, patch, event, meta) {
   COACH.clients = list;
   pushRoster().catch(() => {});
   if (typeof renderCommandCentre === 'function') renderCommandCentre();
+  // Sprint 5.1 HARDENING: if the Edit modal is open for this client,
+  // re-render its inline access + lifecycle panels using the FRESH state.
+  // Without this, the modal caches the pre-mutation client and shows the
+  // wrong buttons (e.g. "Suspend / Revoke" instead of "Restore") until
+  // the coach closes and reopens it.
+  try { _refreshEditModalIfOpen(storageKey); } catch (_) {}
   return true;
+}
+
+// Sprint 5.1: when the coach mutates access/lifecycle from the Edit modal,
+// snap the modal's inline buttons + status label to the freshly-persisted
+// state. Reads from loadClients() so we always see the just-saved values.
+function _refreshEditModalIfOpen(storageKey) {
+  if (!_editingStorageKey || _editingStorageKey !== storageKey) return;
+  const fresh = loadClients().find(c => c.storageKey === storageKey);
+  if (!fresh) return;
+  if (typeof _renderInlineAccessActions === 'function') _renderInlineAccessActions(fresh);
+  if (typeof _renderInlineLifecycleActions === 'function') _renderInlineLifecycleActions(fresh);
+  // Also refresh the visible "Client access: X" label at the top of the
+  // access panel so status flips instantly (Active → Revoked → Active).
+  const label = document.getElementById('cf-access-current');
+  if (label) label.textContent = _accessLabel(fresh);
 }
 // ─── Sprint 5 access controls — real backend enforcement ───────────────
 // These now POST to Apps Script's setAccessStatus / issueClientToken. The
