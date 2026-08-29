@@ -1844,14 +1844,14 @@
     ['gate-loading','gate-login','gate-suspended','gate-revoked','gate-error'].forEach(k=>{
       const n = el(k); if (n) n.style.display = (k===state)?'flex':'none';
     });
-    const app = el('__RESTORED_APP__'); if (app) app.style.display = 'none';
+    const app = el('sbo-app-root'); if (app) app.style.display = 'none';
     if (msg && state==='gate-error'){ const e = el('gate-error-msg'); if (e) e.textContent = msg; }
   }
   function showApp(){
     ['gate-loading','gate-login','gate-suspended','gate-revoked','gate-error'].forEach(k=>{
       const n = el(k); if (n) n.style.display = 'none';
     });
-    const app = el('__RESTORED_APP__'); if (app) app.style.display = '';
+    const app = el('sbo-app-root'); if (app) app.style.display = '';
   }
   function readAndCleanToken(){
     try{
@@ -1909,13 +1909,18 @@
       else { ns.textContent = s.textContent; }
       s.parentNode.replaceChild(ns, s);
     }
-    // Give the renderers one tick, then dispatch DOMContentLoaded again if the
-    // fat program registered a handler for it (many do). Some renderers self-
-    // invoke on load; the deferred re-exec covers those already.
-    document.dispatchEvent(new Event('_sbo_program_ready'));
+    // Fire DOMContentLoaded for any listeners the deferred scripts just
+    // registered. Our boot() has a re-entry guard so this can't loop.
+    try { document.dispatchEvent(new Event('DOMContentLoaded')); } catch(_) {}
+    try { document.dispatchEvent(new Event('_sbo_program_ready')); } catch(_) {}
   }
 
   async function boot(){
+    // Guard against re-entry — bootDeferred dispatches DOMContentLoaded after
+    // running the fat renderers, which would otherwise re-fire our own DCL
+    // handler and cause an auth+fetch loop.
+    if (window._sbo_boot_started) return;
+    window._sbo_boot_started = true;
     showGate('gate-loading');
     const token = readAndCleanToken();
     if (!token){ showGate('gate-login'); return; }
