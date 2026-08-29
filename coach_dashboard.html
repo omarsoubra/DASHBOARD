@@ -3640,8 +3640,13 @@ async function generateAccessLink(storageKey) {
   try {
     const r = await coachFetch('issueClientToken', { storageKey: storageKey });
     if (!r || !r.ok || !r.token) throw new Error((r && r.error) || 'backend refused');
+    // Resolve relative to the current coach-dashboard URL so `/DASHBOARD/`
+    // is preserved. `window.location.origin + '/' + 'clients/…/'` dropped
+    // the /DASHBOARD/ path and produced broken links (2026-08-30 P0).
     const url = c.programUrl || ('clients/' + storageKey + '/');
-    const link = window.location.origin + '/' + url + '?t=' + encodeURIComponent(r.token);
+    const u = new URL(url, window.location.href);
+    u.searchParams.set('t', r.token);
+    const link = u.toString();
     _linkCacheSet(storageKey, link);
     _lifecycleAccessPatch(storageKey, { accessStatus: 'active', accessRestoredAt: new Date().toISOString() },
       'access_link_generated', { reason: 'coach_generated_new_link' });
@@ -4080,8 +4085,13 @@ async function rotateAccess(storageKey) {
   try {
     const r = await coachFetch('issueClientToken', { storageKey: storageKey });
     if (!r || !r.ok || !r.token) throw new Error((r && r.error) || 'backend refused');
+    // Resolve relative to the current coach-dashboard URL so `/DASHBOARD/`
+    // is preserved. `window.location.origin + '/' + 'clients/…/'` dropped
+    // the /DASHBOARD/ path and produced broken links (2026-08-30 P0).
     const url = c.programUrl || ('clients/' + storageKey + '/');
-    const link = window.location.origin + '/' + url + '?t=' + encodeURIComponent(r.token);
+    const u = new URL(url, window.location.href);
+    u.searchParams.set('t', r.token);
+    const link = u.toString();
     // LOCKED IN Sprint — cache the new link so Copy button works immediately.
     _linkCacheSet(storageKey, link);
     _lifecycleAccessPatch(storageKey, { accessStatus: 'active', accessRestoredAt: new Date().toISOString() },
