@@ -1866,10 +1866,39 @@
     try{ return localStorage.getItem(LS_TOKEN) || ''; }catch(e){ return ''; }
   }
   async function apiPost(type, body){
+    // Retry up to 3 times with backoff — Apps Script deployments intermittently
+    // return HTML login redirects or `use_post` (POST-to-GET race). Retries
+    // cover these without surfacing errors to the user.
     const payload = Object.assign({ type, token: (function(){try{return localStorage.getItem(LS_TOKEN)||'';}catch(e){return '';}})(), storageKey: STORAGE_KEY }, body||{});
-    const resp = await fetch(WEBHOOK, {method:'POST', cache:'no-store', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    return resp.json();
+    const body_json = JSON.stringify(payload);
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++){
+      try {
+        const resp = await fetch(WEBHOOK, {method:'POST', cache:'no-store', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: body_json});
+        if (!resp.ok) { lastErr = new Error('HTTP ' + resp.status); }
+        else {
+          const txt = await resp.text();
+          try {
+            const j = JSON.parse(txt);
+            // Retry on transient error signatures. bad_token, access_revoked,
+            // etc. are terminal and returned as-is.
+            if (j && j.ok === false && (j.error === 'use_post' || j.error === 'unknown_type')) {
+              lastErr = new Error(j.error);
+            } else {
+              return j;
+            }
+          } catch(_) {
+            // Non-JSON response (Apps Script login redirect page). Retry.
+            lastErr = new Error('non_json_response');
+          }
+        }
+      } catch(e) {
+        lastErr = e;
+      }
+      // Backoff: 400ms, 1200ms
+      await new Promise(r => setTimeout(r, 400 * Math.pow(3, attempt)));
+    }
+    throw lastErr || new Error('apiPost exhausted retries');
   }
   function logout(){
     try{ localStorage.removeItem(LS_TOKEN); }catch(e){}
