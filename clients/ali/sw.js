@@ -5,7 +5,7 @@
 // Bump CACHE_NAME on every shell change to force old SWs out.
 // NEVER caches program JSON payloads (they live behind auth on Apps Script).
 // ─────────────────────────────────────────────────────────────────────────
-const CACHE_NAME = 'strengthbyo-v3-2026-08-29';
+const CACHE_NAME = 'strengthbyo-v4-2026-08-30-pwa-refresh';
 const STATIC_ASSETS = [
   'manifest.json',
   'icon-192.png',

@@ -6941,7 +6941,11 @@ function _cdPanelTraining(c, sum) {
 }
 function _cdPanelCheckins(c, sum) {
   const latest = sum && sum.latestCheckIn;
-  const list = (sum && Array.isArray(sum.recentCheckIns)) ? sum.recentCheckIns : [];
+  // Backend returns recentCheckIns[] in ASCENDING order (oldest → newest).
+  // Sort newest-first here so "Latest check-in" and "Earlier check-ins"
+  // reflect actual reverse-chronological order.
+  const rawList = (sum && Array.isArray(sum.recentCheckIns)) ? sum.recentCheckIns : [];
+  const list = rawList.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   const latestFromArr = !latest && list.length ? list[0] : null;
   const shown = latest || latestFromArr;
   const rest  = list.filter(ci => shown && ci.timestamp !== shown.timestamp);
