@@ -4034,7 +4034,7 @@ function closeModalBtn() {
 const CLIENT_CONFIG = {
   client: {
     firstName:   'Ismail',
-    fullTitle:   "Ismail's 12-Week 12-WEEK CUT",
+    fullTitle:   "Ismail's 12-Week Cut",
     heroLine1:   "ISMAIL'S",
     heroLine2:   '12-WEEK CUT',
     heroSub:     '12-Week Cut · 105kg -> ~90kg · Wife-cooked dinners · Breakfast + lunch prepped Sunday',
@@ -4855,7 +4855,7 @@ window.addEventListener('load', function() {
   const now = new Date();
   const isSunday = now.getDay() === 0; // 0 = Sunday in JS
   const lastTs = _lastCheckinTsFromLocalStorage();
-  const daysSince = lastTs ? Math.floor((Date.now() - lastTs) / 86400000) : 999;
+  const daysSince = lastTs ? Math.floor((Date.now() - lastTs) / 86400000) : -1;  // ISMAIL-ONLY: no check-in history yet -> no overdue state until a real first deadline exists
   _showCheckinReminder(daysSince, isSunday);
 });
 
@@ -6051,7 +6051,7 @@ function updateBottomNav(id) {
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-08-30T19:45:47.051010Z
+  generatedAt: 2026-08-30T20:24:16.807155Z
   clientStorageKey: ismail_rasheed
   configPath: ismail_rasheed.json
   safetyBlockers: 0
