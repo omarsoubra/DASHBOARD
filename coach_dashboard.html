@@ -5046,6 +5046,27 @@ function weeklyCoverage() {
   }).length;
   return { reviewed, total: activeClients.length };
 }
+// Check-ins this week: UNIQUE active clients whose latestCheckinTs falls
+// inside the last 7 days (168 h). Duration-based (timezone-agnostic; equivalent
+// to Sydney-time last-7-days for any wall-clock in AEDT/AEST). Multiple
+// submissions from the same client count once — we key on client.storageKey
+// and read the single latestCheckinTs the backend already dedupes to.
+// Archived / paused / onboarding clients are excluded via _isActiveClient.
+function checkinsThisWeek() {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const activeClients = COACH.clients.filter(_isActiveClient);
+  const seen = new Set();
+  activeClients.forEach(c => {
+    const sum = _dashboardData[c.storageKey] || {};
+    const iso = sum.latestCheckinTs;
+    if (!iso) return;
+    const t = new Date(iso).getTime();
+    if (!t) return;
+    if ((now - t) < WEEK_MS) seen.add(c.storageKey);
+  });
+  return { count: seen.size, total: activeClients.length };
+}
 
 // ── RENDER: summary cards ──────────────────────────────────────────────
 function renderCcSummary() {
@@ -5075,6 +5096,8 @@ function renderCcSummary() {
   });
   const cov = weeklyCoverage();
   const covPct = cov.total ? Math.round(cov.reviewed / cov.total * 100) : 0;
+  const ci = checkinsThisWeek();
+  const ciPct = ci.total ? Math.round(ci.count / ci.total * 100) : 0;
   el.innerHTML = `
     <div class="cc-summary-card">
       <div class="lbl">Active clients</div>
@@ -5091,8 +5114,13 @@ function renderCcSummary() {
       <div class="val">${watch}</div>
       <div class="desc">${watch ? 'monitor — not urgent' : 'all steady'}</div>
     </div>
+    <div class="cc-summary-card ${ciPct < 80 ? 'watch' : 'ok'}">
+      <div class="lbl">Check-ins this week</div>
+      <div class="val">${ci.count}<span class="val-suffix"> / ${ci.total}</span></div>
+      <div class="desc">unique clients · last 7 days</div>
+    </div>
     <div class="cc-summary-card ${covPct < 80 ? 'watch' : 'ok'}">
-      <div class="lbl">Weekly coverage</div>
+      <div class="lbl">Reviews this week</div>
       <div class="val">${cov.reviewed}<span class="val-suffix"> / ${cov.total}</span></div>
       <div class="desc"><button class="cc-link" onclick="filterUnreviewed()">Show unreviewed</button></div>
     </div>
