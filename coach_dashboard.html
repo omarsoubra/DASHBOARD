@@ -4920,7 +4920,7 @@ function computeAttention(client, sum) {
       const daysAgo = _daysSinceIso(sum.latestCheckinTs);
       add('CLIENT_ENGAGEMENT', 'blue', CC_TIER.INFO,
         'Check-in history unavailable — latest check-in timestamp exists',
-        'latestCheckinTs is ' + (daysAgo === null ? 'set' : daysAgo + 'd ago') + ' but recentCheckIns[] missing/empty — backend payload gap (re-deploy Apps Script)');
+        'latestCheckinTs is ' + (daysAgo === null ? 'set' : daysAgo + 'd ago') + ' but recentCheckIns[] missing/empty — backend sync gap (refresh or contact support if this persists)');
       bump('blue', 'CLIENT_ENGAGEMENT', CC_TIER.INFO);
     }
   }

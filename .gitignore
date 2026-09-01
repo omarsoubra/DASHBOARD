@@ -1,0 +1,25 @@
+# Migration artifacts — never commit to repo
+rollout_token_map.json
+rollout_baseline.json
+rollout_patch.py
+hardening_patch.py
+
+# Environment and secrets
+*.env
+.env*
+*_secret*
+*_credentials*
+supabase_prod.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Node / tooling artifacts (if any tooling is ever added)
+node_modules/
+dist/
+.cache/

@@ -2900,6 +2900,7 @@ async function pullOverrides() {
     const url = CLIENT_CONFIG.sheetsWebhookUrl
               + (CLIENT_CONFIG.sheetsWebhookUrl.includes('?') ? '&' : '?')
               + 'client=' + encodeURIComponent(CLIENT_CONFIG.client.storageKey)
+              + '&token=' + encodeURIComponent(CLIENT_TOKEN)
               + '&_=' + Date.now();
     const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -5612,7 +5613,9 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
     } catch(e){}
     if (!mealsEmpty && !workoutsEmpty) return; // nothing to do
 
-    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard';
+    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard'
+              + '&client=' + encodeURIComponent(CLIENT_CONFIG.client.storageKey)
+              + '&token=' + encodeURIComponent(CLIENT_TOKEN);
     fetch(url).then(r => r.json()).then(data => {
       const c = data && data[clientKey];
       if (!c) return;
