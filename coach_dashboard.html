@@ -6865,13 +6865,14 @@ let _detailChart = null;
 // adherence, weight save/reset, PDF export, WhatsApp/SMS, lifecycle & access
 // controls) is rewritten. Sprint 5 secure access work is not touched.
 const CD_TABS = [
-  { k: 'overview',  label: 'Overview' },
-  { k: 'progress',  label: 'Progress' },
-  { k: 'nutrition', label: 'Nutrition' },
-  { k: 'training',  label: 'Training' },
-  { k: 'checkins',  label: 'Check-ins' },
-  { k: 'photos',    label: 'Photos' },
-  { k: 'history',   label: 'History' },
+  { k: 'overview',    label: 'Overview' },
+  { k: 'progress',    label: 'Progress' },
+  { k: 'nutrition',   label: 'Nutrition' },
+  { k: 'training',    label: 'Training' },
+  { k: 'progression', label: 'Progression' },
+  { k: 'checkins',    label: 'Check-ins' },
+  { k: 'photos',      label: 'Photos' },
+  { k: 'history',     label: 'History' },
 ];
 
 // Persist selected tab per open client — object keyed by storageKey.
@@ -6998,6 +6999,182 @@ function _cdPanelTraining(c, sum) {
     </div>
   `;
 }
+// ── Progression tab ──────────────────────────────────────────────────────────
+// State is stored on window._pgState keyed by storageKey so results survive
+// tab switches within the same detail-panel open.
+if (!window._pgState) window._pgState = {};
+
+function _cdPanelProgression(c, sum) {
+  const key   = c.storageKey;
+  const state = window._pgState[key] || {};
+  const workouts = (sum && sum.recentWorkouts) || [];
+
+  // Build per-exercise prescription inputs pre-seeded from the latest logged set
+  // so coach only needs to adjust, not type from scratch.
+  const exercises = _pgGroupByExercise(workouts);
+
+  const rowsHtml = exercises.map(ex => {
+    const rx     = (state.rx && state.rx[ex.name]) || {};
+    const repRangeVal = _esc(rx.repRange || '');
+    const setsVal     = _esc(rx.sets     || ex.sets  || '');
+    const loadVal     = _esc(rx.load     || '');
+    const d = state.decisions && state.decisions.find(x => x.exerciseName === ex.name);
+    const decHtml = d ? _pgDecisionHtml(d) : '';
+    return `
+      <tr class="pg-ex-row" data-ex="${_esc(ex.name)}">
+        <td class="pg-ex-name" title="${_esc(ex.name)}">${_esc(ex.name)}</td>
+        <td class="pg-ex-last">${_esc(ex.lastWeight || '—')} × ${_esc(ex.lastSets || '—')} × ${_esc(ex.lastReps || '—')}${ex.lastRpe ? ' @ RPE ' + _esc(ex.lastRpe) : ''}<br><span style="opacity:.6;font-size:10px">${_esc(ex.lastDate || '')}</span></td>
+        <td><input class="pg-input" style="width:56px" placeholder="e.g. 8–10" value="${repRangeVal}"
+              oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','repRange',this.value)" title="Prescribed rep range (e.g. 8-10)"></td>
+        <td><input class="pg-input" style="width:36px" placeholder="sets" value="${setsVal}"
+              oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','sets',this.value)" title="Prescribed sets"></td>
+        <td><input class="pg-input" style="width:52px" placeholder="load" value="${loadVal}"
+              oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','load',this.value)" title="Prescribed load (kg, optional — leave blank to anchor from actual)"></td>
+        <td class="pg-decision-cell">${decHtml}</td>
+      </tr>`;
+  }).join('');
+
+  const hasDecisions = state.decisions && state.decisions.length > 0;
+  const applyBtns = hasDecisions ? `
+    <button class="cd-btn primary" onclick="_pgApplyAll('${_esc(key)}')" style="margin-left:8px">Apply all PROGRESS decisions</button>` : '';
+
+  return `
+    <div class="cd-panel-body">
+      <div class="cd-section">
+        <div class="cd-section-h" style="display:flex;align-items:center;gap:8px">
+          Workout load progression
+          <button class="cd-btn" onclick="_pgCompute('${_esc(key)}')" id="pg-compute-btn-${_esc(key)}">Compute</button>
+          ${applyBtns}
+        </div>
+        <p style="margin:4px 0 8px;opacity:.65;font-size:12px">
+          Double-progression model: accumulate reps within authored range → increase load.
+          Set the prescribed rep range per exercise, then click Compute.
+          Coach override always wins — apply only decisions you approve.
+        </p>
+        ${exercises.length === 0
+          ? '<p style="opacity:.5;font-size:13px">No workout logs found in the last 90 days.</p>'
+          : `<div style="overflow-x:auto">
+               <table class="pg-table">
+                 <thead><tr>
+                   <th>Exercise</th><th>Last logged</th>
+                   <th title="Prescribed rep range — required for auto-progression">Rep range</th>
+                   <th>Sets</th>
+                   <th title="Prescribed load — optional; leave blank to anchor from actual">Rx load</th>
+                   <th>Decision</th>
+                 </tr></thead>
+                 <tbody>${rowsHtml}</tbody>
+               </table>
+             </div>`}
+        <div id="pg-status-${_esc(key)}" style="margin-top:6px;font-size:12px;opacity:.7"></div>
+      </div>
+    </div>`;
+}
+
+function _pgGroupByExercise(workouts) {
+  const seen = new Map();
+  const sorted = workouts.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  for (const w of sorted) {
+    const name = w.exerciseName || w.exercise_name;
+    if (!name || seen.has(name)) continue;
+    seen.set(name, {
+      name,
+      sets:       w.setsActual   || '',
+      lastSets:   w.setsActual   || '',
+      lastReps:   w.repsActual   || '',
+      lastWeight: w.weightActual || '',
+      lastRpe:    w.rpeActual    || '',
+      lastDate:   w.timestamp ? String(w.timestamp).slice(0, 10) : '',
+    });
+  }
+  return [...seen.values()];
+}
+
+function _pgSetRx(storageKey, exName, field, value) {
+  const s = window._pgState[storageKey] = window._pgState[storageKey] || {};
+  s.rx = s.rx || {};
+  s.rx[exName] = s.rx[exName] || {};
+  s.rx[exName][field] = value;
+}
+
+function _pgDecisionHtml(d) {
+  const colours = {
+    PROGRESS_LOAD:    '#22c55e',
+    HOLD_LOAD:        '#f59e0b',
+    INSUFFICIENT_DATA:'#94a3b8',
+    FLAG_FOR_REVIEW:  '#ef4444',
+    NO_DATA:          '#94a3b8',
+  };
+  const col = colours[d.decision] || '#94a3b8';
+  const label = {
+    PROGRESS_LOAD:    '↑ Progress',
+    HOLD_LOAD:        '= Hold',
+    INSUFFICIENT_DATA:'? Incomplete',
+    FLAG_FOR_REVIEW:  '⚑ Review',
+    NO_DATA:          '— No data',
+  }[d.decision] || d.decision;
+  const nextLine = d.nextLoadStr
+    ? `<br><strong>${_esc(d.nextLoadStr)}</strong> × ${_esc(d.nextSets || '—')} × ${_esc(d.nextReps || '—')}`
+    : '';
+  return `<span style="color:${col};font-weight:600">${label}</span>${nextLine}<br>
+          <span style="font-size:10px;opacity:.7" title="${_esc(d.reason)}">${_esc((d.reason || '').slice(0, 80))}${(d.reason || '').length > 80 ? '…' : ''}</span>`;
+}
+
+async function _pgCompute(storageKey) {
+  const btn = document.getElementById('pg-compute-btn-' + storageKey);
+  const status = document.getElementById('pg-status-' + storageKey);
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Computing…';
+
+  const s   = window._pgState[storageKey] = window._pgState[storageKey] || {};
+  const exercises = s.rx
+    ? Object.entries(s.rx).map(([name, rx]) => ({ name, ...rx }))
+    : [];
+
+  try {
+    const res = await coachFetch('progressionCompute', { storageKey, exercises });
+    s.decisions = res.decisions || [];
+    s.computedAt = res.computedAt;
+    if (status) {
+      const prog = s.decisions.filter(d => d.decision === 'PROGRESS_LOAD').length;
+      const hold = s.decisions.filter(d => d.decision === 'HOLD_LOAD').length;
+      const flag = s.decisions.filter(d => d.decision === 'FLAG_FOR_REVIEW').length;
+      status.textContent = `Computed ${s.decisions.length} exercises — ↑ ${prog} progress · = ${hold} hold · ⚑ ${flag} review`;
+    }
+  } catch (e) {
+    if (status) status.textContent = 'Compute failed: ' + String(e);
+  }
+
+  // Re-render the progression panel to show decisions
+  const panel = document.getElementById('detail-panel');
+  if (panel) {
+    const c = COACH.clients.find(x => x.storageKey === storageKey);
+    const sum = _dashboardData[storageKey] || {};
+    if (c) panel.innerHTML = renderClientDetailV2(storageKey);
+  }
+  if (btn) btn.disabled = false;
+}
+
+async function _pgApplyAll(storageKey) {
+  const s = window._pgState[storageKey];
+  if (!s || !s.decisions) return;
+  const toApply = s.decisions.filter(d => d.decision === 'PROGRESS_LOAD');
+  if (toApply.length === 0) { alert('No PROGRESS decisions to apply.'); return; }
+  if (!confirm(`Apply ${toApply.length} load increase(s) for ${storageKey}? This writes overrides to Supabase — clients will see updated loads on their next sync.`)) return;
+
+  const status = document.getElementById('pg-status-' + storageKey);
+  if (status) status.textContent = 'Applying…';
+
+  try {
+    const res = await coachFetch('progressionApply', { storageKey, decisions: toApply });
+    const n = (res.applied || []).length;
+    const sk = (res.skipped || []).length;
+    if (status) status.textContent = `Applied ${n} day override(s).${sk ? ' ' + sk + ' skipped (no exercise array — pass current program to enable).': ''}`;
+    if (sk > 0 && res.skipped) console.warn('Progression skipped:', res.skipped);
+  } catch (e) {
+    if (status) status.textContent = 'Apply failed: ' + String(e);
+  }
+}
+
 function _cdPanelCheckins(c, sum) {
   const latest = sum && sum.latestCheckIn;
   // Backend returns recentCheckIns[] in ASCENDING order (oldest → newest).
@@ -7077,8 +7254,9 @@ function _cdRenderPanel(tabKey, c, sum, metrics30) {
   switch (tabKey) {
     case 'progress':  return _cdPanelProgress(c, sum, metrics30);
     case 'nutrition': return _cdPanelNutrition(c, sum);
-    case 'training':  return _cdPanelTraining(c, sum);
-    case 'checkins':  return _cdPanelCheckins(c, sum);
+    case 'training':    return _cdPanelTraining(c, sum);
+    case 'progression': return _cdPanelProgression(c, sum);
+    case 'checkins':    return _cdPanelCheckins(c, sum);
     case 'photos':    return _cdPanelPhotos(c, sum);
     case 'history':   return _cdPanelHistory(c);
     case 'overview':
