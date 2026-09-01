@@ -5029,6 +5029,10 @@ function computeAttention(client, sum) {
 // Only "active" clients participate.
 function _isArchivedClient(c) {
   if (!c) return true;
+  // Treat revoked clients as archived for roster display purposes.
+  // They keep their real accessStatus in the DB and can be restored via Restore Access —
+  // but they're hidden from Current / Active views and count under Archived.
+  if (c.accessStatus === 'revoked') return true;
   return c.programStatus === 'archived' || c.programStatus === 'completed';
 }
 function _isPausedClient(c) {
