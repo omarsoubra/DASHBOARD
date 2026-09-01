@@ -3241,6 +3241,16 @@ function mergeRegistryIntoRoster(roster, registry) {
     }
   }
 
+  // Backfill missing displayName from storageKey so no client renders as "undefined".
+  // Slim registry entries (auto-generated) don't carry displayName; older cache entries
+  // may have lost it after a reseed. Coach can still edit the name via the Add/Edit modal.
+  for (const c of list) {
+    if (c && c.storageKey && !c.displayName) {
+      c.displayName = String(c.storageKey).split('_').filter(Boolean)
+        .map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+    }
+  }
+
   return { list, added, updated, missing };
 }
 
