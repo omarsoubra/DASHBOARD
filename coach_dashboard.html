@@ -4229,7 +4229,10 @@ function updateSyncStatus() {
 
 async function fetchDashboardData() {
   if (!_coachToken()) throw new Error('unauthorized');
-  return await coachFetch('dashboard');
+  const resp = await coachFetch('dashboard');
+  // Supabase EF wraps as {ok, dashboard:{...}}. Apps Script returned {amir:{...}} directly.
+  // Unwrap so downstream code (_dashboardData[c.storageKey]) works with both backends.
+  return resp && resp.dashboard ? resp.dashboard : resp;
 }
 async function loadAll() {
   try {
