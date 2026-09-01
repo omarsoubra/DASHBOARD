@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-30T07:41:14Z",
-  "generatedBy": "build_public_registry.py",
-  "clientCount": 31,
+  "generatedAt": "2026-09-01T18:36:09Z",
+  "generatedBy": "scripts/rebuild_registry.py",
+  "clientCount": 35,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -49,12 +49,20 @@
       "programUrl": "clients/ilham/"
     },
     {
+      "storageKey": "ismail_rasheed",
+      "programUrl": "clients/ismail_rasheed/"
+    },
+    {
       "storageKey": "jad_elali",
       "programUrl": "clients/jad_elali/"
     },
     {
       "storageKey": "jamal",
       "programUrl": "clients/jamal/"
+    },
+    {
+      "storageKey": "joey_saleh",
+      "programUrl": "clients/joey_saleh/"
     },
     {
       "storageKey": "karim",
@@ -75,6 +83,10 @@
     {
       "storageKey": "mayank",
       "programUrl": "clients/mayank/"
+    },
+    {
+      "storageKey": "mayank_block2",
+      "programUrl": "clients/mayank_block2/"
     },
     {
       "storageKey": "mohammed_hardani",
@@ -117,6 +129,10 @@
       "programUrl": "clients/shkar_abubaker/"
     },
     {
+      "storageKey": "siam",
+      "programUrl": "clients/siam/"
+    },
+    {
       "storageKey": "tarkyn",
       "programUrl": "clients/tarkyn/"
     },
@@ -129,5 +145,5 @@
       "programUrl": "clients/yusuf/"
     }
   ],
-  "note": "Public slim registry. Full metadata behind coach-authed endpoint."
+  "note": "Public slim registry. Auto-generated from clients/*/index.html on every push. Full metadata lives behind the coach-authed registryGetPrivate endpoint."
 }

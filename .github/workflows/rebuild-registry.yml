@@ -1,0 +1,76 @@
+name: Rebuild clients_registry.json
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/**'
+      - 'scripts/rebuild_registry.py'
+      - '.github/workflows/rebuild-registry.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-registry-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rebuild registry
+        run: python3 scripts/rebuild_registry.py
+
+      - name: Assert registry contains ONLY storageKey + programUrl
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          data = json.load(open("clients_registry.json"))
+          allowed = {"storageKey", "programUrl"}
+          forbidden = {
+              "accessStatus", "accessRevokedAt", "accessRevokedReason", "accessRestoredAt",
+              "programStatus", "isPaused", "pausedAt", "resumeDate",
+              "archivedAt", "archiveReason",
+              "coachReviewHistory", "lastMeaningfulCoachReview", "checkInReviews",
+              "nextCoachAction", "nextCoachActionDue", "coachNotes",
+              "startWeight", "goalWeight",
+              "phone", "email",
+              "startDate", "checkInDay",
+              "kcal", "p", "c", "f", "steps", "goal", "phase",
+          }
+          for i, e in enumerate(data.get("clients", [])):
+              extra = set(e.keys()) - allowed
+              bad = set(e.keys()) & forbidden
+              if bad:
+                  print(f"::error::entry {i} ({e.get('storageKey','?')}) contains coach-owned fields: {sorted(bad)}", file=sys.stderr)
+                  sys.exit(1)
+              if extra:
+                  print(f"::error::entry {i} ({e.get('storageKey','?')}) contains unexpected fields: {sorted(extra)}", file=sys.stderr)
+                  sys.exit(1)
+          print(f"OK: {len(data.get('clients', []))} clients, only storageKey + programUrl")
+          PY
+
+      - name: Commit updated registry (only if changed)
+        run: |
+          set -euo pipefail
+          if git diff --quiet clients_registry.json; then
+            echo "clients_registry.json already up to date."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add clients_registry.json
+          git commit -m "chore(registry): auto-rebuild clients_registry.json [skip ci]"
+          git push
