@@ -3293,6 +3293,8 @@ function postMealLog(entry) {
     body: JSON.stringify({
       type: 'meal',
       client: CLIENT_CONFIG.client.storageKey,
+      storageKey: CLIENT_CONFIG.client.storageKey,
+      token: CLIENT_TOKEN,
       week:   entry.week,
       dayIdx: entry.dayIdx,
       mealIdx:entry.mealIdx,
@@ -3717,6 +3719,8 @@ function postWorkoutLog(entry) {
     body: JSON.stringify({
       type: 'workout',
       client: CLIENT_CONFIG.client.storageKey,
+      storageKey: CLIENT_CONFIG.client.storageKey,
+      token: CLIENT_TOKEN,
       phase: entry.phase,
       dayIdx: entry.dayIdx,
       exerciseName: entry.exName,
@@ -4092,7 +4096,7 @@ const CLIENT_CONFIG = {
     templateId: 'template_glftn89',
     publicKey:  'jAvMcUPQEWFNIt-wA',
   },
-  sheetsWebhookUrl: 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec',
+  sheetsWebhookUrl: 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api',
   phases: {
     2: { unlockCode: 'SHKAR20', unlockAfterDays: 28 },
     3: { unlockCode: 'SHKAR30', unlockAfterDays: 56 },
@@ -4108,6 +4112,7 @@ const EMAILJS_SERVICE_ID  = CLIENT_CONFIG.emailjs.serviceId;
 const EMAILJS_TEMPLATE_ID = CLIENT_CONFIG.emailjs.templateId;
 const EMAILJS_PUBLIC_KEY  = CLIENT_CONFIG.emailjs.publicKey;
 const SHEETS_WEBHOOK_URL  = CLIENT_CONFIG.sheetsWebhookUrl;
+const CLIENT_TOKEN        = 'cd2119402d7647638a7d5008e4147ce1ebbaa12f2a3d4de4a59154978c7fcf3a';
 const LS_KEYS = {
   checkins: CLIENT_CONFIG.client.storageKey + '_checkins',
   start:    CLIENT_CONFIG.client.storageKey + '_start',
@@ -4143,6 +4148,8 @@ async function saveCheckin(){
           body: JSON.stringify({
             type: 'photoUpload',
             client: CLIENT_CONFIG.client.storageKey,
+            storageKey: CLIENT_CONFIG.client.storageKey,
+            token: CLIENT_TOKEN,
             week: week,
             view: view,
             base64: _photoBase64[view].split(',')[1] || _photoBase64[view], // strip data URL prefix
@@ -4209,6 +4216,8 @@ async function saveCheckin(){
         body: JSON.stringify({
           type: 'weight',
           client: CLIENT_CONFIG.client.storageKey,
+          storageKey: CLIENT_CONFIG.client.storageKey,
+          token: CLIENT_TOKEN,
           weightKg: weight,
           notes: 'check-in week ' + week,
           timestamp: new Date().toISOString(),
@@ -4221,6 +4230,8 @@ async function saveCheckin(){
         body: JSON.stringify({
           type: 'checkin',
           client: CLIENT_CONFIG.client.storageKey,
+          storageKey: CLIENT_CONFIG.client.storageKey,
+          token: CLIENT_TOKEN,
           week: week,
           weightKg: weight,
           energy1to10: energy,
