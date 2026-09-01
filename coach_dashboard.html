@@ -4262,6 +4262,20 @@ async function loadAll() {
     if (registry) {
       try { await mergeAndPersistRegistry(registry); } catch (e) { console.warn('merge err', e); }
     }
+    // Normalize: promote 'onboarding' → 'active' for any client with real activity
+    // (≥2 weight entries OR ≥1 check-in). Prevents established clients from being stuck
+    // labelled as onboarding after cache reseed / registry re-merge.
+    try {
+      const list = loadClients();
+      let promoted = 0;
+      for (const c of list) {
+        if (!c || c.programStatus !== 'onboarding') continue;
+        const sum = _dashboardData?.[c.storageKey] || {};
+        const hasHistory = (sum.weightHistory || []).length >= 2 || (sum.recentCheckIns || []).length >= 1;
+        if (hasHistory) { c.programStatus = 'active'; promoted++; }
+      }
+      if (promoted > 0) { saveClients(list); COACH.clients = list; }
+    } catch (e) { console.warn('onboarding-normalize err', e); }
     renderDashboard();
   } catch (e) {
     console.error('Dashboard fetch failed:', e);
@@ -5114,7 +5128,10 @@ function checkinsThisWeek() {
 function renderCcSummary() {
   const el = document.getElementById('cc-summary-row');
   if (!el) return;
-  const active = COACH.clients.filter(_isActiveClient).length;
+  // KPI "Active clients" is defined as "everyone on your books" (excludes archived + revoked,
+  // but INCLUDES onboarding + paused). This intentionally matches the "Current" roster filter
+  // so both counters agree at a glance.
+  const active = COACH.clients.filter(_isOnBooksClient).length;
   // ── Noise-reduction pass: counts are now TIER-based ──
   //   Needs Attention  = clients whose top tier is ACTION_NOW
   //   Watch            = clients whose top tier is WATCH (no ACTION)
@@ -5144,7 +5161,7 @@ function renderCcSummary() {
     <div class="cc-summary-card">
       <div class="lbl">Active clients</div>
       <div class="val">${active}<span class="val-suffix"> / ${COACH.clients.length}</span></div>
-      <div class="desc">not paused</div>
+      <div class="desc">on your books · matches Current filter</div>
     </div>
     <div class="cc-summary-card ${actionNow ? 'attn' : 'ok'}">
       <div class="lbl">Needs attention</div>
