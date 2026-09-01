@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-01T18:36:09Z",
+  "generatedAt": "2026-09-01T19:06:31Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 35,
+  "clientCount": 34,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -83,10 +83,6 @@
     {
       "storageKey": "mayank",
       "programUrl": "clients/mayank/"
-    },
-    {
-      "storageKey": "mayank_block2",
-      "programUrl": "clients/mayank_block2/"
     },
     {
       "storageKey": "mohammed_hardani",
