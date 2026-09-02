@@ -1458,6 +1458,50 @@
     display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
   }
 
+  /* ─── Progression summary (LAST / NEXT / WHY) — compact, muted, presentation-only ─── */
+  .pg-summary {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10.5px;
+    line-height: 1.5;
+    max-width: 100%;
+  }
+  .pg-summary.pg-empty {
+    color: var(--muted);
+    opacity: 0.6;
+    font-style: italic;
+  }
+  .pg-row {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    min-width: 0;
+  }
+  .pg-label {
+    flex: 0 0 auto;
+    width: 52px;
+    color: var(--muted);
+    opacity: 0.75;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 9.5px;
+  }
+  .pg-val {
+    color: var(--text);
+    opacity: 0.9;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+  .pg-row.pg-why .pg-val { color: var(--muted); opacity: 0.85; font-style: italic; }
+  .pg-row.pg-adjusted .pg-val { color: var(--accent2); opacity: 1; font-weight: 600; }
+  @media (max-width: 500px) {
+    .pg-summary { font-size: 10px; }
+    .pg-label { width: 46px; font-size: 9px; }
+  }
+
   /* NEW: mobile sticky greeting header */
   .tmobile-header {
     display: none;
@@ -3972,6 +4016,69 @@ function _safeIsTrainerMode() {
   catch(e) { return false; }
 }
 
+// ─── Progression summary (LAST / NEXT / WHY) ────────────────────────────────
+// Presentation only. Reads data the engine already computed and already sends
+// to this device via pullOverrides() -> loadOverrides(): the per-exercise
+// auto-progression history rides along in the same override payload under
+// "_pg_hist.<normalizedExerciseName>". This never re-derives a progression
+// decision or rule — it only reads the engine's own decision enum and reason
+// metadata and labels them for a client-facing audience. NEXT always reads
+// the live resolved prescription (ex.weight/ex.sets), the same values already
+// shown as the active target elsewhere on this row — never the authored value.
+function _pgEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function _pgNormExKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+function _pgDecisionLabel(decision) {
+  return {
+    PROGRESS_LOAD:     'Target completed. Load progressed.',
+    HOLD_LOAD:         'Full volume completed. Working load held.',
+    REBASE_HOLD:       'Working load updated from your last session.',
+    INSUFFICIENT_DATA: 'Complete prescribed volume before increasing.',
+    FLAG_FOR_REVIEW:   'Your coach will review this one.',
+  }[decision] || null;
+}
+function buildProgressionSummary(phase, dayIdx, ex) {
+  let last = null, latest = null;
+  try { last = getWorkoutLogEntry(phase, dayIdx, ex.name); } catch(e) {}
+  try {
+    const o = loadOverrides();
+    const histArr = o['_pg_hist.' + _pgNormExKey(ex.name)];
+    if (Array.isArray(histArr) && histArr.length) latest = histArr[0];
+  } catch(e) {}
+
+  const lastLine = (last && last.weight && last.reps)
+    ? _pgEsc(last.weight) + ' \u00d7 ' + _pgEsc(String(last.reps).replace(/\//g, ' / '))
+    : null;
+  const nextLine = (ex && ex.weight && ex.sets)
+    ? _pgEsc(ex.weight) + ' \u00d7 ' + _pgEsc(ex.sets) + ' sets'
+    : null;
+  const whyLine = latest ? _pgDecisionLabel(latest.decision) : null;
+  const adjustedLine = (latest && latest.loadRebased === true
+      && typeof latest.rebasedFrom === 'number' && isFinite(latest.rebasedFrom) && ex && ex.weight)
+    ? _pgEsc(latest.rebasedFrom + 'kg') + ' \u2192 ' + _pgEsc(ex.weight)
+    : null;
+
+  // Only worth showing when there's something beyond the prescription that's
+  // already visible on this row (the sets/reps line + weight badge). A bare
+  // NEXT with no LAST/WHY/ADJUSTED would just repeat that — skip it so
+  // clients with no progression history yet don't get a cluttered row on
+  // every single exercise.
+  if (!lastLine && !whyLine && !adjustedLine) {
+    return '';
+  }
+
+  const rows = [];
+  if (adjustedLine) rows.push('<div class="pg-row pg-adjusted"><span class="pg-label">Adjusted</span><span class="pg-val">' + adjustedLine + '</span></div>');
+  if (lastLine)     rows.push('<div class="pg-row"><span class="pg-label">Last</span><span class="pg-val">' + lastLine + '</span></div>');
+  if (nextLine)     rows.push('<div class="pg-row"><span class="pg-label">Next</span><span class="pg-val">' + nextLine + '</span></div>');
+  if (whyLine)      rows.push('<div class="pg-row pg-why"><span class="pg-label">Why</span><span class="pg-val">' + _pgEsc(whyLine) + '</span></div>');
+
+  return '<div class="pg-summary">' + rows.join('') + '</div>';
+}
+
 function renderDay() {
   const p = phases[currentPhase];
   const day = p.days[currentDay];
@@ -4006,6 +4113,7 @@ function renderDay() {
           <div class="texercise-name">${ex.name}</div>
           <div class="texercise-sets">${ex.sets} sets × ${ex.reps} · <span class="rpe-pill ${rpeCls}" style="padding:1px 6px;font-size:10px;">RPE ${ex.rpe}</span> · rest ${ex.rest}</div>
           <div class="texercise-tools">${btn}${edBtns}${logBtn}${logged}</div>
+          ${trainer ? '' : buildProgressionSummary(currentPhase, currentDay, ex)}
         </div>
         <div class="texercise-weight">${ex.weight}</div>
       </div>
