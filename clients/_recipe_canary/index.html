@@ -2261,26 +2261,32 @@
   <div style="margin-top:1.5rem;background:var(--surface);border:1px dashed var(--border);border-radius:10px;padding:1rem 1.2rem;">
     <div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent3);letter-spacing:0.12em;margin-bottom:0.3rem;">📸 PROGRESS PHOTOS (OPTIONAL)</div>
     <div style="font-size:0.78rem;color:var(--muted);line-height:1.5;margin-bottom:0.9rem;">
-      Take 3 shirtless mirror pics (front, side, back). Tap each slot to pick from your phone's camera roll. Auto-resized + auto-uploaded when you submit check-in. Coach sees them in the dashboard for side-by-side comparison.
+      Take 3 shirtless mirror pics (front, side, back). Tap the photo box for your camera, or "Gallery" to pick an existing pic. Auto-resized + auto-uploaded when you submit check-in. Coach sees them in the dashboard for side-by-side comparison.
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;">
       <div>
         <input type="file" accept="image/*" capture="user" id="input-photo-front-file" onchange="handlePhotoPicked(event, 'front')" style="display:none;"/>
+        <input type="file" accept="image/*" id="input-photo-front-gallery" onchange="handlePhotoPicked(event, 'front')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-front-file').click()" id="photo-btn-front" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
-          <span id="photo-prompt-front">📷<br>FRONT<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
+          <span id="photo-prompt-front">📷<br>FRONT<br><span style="font-size:0.6rem;opacity:0.7;">Tap for camera</span></span>
         </button>
+        <button type="button" onclick="document.getElementById('input-photo-front-gallery').click()" style="width:100%;margin-top:0.3rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.58rem;padding:0.3rem 0.2rem;cursor:pointer;">🖼️ Gallery</button>
       </div>
       <div>
         <input type="file" accept="image/*" capture="user" id="input-photo-side-file" onchange="handlePhotoPicked(event, 'side')" style="display:none;"/>
+        <input type="file" accept="image/*" id="input-photo-side-gallery" onchange="handlePhotoPicked(event, 'side')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-side-file').click()" id="photo-btn-side" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
-          <span id="photo-prompt-side">📷<br>SIDE<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
+          <span id="photo-prompt-side">📷<br>SIDE<br><span style="font-size:0.6rem;opacity:0.7;">Tap for camera</span></span>
         </button>
+        <button type="button" onclick="document.getElementById('input-photo-side-gallery').click()" style="width:100%;margin-top:0.3rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.58rem;padding:0.3rem 0.2rem;cursor:pointer;">🖼️ Gallery</button>
       </div>
       <div>
         <input type="file" accept="image/*" capture="user" id="input-photo-back-file" onchange="handlePhotoPicked(event, 'back')" style="display:none;"/>
+        <input type="file" accept="image/*" id="input-photo-back-gallery" onchange="handlePhotoPicked(event, 'back')" style="display:none;"/>
         <button type="button" onclick="document.getElementById('input-photo-back-file').click()" id="photo-btn-back" style="width:100%;aspect-ratio:2/3;background:#111;border:2px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;padding:0.4rem;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;">
-          <span id="photo-prompt-back">📷<br>BACK<br><span style="font-size:0.6rem;opacity:0.7;">Tap to pick</span></span>
+          <span id="photo-prompt-back">📷<br>BACK<br><span style="font-size:0.6rem;opacity:0.7;">Tap for camera</span></span>
         </button>
+        <button type="button" onclick="document.getElementById('input-photo-back-gallery').click()" style="width:100%;margin-top:0.3rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.58rem;padding:0.3rem 0.2rem;cursor:pointer;">🖼️ Gallery</button>
       </div>
     </div>
     <div id="photo-upload-status" style="display:none;margin-top:0.6rem;font-size:0.75rem;color:var(--muted);font-family:'DM Mono',monospace;"></div>
