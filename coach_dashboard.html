@@ -4265,17 +4265,31 @@ async function loadAll() {
     // Normalize: promote 'onboarding' → 'active' for any client with real activity
     // (≥2 weight entries OR ≥1 check-in). Prevents established clients from being stuck
     // labelled as onboarding after cache reseed / registry re-merge.
+    // Also backfill startWeight + startDate from the earliest logged weight when the coach
+    // hasn't set them yet — so new clients show their baseline instead of "—".
     try {
       const list = loadClients();
-      let promoted = 0;
+      let changed = 0;
       for (const c of list) {
-        if (!c || c.programStatus !== 'onboarding') continue;
+        if (!c) continue;
         const sum = _dashboardData?.[c.storageKey] || {};
-        const hasHistory = (sum.weightHistory || []).length >= 2 || (sum.recentCheckIns || []).length >= 1;
-        if (hasHistory) { c.programStatus = 'active'; promoted++; }
+        // A. Onboarding promotion
+        if (c.programStatus === 'onboarding') {
+          const hasHistory = (sum.weightHistory || []).length >= 2 || (sum.recentCheckIns || []).length >= 1;
+          if (hasHistory) { c.programStatus = 'active'; changed++; }
+        }
+        // B. Baseline backfill from earliest weight entry (coach can override via Edit modal)
+        const wh = (sum.weightHistory || []).slice().sort((a, b) => new Date(a.ts || a.timestamp) - new Date(b.ts || b.timestamp));
+        const earliest = wh[0];
+        if (earliest && (earliest.kg ?? earliest.weightKg) != null) {
+          const earliestKg = Number(earliest.kg ?? earliest.weightKg);
+          const earliestDate = String(earliest.ts || earliest.timestamp).slice(0, 10);
+          if (c.startWeight == null || c.startWeight === '') { c.startWeight = earliestKg; changed++; }
+          if (!c.startDate) { c.startDate = earliestDate; changed++; }
+        }
       }
-      if (promoted > 0) { saveClients(list); COACH.clients = list; }
-    } catch (e) { console.warn('onboarding-normalize err', e); }
+      if (changed > 0) { saveClients(list); COACH.clients = list; pushRoster().catch(() => {}); }
+    } catch (e) { console.warn('roster-normalize err', e); }
     renderDashboard();
   } catch (e) {
     console.error('Dashboard fetch failed:', e);
@@ -7004,28 +7018,61 @@ function _cdPanelTraining(c, sum) {
 // tab switches within the same detail-panel open.
 if (!window._pgState) window._pgState = {};
 
+// Fetch the client's authored program once per storageKey and cache in _pgState.
+// Calls the clientProgram endpoint with coach token.
+async function _pgLoadProgram(storageKey) {
+  const s = window._pgState[storageKey] = window._pgState[storageKey] || {};
+  if (s.program) return s.program;
+  try {
+    const res = await coachFetch('clientProgram', { storageKey });
+    s.program = res.program || null;
+  } catch (e) {
+    console.warn('progressionTab: could not load program for', storageKey, e);
+    s.program = null;
+  }
+  return s.program;
+}
+
+// Extract rep-range/sets/load from authored program for a given exercise name,
+// looked up by phase and dayIdx from the most recent workout log entry.
+function _pgProgramRx(program, exName, phase, dayIdx) {
+  if (!program || !program.phases) return null;
+  const ph = program.phases[String(phase)];
+  if (!ph || !Array.isArray(ph.days)) return null;
+  const day = ph.days[dayIdx];
+  if (!day || !Array.isArray(day.exercises)) return null;
+  const ex = day.exercises.find(e => String(e.name || '').toLowerCase() === exName.toLowerCase());
+  if (!ex) return null;
+  return { repRange: ex.reps || '', sets: ex.sets ? String(ex.sets) : '', load: ex.weight || '' };
+}
+
 function _cdPanelProgression(c, sum) {
   const key   = c.storageKey;
   const state = window._pgState[key] || {};
   const workouts = (sum && sum.recentWorkouts) || [];
 
-  // Build per-exercise prescription inputs pre-seeded from the latest logged set
-  // so coach only needs to adjust, not type from scratch.
+  // Build per-exercise rows from most-recent logged workouts.
+  // Rep-range/sets/load are auto-sourced from authored program (via _pgState.program),
+  // then overridden by any manual coach edits stored in _pgState.rx.
   const exercises = _pgGroupByExercise(workouts);
 
   const rowsHtml = exercises.map(ex => {
-    const rx     = (state.rx && state.rx[ex.name]) || {};
-    const repRangeVal = _esc(rx.repRange || '');
-    const setsVal     = _esc(rx.sets     || ex.sets  || '');
-    const loadVal     = _esc(rx.load     || '');
+    const manualRx = (state.rx && state.rx[ex.name]) || {};
+    const progRx   = _pgProgramRx(state.program, ex.name, ex.phase, ex.dayIdx) || {};
+    // Effective value: manual edit wins; then auto-sourced from program
+    const repRangeVal = _esc(manualRx.repRange != null ? manualRx.repRange : (progRx.repRange || ''));
+    const setsVal     = _esc(manualRx.sets     != null ? manualRx.sets     : (progRx.sets     || ex.sets || ''));
+    const loadVal     = _esc(manualRx.load     != null ? manualRx.load     : (progRx.load     || ''));
     const d = state.decisions && state.decisions.find(x => x.exerciseName === ex.name);
     const decHtml = d ? _pgDecisionHtml(d) : '';
+    const srcBadge = (!manualRx.repRange && progRx.repRange)
+      ? '<span style="font-size:9px;opacity:.5;margin-left:3px" title="Auto-sourced from authored program">prog</span>' : '';
     return `
       <tr class="pg-ex-row" data-ex="${_esc(ex.name)}">
         <td class="pg-ex-name" title="${_esc(ex.name)}">${_esc(ex.name)}</td>
         <td class="pg-ex-last">${_esc(ex.lastWeight || '—')} × ${_esc(ex.lastSets || '—')} × ${_esc(ex.lastReps || '—')}${ex.lastRpe ? ' @ RPE ' + _esc(ex.lastRpe) : ''}<br><span style="opacity:.6;font-size:10px">${_esc(ex.lastDate || '')}</span></td>
         <td><input class="pg-input" style="width:56px" placeholder="e.g. 8–10" value="${repRangeVal}"
-              oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','repRange',this.value)" title="Prescribed rep range (e.g. 8-10)"></td>
+              oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','repRange',this.value)" title="Prescribed rep range (e.g. 8-10)">${srcBadge}</td>
         <td><input class="pg-input" style="width:36px" placeholder="sets" value="${setsVal}"
               oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','sets',this.value)" title="Prescribed sets"></td>
         <td><input class="pg-input" style="width:52px" placeholder="load" value="${loadVal}"
@@ -7038,6 +7085,19 @@ function _cdPanelProgression(c, sum) {
   const applyBtns = hasDecisions ? `
     <button class="cd-btn primary" onclick="_pgApplyAll('${_esc(key)}')" style="margin-left:8px">Apply all PROGRESS decisions</button>` : '';
 
+  // Kick off program load in background so inputs are populated on next render
+  if (!state.program && !state._pgProgramLoading) {
+    state._pgProgramLoading = true;
+    _pgLoadProgram(key).then(() => {
+      state._pgProgramLoading = false;
+      const panel = document.getElementById('detail-panel');
+      const activeTab = document.querySelector('.cd-tab.active');
+      if (panel && activeTab && activeTab.dataset.tab === 'progression') {
+        panel.innerHTML = renderClientDetailV2(key);
+      }
+    });
+  }
+
   return `
     <div class="cd-panel-body">
       <div class="cd-section">
@@ -7048,7 +7108,7 @@ function _cdPanelProgression(c, sum) {
         </div>
         <p style="margin:4px 0 8px;opacity:.65;font-size:12px">
           Double-progression model: accumulate reps within authored range → increase load.
-          Set the prescribed rep range per exercise, then click Compute.
+          Rep range / sets / Rx load auto-sourced from authored program (editable per-session).
           Coach override always wins — apply only decisions you approve.
         </p>
         ${exercises.length === 0
@@ -7078,6 +7138,8 @@ function _pgGroupByExercise(workouts) {
     if (!name || seen.has(name)) continue;
     seen.set(name, {
       name,
+      phase:      w.phase    || w.phase_key || null,
+      dayIdx:     w.dayIdx   != null ? w.dayIdx : (w.day_index != null ? w.day_index : null),
       sets:       w.setsActual   || '',
       lastSets:   w.setsActual   || '',
       lastReps:   w.repsActual   || '',
@@ -7125,7 +7187,12 @@ async function _pgCompute(storageKey) {
   if (btn) btn.disabled = true;
   if (status) status.textContent = 'Computing…';
 
-  const s   = window._pgState[storageKey] = window._pgState[storageKey] || {};
+  const s = window._pgState[storageKey] = window._pgState[storageKey] || {};
+
+  // Ensure program is loaded before computing so auto-sourced prescriptions are available
+  if (!s.program) await _pgLoadProgram(storageKey);
+
+  // Only send manual coach overrides as exercises overlay (program values auto-sourced server-side)
   const exercises = s.rx
     ? Object.entries(s.rx).map(([name, rx]) => ({ name, ...rx }))
     : [];
@@ -7148,7 +7215,6 @@ async function _pgCompute(storageKey) {
   const panel = document.getElementById('detail-panel');
   if (panel) {
     const c = COACH.clients.find(x => x.storageKey === storageKey);
-    const sum = _dashboardData[storageKey] || {};
     if (c) panel.innerHTML = renderClientDetailV2(storageKey);
   }
   if (btn) btn.disabled = false;
@@ -7168,7 +7234,7 @@ async function _pgApplyAll(storageKey) {
     const res = await coachFetch('progressionApply', { storageKey, decisions: toApply });
     const n = (res.applied || []).length;
     const sk = (res.skipped || []).length;
-    if (status) status.textContent = `Applied ${n} day override(s).${sk ? ' ' + sk + ' skipped (no exercise array — pass current program to enable).': ''}`;
+    if (status) status.textContent = `Applied ${n} day override(s).${sk ? ' ' + sk + ' skipped — see console.' : ''}`;
     if (sk > 0 && res.skipped) console.warn('Progression skipped:', res.skipped);
   } catch (e) {
     if (status) status.textContent = 'Apply failed: ' + String(e);
