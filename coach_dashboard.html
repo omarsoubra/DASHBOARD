@@ -7033,6 +7033,31 @@ async function _pgLoadProgram(storageKey) {
   return s.program;
 }
 
+// Fetch auto-progression audit history from progressionHistory endpoint.
+async function _pgLoadHistory(storageKey) {
+  const s = window._pgState[storageKey] = window._pgState[storageKey] || {};
+  try {
+    const res = await coachFetch('progressionHistory', { storageKey });
+    s.pgHistory = res.history || {};
+  } catch (e) {
+    console.warn('progressionTab: could not load history for', storageKey, e);
+    s.pgHistory = {};
+  }
+  return s.pgHistory;
+}
+
+async function _pgRefreshHistory(storageKey) {
+  const s = window._pgState[storageKey] = window._pgState[storageKey] || {};
+  s.pgHistory = null;
+  s._pgHistLoading = false;
+  await _pgLoadHistory(storageKey);
+  const panel = document.getElementById('detail-panel');
+  if (panel) {
+    const c = COACH.clients.find(x => x.storageKey === storageKey);
+    if (c) panel.innerHTML = renderClientDetailV2(storageKey);
+  }
+}
+
 // Extract rep-range/sets/load from authored program for a given exercise name,
 // looked up by phase and dayIdx from the most recent workout log entry.
 function _pgProgramRx(program, exName, phase, dayIdx) {
@@ -7050,16 +7075,36 @@ function _cdPanelProgression(c, sum) {
   const key   = c.storageKey;
   const state = window._pgState[key] || {};
   const workouts = (sum && sum.recentWorkouts) || [];
-
-  // Build per-exercise rows from most-recent logged workouts.
-  // Rep-range/sets/load are auto-sourced from authored program (via _pgState.program),
-  // then overridden by any manual coach edits stored in _pgState.rx.
   const exercises = _pgGroupByExercise(workouts);
 
+  // ── Auto-progression history section ──────────────────────────────────
+  const hist = state.pgHistory || {};
+  const histEntries = Object.values(hist).flat().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  const histHtml = histEntries.length === 0
+    ? '<p style="opacity:.5;font-size:12px">No auto-progression events yet — history appears here after clients log workouts.</p>'
+    : histEntries.slice(0, 30).map(h => {
+        const decColour = { PROGRESS_LOAD: '#22c55e', HOLD_LOAD: '#f59e0b', FLAG_FOR_REVIEW: '#ef4444', INSUFFICIENT_DATA: '#94a3b8', NO_DATA: '#94a3b8' }[h.decision] || '#94a3b8';
+        const decLabel  = { PROGRESS_LOAD: '↑ Progress', HOLD_LOAD: '= Hold', FLAG_FOR_REVIEW: '⚑ Review', INSUFFICIENT_DATA: '? Incomplete', NO_DATA: '— No data' }[h.decision] || h.decision;
+        const appliedBadge = h.applied
+          ? '<span style="color:#22c55e;font-size:10px;margin-left:4px">✓ applied</span>'
+          : (h.skippedReason ? `<span style="color:#94a3b8;font-size:10px;margin-left:4px" title="${_esc(h.skippedReason)}">⊘ skipped</span>` : '');
+        const loadChange = (h.prevLoad && h.nextLoad && h.prevLoad !== h.nextLoad)
+          ? `${_esc(h.prevLoad)} → <strong>${_esc(h.nextLoad)}</strong>` : (h.nextLoad ? `<strong>${_esc(h.nextLoad)}</strong>` : '');
+        return `<div class="cd-history-row" style="align-items:start">
+          <span class="cd-history-when" style="min-width:82px">${_esc((h.ts || '').slice(0, 10))}</span>
+          <span class="cd-history-body">
+            <strong>${_esc(h.exerciseName)}</strong>
+            <span style="color:${decColour};font-weight:600;margin-left:4px">${decLabel}</span>${appliedBadge}
+            ${loadChange ? `<span style="margin-left:6px;font-size:12px">${loadChange}</span>` : ''}
+            <br><span style="opacity:.6;font-size:10px" title="${_esc(h.reason)}">${_esc((h.reason || '').slice(0, 100))}${(h.reason || '').length > 100 ? '…' : ''}</span>
+          </span>
+        </div>`;
+      }).join('');
+
+  // ── Manual audit table (Compute tool) ─────────────────────────────────
   const rowsHtml = exercises.map(ex => {
     const manualRx = (state.rx && state.rx[ex.name]) || {};
     const progRx   = _pgProgramRx(state.program, ex.name, ex.phase, ex.dayIdx) || {};
-    // Effective value: manual edit wins; then auto-sourced from program
     const repRangeVal = _esc(manualRx.repRange != null ? manualRx.repRange : (progRx.repRange || ''));
     const setsVal     = _esc(manualRx.sets     != null ? manualRx.sets     : (progRx.sets     || ex.sets || ''));
     const loadVal     = _esc(manualRx.load     != null ? manualRx.load     : (progRx.load     || ''));
@@ -7082,34 +7127,54 @@ function _cdPanelProgression(c, sum) {
   }).join('');
 
   const hasDecisions = state.decisions && state.decisions.length > 0;
-  const applyBtns = hasDecisions ? `
-    <button class="cd-btn primary" onclick="_pgApplyAll('${_esc(key)}')" style="margin-left:8px">Apply all PROGRESS decisions</button>` : '';
+  const manualApplyBtn = hasDecisions
+    ? `<button class="cd-btn" onclick="_pgApplyAll('${_esc(key)}')" style="margin-left:8px;opacity:.7" title="Manual override — auto-progression already fires on workout log">Force apply PROGRESS</button>`
+    : '';
 
-  // Kick off program load in background so inputs are populated on next render
+  // Kick off background loads on first render
   if (!state.program && !state._pgProgramLoading) {
     state._pgProgramLoading = true;
     _pgLoadProgram(key).then(() => {
       state._pgProgramLoading = false;
       const panel = document.getElementById('detail-panel');
       const activeTab = document.querySelector('.cd-tab.active');
-      if (panel && activeTab && activeTab.dataset.tab === 'progression') {
-        panel.innerHTML = renderClientDetailV2(key);
-      }
+      if (panel && activeTab && activeTab.dataset.tab === 'progression') panel.innerHTML = renderClientDetailV2(key);
+    });
+  }
+  if (!state.pgHistory && !state._pgHistLoading) {
+    state._pgHistLoading = true;
+    _pgLoadHistory(key).then(() => {
+      state._pgHistLoading = false;
+      const panel = document.getElementById('detail-panel');
+      const activeTab = document.querySelector('.cd-tab.active');
+      if (panel && activeTab && activeTab.dataset.tab === 'progression') panel.innerHTML = renderClientDetailV2(key);
     });
   }
 
   return `
     <div class="cd-panel-body">
       <div class="cd-section">
+        <div class="cd-section-h">Auto-progression history</div>
+        <p style="margin:4px 0 8px;opacity:.65;font-size:12px">
+          Progression fires automatically after every successful workout log. No coach action required.
+          PROGRESS_LOAD and HOLD_LOAD carry-forward are applied instantly.
+          FLAG_FOR_REVIEW events are recorded here but not applied.
+        </p>
+        <div class="cd-history-list">${histHtml}</div>
+        <div style="margin-top:6px">
+          <button class="cd-btn" onclick="_pgRefreshHistory('${_esc(key)}')">Refresh history</button>
+        </div>
+      </div>
+
+      <div class="cd-section">
         <div class="cd-section-h" style="display:flex;align-items:center;gap:8px">
-          Workout load progression
+          Manual audit / override
           <button class="cd-btn" onclick="_pgCompute('${_esc(key)}')" id="pg-compute-btn-${_esc(key)}">Compute</button>
-          ${applyBtns}
+          ${manualApplyBtn}
         </div>
         <p style="margin:4px 0 8px;opacity:.65;font-size:12px">
-          Double-progression model: accumulate reps within authored range → increase load.
-          Rep range / sets / Rx load auto-sourced from authored program (editable per-session).
-          Coach override always wins — apply only decisions you approve.
+          Use Compute to inspect what the engine would decide based on the latest logs.
+          Force apply is only needed if auto-progression was skipped (e.g. coach-protected override).
         </p>
         ${exercises.length === 0
           ? '<p style="opacity:.5;font-size:13px">No workout logs found in the last 90 days.</p>'
