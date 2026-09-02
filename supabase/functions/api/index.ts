@@ -20,17 +20,6 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-// ── Auto-progression canary allowlist ─────────────────────────────────────
-// Only clients in this set receive automatic prescription updates on workout write.
-// All other clients log workouts normally but skip _autoProgressAfterWorkout.
-// To graduate to full rollout: replace the Set with a constant `true` check (or remove the gate).
-// To add a client: append their storageKey (lowercase) to this set and redeploy.
-const AUTO_PROGRESSION_CANARY = new Set<string>([
-  'faith_kainuku',
-  'nicholas',
-  'omar',
-]);
-
 // ── CORS + JSON helpers ────────────────────────────────────────────────────
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -614,19 +603,8 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
     }).select('id').single();
     if (wkErr) logEfError(kind, key, 'workout_insert_failed', wkErr.message);
     if (!wkErr && data?.id && clientId) {
-      if (AUTO_PROGRESSION_CANARY.has(key)) {
-        // Canary client — run full auto-progression. Errors must not fail the write.
-        try { await _autoProgressAfterWorkout(key, clientId, body); }
-        catch (autoErr) { logEfError('autoProgress', key, 'auto_progression_failed', String(autoErr)); }
-      } else {
-        // Non-canary — workout logged, auto-progression intentionally skipped.
-        console.info(JSON.stringify({
-          tag: 'AUTO_PROG_CANARY_SKIP',
-          ts:  new Date().toISOString(),
-          client: key,
-          exercise: body.exerciseName ?? body.exercise ?? '',
-        }));
-      }
+      try { await _autoProgressAfterWorkout(key, clientId, body); }
+      catch (autoErr) { logEfError('autoProgress', key, 'auto_progression_failed', String(autoErr)); }
     }
     return ok({ tab: 'workout_log_entries', id: data?.id });
   }
