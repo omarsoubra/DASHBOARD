@@ -211,7 +211,7 @@ async function dashboard(body: any) {
     admin.from('weight_logs').select('client_key, logged_at, weight_kg').gte('logged_at', ninetyAgo),
     admin.from('check_ins').select('client_key, submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10, notes').gte('submitted_at', ninetyAgo),
     admin.from('meal_logs').select('client_id, logged_at, meal_name, kcal, protein_g, carbs_g, fat_g').gte('logged_at', ninetyAgo),
-    admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, weight, sets_done, reps_done').gte('logged_at', ninetyAgo),
+    admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, weight, sets_done, reps_done, rpe, phase_key, day_index').gte('logged_at', ninetyAgo),
   ]);
   const per: Record<string, any> = {};
   const ensure = (key: string) => per[key] ??= {
@@ -248,7 +248,16 @@ async function dashboard(body: any) {
   });
   (workouts ?? []).forEach(r => {
     const p = ensure(r.client_key);
-    p.recentWorkouts.push({ timestamp: r.logged_at, exercise: r.exercise_name, weight: r.weight, sets: r.sets_done, reps: r.reps_done });
+    p.recentWorkouts.push({
+      timestamp:    r.logged_at,
+      exerciseName: r.exercise_name,
+      weightActual: r.weight,
+      setsActual:   r.sets_done,
+      repsActual:   r.reps_done,
+      rpeActual:    r.rpe ?? '',
+      phase:        r.phase_key ?? null,
+      dayIdx:       r.day_index ?? null,
+    });
     if (!p.latestWorkoutTs || r.logged_at > p.latestWorkoutTs) p.latestWorkoutTs = r.logged_at;
     if (r.logged_at >= weekAgo) p.workoutsThisWeek++;
   });
