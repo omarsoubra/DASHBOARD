@@ -28,6 +28,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 const AUTO_PROGRESSION_CANARY = new Set<string>([
   'faith_kainuku',
   'nicholas',
+  'omar',
 ]);
 
 // ── CORS + JSON helpers ────────────────────────────────────────────────────
