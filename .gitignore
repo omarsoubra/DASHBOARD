@@ -11,6 +11,9 @@ hardening_patch.py
 *_credentials*
 supabase_prod.env
 
+# Supabase CLI state (machine-specific, not source)
+supabase/.temp/
+
 # OS / editor
 .DS_Store
 Thumbs.db
