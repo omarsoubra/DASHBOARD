@@ -13,6 +13,7 @@
 <title>Omar Soubra Coaching — Coach Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -1695,6 +1696,414 @@
     }
   </style>
 
+  <!-- ─── CLIENT_DETAIL_V3 CSS ────────────────────────────────────────── -->
+  <style>
+    /* V3 — 4-tab cockpit panel. Additive to V2 CSS. */
+
+    /* Header — compact two-row layout */
+    .cd3-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 0.75rem; flex-wrap: wrap;
+      padding: 0.85rem 1.1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--surface); z-index: 2;
+      min-width: 0;
+    }
+    .cd3-header-left { flex: 1 1 220px; min-width: 0; }
+    .cd3-name-row {
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+      margin-bottom: 3px;
+    }
+    .cd3-name {
+      font-family: 'Inter', sans-serif; font-size: 1.1rem; font-weight: 700;
+      letter-spacing: -0.01em; color: var(--text); margin: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 200px;
+    }
+    .cd3-chips { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
+    .cd3-chip {
+      display: inline-flex; align-items: center; padding: 2px 7px;
+      border-radius: 999px; font-size: 0.68rem; letter-spacing: 0.01em;
+      font-weight: 500; line-height: 1.3; border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .cd3-chip-good   { background: rgba(127,210,140,0.14); color: #7fd28c; border-color: rgba(127,210,140,0.2); }
+    .cd3-chip-watch  { background: rgba(255,184,74,0.14);  color: #ffb84a; border-color: rgba(255,184,74,0.2); }
+    .cd3-chip-action { background: rgba(255,91,91,0.14);   color: #ff5b5b; border-color: rgba(255,91,91,0.2); }
+    .cd3-chip-info   { background: rgba(110,168,255,0.14); color: #6ea8ff; border-color: rgba(110,168,255,0.2); }
+    .cd3-chip-muted  { background: rgba(255,255,255,0.06); color: var(--muted); border-color: rgba(255,255,255,0.08); }
+    .cd3-meta-row {
+      font-size: 0.79rem; color: var(--muted); display: flex; align-items: baseline;
+      gap: 5px; flex-wrap: wrap; margin-top: 2px;
+    }
+    .cd3-meta-sep { opacity: 0.5; }
+    .cd3-wt-delta-good { color: #7fd28c; }
+    .cd3-wt-delta-warn { color: #ffb84a; }
+    .cd3-header-right {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+      flex-shrink: 0;
+    }
+    .cd3-btn {
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; letter-spacing: 0;
+      background: rgba(255,255,255,0.05); color: var(--text);
+      border: 1px solid var(--border); padding: 0.4rem 0.8rem;
+      border-radius: 6px; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      white-space: nowrap; min-height: 36px;
+    }
+    .cd3-btn:hover { background: rgba(255,255,255,0.09); }
+    .cd3-btn.primary { background: #6ea8ff; color: #001a3f; border-color: #6ea8ff; font-weight: 600; }
+    .cd3-btn.primary:hover { background: #8fbaff; }
+    .cd3-btn.ghost { background: transparent; }
+    .cd3-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+    /* More dropdown */
+    .cd3-more-wrap { position: relative; display: inline-block; }
+    .cd3-more-menu {
+      display: none; position: absolute; top: calc(100% + 4px); right: 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; min-width: 180px; z-index: 50; padding: 0.3rem 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .cd3-more-wrap.open .cd3-more-menu { display: block; }
+    .cd3-more-item {
+      display: block; width: 100%; text-align: left; padding: 0.5rem 0.85rem;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; color: var(--text);
+      background: none; border: none; cursor: pointer; white-space: nowrap;
+    }
+    .cd3-more-item:hover { background: rgba(255,255,255,0.06); }
+    .cd3-more-item.danger { color: #ff8a8a; }
+
+    /* Tabs */
+    .cd3-tabs {
+      display: flex; align-items: center; gap: 2px; overflow-x: auto;
+      padding: 0 0.9rem; border-bottom: 1px solid var(--border);
+      background: var(--surface); position: sticky; top: 0; z-index: 1;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .cd3-tabs::-webkit-scrollbar { display: none; }
+    .cd3-tab {
+      background: transparent; border: 0; color: var(--muted);
+      padding: 0.5rem 0.8rem; font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; font-weight: 500; cursor: pointer;
+      border-bottom: 2px solid transparent; letter-spacing: 0;
+      white-space: nowrap; min-height: 40px;
+    }
+    .cd3-tab:hover { color: var(--text); }
+    .cd3-tab.active { color: var(--text); border-bottom-color: #6ea8ff; }
+
+    /* Panel body */
+    .cd3-tabpanel { flex: 1 1 auto; overflow-y: auto; }
+    .cd3-panel-body { padding: 1rem 1.1rem 1.5rem; }
+
+    /* Two-column overview layout */
+    .cd3-overview-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 1rem;
+      align-items: start;
+    }
+    .cd3-col-left, .cd3-col-right { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    /* Section card */
+    .cd3-card {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+    .cd3-card-h {
+      font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 0.6rem;
+    }
+
+    /* This Week metrics */
+    .cd3-metrics-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 0.75rem;
+    }
+    .cd3-metric-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.2rem 0; font-size: 0.83rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .cd3-metric-row:last-child { border-bottom: none; }
+    .cd3-metric-label { color: var(--muted); }
+    .cd3-metric-val { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+    .cd3-metric-val.ok   { color: #7fd28c; }
+    .cd3-metric-val.warn { color: #ffb84a; }
+    .cd3-metric-val.miss { color: var(--muted); font-weight: 400; font-style: italic; }
+
+    /* What changed since last review */
+    .cd3-delta-list { display: flex; flex-direction: column; gap: 0.15rem; }
+    .cd3-delta-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 0.82rem; padding: 0.18rem 0;
+    }
+    .cd3-delta-label { color: var(--muted); }
+    .cd3-delta-val { font-weight: 500; }
+    .cd3-delta-val.pos { color: #7fd28c; }
+    .cd3-delta-val.neg { color: #ff5b5b; }
+    .cd3-delta-val.flat { color: var(--muted); }
+
+    /* Client note / quote card */
+    .cd3-quote {
+      font-size: 0.85rem; color: var(--text); line-height: 1.5;
+      border-left: 2px solid #6ea8ff; padding-left: 0.7rem;
+      font-style: italic; opacity: 0.9;
+    }
+
+    /* Cockpit decision panel */
+    .cd3-decision {
+      border-radius: 10px; padding: 0.9rem 1rem;
+      border: 1px solid var(--border);
+    }
+    .cd3-decision.status-on-track  { border-color: rgba(127,210,140,0.4); background: rgba(127,210,140,0.04); }
+    .cd3-decision.status-watch     { border-color: rgba(255,184,74,0.4);  background: rgba(255,184,74,0.04); }
+    .cd3-decision.status-action    { border-color: rgba(255,91,91,0.4);   background: rgba(255,91,91,0.04); }
+    .cd3-decision.status-insuff    { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+    .cd3-dec-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap;
+    }
+    .cd3-dec-status {
+      font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.06em; padding: 3px 8px; border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .cd3-dec-status.on-track  { background: rgba(127,210,140,0.2); color: #7fd28c; }
+    .cd3-dec-status.watch     { background: rgba(255,184,74,0.2);  color: #ffb84a; }
+    .cd3-dec-status.action    { background: rgba(255,91,91,0.2);   color: #ff5b5b; }
+    .cd3-dec-status.insuff    { background: rgba(255,255,255,0.08); color: var(--muted); }
+    .cd3-dec-conf {
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .cd3-dec-interp {
+      font-size: 0.85rem; color: var(--text); line-height: 1.45; margin-bottom: 0.5rem;
+    }
+    .cd3-dec-action {
+      font-size: 0.85rem; color: var(--text); font-weight: 500;
+      background: rgba(255,255,255,0.04); border-radius: 6px;
+      padding: 0.45rem 0.6rem; margin-bottom: 0.5rem; line-height: 1.4;
+    }
+    .cd3-dec-evidence { margin-bottom: 0.5rem; }
+    .cd3-dec-ev-item {
+      font-size: 0.78rem; color: var(--muted); padding: 0.1rem 0;
+      display: flex; gap: 0.35rem; align-items: baseline;
+    }
+    .cd3-dec-ev-item::before { content: '·'; flex-shrink: 0; }
+    .cd3-dec-gaps {
+      font-size: 0.75rem; color: #ffb84a; margin-top: 0.3rem;
+      background: rgba(255,184,74,0.06); border: 1px solid rgba(255,184,74,0.2);
+      border-radius: 6px; padding: 0.35rem 0.55rem;
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .cd3-dec-gaps span { display: block; }
+    .cd3-dec-buttons {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.65rem;
+    }
+
+    /* Response composer modal */
+    .cd3-compose-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 150; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .cd3-compose-overlay.open { display: flex; }
+    .cd3-compose-modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem; width: 100%; max-width: 520px;
+      max-height: 88vh; overflow-y: auto; font-family: 'Inter', sans-serif;
+    }
+    .cd3-compose-modal h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.35rem; }
+    .cd3-compose-modal label {
+      display: block; font-size: 0.75rem; color: var(--muted); margin: 0.75rem 0 0.25rem;
+    }
+    .cd3-compose-modal select {
+      width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      color: var(--text); padding: 0.45rem 0.6rem; border-radius: 6px;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem;
+    }
+    .cd3-compose-modal textarea {
+      width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      color: var(--text); padding: 0.65rem 0.7rem; border-radius: 6px;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem; line-height: 1.5;
+      resize: vertical; min-height: 120px;
+    }
+    .cd3-compose-actions { display: flex; gap: 0.4rem; margin-top: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .cd3-compose-close { margin-left: auto; }
+    /* Sending checklist */
+    .cd3-checklist-details {
+      background: rgba(255,184,74,0.04); border: 1px solid rgba(255,184,74,0.2);
+      border-radius: 6px; margin-top: 0.65rem;
+    }
+    .cd3-checklist-details summary {
+      cursor: pointer; list-style: none; font-size: 0.75rem; color: #ffb84a;
+      padding: 0.45rem 0.65rem; user-select: none;
+    }
+    .cd3-checklist-details summary::before { content: '▸ '; }
+    .cd3-checklist-details[open] summary::before { content: '▾ '; }
+    .cd3-checklist-details summary::-webkit-details-marker { display: none; }
+    .cd3-checklist-body {
+      padding: 0.4rem 0.65rem 0.5rem;
+      border-top: 1px dashed rgba(255,184,74,0.2);
+      font-size: 0.78rem; color: var(--muted); line-height: 1.55;
+    }
+    .cd3-checklist-body li { margin-bottom: 0.25rem; }
+    .cd3-checklist-body strong { color: var(--text); }
+
+    /* Macro inline editor */
+    .cd3-macro-edit-panel {
+      display: none; margin-top: 0.6rem;
+    }
+    .cd3-macro-edit-panel.open { display: block; }
+    .cd3-macro-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem; margin-bottom: 0.5rem;
+    }
+    .cd3-macro-field { display: flex; flex-direction: column; gap: 3px; }
+    .cd3-macro-field label { font-size: 0.68rem; color: var(--muted); }
+    .cd3-macro-field input {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      color: var(--text); padding: 0.4rem 0.5rem; border-radius: 5px;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; text-align: right;
+      width: 100%;
+    }
+
+    /* Progress tab — comparison table */
+    .cd3-compare-table {
+      width: 100%; border-collapse: collapse; font-size: 0.83rem;
+    }
+    .cd3-compare-table th {
+      font-size: 0.7rem; font-weight: 500; color: var(--muted);
+      text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.025);
+    }
+    .cd3-compare-table td {
+      padding: 0.42rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text); font-variant-numeric: tabular-nums;
+    }
+    .cd3-compare-table tr:last-child td { border-bottom: none; }
+    .cd3-compare-table .change-pos { color: #7fd28c; font-weight: 500; }
+    .cd3-compare-table .change-neg { color: #ff5b5b; font-weight: 500; }
+    .cd3-compare-table .change-flat { color: var(--muted); }
+
+    /* Program tab — auto-progression audit table */
+    .pg-table {
+      width: 100%; border-collapse: collapse; font-size: 0.82rem;
+    }
+    .pg-table th {
+      font-size: 0.68rem; font-weight: 500; color: var(--muted);
+      text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.025); white-space: nowrap;
+    }
+    .pg-table td {
+      padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text); vertical-align: top;
+    }
+    .pg-table tr:last-child td { border-bottom: none; }
+    .pg-ex-name { font-weight: 500; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pg-ex-last { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+    .pg-decision-cell { min-width: 140px; }
+    .pg-input {
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 0.3rem 0.4rem; font-family: 'DM Mono', monospace;
+      font-size: 0.78rem; outline: none;
+    }
+    .pg-input:focus { border-color: #6ea8ff; }
+
+    /* Photo comparison */
+    .cd3-photo-compare {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .cd3-photo-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .cd3-photo-group-label {
+      font-size: 0.7rem; color: var(--muted); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .cd3-photo-views { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; }
+    .cd3-photo-slot {
+      aspect-ratio: 2/3; background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border); border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.6rem; color: var(--muted); text-align: center;
+      overflow: hidden; position: relative;
+    }
+    .cd3-photo-slot img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .cd3-photo-slot .cd3-photo-lbl {
+      position: absolute; bottom: 2px; left: 3px;
+      background: rgba(0,0,0,0.7); color: #fff; font-size: 0.55rem;
+      padding: 1px 4px; border-radius: 2px;
+    }
+    .cd3-photo-expand-btn {
+      width: 100%; text-align: center; font-size: 0.78rem; color: #6ea8ff;
+      background: none; border: 1px solid rgba(110,168,255,0.3); padding: 0.4rem;
+      border-radius: 6px; cursor: pointer; margin-top: 0.5rem;
+    }
+    .cd3-photo-expand-btn:hover { background: rgba(110,168,255,0.08); }
+    .cd3-photo-full-timeline { margin-top: 0.6rem; display: none; }
+    .cd3-photo-full-timeline.open { display: block; }
+
+    /* Collapsible section */
+    .cd3-collapsible summary {
+      cursor: pointer; list-style: none; font-size: 0.78rem; color: var(--muted);
+      padding: 0.4rem 0; user-select: none;
+    }
+    .cd3-collapsible summary::-webkit-details-marker { display: none; }
+    .cd3-collapsible summary::before { content: '▸ '; }
+    .cd3-collapsible[open] summary::before { content: '▾ '; }
+    .cd3-collapsible[open] summary { color: var(--text); }
+
+    /* Access warning banner (only for revoked/suspended) */
+    .cd3-access-warn {
+      background: rgba(255,91,91,0.08); border: 1px solid rgba(255,91,91,0.3);
+      border-radius: 7px; padding: 0.45rem 0.75rem; font-size: 0.78rem;
+      color: #ff8a8a; margin-top: 4px; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .cd3-access-warn.suspended {
+      background: rgba(255,184,74,0.08); border-color: rgba(255,184,74,0.3); color: #ffb84a;
+    }
+
+    /* Empty state */
+    .cd3-empty {
+      font-size: 0.82rem; color: var(--muted); font-style: italic;
+      padding: 0.5rem 0.3rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .cd3-overview-grid { grid-template-columns: 1fr; }
+      .cd3-col-right { order: -1; } /* Decision card goes first on narrow */
+    }
+    @media (max-width: 768px) {
+      #detail-panel { max-width: 100vw; max-height: 100vh; border-radius: 0; }
+      .cd3-header { flex-direction: column; gap: 0.5rem; padding: 0.7rem 0.9rem; }
+      /* .cd3-header-left's flex-basis (220px) is a WIDTH hint for row layout;
+         once the header stacks into a column above, that basis becomes a HEIGHT
+         hint instead and forces a tall empty box. Reset it so the column sizes
+         to its actual (short) content. */
+      .cd3-header-left { flex-basis: auto; }
+      .cd3-name { max-width: 100%; }
+      .cd3-header-right { width: 100%; }
+      .cd3-photo-compare { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .cd3-panel-body { padding: 0.75rem 0.8rem 1rem; }
+      .cd3-tab { padding: 0.45rem 0.65rem; font-size: 0.78rem; }
+      .cd3-btn { padding: 0.38rem 0.65rem; font-size: 0.78rem; min-height: 44px; }
+      .cd3-metrics-grid { grid-template-columns: 1fr; }
+      .cd3-dec-buttons { flex-direction: column; }
+      .cd3-dec-buttons .cd3-btn { width: 100%; justify-content: center; }
+      .cd3-compose-overlay { padding: 0; align-items: flex-end; }
+      .cd3-compose-modal { border-radius: 12px 12px 0 0; max-height: 92dvh; max-width: 100%; }
+    }
+    @media (max-width: 390px) {
+      .cd3-name { font-size: 0.95rem; }
+      .cd3-tab { font-size: 0.73rem; padding: 0.4rem 0.5rem; }
+    }
+  </style>
+
   <!-- ─── ADDEDIT_v2_START — redesigned Add/Edit modal ─────────────────── -->
   <style>
     /* Overlay uses flex centring so the panel actually fits and scrolls on
@@ -1704,6 +2113,9 @@
       justify-content: center;
       padding: 24px 16px;
       overflow-y: auto;
+      /* Must outrank .detail-overlay's z-index: 100 — V3's "Edit client" menu
+         item opens this while the client detail modal is still open. */
+      z-index: 200;
     }
     .cf-panel {
       width: 100%;
@@ -2365,6 +2777,39 @@
 <!-- DETAIL PANEL -->
 <div class="detail-overlay" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel" id="detail-panel"></div>
+</div>
+
+<!-- V3 RESPONSE COMPOSER MODAL -->
+<div class="cd3-compose-overlay" id="cd3-compose-overlay" onclick="if(event.target===this)_cd3CloseCompose()">
+  <div class="cd3-compose-modal" onclick="event.stopPropagation()">
+    <h3 id="cd3-compose-title">Draft response</h3>
+    <p id="cd3-compose-sub" style="font-size:0.78rem;color:var(--muted);margin:0 0 0.5rem;"></p>
+    <label>Template</label>
+    <select id="cd3-compose-picker" onchange="_cd3ComposeLoadTemplate()">
+      <option value="">— pick a template —</option>
+    </select>
+    <label>Message</label>
+    <textarea id="cd3-compose-text" rows="6" placeholder="Template will fill here. Edit before sending."></textarea>
+    <details class="cd3-checklist-details">
+      <summary>Sending checklist</summary>
+      <div class="cd3-checklist-body">
+        <ul>
+          <li><strong>Read the message.</strong> Templates are a starting point — add 1-2 specific sentences.</li>
+          <li><strong>Cross-check numbers.</strong> If there is no trend yet, skip data-driven templates.</li>
+          <li><strong>Match the goal.</strong> Don't send "gaining too fast" to a cut client.</li>
+          <li><strong>Medical clients</strong> (T1D, injury, trauma) — always personalise more.</li>
+          <li><strong>Confirm the client name</strong> before hitting WhatsApp/SMS.</li>
+        </ul>
+      </div>
+    </details>
+    <div class="cd3-compose-actions">
+      <button class="cd3-btn primary cd3-btn-copy" onclick="_cd3ComposeCopy()">Copy</button>
+      <button class="cd3-btn" style="background:#25D366;color:#000;border-color:#25D366;" onclick="_cd3ComposeWhatsApp()">WhatsApp</button>
+      <button class="cd3-btn" style="background:var(--accent2);color:#000;border-color:var(--accent2);" onclick="_cd3ComposeSMS()">SMS</button>
+      <button class="cd3-btn ghost cd3-compose-close" onclick="_cd3CloseCompose()">Close</button>
+    </div>
+    <div style="font-size:0.68rem;color:var(--muted);margin-top:0.5rem;" id="cd3-compose-to"></div>
+  </div>
 </div>
 
 <script>
@@ -6872,147 +7317,722 @@ function renderPRSection(sum) {
 
 // ─── DETAIL PANEL ─────────────────────────────────────────────────────────
 let _detailChart = null;
-// ─── CLIENT_DETAIL_V2_START — tabbed detail view ────────────────────────
-// Overview / Progress / Nutrition / Training / Check-ins / Photos / History.
-// Composes existing render helpers into a tabbed shell — none of the business
-// logic (macro editor, decision card, response templates, chart, photos, PRs,
-// adherence, weight save/reset, PDF export, WhatsApp/SMS, lifecycle & access
-// controls) is rewritten. Sprint 5 secure access work is not touched.
-const CD_TABS = [
-  { k: 'overview',    label: 'Overview' },
-  { k: 'progress',    label: 'Progress' },
-  { k: 'nutrition',   label: 'Nutrition' },
-  { k: 'training',    label: 'Training' },
-  { k: 'progression', label: 'Progression' },
-  { k: 'checkins',    label: 'Check-ins' },
-  { k: 'photos',      label: 'Photos' },
-  { k: 'history',     label: 'History' },
+// ─── CLIENT_DETAIL_V3_START — redesigned 4-tab detail view ──────────────
+// Overview | Progress | Program | History
+// V3 rules:
+//   - computeCoachDecisionV2 is NOT modified
+//   - No backend contract changes
+//   - 4 tabs vs old 8
+//   - Two-column overview on desktop, single-column mobile
+//   - Response composer is a modal/drawer, not permanent section
+//   - Macro editor is inline-edit (click to open), not always-open spreadsheet
+const CD_TABS_V3 = [
+  { k: 'overview',  label: 'Overview' },
+  { k: 'progress',  label: 'Progress' },
+  { k: 'program',   label: 'Program' },
+  { k: 'history',   label: 'History' },
 ];
 
+// Keep legacy CD_TABS defined so any outside references don't error
+const CD_TABS = CD_TABS_V3;
+
 // Persist selected tab per open client — object keyed by storageKey.
-// (Deliberately not persisted across sessions — this is per-open ephemeral.)
 if (typeof CC !== 'undefined') CC.detailTab = CC.detailTab || {};
 
+// ─── CLIENT DETAIL V3 ────────────────────────────────────────────────────
+// V3 replaces the V2 presentation layer only. All business logic (computeCoachDecisionV2,
+// buildResponseDraftV2, RESPONSE_TEMPLATES_V2, saveMacroRow, etc.) is preserved unchanged.
+
 const _esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-function _cdChip(label, variant, title) {
-  return `<span class="cd-chip cd-chip-${variant || 'neutral'}"${title ? ' title="' + _esc(title) + '"' : ''}>${_esc(label)}</span>`;
+
+// ── Chip helpers ──────────────────────────────────────────────────────────
+function _cd3Chip(label, variant, title) {
+  return `<span class="cd3-chip cd3-chip-${variant || 'muted'}"${title ? ' title="' + _esc(title) + '"' : ''}>${_esc(label)}</span>`;
 }
-function _cdLifecycleChip(c) {
+function _cd3LifecycleChip(c) {
   const label = _lifecycleLabel(c);
   const variant = _isArchivedClient(c) ? 'muted'
     : _isPausedClient(c) ? 'watch'
     : _isOnboardingClient(c) ? 'info'
     : 'good';
-  return _cdChip(label, variant);
+  return _cd3Chip(label, variant);
 }
-function _cdAccessChip(c) {
+function _cd3AccessChip(c) {
   const s = c.accessStatus || 'active';
-  const variant = s === 'revoked' ? 'action' : (s === 'suspended' ? 'watch' : 'good');
+  if (s === 'active') return ''; // only surface if non-standard
+  const variant = s === 'revoked' ? 'action' : 'watch';
   const tip = s === 'revoked' ? 'Backend-enforced revoke: client cannot open protected data.'
-            : s === 'suspended' ? 'Backend-enforced suspend: client is temporarily blocked.'
-            : 'Client can authenticate and open their program.';
-  return _cdChip('access · ' + s, variant, tip);
+            : 'Backend-enforced suspend: client is temporarily blocked.';
+  return _cd3Chip('access: ' + s, variant, tip);
 }
-function _cdWeekBadge(c) {
+function _cd3WeekBadge(c) {
   if (!c.startDate) return '';
   const w = programWeek(c.startDate);
   const dur = c.durationWeeks || 12;
-  return _cdChip('Week ' + w + '/' + dur, 'muted');
+  return _cd3Chip('Week ' + w + '/' + dur, 'muted');
 }
-function _cdTrendLine(c, sum) {
-  // LOCKED IN Sprint — hardened against undefined / null / NaN inputs.
-  // Never emit "undefined kg", "NaN", or "±NaN kg" into the UI.
+function _cd3Empty(label) {
+  return '<div class="cd3-empty">' + _esc(label) + '</div>';
+}
+
+// ── Trend line (header meta row) ──────────────────────────────────────────
+function _cd3MetaRow(c, sum) {
   const cur = (sum && Number.isFinite(sum.latestWeight)) ? sum.latestWeight : (Number.isFinite(c && c.startWeight) ? c.startWeight : null);
   const goal = Number.isFinite(c && c.goalWeight) ? c.goalWeight : null;
   const start = Number.isFinite(c && c.startWeight) ? c.startWeight : null;
   const parts = [];
-  if (cur != null) parts.push(_esc(cur + ' kg'));
-  parts.push(goal != null ? 'goal ' + _esc(goal + ' kg') : 'Goal not set');
+  const sep = '<span class="cd3-sep"> · </span>';
+  if (c.programType) parts.push(_esc(c.programType));
+  if (cur != null) parts.push(_esc(cur + ' kg') + (goal != null ? ' → ' + _esc(goal + ' kg') : ''));
+  else if (goal != null) parts.push('Goal ' + _esc(goal + ' kg'));
   if (cur != null && start != null) {
     const delta = start - cur;
-    if (Number.isFinite(delta)) {
-      const sign = delta > 0 ? '−' : (delta < 0 ? '+' : '±');
-      const abs = Math.abs(delta).toFixed(1);
-      parts.push('Δ ' + sign + abs + ' kg');
-    } else {
-      parts.push('Δ —');
+    if (Number.isFinite(delta) && delta !== 0) {
+      const sign = delta > 0 ? '−' : '+';
+      parts.push('Δ ' + sign + Math.abs(delta).toFixed(1) + ' kg');
     }
-  } else {
-    parts.push('Δ —');
   }
-  return parts.join(' <span class="cd-meta-sep">·</span> ');
+  return parts.join(sep);
 }
-function _cdEmpty(label) {
-  return '<div class="cd-empty">' + _esc(label) + '</div>';
-}
-function _cdRenderTabButtons(activeKey, storageKey) {
+
+// ── Tab button row ────────────────────────────────────────────────────────
+function _cd3RenderTabs(activeKey, storageKey) {
   return CD_TABS.map(t =>
-    `<button class="cd-tab ${t.k === activeKey ? 'active' : ''}" onclick="switchDetailTab('${_esc(storageKey)}','${t.k}')" role="tab" aria-selected="${t.k === activeKey}">${t.label}</button>`
+    `<button class="cd3-tab ${t.k === activeKey ? 'active' : ''}" data-tab="${t.k}" onclick="switchDetailTab('${_esc(storageKey)}','${t.k}')" role="tab" aria-selected="${t.k === activeKey}">${t.label}</button>`
   ).join('');
 }
 
-// ── Individual tab panels ─────────────────────────────────────────────
-function _cdPanelOverview(c, sum, metrics30) {
-  // Overview = coach decision card + response templates. That's the daily
-  // driver — everything else moves to its own tab.
+// ── Coach Cockpit Decision Panel ──────────────────────────────────────────
+// Reads output of computeCoachDecisionV2 (NOT modified).
+// Renders compact card with evidence, interpretation, action, and three CTA buttons.
+function renderCoachCockpitDecision(c, sum, metrics30) {
+  // Never feed computeCoachDecisionV2 a summary that was never actually fetched
+  // (sync race / backend gap) — it can't tell that apart from "real zero
+  // activity" and would produce an observations list that reads as fact.
+  // Show an explicit unavailable state instead; the CTAs below don't depend
+  // on the decision output, so they stay usable.
+  if (_cd3SumMissing(c.storageKey)) {
+    const key = _esc(c.storageKey);
+    return `
+      <div class="cd3-decision status-insuff">
+        <div class="cd3-dec-header">
+          <span class="cd3-dec-status insuff">ℹ Data unavailable</span>
+        </div>
+        <div class="cd3-dec-interp">Still syncing this client's data. Numbers below aren't loaded yet — this is not a real reading.</div>
+        <div class="cd3-dec-buttons">
+          <button class="cd3-btn primary" onclick="openReviewModal('${key}')">Review decision</button>
+          <button class="cd3-btn ghost"   onclick="_cd3OpenMacroEditor('${key}')">Adjust plan</button>
+          <button class="cd3-btn ghost"   onclick="_cd3OpenCompose('${key}','')">Draft response</button>
+        </div>
+      </div>
+    `;
+  }
+  const d = computeCoachDecisionV2(c, sum, metrics30);
+  const statusMap = {
+    INSUFFICIENT_DATA: { variant: 'insuff',   label: 'Insufficient data', icon: 'ℹ' },
+    ON_TRACK:          { variant: 'on-track',  label: 'On track',          icon: '✓' },
+    WATCH:             { variant: 'watch',     label: 'Watch',             icon: '⚠' },
+    ACTION:            { variant: 'action',    label: 'Action needed',     icon: '!' },
+  };
+  const sm = statusMap[d.status] || { variant: 'insuff', label: d.status, icon: 'ℹ' };
+  const esc = _esc;
+  const obsHtml = (d.observations || []).map(o => `<div class="cd3-dec-ev-item">${esc(o)}</div>`).join('');
+  const gapsHtml = (d.dataGaps || []).length
+    ? `<div class="cd3-dec-gaps">${(d.dataGaps).map(g => `<span>${esc(g)}</span>`).join('')}</div>`
+    : '';
+  const confLabel = { HIGH: 'High confidence', MEDIUM: 'Medium confidence', LOW: 'Low confidence' }[d.confidence] || d.confidence;
+  const key = esc(c.storageKey);
   return `
-    <div class="cd-panel-body">
-      ${renderCoachDecisionV2Card(c, sum, metrics30)}
-      ${renderResponseTemplatesSection(c, sum)}
+    <div class="cd3-decision status-${sm.variant}">
+      <div class="cd3-dec-header">
+        <span class="cd3-dec-status ${sm.variant}">${sm.icon} ${sm.label}</span>
+        <span class="cd3-dec-conf">${confLabel}</span>
+      </div>
+      <div class="cd3-dec-interp">${esc(d.interpretation)}</div>
+      <div class="cd3-dec-action">${esc(d.action)}</div>
+      <div class="cd3-dec-evidence">${obsHtml}</div>
+      ${gapsHtml}
+      <div class="cd3-dec-buttons">
+        <button class="cd3-btn primary" onclick="openReviewModal('${key}')">Review decision</button>
+        <button class="cd3-btn ghost"   onclick="_cd3OpenMacroEditor('${key}')">Adjust plan</button>
+        <button class="cd3-btn ghost"   onclick="_cd3OpenCompose('${key}','${esc(d.template || '')}')">Draft response</button>
+      </div>
     </div>
   `;
 }
-function _cdPanelProgress(c, sum, metrics30) {
+
+// ── "This Week" metrics card ──────────────────────────────────────────────
+// _cd3SumMissing distinguishes "no summary ever fetched for this client" (a
+// transient load/sync race, or a backend gap) from "fetched, and this client
+// genuinely has zero logged activity" — so a race never paints as a
+// confident-looking 0. See _dashboardData assignment in loadAll().
+function _cd3SumMissing(storageKey) {
+  return !Object.prototype.hasOwnProperty.call(_dashboardData, storageKey);
+}
+function _cd3ThisWeekCard(c, sum, metrics30) {
+  const dataMissing = _cd3SumMissing(c.storageKey);
+  const ci = (sum && sum.latestCheckIn) || null;
+  const ciAgo = ci && ci.timestamp ? fmtAgo(ci.timestamp) : null;
+
+  const wt = (sum && Number.isFinite(sum.latestWeight)) ? sum.latestWeight + ' kg' : '—';
+  const wtAgo = sum && sum.latestWeightTs ? fmtAgo(sum.latestWeightTs) : null;
+
+  const meals14 = (() => {
+    const meals = (sum && sum.recentMeals) || [];
+    const cutoff = Date.now() - 14 * 864e5;
+    const days = new Set(meals.filter(m => new Date(m.timestamp) >= cutoff).map(m => String(m.timestamp || '').slice(0,10)));
+    return days.size;
+  })();
+  const workouts14 = (() => {
+    const w = (sum && sum.recentWorkouts) || [];
+    const cutoff = Date.now() - 14 * 864e5;
+    const days = new Set(w.filter(x => new Date(x.timestamp) >= cutoff).map(x => String(x.timestamp || '').slice(0,10)));
+    return days.size;
+  })();
+  const trainTarget = Number(c.trainingDaysPerWeek) || 4;
+  const trainExpected = trainTarget * 2;
+  const mealClass = meals14 < 4 ? 'miss' : (meals14 < 9 ? 'warn' : 'ok');
+  const trainClass = workouts14 < Math.max(1, trainExpected - 3) ? 'miss' : (workouts14 < trainExpected - 1 ? 'warn' : 'ok');
+
+  const streak = metrics30.currentStreak || 0;
+  const activeDays = metrics30.totalActiveDays || 0;
+
+  const meals14Val    = dataMissing ? '—' : (meals14 + '/14 days');
+  const workouts14Val = dataMissing ? '—' : (workouts14 + '/' + trainExpected + ' sessions');
+  const streakVal     = dataMissing ? '—' : (streak + 'd');
+  const activeDaysVal = dataMissing ? '—' : (activeDays + '/30');
+  const mealValClass    = dataMissing ? 'miss' : mealClass;
+  const trainValClass   = dataMissing ? 'miss' : trainClass;
+  const streakValClass  = dataMissing ? 'miss' : (streak >= 5 ? 'ok' : (streak >= 2 ? 'warn' : 'miss'));
+  const activeValClass  = dataMissing ? 'miss' : (activeDays >= 15 ? 'ok' : (activeDays >= 7 ? 'warn' : 'miss'));
+
+  return `
+    <div class="cd3-card">
+      <div class="cd3-card-h">This week${dataMissing ? ' <span style="font-weight:400;opacity:.55;font-size:0.72rem;margin-left:4px">(syncing…)</span>' : ''}</div>
+      <div class="cd3-metrics-grid">
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">Weight</span>
+          <span class="cd3-metric-val ${dataMissing ? 'miss' : 'ok'}">${dataMissing ? '—' : _esc(wt)}${(!dataMissing && wtAgo) ? '<span class="cd3-metric-sub"> ' + _esc(wtAgo) + '</span>' : ''}</span>
+        </div>
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">Check-in</span>
+          <span class="cd3-metric-val ${dataMissing ? 'miss' : (ciAgo ? 'ok' : 'miss')}">${dataMissing ? '—' : (ciAgo ? _esc(ciAgo) : 'None yet')}</span>
+        </div>
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">Meals (14d)</span>
+          <span class="cd3-metric-val ${mealValClass}">${meals14Val}</span>
+        </div>
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">Training (14d)</span>
+          <span class="cd3-metric-val ${trainValClass}">${workouts14Val}</span>
+        </div>
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">Streak</span>
+          <span class="cd3-metric-val ${streakValClass}">${streakVal}</span>
+        </div>
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">Active days (30d)</span>
+          <span class="cd3-metric-val ${activeValClass}">${activeDaysVal}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── "What changed since last review" card ────────────────────────────────
+function _cd3WhatChangedCard(c) {
+  const reviews = (c.coachReviewHistory || []).slice().sort((a, b) => new Date(b.ts || b.iso || b.at || 0) - new Date(a.ts || a.iso || a.at || 0));
+  if (!reviews.length) return '';
+  const last = reviews[0];
+  const parts = [];
+  if (last.outcome) parts.push(last.outcome);
+  if (last.note) parts.push(last.note);
+  if (last.nextAction) parts.push('Next: ' + last.nextAction);
+  const when = (last.ts || last.iso || last.at || '').slice(0, 10);
+  return `
+    <div class="cd3-card">
+      <div class="cd3-card-h">Since last review <span style="font-weight:400;opacity:.55;font-size:0.75rem;margin-left:4px">${_esc(when)}</span></div>
+      <div class="cd3-delta-list">
+        ${parts.map(p => `<div class="cd3-delta-row"><span class="cd3-delta-val">${_esc(p)}</span></div>`).join('')}
+        ${!parts.length ? '<div class="cd3-delta-row" style="opacity:.5">No notes recorded.</div>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ── Client note card ──────────────────────────────────────────────────────
+function _cd3ClientNoteCard(c, sum) {
+  const ci = (sum && sum.latestCheckIn) || null;
+  const note = (ci && ci.notes) || (ci && ci.freeformNote) || '';
+  if (!note) return '';
+  return `
+    <div class="cd3-card">
+      <div class="cd3-card-h">Client note</div>
+      <blockquote class="cd3-quote">${_esc(note)}</blockquote>
+    </div>
+  `;
+}
+
+// ── Access warning banner ─────────────────────────────────────────────────
+function _cd3AccessWarn(c) {
+  const s = c.accessStatus || 'active';
+  if (s === 'active') return '';
+  const msg = s === 'revoked'
+    ? 'Access revoked — client cannot open their program. Admin action required to restore.'
+    : 'Access suspended — client is temporarily blocked from their program.';
+  return `<div class="cd3-access-warn ${s === 'suspended' ? 'suspended' : ''}">${msg}</div>`;
+}
+
+// ── Check-in comparison table ─────────────────────────────────────────────
+function _cd3CheckInTable(sum) {
+  const raw = (sum && Array.isArray(sum.recentCheckIns)) ? sum.recentCheckIns : [];
+  const list = raw.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (!list.length) return _cd3Empty('No check-ins yet.');
+  const cols = [
+    { label: 'Date',    get: ci => String(ci.timestamp || '').slice(0,10) },
+    { label: 'Wk',     get: ci => ci.week || '—' },
+    { label: 'Weight', get: ci => ci.weightKg != null ? ci.weightKg + ' kg' : '—' },
+    { label: 'Diet',   get: ci => (ci.dietAdherence1to10 || '—') + '/10' },
+    { label: 'Train',  get: ci => (ci.trainingAdherence1to10 || '—') + '/10' },
+    { label: 'Sleep',  get: ci => ci.sleepHours ? ci.sleepHours + 'h' : '—' },
+    { label: 'Energy', get: ci => (ci.energy1to10 || '—') + '/10' },
+  ];
+  const head = cols.map(col => `<th>${col.label}</th>`).join('');
+  const rows = list.slice(0, 8).map(ci =>
+    `<tr>${cols.map(col => `<td>${_esc(col.get(ci))}</td>`).join('')}</tr>`
+  ).join('');
+  return `
+    <div style="overflow-x:auto">
+      <table class="cd3-compare-table">
+        <thead><tr>${head}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${list.length > 1 ? renderCheckIn(list[0]) : ''}
+  `;
+}
+
+// ── Inline macro editor (click-to-open) ──────────────────────────────────
+// V3 wraps the existing renderMacroEditorSection in a collapsible.
+// Button opens editor in-place; editor itself still uses existing save/reset logic.
+let _cd3MacroOpen = {};
+// Tracks open/closed state of the Auto-progression <details> across re-renders
+// (Compute/Refresh history re-render the whole panel; without this it snaps shut).
+let _cd3ProgressionOpen = {};
+function _cd3OpenMacroEditor(storageKey) {
+  _cd3MacroOpen[storageKey] = true;
+  const wrap = document.getElementById('cd3-macro-wrap-' + storageKey);
+  if (wrap) {
+    wrap.style.display = '';
+    const btn = document.getElementById('cd3-macro-toggle-' + storageKey);
+    if (btn) btn.style.display = 'none';
+    // trigger existing load logic
+    setTimeout(() => loadMacroOverrides(storageKey), 0);
+  } else {
+    // Called from a tab (e.g. Overview) where the macro editor isn't rendered yet —
+    // jump to Program, where _cd3MacroEditorInline will honor the open flag we just set.
+    switchDetailTab(storageKey, 'program');
+    setTimeout(() => loadMacroOverrides(storageKey), 0);
+  }
+}
+function _cd3MacroEditorInline(c) {
+  const key = _esc(c.storageKey);
+  const b = (typeof BASELINE_MACROS !== 'undefined' && BASELINE_MACROS && BASELINE_MACROS[c.storageKey]) || null;
+  const cellStyle = 'background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.5rem 0.6rem;font-family:DM Mono,monospace;font-size:0.85rem;width:100%;text-align:right;outline:none;';
+  const rowFor = (phase) => !b ? '' : `
+    <tr data-phase="${phase}">
+      <td style="padding:0.5rem 0.4rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--accent2);">P${phase}</td>
+      <td><input type="number" min="800" max="6000" step="10" data-field="cal" value="${b['p'+phase].cal}" style="${cellStyle}"/></td>
+      <td><input type="number" min="30"  max="400"  step="5"  data-field="p"   value="${b['p'+phase].p}"   style="${cellStyle}"/></td>
+      <td><input type="number" min="0"   max="800"  step="5"  data-field="c"   value="${b['p'+phase].c}"   style="${cellStyle}"/></td>
+      <td><input type="number" min="20"  max="200"  step="1"  data-field="f"   value="${b['p'+phase].f}"   style="${cellStyle}"/></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button onclick="saveMacroRow('${key}',${phase})" style="background:var(--accent3);color:#000;border:none;padding:0.4rem 0.7rem;border-radius:6px;font-size:0.72rem;font-weight:700;cursor:pointer">Save</button>
+        <button onclick="resetMacroRow('${key}',${phase})" title="Reset to baseline" style="background:transparent;color:var(--muted);border:1px solid var(--border);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.72rem;cursor:pointer;margin-left:2px">↶</button>
+      </td>
+    </tr>
+  `;
+  const tableHtml = b ? `
+    <div style="overflow-x:auto" id="macro-editor-${c.storageKey}">
+      <div id="macro-editor-status-${c.storageKey}" style="display:none;margin-bottom:0.5rem;font-size:0.78rem;font-family:DM Mono,monospace;padding:0.4rem 0.7rem;border-radius:6px;"></div>
+      <table style="width:100%;border-collapse:separate;border-spacing:0.35rem 0">
+        <thead><tr style="font-size:0.68rem;color:var(--muted);letter-spacing:0.08em;text-align:right">
+          <th style="text-align:left">Phase</th><th>kcal</th><th>Protein</th><th>Carbs</th><th>Fat</th><th></th>
+        </tr></thead>
+        <tbody>${[1,2,3].map(rowFor).join('')}</tbody>
+      </table>
+    </div>
+  ` : `<div class="cd3-empty">Baseline macros not found for '${_esc(c.storageKey)}'.</div>`;
+  const isOpen = !!_cd3MacroOpen[c.storageKey];
+  return `
+    <button class="cd3-btn ghost" id="cd3-macro-toggle-${key}" onclick="_cd3OpenMacroEditor('${key}')" style="${isOpen ? 'display:none' : ''}">Edit targets</button>
+    <div id="cd3-macro-wrap-${key}" style="${isOpen ? '' : 'display:none'};margin-top:0.75rem">
+      ${tableHtml}
+    </div>
+  `;
+}
+
+// ── Current plan summary ──────────────────────────────────────────────────
+function _cd3PlanSummary(c) {
+  const rows = [];
+  if (c.kcal)     rows.push(['Calories', c.kcal + ' kcal']);
+  if (c.p)        rows.push(['Protein',  c.p + ' g']);
+  if (c.c != null) rows.push(['Carbs',   c.c + ' g']);
+  if (c.f)        rows.push(['Fat',      c.f + ' g']);
+  if (c.phase)    rows.push(['Phase',    c.phase]);
+  if (c.trainingDaysPerWeek) rows.push(['Training', c.trainingDaysPerWeek + ' days/wk']);
+  if (!rows.length) return _cd3Empty('No plan targets on file.');
+  return `
+    <div class="cd3-metrics-grid">
+      ${rows.map(([l, v]) => `
+        <div class="cd3-metric-row">
+          <span class="cd3-metric-label">${_esc(l)}</span>
+          <span class="cd3-metric-val ok">${_esc(v)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── Panel renderers ────────────────────────────────────────────────────────
+
+function _cd3PanelOverview(c, sum, metrics30) {
+  return `
+    <div class="cd3-panel-body">
+      <div class="cd3-overview-grid">
+        <div class="cd3-col-left">
+          ${_cd3ThisWeekCard(c, sum, metrics30)}
+          ${_cd3ClientNoteCard(c, sum)}
+          ${_cd3WhatChangedCard(c)}
+        </div>
+        <div class="cd3-col-right">
+          ${renderCoachCockpitDecision(c, sum, metrics30)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _cd3PanelProgress(c, sum, metrics30) {
   const hasHistory = (sum && Array.isArray(sum.weightHistory) && sum.weightHistory.length > 0)
     || !!(sum && sum.latestWeight);
-  return `
-    <div class="cd-panel-body">
-      <div class="cd-section">
-        <div class="cd-section-h">Weight trend</div>
-        ${hasHistory
-          ? '<div class="cd-chart-wrap"><canvas id="detail-chart"></canvas></div>'
-          : _cdEmpty('No weight history yet.')}
-      </div>
-      <div class="cd-section">
-        <div class="cd-section-h">Adherence (last 30 days)</div>
-        ${renderAdherenceSection(metrics30)}
-      </div>
-    </div>
-  `;
-}
-function _cdPanelNutrition(c, sum) {
   const meals = (sum && sum.recentMeals) || [];
-  return `
-    <div class="cd-panel-body cd-nutrition">
-      <div class="cd-section">
-        ${renderMacroEditorSection(c)}
-      </div>
-      <div class="cd-section">
-        <div class="cd-section-h">Today's macro tally</div>
-        ${renderMacroTallySection(sum)}
-      </div>
-      <div class="cd-section">
-        <div class="cd-section-h">Recent meals (last 15)</div>
-        ${meals.length ? renderMealLogTable(meals) : _cdEmpty('No meals logged yet.')}
-      </div>
-    </div>
-  `;
-}
-function _cdPanelTraining(c, sum) {
   const workouts = (sum && sum.recentWorkouts) || [];
   return `
-    <div class="cd-panel-body">
-      <div class="cd-section">
-        <div class="cd-section-h">Personal records</div>
-        ${renderPRSection(sum)}
+    <div class="cd3-panel-body">
+      <div class="cd3-card">
+        <div class="cd3-card-h">Weight trend</div>
+        ${hasHistory
+          ? '<div class="cd-chart-wrap"><canvas id="detail-chart"></canvas></div>'
+          : _cd3Empty('No weight history yet.')}
       </div>
-      <div class="cd-section">
-        <div class="cd-section-h">Recent workouts (last 10)</div>
-        ${workouts.length ? renderWorkoutLogTable(workouts) : _cdEmpty('No workouts logged yet.')}
+
+      <div class="cd3-card">
+        <div class="cd3-card-h">Check-in comparison</div>
+        ${_cd3CheckInTable(sum)}
       </div>
+
+      <div class="cd3-card">
+        <div class="cd3-card-h">Adherence — last 30 days</div>
+        ${renderAdherenceSection(metrics30)}
+      </div>
+
+      <div class="cd3-card">
+        <div class="cd3-card-h">Progress photos</div>
+        ${renderPhotoTimelineSection(c, sum)}
+      </div>
+
+      <details class="cd3-collapsible">
+        <summary>Meal logs (${meals.length} recent)</summary>
+        <div style="margin-top:0.75rem">
+          ${meals.length ? renderMealLogTable(meals) : _cd3Empty('No meals logged yet.')}
+        </div>
+      </details>
+
+      <details class="cd3-collapsible">
+        <summary>Workout logs (${workouts.length} recent)</summary>
+        <div style="margin-top:0.75rem">
+          ${workouts.length ? renderWorkoutLogTable(workouts) : _cd3Empty('No workouts logged yet.')}
+        </div>
+      </details>
     </div>
   `;
 }
+
+function _cd3PanelProgram(c, sum) {
+  return `
+    <div class="cd3-panel-body">
+      <div class="cd3-card">
+        <div class="cd3-card-h">Current plan</div>
+        ${_cd3PlanSummary(c)}
+        <div style="margin-top:1rem">
+          ${_cd3MacroEditorInline(c)}
+        </div>
+      </div>
+
+      <div class="cd3-card">
+        <div class="cd3-card-h">Today's macro tally</div>
+        ${renderMacroTallySection(sum)}
+      </div>
+
+      <div class="cd3-card">
+        <div class="cd3-card-h">Training</div>
+        ${renderPRSection(sum)}
+      </div>
+
+      <details class="cd3-collapsible"${_cd3ProgressionOpen[c.storageKey] ? ' open' : ''} ontoggle="_cd3ProgressionOpen['${_esc(c.storageKey)}']=this.open">
+        <summary>Auto-progression</summary>
+        <div style="margin-top:0.75rem">
+          ${_cd3PanelProgression(c, sum)}
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+function _cd3PanelHistory(c) {
+  const reviewEvents = (c.coachReviewHistory || []).slice().sort((a, b) => new Date(b.ts || b.iso || b.at || 0) - new Date(a.ts || a.iso || a.at || 0));
+  const audit = (c.coachEventHistory || []).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  if (!reviewEvents.length && !audit.length) {
+    return `<div class="cd3-panel-body">${_cd3Empty('No coaching history recorded yet.')}</div>`;
+  }
+  const revRows = reviewEvents.slice(0, 30).map(e => `
+    <div class="cd-history-row">
+      <span class="cd-history-when">${_esc((e.ts || e.iso || e.at || '').slice(0, 10))}</span>
+      <span class="cd-history-body">${_esc(e.outcome || 'review')}${e.note ? ' — ' + _esc(e.note) : ''}${e.nextAction ? ' <em style="opacity:.6"> · next: ' + _esc(e.nextAction) + '</em>' : ''}</span>
+    </div>
+  `).join('');
+  const auditRows = audit.slice(0, 30).map(e => `
+    <div class="cd-history-row">
+      <span class="cd-history-when">${_esc((e.at || '').slice(0, 10))}</span>
+      <span class="cd-history-body cd-audit"><strong>${_esc(e.event || '—')}</strong>${e.reason ? ' · ' + _esc(e.reason) : ''}${e.source ? ' <em style="opacity:.6"> · ' + _esc(e.source) + '</em>' : ''}</span>
+    </div>
+  `).join('');
+  return `
+    <div class="cd3-panel-body">
+      ${reviewEvents.length ? `
+        <div class="cd3-card">
+          <div class="cd3-card-h">Coach reviews (${reviewEvents.length})</div>
+          <div class="cd-history-list">${revRows}</div>
+        </div>` : ''}
+      ${audit.length ? `
+        <details class="cd3-collapsible" style="margin-top:1rem">
+          <summary>Lifecycle &amp; access events (${audit.length})</summary>
+          <div class="cd-history-list" style="margin-top:0.75rem">${auditRows}</div>
+        </details>` : ''}
+    </div>
+  `;
+}
+
+// ── Progression panel — kept as-is, wrapped in V3 shell ──────────────────
+function _cd3PanelProgression(c, sum) {
+  return _cdPanelProgression(c, sum);
+}
+// ── Panel dispatch ─────────────────────────────────────────────────────────
+function _cd3RenderPanel(tabKey, c, sum, metrics30) {
+  switch (tabKey) {
+    case 'progress':  return _cd3PanelProgress(c, sum, metrics30);
+    case 'program':   return _cd3PanelProgram(c, sum);
+    case 'history':   return _cd3PanelHistory(c);
+    case 'overview':
+    default:          return _cd3PanelOverview(c, sum, metrics30);
+  }
+}
+
+// ── Response Composer JS ──────────────────────────────────────────────────
+let _cd3CurrentStorageKey = null;
+
+function _cd3OpenCompose(storageKey, templateHint) {
+  _cd3CurrentStorageKey = storageKey;
+  const c = COACH.clients.find(x => x.storageKey === storageKey);
+  const sum = _dashboardData[storageKey] || {};
+  const overlay = document.getElementById('cd3-compose-overlay');
+  const picker  = document.getElementById('cd3-compose-picker');
+  const textarea = document.getElementById('cd3-compose-text');
+  const sub     = document.getElementById('cd3-compose-sub');
+  const to      = document.getElementById('cd3-compose-to');
+  if (!overlay || !c) return;
+  // Populate title/sub
+  document.getElementById('cd3-compose-title').textContent = 'Draft response — ' + (c.displayName || storageKey);
+  if (sub) sub.textContent = c.phone ? 'To: ' + c.phone : '(No phone on file)';
+  if (to)  to.textContent = c.phone ? 'Sending to: ' + (c.displayName || '') + ' · ' + c.phone : '';
+  // Populate template picker
+  if (picker) {
+    picker.innerHTML = '<option value="">— pick a template —</option>';
+    Object.entries(RESPONSE_TEMPLATES_V2).forEach(([k, t]) => {
+      const opt = document.createElement('option');
+      opt.value = k; opt.textContent = t.label;
+      picker.appendChild(opt);
+    });
+    if (templateHint && picker.querySelector('option[value="' + templateHint + '"]')) {
+      picker.value = templateHint;
+    }
+  }
+  // Pre-fill textarea
+  if (textarea) {
+    const hintId = templateHint || '';
+    try {
+      const draft = buildResponseDraftV2(c, sum, hintId);
+      textarea.value = draft.text || '';
+    } catch(e) { textarea.value = ''; }
+  }
+  overlay.classList.add('open');
+}
+
+function _cd3CloseCompose() {
+  const overlay = document.getElementById('cd3-compose-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function _cd3ComposeLoadTemplate() {
+  const storageKey = _cd3CurrentStorageKey;
+  if (!storageKey) return;
+  const c   = COACH.clients.find(x => x.storageKey === storageKey);
+  const sum = _dashboardData[storageKey] || {};
+  const picker   = document.getElementById('cd3-compose-picker');
+  const textarea = document.getElementById('cd3-compose-text');
+  if (!c || !picker || !textarea) return;
+  const tplId = picker.value;
+  if (!tplId) { textarea.value = ''; return; }
+  try {
+    const draft = buildResponseDraftV2(c, sum, tplId);
+    textarea.value = draft.text || '';
+  } catch(e) { textarea.value = ''; }
+}
+
+function _cd3ComposeCopy() {
+  const textarea = document.getElementById('cd3-compose-text');
+  if (!textarea || !textarea.value) return;
+  navigator.clipboard.writeText(textarea.value).then(() => {
+    const btn = document.querySelector('.cd3-compose-actions .cd3-btn-copy');
+    if (btn) { const t = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = t, 1500); }
+  }).catch(() => {
+    textarea.select();
+    document.execCommand('copy');
+  });
+}
+
+function _cd3ComposeWhatsApp() {
+  const textarea = document.getElementById('cd3-compose-text');
+  const storageKey = _cd3CurrentStorageKey;
+  if (!storageKey || !textarea) return;
+  const c = COACH.clients.find(x => x.storageKey === storageKey);
+  const phone = (c && c.phone) ? c.phone.replace(/\D/g,'') : '';
+  const msg = encodeURIComponent(textarea.value || '');
+  window.open('https://wa.me/' + phone + '?text=' + msg, '_blank', 'noopener');
+}
+
+function _cd3ComposeSMS() {
+  const textarea = document.getElementById('cd3-compose-text');
+  const storageKey = _cd3CurrentStorageKey;
+  if (!storageKey || !textarea) return;
+  const c = COACH.clients.find(x => x.storageKey === storageKey);
+  const phone = (c && c.phone) || '';
+  const msg = encodeURIComponent(textarea.value || '');
+  window.open('sms:' + phone + '?body=' + msg, '_blank', 'noopener');
+}
+
+// ── Main render function (V3) ─────────────────────────────────────────────
+function renderClientDetailV3(storageKey) {
+  const c = COACH.clients.find(c => c.storageKey === storageKey);
+  if (!c) return '';
+  const sum = _dashboardData[storageKey] || {};
+  const metrics30 = build30DayMetrics(sum);
+  const tabKey = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
+  const canOpenProgram = !!(c.programUrl && !c.programMissing);
+  const openBtn = canOpenProgram
+    ? `<a class="cd3-btn primary" href="${_esc(c.programUrl)}" target="_blank" rel="noopener">Open program ↗</a>`
+    : `<button class="cd3-btn ghost" disabled title="Program pending">Open program</button>`;
+
+  return `
+    <button class="cd-close" onclick="closeDetail()" aria-label="Close">✕</button>
+    ${_cd3AccessWarn(c)}
+    <div class="cd3-header">
+      <div class="cd3-header-left">
+        <div class="cd3-name-row">
+          <h2 class="cd3-name">${_esc(c.displayName || storageKey)}</h2>
+          <div class="cd3-chips">
+            ${_cd3LifecycleChip(c)}
+            ${_cd3WeekBadge(c)}
+            ${_cd3AccessChip(c)}
+          </div>
+        </div>
+        <div class="cd3-meta-row">${_cd3MetaRow(c, sum)}</div>
+      </div>
+      <div class="cd3-header-right">
+        ${openBtn}
+        <div class="cd3-more-wrap">
+          <button class="cd3-btn ghost cd3-more-btn" onclick="_cd3ToggleMore(this)" aria-label="More">More ⋮</button>
+          <div class="cd3-more-menu">
+            <button class="cd3-more-item" onclick="openClientForm('${_esc(storageKey)}');_cd3CloseMoreMenus()">Edit client</button>
+            <button class="cd3-more-item" onclick="window.print();_cd3CloseMoreMenus()">Export PDF</button>
+            <button class="cd3-more-item" onclick="openReviewModal('${_esc(storageKey)}');_cd3CloseMoreMenus()">Log review</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cd3-tabs" role="tablist">
+      ${_cd3RenderTabs(tabKey, storageKey)}
+    </div>
+    <div class="cd3-tabpanel" role="tabpanel" data-tab="${_esc(tabKey)}">
+      ${_cd3RenderPanel(tabKey, c, sum, metrics30)}
+    </div>
+  `;
+}
+
+// Alias renderClientDetailV2 → V3 so all existing call sites work.
+function renderClientDetailV2(storageKey) {
+  return renderClientDetailV3(storageKey);
+}
+
+function _cd3ToggleMore(btn) {
+  const wrap = btn.closest('.cd3-more-wrap');
+  if (!wrap) return;
+  const isOpen = wrap.classList.contains('open');
+  _cd3CloseMoreMenus();
+  if (!isOpen) wrap.classList.add('open');
+}
+function _cd3CloseMoreMenus() {
+  document.querySelectorAll('.cd3-more-wrap.open').forEach(w => w.classList.remove('open'));
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.cd3-more-wrap')) _cd3CloseMoreMenus();
+});
+
+// ── Tab switch, open, close (V3 wrappers) ─────────────────────────────────
+function switchDetailTab(storageKey, tabKey) {
+  CC.detailTab = CC.detailTab || {};
+  CC.detailTab[storageKey] = tabKey;
+  const panel = document.getElementById('detail-panel');
+  if (!panel) return;
+  panel.innerHTML = renderClientDetailV2(storageKey);
+  if (tabKey === 'progress') {
+    const c = COACH.clients.find(x => x.storageKey === storageKey);
+    const sum = _dashboardData[storageKey] || {};
+    setTimeout(() => buildWeightChart(c, sum), 0);
+  }
+}
+
+function openDetail(storageKey) {
+  const c = COACH.clients.find(c => c.storageKey === storageKey);
+  if (!c) return;
+  document.getElementById('detail-panel').innerHTML = renderClientDetailV2(storageKey);
+  document.getElementById('detail-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const activeTab = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
+  if (activeTab === 'progress') {
+    const sum = _dashboardData[storageKey] || {};
+    setTimeout(() => buildWeightChart(c, sum), 0);
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  if (_detailChart) { _detailChart.destroy(); _detailChart = null; }
+}
+// ─── CLIENT_DETAIL_V3_END ────────────────────────────────────────────────
+
 // ── Progression tab ──────────────────────────────────────────────────────────
 // State is stored on window._pgState keyed by storageKey so results survive
 // tab switches within the same detail-panel open.
@@ -7137,8 +8157,7 @@ function _cdPanelProgression(c, sum) {
     _pgLoadProgram(key).then(() => {
       state._pgProgramLoading = false;
       const panel = document.getElementById('detail-panel');
-      const activeTab = document.querySelector('.cd-tab.active');
-      if (panel && activeTab && activeTab.dataset.tab === 'progression') panel.innerHTML = renderClientDetailV2(key);
+      if (panel && CC.detailTab && CC.detailTab[key] === 'program') panel.innerHTML = renderClientDetailV2(key);
     });
   }
   if (!state.pgHistory && !state._pgHistLoading) {
@@ -7146,13 +8165,12 @@ function _cdPanelProgression(c, sum) {
     _pgLoadHistory(key).then(() => {
       state._pgHistLoading = false;
       const panel = document.getElementById('detail-panel');
-      const activeTab = document.querySelector('.cd-tab.active');
-      if (panel && activeTab && activeTab.dataset.tab === 'progression') panel.innerHTML = renderClientDetailV2(key);
+      if (panel && CC.detailTab && CC.detailTab[key] === 'program') panel.innerHTML = renderClientDetailV2(key);
     });
   }
 
   return `
-    <div class="cd-panel-body">
+    <div class="cd-panel-body" style="padding:0">
       <div class="cd-section">
         <div class="cd-section-h">Auto-progression history</div>
         <p style="margin:4px 0 8px;opacity:.65;font-size:12px">
@@ -7306,178 +8324,7 @@ async function _pgApplyAll(storageKey) {
   }
 }
 
-function _cdPanelCheckins(c, sum) {
-  const latest = sum && sum.latestCheckIn;
-  // Backend returns recentCheckIns[] in ASCENDING order (oldest → newest).
-  // Sort newest-first here so "Latest check-in" and "Earlier check-ins"
-  // reflect actual reverse-chronological order.
-  const rawList = (sum && Array.isArray(sum.recentCheckIns)) ? sum.recentCheckIns : [];
-  const list = rawList.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  const latestFromArr = !latest && list.length ? list[0] : null;
-  const shown = latest || latestFromArr;
-  const rest  = list.filter(ci => shown && ci.timestamp !== shown.timestamp);
-  return `
-    <div class="cd-panel-body">
-      <div class="cd-section">
-        <div class="cd-section-h">Latest check-in${shown ? ' · ' + _esc(fmtAgo(shown.timestamp)) : ''}</div>
-        ${shown ? renderCheckIn(shown) : _cdEmpty('No check-in submitted yet.')}
-      </div>
-      ${rest.length ? `
-        <div class="cd-section">
-          <div class="cd-section-h">Earlier check-ins (${rest.length})</div>
-          <div class="cd-history-list">
-            ${rest.slice(0, 12).map(ci => `
-              <div class="cd-history-row">
-                <span class="cd-history-when">${_esc(fmtAgo(ci.timestamp))}</span>
-                <span class="cd-history-body">Wk ${_esc(ci.week || '—')} · ${_esc((ci.weightKg != null ? ci.weightKg + 'kg' : '—'))} · diet ${_esc(ci.dietAdherence1to10 || '—')}/10 · train ${_esc(ci.trainingAdherence1to10 || '—')}/10 · sleep ${_esc(ci.sleepHours || '—')}h · energy ${_esc(ci.energy1to10 || '—')}/10</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
-    </div>
-  `;
-}
-function _cdPanelPhotos(c, sum) {
-  return `
-    <div class="cd-panel-body">
-      <div class="cd-section">
-        ${renderPhotoTimelineSection(c, sum)}
-      </div>
-    </div>
-  `;
-}
-function _cdPanelHistory(c) {
-  const reviewEvents = (c.coachReviewHistory || []).slice().sort((a, b) => new Date(b.iso || b.at || 0) - new Date(a.iso || a.at || 0));
-  const audit = (c.coachEventHistory || []).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
-  if (!reviewEvents.length && !audit.length) {
-    return `<div class="cd-panel-body">${_cdEmpty('No coaching history recorded yet.')}</div>`;
-  }
-  const revRows = reviewEvents.slice(0, 20).map(e => `
-    <div class="cd-history-row">
-      <span class="cd-history-when">${_esc((e.iso || e.at || '').slice(0, 10))}</span>
-      <span class="cd-history-body">${_esc(e.outcome || 'review')}${e.note ? ' — ' + _esc(e.note) : ''}${e.nextAction ? ' <em style="opacity:.7">· next: ' + _esc(e.nextAction) + '</em>' : ''}</span>
-    </div>
-  `).join('');
-  const auditRows = audit.slice(0, 30).map(e => `
-    <div class="cd-history-row">
-      <span class="cd-history-when">${_esc((e.at || '').slice(0, 10))}</span>
-      <span class="cd-history-body cd-audit"><strong>${_esc(e.event || '—')}</strong>${e.reason ? ' · ' + _esc(e.reason) : ''}${e.source ? ' <em style="opacity:.7">· ' + _esc(e.source) + '</em>' : ''}</span>
-    </div>
-  `).join('');
-  return `
-    <div class="cd-panel-body">
-      ${reviewEvents.length ? `
-        <div class="cd-section">
-          <div class="cd-section-h">Coach reviews (${reviewEvents.length})</div>
-          <div class="cd-history-list">${revRows}</div>
-        </div>` : ''}
-      ${audit.length ? `
-        <div class="cd-section">
-          <div class="cd-section-h">Lifecycle &amp; access events (${audit.length})</div>
-          <div class="cd-history-list">${auditRows}</div>
-        </div>` : ''}
-    </div>
-  `;
-}
-
-function _cdRenderPanel(tabKey, c, sum, metrics30) {
-  switch (tabKey) {
-    case 'progress':  return _cdPanelProgress(c, sum, metrics30);
-    case 'nutrition': return _cdPanelNutrition(c, sum);
-    case 'training':    return _cdPanelTraining(c, sum);
-    case 'progression': return _cdPanelProgression(c, sum);
-    case 'checkins':    return _cdPanelCheckins(c, sum);
-    case 'photos':    return _cdPanelPhotos(c, sum);
-    case 'history':   return _cdPanelHistory(c);
-    case 'overview':
-    default:          return _cdPanelOverview(c, sum, metrics30);
-  }
-}
-
-function _cdNextActionLine(c) {
-  const na = c.nextCoachAction;
-  if (!na) return '';
-  const due = c.nextCoachActionDue ? ' <span class="cd-meta-sep">·</span> due ' + _esc(String(c.nextCoachActionDue).slice(0, 10)) : '';
-  return '<div class="cd-next-action">Next action: <strong>' + _esc(na) + '</strong>' + due + '</div>';
-}
-
-function renderClientDetailV2(storageKey) {
-  const c = COACH.clients.find(c => c.storageKey === storageKey);
-  if (!c) return '';
-  const sum = _dashboardData[storageKey] || {};
-  const metrics30 = build30DayMetrics(sum);
-  const tabKey = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
-  const canOpenProgram = !!(c.programUrl && !c.programMissing);
-  const openBtn = canOpenProgram
-    ? `<a class="cd-btn primary" href="${_esc(c.programUrl)}" target="_blank" rel="noopener">Open program ↗</a>`
-    : `<button class="cd-btn ghost" disabled title="Program pending — generate + push registry to attach">Open program</button>`;
-  return `
-    <button class="cd-close" onclick="closeDetail()" aria-label="Close">✕ Close</button>
-    <div class="cd-header">
-      <div class="cd-header-left">
-        <div class="cd-name-row">
-          <h2 class="cd-name">${_esc(c.displayName || storageKey)}</h2>
-          ${_cdLifecycleChip(c)}
-          ${_cdAccessChip(c)}
-          ${_cdWeekBadge(c)}
-        </div>
-        <div class="cd-meta-row">
-          <span class="cd-program-type">${_esc(c.programType || 'Program')}</span>
-          <span class="cd-meta-sep">·</span>
-          <span class="cd-trend">${_cdTrendLine(c, sum)}</span>
-        </div>
-        ${_cdNextActionLine(c)}
-      </div>
-      <div class="cd-header-actions">
-        <button class="cd-btn" onclick="openReviewModal('${_esc(storageKey)}')">Review</button>
-        <button class="cd-btn" onclick="openClientForm('${_esc(storageKey)}')">Edit</button>
-        ${openBtn}
-        <button class="cd-btn ghost" onclick="window.print()" id="report-btn" title="Export current view to PDF">Export PDF</button>
-      </div>
-    </div>
-    <div class="cd-tabs" role="tablist">
-      ${_cdRenderTabButtons(tabKey, storageKey)}
-    </div>
-    <div class="cd-tabpanel" role="tabpanel" data-tab="${_esc(tabKey)}">
-      ${_cdRenderPanel(tabKey, c, sum, metrics30)}
-    </div>
-  `;
-}
-
-function switchDetailTab(storageKey, tabKey) {
-  CC.detailTab = CC.detailTab || {};
-  CC.detailTab[storageKey] = tabKey;
-  const panel = document.getElementById('detail-panel');
-  if (!panel) return;
-  panel.innerHTML = renderClientDetailV2(storageKey);
-  // Rebuild the chart if we're on the Progress tab
-  if (tabKey === 'progress') {
-    const c = COACH.clients.find(x => x.storageKey === storageKey);
-    const sum = _dashboardData[storageKey] || {};
-    setTimeout(() => buildWeightChart(c, sum), 0);
-  }
-}
-
-function openDetail(storageKey) {
-  const c = COACH.clients.find(c => c.storageKey === storageKey);
-  if (!c) return;
-  document.getElementById('detail-panel').innerHTML = renderClientDetailV2(storageKey);
-  document.getElementById('detail-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  // Build the chart if we boot on Progress
-  const activeTab = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
-  if (activeTab === 'progress') {
-    const sum = _dashboardData[storageKey] || {};
-    setTimeout(() => buildWeightChart(c, sum), 0);
-  }
-}
-function closeDetail() {
-  document.getElementById('detail-overlay').classList.remove('open');
-  document.body.style.overflow = '';
-  if (_detailChart) { _detailChart.destroy(); _detailChart = null; }
-}
-// ─── CLIENT_DETAIL_V2_END ────────────────────────────────────────────────
+// ─── OLD V2 FUNCTIONS REMOVED — replaced by CLIENT_DETAIL_V3 above ──────
 
 async function buildWeightChart(c, sum) {
   // Fetch full weight history for this client
