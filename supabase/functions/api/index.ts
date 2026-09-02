@@ -699,18 +699,20 @@ async function legacyQueueReject(body: any) {
 
 type WeightParsed = { value: number | null; qualifier: 'absolute' | 'per_hand' | 'bodyweight' | 'bw_plus' | 'unparseable' | 'empty' };
 type RepRange     = { min: number; max: number };
-type Decision     = 'PROGRESS_LOAD' | 'HOLD_LOAD' | 'INSUFFICIENT_DATA' | 'FLAG_FOR_REVIEW' | 'NO_DATA';
+type Decision     = 'PROGRESS_LOAD' | 'HOLD_LOAD' | 'REBASE_HOLD' | 'INSUFFICIENT_DATA' | 'FLAG_FOR_REVIEW' | 'NO_DATA';
 
 interface ProgressionResult {
-  decision:    Decision;
-  anchor:      number | null;
-  nextLoad:    number | null;
-  nextLoadStr: string | null;
-  nextSets:    number | null;
-  nextReps:    string | null;
-  reason:      string;
-  loadRebased: boolean;       // true when actual was materially below prescription → adaptive rebase applied
-  rebasedFrom: number | null; // the bypassed prescribed load, null if no rebase
+  decision:         Decision;
+  anchor:           number | null;
+  nextLoad:         number | null;
+  nextLoadStr:      string | null;
+  nextSets:         number | null;
+  nextReps:         string | null;
+  reason:           string;
+  loadRebased:      boolean;       // true when actual was materially below prescription → adaptive rebase applied
+  rebasedFrom:      number | null; // the bypassed prescribed load, null if no rebase
+  volumeComplete:   boolean;       // false when prescribed set count was not completed
+  progressEligible: boolean;       // false when volume incomplete — upward progression blocked
 }
 
 function _parseWeightNum(s: string): WeightParsed {
@@ -800,24 +802,28 @@ function _decideProgression(params: {
   // No data at all
   if (actualReps.length === 0 || actualSets === 0) {
     return { decision: 'NO_DATA', anchor: null, nextLoad: null, nextLoadStr: null, nextSets: null, nextReps: null,
-      reason: 'No workout log found for this exercise.', loadRebased: false, rebasedFrom: null };
+      reason: 'No workout log found for this exercise.',
+      loadRebased: false, rebasedFrom: null, volumeComplete: false, progressEligible: false };
   }
 
   // Bodyweight-based — can't auto-increment load
   if (actualWeight.qualifier === 'bodyweight') {
     return { decision: 'FLAG_FOR_REVIEW', anchor: null, nextLoad: null, nextLoadStr: null,
       nextSets: prescribedSets ?? actualSets, nextReps: repRange ? `${repRange.min}–${repRange.max}` : null,
-      reason: 'Bodyweight exercise — coach sets progression manually.', loadRebased: false, rebasedFrom: null };
+      reason: 'Bodyweight exercise — coach sets progression manually.',
+      loadRebased: false, rebasedFrom: null, volumeComplete: false, progressEligible: false };
   }
   if (actualWeight.qualifier === 'bw_plus') {
     const v = actualWeight.value!;
     return { decision: 'FLAG_FOR_REVIEW', anchor: v, nextLoad: null, nextLoadStr: null,
       nextSets: prescribedSets ?? actualSets, nextReps: repRange ? `${repRange.min}–${repRange.max}` : null,
-      reason: 'BW+load exercise — coach sets added-load increment manually.', loadRebased: false, rebasedFrom: null };
+      reason: 'BW+load exercise — coach sets added-load increment manually.',
+      loadRebased: false, rebasedFrom: null, volumeComplete: false, progressEligible: false };
   }
   if (actualWeight.qualifier === 'unparseable' || actualWeight.value === null) {
     return { decision: 'FLAG_FOR_REVIEW', anchor: null, nextLoad: null, nextLoadStr: null, nextSets: null, nextReps: null,
-      reason: `Could not parse weight value — coach review required.`, loadRebased: false, rebasedFrom: null };
+      reason: `Could not parse weight value — coach review required.`,
+      loadRebased: false, rebasedFrom: null, volumeComplete: false, progressEligible: false };
   }
 
   const load     = actualWeight.value;
@@ -828,7 +834,7 @@ function _decideProgression(params: {
   if (load <= 0) {
     return { decision: 'FLAG_FOR_REVIEW', anchor: null, nextLoad: null, nextLoadStr: null, nextSets: null, nextReps: null,
       reason: 'Weight logged as zero or negative — verify the entry. No progression applied.',
-      loadRebased: false, rebasedFrom: null };
+      loadRebased: false, rebasedFrom: null, volumeComplete: false, progressEligible: false };
   }
 
   // Adaptive rebase: when actual load is materially below the current effective prescription,
@@ -847,11 +853,31 @@ function _decideProgression(params: {
 
   // Insufficient sets gate (section 15/Case E)
   if (reqSets > 0 && setsDone < reqSets) {
+    // Severe downward rebase with sufficient evidence: establish actual as new working baseline
+    // even when prescribed set count was not completed. Minimum 2 valid working sets required
+    // to guard against single accidental entries.
+    const MIN_REBASE_SETS = 2;
+    const hasValidReps = actualReps.length > 0 && Math.min(...actualReps) > 0;
+    if (loadRebased && setsDone >= MIN_REBASE_SETS && hasValidReps) {
+      const fromStr = _fmtLoad(rebasedFrom!, actualWeight.qualifier);
+      const toStr   = _fmtLoad(load, actualWeight.qualifier);
+      return {
+        decision: 'REBASE_HOLD',
+        anchor: load, nextLoad: load,
+        nextLoadStr: toStr,
+        nextSets: reqSets, nextReps: repRange ? `${repRange.min}–${repRange.max}` : null,
+        reason: `[LOAD REBASED: prescribed ${fromStr}, actual ${toStr} (${rebasePct}%). Active baseline set to ${toStr}.] ` +
+                `Only ${setsDone}/${reqSets} prescribed sets completed — upward progression held until full volume demonstrated at ${toStr}.`,
+        loadRebased, rebasedFrom,
+        volumeComplete: false, progressEligible: false,
+      };
+    }
+    // Normal incomplete session or insufficient evidence for rebase
     return { decision: 'INSUFFICIENT_DATA', anchor: load, nextLoad: load,
       nextLoadStr: _fmtLoad(load, actualWeight.qualifier),
       nextSets: reqSets, nextReps: repRange ? `${repRange.min}–${repRange.max}` : null,
       reason: `${rebaseNote}Only ${setsDone}/${reqSets} required sets logged. No progression — carry forward.`,
-      loadRebased, rebasedFrom };
+      loadRebased, rebasedFrom, volumeComplete: false, progressEligible: false };
   }
 
   // Without a rep range we can hold but not auto-progress
@@ -860,7 +886,7 @@ function _decideProgression(params: {
       nextLoadStr: _fmtLoad(load, actualWeight.qualifier),
       nextSets: reqSets, nextReps: null,
       reason: `${rebaseNote}No rep range specified. Holding load. Provide rep range to enable auto-progression.`,
-      loadRebased, rebasedFrom };
+      loadRebased, rebasedFrom, volumeComplete: true, progressEligible: false };
   }
 
   // Normalise per-set reps: single logged value → apply to all sets
@@ -884,13 +910,13 @@ function _decideProgression(params: {
         nextSets: reqSets, nextReps: `${repRange.min}–${repRange.max}`,
         reason: `Overshoot not earned: logged ${load}kg (prescribed ${prescribedLoad}kg) but reps fell to ${minReps} ` +
                 `(minimum: ${repRange.min}). Reverting anchor to last valid prescription ${prescribedLoad}kg.`,
-        loadRebased: false, rebasedFrom: null };
+        loadRebased: false, rebasedFrom: null, volumeComplete: true, progressEligible: false };
     }
     return { decision: 'FLAG_FOR_REVIEW', anchor: load, nextLoad: load,
       nextLoadStr: _fmtLoad(load, actualWeight.qualifier),
       nextSets: reqSets, nextReps: `${repRange.min}–${repRange.max}`,
       reason: `${rebaseNote}Reps fell to ${minReps} (minimum: ${repRange.min}). Do not progress. Coach review recommended.`,
-      loadRebased, rebasedFrom };
+      loadRebased, rebasedFrom, volumeComplete: true, progressEligible: false };
   }
 
   // Case A / section 5: all sets at top of range, no failure → PROGRESS (section 2 overshoot anchor)
@@ -906,7 +932,7 @@ function _decideProgression(params: {
       nextSets: reqSets, nextReps: `${repRange.min}–${repRange.max}`,
       reason: `${rebaseNote}All ${setsDone} sets at top of rep range (${repRange.max}).${overshootNote} ` +
               `Load increases: ${anchor}kg → ${next}kg. Sets (${reqSets}) and rep range (${repRange.min}–${repRange.max}) unchanged.`,
-      loadRebased, rebasedFrom };
+      loadRebased, rebasedFrom, volumeComplete: true, progressEligible: true };
   }
 
   // Top reached but near failure → hold conservatively (section 6)
@@ -916,7 +942,7 @@ function _decideProgression(params: {
       nextSets: reqSets, nextReps: `${repRange.min}–${repRange.max}`,
       reason: `${rebaseNote}All sets reached top of rep range but RPE ${actualRpe} indicates near-failure. ` +
               `Holding ${load}kg — avoid routine failure accumulation (section 6).`,
-      loadRebased, rebasedFrom };
+      loadRebased, rebasedFrom, volumeComplete: true, progressEligible: false };
   }
 
   // Cases B/C: all sets in range, some below top → hold, accumulate reps
@@ -926,7 +952,7 @@ function _decideProgression(params: {
       nextSets: reqSets, nextReps: `${repRange.min}–${repRange.max}`,
       reason: `${rebaseNote}Sets complete (${repsPerSet.join('/')} reps) — all within range but not all at top (${repRange.max}). ` +
               `Holding ${load}kg. Build reps within ${repRange.min}–${repRange.max} before progressing.`,
-      loadRebased, rebasedFrom };
+      loadRebased, rebasedFrom, volumeComplete: true, progressEligible: false };
   }
 
   // Shouldn't reach here given the minReps < repRange.min check above
@@ -934,7 +960,7 @@ function _decideProgression(params: {
     nextLoadStr: _fmtLoad(load, actualWeight.qualifier),
     nextSets: reqSets, nextReps: `${repRange.min}–${repRange.max}`,
     reason: `${rebaseNote}Unexpected performance pattern — coach review recommended.`,
-    loadRebased, rebasedFrom };
+    loadRebased, rebasedFrom, volumeComplete: false, progressEligible: false };
 }
 
 async function progressionCompute(body: any): Promise<Response> {
@@ -1111,10 +1137,14 @@ async function _applyDayDecisions(
     );
     if (idx === -1) { misses.push(`${d.exerciseName}: not found`); continue; }
 
-    if (d.decision === 'HOLD_LOAD') {
+    if (d.decision === 'HOLD_LOAD' || d.decision === 'REBASE_HOLD') {
       if (!d.nextLoadStr || d.nextLoad == null) continue;
-      const cur = _parseWeightNum(String(exercises[idx].weight ?? ''));
-      if (cur.value !== null && d.nextLoad <= cur.value) continue; // no carry-forward needed
+      if (!d.loadRebased) {
+        // Normal hold: only write if load needs carry-forward (not already at or above target).
+        const cur = _parseWeightNum(String(exercises[idx].weight ?? ''));
+        if (cur.value !== null && d.nextLoad <= cur.value) continue;
+      }
+      // REBASE_HOLD or rebased hold: always write — lower adaptive baseline must persist.
       exercises[idx] = { ...exercises[idx], weight: d.nextLoadStr };
       changed = true;
     } else {
@@ -1158,7 +1188,7 @@ async function progressionApply(body: any): Promise<Response> {
 
   const byDay: Record<string, any[]> = {};
   for (const d of decisions) {
-    if (d.decision !== 'PROGRESS_LOAD' && d.decision !== 'HOLD_LOAD') continue;
+    if (d.decision !== 'PROGRESS_LOAD' && d.decision !== 'HOLD_LOAD' && d.decision !== 'REBASE_HOLD') continue;
     const dayKey = `p${d.phase}.d${d.dayIdx}`;
     (byDay[dayKey] = byDay[dayKey] ?? []).push(d);
   }
@@ -1211,7 +1241,22 @@ async function _autoProgressAfterWorkout(key: string, clientId: string, body: an
 
   const { data: existingDone } = await admin.from('client_overrides')
     .select('value_text').eq('client_id', clientId).eq('key', doneKey).is('valid_to', null).maybeSingle();
-  if (existingDone?.value_text === fingerprint) return; // idempotent — already applied
+  if (existingDone?.value_text === fingerprint) {
+    // Fingerprint matches a previous run. Check whether that run actually applied the override.
+    // If applied=false (e.g. prior code returned INSUFFICIENT_DATA and couldn't write), allow retry.
+    const { data: prevHist } = await admin.from('client_overrides')
+      .select('value_text').eq('client_id', clientId).eq('key', histKey).is('valid_to', null).maybeSingle();
+    let prevApplied = true; // default: assume applied (safe — avoids phantom retries)
+    if (prevHist?.value_text) {
+      try {
+        const arr: any[] = JSON.parse(prevHist.value_text);
+        const entry = arr.find((h: any) => h.fingerprint === fingerprint);
+        if (entry) prevApplied = entry.applied === true;
+      } catch { /* use default */ }
+    }
+    if (prevApplied) return; // genuinely already applied — skip
+    // Previous run did not apply — fall through to retry with corrected logic
+  }
 
   const dayKey = `p${phase}.d${dayIdx}`;
 
@@ -1269,10 +1314,10 @@ async function _autoProgressAfterWorkout(key: string, clientId: string, body: an
 
   const now = new Date().toISOString();
 
-  // Only PROGRESS_LOAD and HOLD_LOAD are auto-applied.
+  // PROGRESS_LOAD, HOLD_LOAD, and REBASE_HOLD are auto-applied.
   // FLAG_FOR_REVIEW / INSUFFICIENT_DATA / NO_DATA are recorded in history but not applied.
   let applyResult: { applied: boolean; skipped?: string } = { applied: false };
-  if (result.decision === 'PROGRESS_LOAD' || result.decision === 'HOLD_LOAD') {
+  if (result.decision === 'PROGRESS_LOAD' || result.decision === 'HOLD_LOAD' || result.decision === 'REBASE_HOLD') {
     try {
       applyResult = await _applyDayDecisions(clientId, dayKey, [{ exerciseName: exName, ...result }], programPhases);
     } catch (applyErr) {
