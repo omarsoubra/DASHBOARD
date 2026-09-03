@@ -1931,8 +1931,8 @@
   <div class="hero-grid"></div>
   <div class="hero-content">
     <p class="hero-label">12-Week Transformation Program</p>
-    <h1 class="hero-title">OMAR'S<span class="line2">AB REVEAL</span></h1>
-    <p class="hero-sub">4-Week Peak · 77.5kg → ~76kg by Aug 1 · Diet break → Push → Peak · Standing-relaxed 6-pack</p>
+    <h1 class="hero-title">OMAR'S<span class="line2">KO CUT</span></h1>
+    <p class="hero-sub">Knockout · 3 Oct 2026 · 77.8kg → 74.5–75kg · Rolling Push / Pull / Legs · 2050 kcal held</p>
     <div class="stats-grid">
       <div class="stat-box"><span class="stat-val"><span data-cfg="startWeight">77.5</span><span style="font-size:1.2rem">kg</span></span><span class="stat-label">Start Weight</span></div>
       <div class="stat-box"><span class="stat-val">6'0"</span><span class="stat-label">Height</span></div>
@@ -2176,7 +2176,7 @@
 
   <div style="margin-top:2rem;background:linear-gradient(135deg,rgba(79,127,255,0.1),rgba(0,229,160,0.05));border:1px solid var(--accent);border-radius:16px;padding:2rem;text-align:center;">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:0.5rem;">Trust the process. Put in the work.</div>
-    <div style="color:var(--muted);font-size:0.9rem;">Aug 1. Abs. Trust the diet break. Then reverse smart.</div><div style="margin-top:1.2rem;font-size:0.6rem;opacity:0.35;font-family:DM Mono,monospace;"><a href="javascript:trainerLogin()" style="color:var(--muted);text-decoration:none;">· trainer access ·</a></div>
+    <div style="color:var(--muted);font-size:0.9rem;">Oct 3. Turn up lean, full and strong. Hold the loads, hold the calories, let the weight come off.</div><div style="margin-top:1.2rem;font-size:0.6rem;opacity:0.35;font-family:DM Mono,monospace;"><a href="javascript:trainerLogin()" style="color:var(--muted);text-decoration:none;">· trainer access ·</a></div>
   </div>
 </section>
 
@@ -2192,7 +2192,7 @@
   <div class="tracker-grid">
     <div class="tracker-card">
       <div class="tracker-label">Current Weight (kg)</div>
-      <input class="tracker-input" type="number" id="input-weight" placeholder="77.5" min="50" max="200" step="0.1"/>
+      <input class="tracker-input" type="number" id="input-weight" placeholder="77.8" min="50" max="200" step="0.1"/>
       <div class="tracker-unit">kilograms</div>
     </div>
     <div class="tracker-card">
@@ -2514,256 +2514,182 @@ const howTos = {
 // ╚═════════════════════════════════════════════════════════════════════════╝
 const phases = {
   1: {
-    label: "Reset", weeks: "1–4",
-    desc: "Bring calories up to break the metabolic plateau and re-fill glycogen. Training holds previous strength — no PR chasing, just solid execution. You'll look fuller within a week. Trust this phase even though abs won't be the focus yet.",
+    label: "KO Block", weeks: "Sep 3 – Oct 3",
+    desc: "Four weeks to Knockout on October 3. 2050 kcal held flat - there is no weekly calorie staircase here. Rotation is PUSH then PULL then LEGS then a REST day, on repeat. It is not tied to weekdays. If work or life costs you a day, pick up at the next session in the sequence rather than restarting the week. Loads stay heavy, volume stays lean. Compounds at 1-2 reps in reserve, isolations pushed to 0-1. Cardio: 3 x 20-25 min a week, low-moderate. Best after PUSH, after PULL if you are feeling fresh and it stays low impact, or on a REST day as tolerated. Just avoid hard or leg-fatiguing cardio in the session right before LEGS.",
     info: [
-      { label: "Weeks", val: "1–4", desc: "Reset / diet break" },
-      { label: "Intensity", val: "RPE 7–8", desc: "Moderate-hard, hold strength" },
-      { label: "Focus", val: "Restore", desc: "Refill glycogen, restore TDEE" },
+      { label: "Target", val: "74.5–75.0 kg", desc: "from 77.8 kg by Oct 3" },
+      { label: "Intake", val: "2050 kcal", desc: "187P / 204C / 54F - held, not cut weekly" },
+      { label: "Steps", val: "11,000/day", desc: "plus 3 x 20-25 min low-moderate cardio" },
+    ],
+    progression: [
+      ["Exercise", "Wk 1", "Wk 2", "Wk 3", "Wk 4"],
+      ["Bench Press", "90kg", "90kg", "92.5kg", "90kg"],
+      ["Incline DB Press", "36kg ea", "36kg ea", "38kg ea", "36kg ea"],
+      ["Lat Pulldown", "70kg", "70kg", "72.5kg", "70kg"],
+      ["Hack Squat", "100kg", "100kg", "102.5kg", "100kg"],
+      ["Leg Press", "180kg", "180kg", "185kg", "180kg"],
+      ["Romanian DL", "110kg", "110kg", "112.5kg", "110kg"],
+      ["Lying Leg Curl", "50kg", "50kg", "52.5kg", "50kg"],
     ],
     days: [
       {
-        label: "Day 1 — Upper Push (Chest Priority)",
+        label: "PUSH — Chest · Side Delts · Triceps",
         badge: "PUSH",
         exercises: [
-          { name: "Barbell Bench Press", sets: "4", reps: "6–8", weight: "90kg", rest: "2–3 min", rpe: "8" },
-          { name: "Incline DB Chest Press", sets: "3", reps: "8–10", weight: "36kg ea", rest: "2 min", rpe: "8" },
-          { name: "Smith Shoulder Press", sets: "3", reps: "8–10", weight: "40kg", rest: "90s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12", weight: "8kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "10–12", weight: "25kg", rest: "60s", rpe: "8" },
-          { name: "Cable Rope Overhead Tricep Ext", sets: "3", reps: "10", weight: "25kg", rest: "60s", rpe: "8" },
-          { name: "Ab Crunch Machine", sets: "3", reps: "15", weight: "{kg(22)}", rest: "60s", rpe: "8" },
+          { name: "Incline DB Chest Press", sets: "3", reps: "6–10", weight: "36kg ea", rest: "2 min", rpe: "8" },
+          { name: "Barbell Bench Press", sets: "3", reps: "6–10", weight: "90kg", rest: "2–3 min", rpe: "8" },
+          { name: "Cable Chest Fly (Low)", sets: "2", reps: "10–15", weight: "18kg ea", rest: "60s", rpe: "9" },
+          { name: "Dumbbell Lateral Raise", sets: "3", reps: "10–15", weight: "12kg ea", rest: "60s", rpe: "9" },
+          { name: "Cable Lateral Raise", sets: "2", reps: "12–20", weight: "8kg", rest: "60s", rpe: "9" },
+          { name: "Cable Rope Overhead Tricep Ext", sets: "2", reps: "10–15", weight: "25kg", rest: "60s", rpe: "9" },
+          { name: "Cable Tricep Pushdown", sets: "2", reps: "10–15", weight: "25kg", rest: "60s", rpe: "9" },
         ]
       },
       {
-        label: "Day 2 — Lower (Quad Heavy)",
-        badge: "QUADS",
-        exercises: [
-          { name: "Hack Squat", sets: "4", reps: "6", weight: "100kg", rest: "2–3 min", rpe: "8" },
-          { name: "Leg Press", sets: "3", reps: "10", weight: "180kg", rest: "2 min", rpe: "8" },
-          { name: "Walking Lunges (DB)", sets: "2", reps: "10 each", weight: "20kg ea", rest: "90s", rpe: "8" },
-          { name: "Leg Extension", sets: "3", reps: "12", weight: "55kg", rest: "60s", rpe: "8" },
-          { name: "Standing Calf Raise", sets: "4", reps: "12", weight: "80kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "35kg", rest: "60s", rpe: "8" },
-        ]
-      },
-      {
-        label: "Day 3 — Upper Pull (Back Priority)",
+        label: "PULL — Lats · Upper Back · Rear Delts · Biceps",
         badge: "PULL",
         exercises: [
-          { name: "Pull-Up (Weighted)", sets: "4", reps: "6–8", weight: "BW + 10kg", rest: "2 min", rpe: "8" },
-          { name: "Barbell Row (Pendlay)", sets: "3", reps: "8", weight: "85kg", rest: "2 min", rpe: "8" },
-          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "10–12", weight: "70kg", rest: "90s", rpe: "8" },
-          { name: "Reverse Pec Deck", sets: "3", reps: "12–15", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "EZ Bar Curl", sets: "3", reps: "10", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "DB Hammer Curl", sets: "3", reps: "10", weight: "16kg ea", rest: "60s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "8–12", weight: "70kg", rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Row (Neutral)", sets: "3", reps: "8–12", weight: "set wk1", rest: "2 min", rpe: "8" },
+          { name: "Chest-Supported High Row", sets: "3", reps: "10–15", weight: "set wk1", rest: "90s", rpe: "9" },
+          { name: "Straight-Arm Pulldown", sets: "2", reps: "10–15", weight: "set wk1", rest: "60s", rpe: "9" },
+          { name: "Reverse Pec Deck", sets: "2", reps: "12–20", weight: "30kg", rest: "60s", rpe: "9" },
+          { name: "EZ Bar Curl", sets: "2", reps: "8–12", weight: "30kg", rest: "60s", rpe: "9" },
+          { name: "DB Hammer Curl", sets: "2", reps: "10–15", weight: "16kg ea", rest: "60s", rpe: "9" },
         ]
       },
       {
-        label: "Day 4 — Lower (Posterior Chain)",
-        badge: "POSTERIOR",
+        label: "LEGS — Quads · Hamstrings · Glutes · Calves",
+        badge: "LEGS",
         exercises: [
-          { name: "Romanian Deadlift", sets: "4", reps: "6–8", weight: "110kg", rest: "2–3 min", rpe: "8" },
-          { name: "Hip Thrust", sets: "3", reps: "8–10", weight: "120kg", rest: "2 min", rpe: "8" },
-          { name: "Lying Leg Curl", sets: "3", reps: "10", weight: "50kg", rest: "60s", rpe: "8" },
-          { name: "Bulgarian Split Squat", sets: "2", reps: "10 each", weight: "16kg ea", rest: "90s", rpe: "8" },
-          { name: "Seated Calf Raise", sets: "4", reps: "12", weight: "60kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "35kg", rest: "60s", rpe: "8" },
+          { name: "Hack Squat", sets: "3", reps: "6–10", weight: "100kg", rest: "2–3 min", rpe: "8" },
+          { name: "Leg Press", sets: "3", reps: "10–15", weight: "180kg", rest: "2 min", rpe: "8" },
+          { name: "Leg Extension", sets: "2", reps: "12–20", weight: "55kg", rest: "60s", rpe: "9" },
+          { name: "Lying Leg Curl", sets: "3", reps: "8–15", weight: "50kg", rest: "60s", rpe: "9" },
+          { name: "Romanian Deadlift", sets: "3", reps: "8–12", weight: "110kg", rest: "2–3 min", rpe: "8" },
+          { name: "Standing Calf Raise", sets: "3", reps: "8–15", weight: "80kg", rest: "60s", rpe: "9" },
         ]
       },
-      {
-        label: "Day 5 — Upper Aesthetic (Pump)",
-        badge: "AESTHETIC",
-        exercises: [
-          { name: "Incline DB Chest Press", sets: "4", reps: "8–10", weight: "32kg ea", rest: "90s", rpe: "8" },
-          { name: "Cable Chest Fly (Low)", sets: "3", reps: "12", weight: "18kg ea", rest: "60s", rpe: "8" },
-          { name: "Dumbbell Lateral Raise", sets: "4", reps: "12", weight: "12kg ea", rest: "60s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "15", weight: "8kg", rest: "60s", rpe: "8" },
-          { name: "EZ Bar Curl", sets: "3", reps: "10", weight: "25kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "12", weight: "25kg", rest: "60s", rpe: "8" },
-          { name: "Hanging Leg Raise", sets: "3", reps: "12", weight: "BW + 5kg", rest: "60s", rpe: "8" },
-        ]
-      },
-    ],
-    progression: [
-      ["Exercise", "Week 1", "Week 2", "Week 3", "Week 4"],
-      ["Bench Press", "90kg", "92.5kg", "95kg", "95kg"],
-      ["Hack Squat", "100kg", "105kg", "107.5kg", "110kg"],
-      ["Romanian DL", "110kg", "115kg", "117.5kg", "120kg"],
-      ["Hip Thrust", "120kg", "125kg", "127.5kg", "130kg"],
-      ["Pull-Up (Weighted)", "BW+10", "BW+12.5", "BW+12.5", "BW+15"],
-      ["Incline DB Press", "36kg ea", "38kg ea", "38kg ea", "40kg ea"],
-      ["DB Shoulder Press", "24kg ea", "24kg ea", "26kg ea", "26kg ea"],
-      ["Lat Pulldown", "70kg", "72.5kg", "75kg", "75kg"],
-      ["BB Row", "85kg", "87.5kg", "90kg", "92.5kg"],
     ]
   },
   2: {
-    label: "Cut", weeks: "5–8",
-    desc: "Real deficit now. Calories drop, training intensity holds. The goal here is to MAINTAIN every working weight from Phase 1 — that's how you keep muscle through a cut. Reta keeps appetite manageable; food choices matter more.",
+    label: "KO Block", weeks: "Sep 3 – Oct 3",
+    desc: "Same block, same numbers. Calories are deliberately unchanged: if the 2-week trend sits at 0.5-0.8 kg per week we HOLD. A genuine stall on honest adherence, or loss running fast enough to cost strength and recovery, is a coach review - not a self-directed cut. Rotation is PUSH then PULL then LEGS then a REST day, on repeat. It is not tied to weekdays. If work or life costs you a day, pick up at the next session in the sequence rather than restarting the week.",
     info: [
-      { label: "Weeks", val: "5–8", desc: "Active cut" },
-      { label: "Intensity", val: "RPE 8", desc: "Hold weights, accept the grind" },
-      { label: "Focus", val: "Preserve", desc: "Don't lose strength" },
+      { label: "Rule", val: "HOLD", desc: "0.5–0.8 kg/wk = change nothing" },
+      { label: "Stall", val: "Coach review", desc: "2 clean weeks, no movement" },
+      { label: "Too fast", val: "Coach review", desc: "strength or recovery dropping" },
+    ],
+    progression: [
+      ["Exercise", "Wk 1", "Wk 2", "Wk 3", "Wk 4"],
+      ["Bench Press", "90kg", "90kg", "92.5kg", "90kg"],
+      ["Incline DB Press", "36kg ea", "36kg ea", "38kg ea", "36kg ea"],
+      ["Lat Pulldown", "70kg", "70kg", "72.5kg", "70kg"],
+      ["Hack Squat", "100kg", "100kg", "102.5kg", "100kg"],
+      ["Leg Press", "180kg", "180kg", "185kg", "180kg"],
+      ["Romanian DL", "110kg", "110kg", "112.5kg", "110kg"],
+      ["Lying Leg Curl", "50kg", "50kg", "52.5kg", "50kg"],
     ],
     days: [
       {
-        label: "Day 1 — Upper Push (Chest Priority)",
+        label: "PUSH — Chest · Side Delts · Triceps",
         badge: "PUSH",
         exercises: [
-          { name: "Barbell Bench Press", sets: "4", reps: "6", weight: "95kg", rest: "2–3 min", rpe: "8" },
-          { name: "Incline DB Chest Press", sets: "3", reps: "8", weight: "40kg ea", rest: "2 min", rpe: "8" },
-          { name: "Smith Shoulder Press", sets: "3", reps: "8", weight: "45kg", rest: "90s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12", weight: "10kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "10", weight: "27.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Rope Overhead Tricep Ext", sets: "2", reps: "10", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "Hanging Leg Raise", sets: "3", reps: "12", weight: "BW + 5kg", rest: "60s", rpe: "8" },
+          { name: "Incline DB Chest Press", sets: "3", reps: "6–10", weight: "36kg ea", rest: "2 min", rpe: "8" },
+          { name: "Barbell Bench Press", sets: "3", reps: "6–10", weight: "90kg", rest: "2–3 min", rpe: "8" },
+          { name: "Cable Chest Fly (Low)", sets: "2", reps: "10–15", weight: "18kg ea", rest: "60s", rpe: "9" },
+          { name: "Dumbbell Lateral Raise", sets: "3", reps: "10–15", weight: "12kg ea", rest: "60s", rpe: "9" },
+          { name: "Cable Lateral Raise", sets: "2", reps: "12–20", weight: "8kg", rest: "60s", rpe: "9" },
+          { name: "Cable Rope Overhead Tricep Ext", sets: "2", reps: "10–15", weight: "25kg", rest: "60s", rpe: "9" },
+          { name: "Cable Tricep Pushdown", sets: "2", reps: "10–15", weight: "25kg", rest: "60s", rpe: "9" },
         ]
       },
       {
-        label: "Day 2 — Lower (Quad Heavy)",
-        badge: "QUADS",
-        exercises: [
-          { name: "Hack Squat", sets: "4", reps: "6", weight: "110kg", rest: "2–3 min", rpe: "8" },
-          { name: "Leg Press", sets: "3", reps: "8", weight: "200kg", rest: "2 min", rpe: "8" },
-          { name: "Walking Lunges (DB)", sets: "2", reps: "10 each", weight: "22kg ea", rest: "90s", rpe: "8" },
-          { name: "Leg Extension", sets: "3", reps: "10", weight: "60kg", rest: "60s", rpe: "8" },
-          { name: "Standing Calf Raise", sets: "4", reps: "12", weight: "85kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "40kg", rest: "60s", rpe: "8" },
-        ]
-      },
-      {
-        label: "Day 3 — Upper Pull (Back Priority)",
+        label: "PULL — Lats · Upper Back · Rear Delts · Biceps",
         badge: "PULL",
         exercises: [
-          { name: "Pull-Up (Weighted)", sets: "4", reps: "6", weight: "BW + 15kg", rest: "2 min", rpe: "8" },
-          { name: "Barbell Row (Pendlay)", sets: "3", reps: "8", weight: "92.5kg", rest: "2 min", rpe: "8" },
-          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "10", weight: "75kg", rest: "90s", rpe: "8" },
-          { name: "Reverse Pec Deck", sets: "3", reps: "12", weight: "35kg", rest: "60s", rpe: "8" },
-          { name: "EZ Bar Curl", sets: "3", reps: "8", weight: "32.5kg", rest: "60s", rpe: "8" },
-          { name: "DB Hammer Curl", sets: "3", reps: "10", weight: "18kg ea", rest: "60s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "8–12", weight: "70kg", rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Row (Neutral)", sets: "3", reps: "8–12", weight: "set wk1", rest: "2 min", rpe: "8" },
+          { name: "Chest-Supported High Row", sets: "3", reps: "10–15", weight: "set wk1", rest: "90s", rpe: "9" },
+          { name: "Straight-Arm Pulldown", sets: "2", reps: "10–15", weight: "set wk1", rest: "60s", rpe: "9" },
+          { name: "Reverse Pec Deck", sets: "2", reps: "12–20", weight: "30kg", rest: "60s", rpe: "9" },
+          { name: "EZ Bar Curl", sets: "2", reps: "8–12", weight: "30kg", rest: "60s", rpe: "9" },
+          { name: "DB Hammer Curl", sets: "2", reps: "10–15", weight: "16kg ea", rest: "60s", rpe: "9" },
         ]
       },
       {
-        label: "Day 4 — Lower (Posterior Chain)",
-        badge: "POSTERIOR",
+        label: "LEGS — Quads · Hamstrings · Glutes · Calves",
+        badge: "LEGS",
         exercises: [
-          { name: "Romanian Deadlift", sets: "4", reps: "6", weight: "120kg", rest: "2–3 min", rpe: "8" },
-          { name: "Hip Thrust", sets: "3", reps: "8", weight: "130kg", rest: "2 min", rpe: "8" },
-          { name: "Lying Leg Curl", sets: "3", reps: "10", weight: "55kg", rest: "60s", rpe: "8" },
-          { name: "Bulgarian Split Squat", sets: "2", reps: "10 each", weight: "18kg ea", rest: "90s", rpe: "8" },
-          { name: "Seated Calf Raise", sets: "4", reps: "12", weight: "65kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "40kg", rest: "60s", rpe: "8" },
+          { name: "Hack Squat", sets: "3", reps: "6–10", weight: "100kg", rest: "2–3 min", rpe: "8" },
+          { name: "Leg Press", sets: "3", reps: "10–15", weight: "180kg", rest: "2 min", rpe: "8" },
+          { name: "Leg Extension", sets: "2", reps: "12–20", weight: "55kg", rest: "60s", rpe: "9" },
+          { name: "Lying Leg Curl", sets: "3", reps: "8–15", weight: "50kg", rest: "60s", rpe: "9" },
+          { name: "Romanian Deadlift", sets: "3", reps: "8–12", weight: "110kg", rest: "2–3 min", rpe: "8" },
+          { name: "Standing Calf Raise", sets: "3", reps: "8–15", weight: "80kg", rest: "60s", rpe: "9" },
         ]
       },
-      {
-        label: "Day 5 — Upper Aesthetic (Pump)",
-        badge: "AESTHETIC",
-        exercises: [
-          { name: "Incline DB Chest Press", sets: "4", reps: "8", weight: "36kg ea", rest: "90s", rpe: "8" },
-          { name: "Cable Chest Fly (Low)", sets: "3", reps: "12", weight: "20kg ea", rest: "60s", rpe: "8" },
-          { name: "Dumbbell Lateral Raise", sets: "4", reps: "12", weight: "14kg ea", rest: "60s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "15", weight: "10kg", rest: "60s", rpe: "8" },
-          { name: "EZ Bar Curl", sets: "3", reps: "10", weight: "27.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "12", weight: "27.5kg", rest: "60s", rpe: "8" },
-          { name: "Hanging Leg Raise", sets: "3", reps: "12", weight: "BW + 10kg", rest: "60s", rpe: "8" },
-        ]
-      },
-    ],
-    progression: [
-      ["Exercise", "Week 5", "Week 6", "Week 7", "Week 8"],
-      ["Bench Press", "95kg", "97.5kg", "100kg", "100kg"],
-      ["Hack Squat", "110kg", "112.5kg", "115kg", "115kg"],
-      ["Romanian DL", "120kg", "122.5kg", "125kg", "125kg"],
-      ["Hip Thrust", "130kg", "132.5kg", "135kg", "135kg"],
-      ["Pull-Up (Weighted)", "BW+15", "BW+17.5", "BW+17.5", "BW+20"],
-      ["Incline DB Press", "40kg ea", "40kg ea", "42kg ea", "42kg ea"],
-      ["BB Row", "92.5kg", "95kg", "95kg", "97.5kg"],
     ]
   },
   3: {
-    label: "Peak", weeks: "9–12",
-    desc: "Final 4 weeks. Calories at lowest. Strength may flicker but volume and intent stay high. Abs reveal happens here. If a working weight stalls, hold it — don't strip plates, don't add reps to compensate. Just execute clean reps.",
+    label: "KO Week", weeks: "Sep 26 – Oct 3",
+    desc: "Final week. Same food, same movements, one less set on most isolations - the goal is to arrive fresh, not depleted. Hydration normal, sodium consistent. No water cutting, no diuretics, no laxatives, no carb depletion. Last genuinely hard session about 48 hours out. If you are already around 75 kg, hold there rather than chasing 74.x.",
     info: [
-      { label: "Weeks", val: "9–12", desc: "Peak / abs reveal" },
-      { label: "Intensity", val: "RPE 8–9", desc: "Maximum intent, accept fatigue" },
-      { label: "Focus", val: "Reveal", desc: "Hold muscle, drop fat" },
+      { label: "Food", val: "Unchanged", desc: "2050 kcal - no depletion" },
+      { label: "Volume", val: "Isolation trimmed", desc: "compounds unchanged" },
+      { label: "Last hard session", val: "~48h out", desc: "then movement only" },
+    ],
+    progression: [
+      ["Exercise", "KO Wk", "KO Wk", "KO Wk", "KO Wk"],
+      ["Bench Press", "90kg", "90kg", "92.5kg", "90kg"],
+      ["Incline DB Press", "36kg ea", "36kg ea", "38kg ea", "36kg ea"],
+      ["Lat Pulldown", "70kg", "70kg", "72.5kg", "70kg"],
+      ["Hack Squat", "100kg", "100kg", "102.5kg", "100kg"],
+      ["Leg Press", "180kg", "180kg", "185kg", "180kg"],
+      ["Romanian DL", "110kg", "110kg", "112.5kg", "110kg"],
+      ["Lying Leg Curl", "50kg", "50kg", "52.5kg", "50kg"],
     ],
     days: [
       {
-        label: "Day 1 — Upper Push (Chest Priority)",
+        label: "PUSH — Chest · Side Delts · Triceps",
         badge: "PUSH",
         exercises: [
-          { name: "Barbell Bench Press", sets: "4", reps: "5–6", weight: "100kg", rest: "2–3 min", rpe: "8–9" },
-          { name: "Incline DB Chest Press", sets: "3", reps: "8", weight: "42kg ea", rest: "2 min", rpe: "8–9" },
-          { name: "Smith Shoulder Press", sets: "3", reps: "8", weight: "50kg", rest: "90s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "4", reps: "12", weight: "12kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "10", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "Cable Rope Overhead Tricep Ext", sets: "2", reps: "8", weight: "35kg", rest: "60s", rpe: "8" },
-          { name: "Hanging Leg Raise (Weighted)", sets: "4", reps: "10", weight: "BW + 10kg", rest: "60s", rpe: "8–9" },
+          { name: "Incline DB Chest Press", sets: "3", reps: "6–10", weight: "36kg ea", rest: "2 min", rpe: "8" },
+          { name: "Barbell Bench Press", sets: "3", reps: "6–10", weight: "90kg", rest: "2–3 min", rpe: "8" },
+          { name: "Cable Chest Fly (Low)", sets: "2", reps: "10–15", weight: "18kg ea", rest: "60s", rpe: "9" },
+          { name: "Dumbbell Lateral Raise", sets: "2", reps: "10–15", weight: "12kg ea", rest: "60s", rpe: "9" },
+          { name: "Cable Lateral Raise", sets: "2", reps: "12–20", weight: "8kg", rest: "60s", rpe: "9" },
+          { name: "Cable Rope Overhead Tricep Ext", sets: "2", reps: "10–15", weight: "25kg", rest: "60s", rpe: "9" },
+          { name: "Cable Tricep Pushdown", sets: "2", reps: "10–15", weight: "25kg", rest: "60s", rpe: "9" },
         ]
       },
       {
-        label: "Day 2 — Lower (Quad Heavy)",
-        badge: "QUADS",
-        exercises: [
-          { name: "Hack Squat", sets: "4", reps: "5–6", weight: "115kg", rest: "2–3 min", rpe: "8–9" },
-          { name: "Leg Press", sets: "3", reps: "8", weight: "220kg", rest: "2 min", rpe: "8" },
-          { name: "Walking Lunges (DB)", sets: "2", reps: "8 each", weight: "24kg ea", rest: "90s", rpe: "8" },
-          { name: "Leg Extension", sets: "3", reps: "10", weight: "65kg", rest: "60s", rpe: "8" },
-          { name: "Standing Calf Raise", sets: "4", reps: "12", weight: "90kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "4", reps: "15", weight: "45kg", rest: "60s", rpe: "8" },
-        ]
-      },
-      {
-        label: "Day 3 — Upper Pull (Back Priority)",
+        label: "PULL — Lats · Upper Back · Rear Delts · Biceps",
         badge: "PULL",
         exercises: [
-          { name: "Pull-Up (Weighted)", sets: "4", reps: "5–6", weight: "BW + 20kg", rest: "2 min", rpe: "8–9" },
-          { name: "Barbell Row (Pendlay)", sets: "3", reps: "6–8", weight: "97.5kg", rest: "2 min", rpe: "8" },
-          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "10", weight: "77.5kg", rest: "90s", rpe: "8" },
-          { name: "Reverse Pec Deck", sets: "3", reps: "12", weight: "40kg", rest: "60s", rpe: "8" },
-          { name: "EZ Bar Curl", sets: "3", reps: "8", weight: "35kg", rest: "60s", rpe: "8" },
-          { name: "DB Hammer Curl", sets: "3", reps: "8", weight: "20kg ea", rest: "60s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "8–12", weight: "70kg", rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Row (Neutral)", sets: "3", reps: "8–12", weight: "set wk1", rest: "2 min", rpe: "8" },
+          { name: "Chest-Supported High Row", sets: "2", reps: "10–15", weight: "set wk1", rest: "90s", rpe: "9" },
+          { name: "Straight-Arm Pulldown", sets: "2", reps: "10–15", weight: "set wk1", rest: "60s", rpe: "9" },
+          { name: "Reverse Pec Deck", sets: "2", reps: "12–20", weight: "30kg", rest: "60s", rpe: "9" },
+          { name: "EZ Bar Curl", sets: "2", reps: "8–12", weight: "30kg", rest: "60s", rpe: "9" },
+          { name: "DB Hammer Curl", sets: "2", reps: "10–15", weight: "16kg ea", rest: "60s", rpe: "9" },
         ]
       },
       {
-        label: "Day 4 — Lower (Posterior Chain)",
-        badge: "POSTERIOR",
+        label: "LEGS — Quads · Hamstrings · Glutes · Calves",
+        badge: "LEGS",
         exercises: [
-          { name: "Romanian Deadlift", sets: "4", reps: "5–6", weight: "125kg", rest: "2–3 min", rpe: "8–9" },
-          { name: "Hip Thrust", sets: "3", reps: "8", weight: "135kg", rest: "2 min", rpe: "8" },
-          { name: "Lying Leg Curl", sets: "3", reps: "10", weight: "60kg", rest: "60s", rpe: "8" },
-          { name: "Bulgarian Split Squat", sets: "2", reps: "8 each", weight: "20kg ea", rest: "90s", rpe: "8" },
-          { name: "Seated Calf Raise", sets: "4", reps: "12", weight: "70kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "4", reps: "15", weight: "45kg", rest: "60s", rpe: "8" },
+          { name: "Hack Squat", sets: "3", reps: "6–10", weight: "100kg", rest: "2–3 min", rpe: "8" },
+          { name: "Leg Press", sets: "3", reps: "10–15", weight: "180kg", rest: "2 min", rpe: "8" },
+          { name: "Leg Extension", sets: "2", reps: "12–20", weight: "55kg", rest: "60s", rpe: "9" },
+          { name: "Lying Leg Curl", sets: "2", reps: "8–15", weight: "50kg", rest: "60s", rpe: "9" },
+          { name: "Romanian Deadlift", sets: "3", reps: "8–12", weight: "110kg", rest: "2–3 min", rpe: "8" },
+          { name: "Standing Calf Raise", sets: "2", reps: "8–15", weight: "80kg", rest: "60s", rpe: "9" },
         ]
       },
-      {
-        label: "Day 5 — Upper Aesthetic (Pump)",
-        badge: "AESTHETIC",
-        exercises: [
-          { name: "Incline DB Chest Press", sets: "4", reps: "8", weight: "40kg ea", rest: "90s", rpe: "8" },
-          { name: "Cable Chest Fly (Low)", sets: "3", reps: "12", weight: "22kg ea", rest: "60s", rpe: "8" },
-          { name: "Dumbbell Lateral Raise", sets: "4", reps: "10–12", weight: "14kg ea", rest: "60s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "15", weight: "12kg", rest: "60s", rpe: "8" },
-          { name: "EZ Bar Curl", sets: "3", reps: "8", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Pushdown", sets: "3", reps: "10", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "Hanging Leg Raise (Weighted)", sets: "3", reps: "10", weight: "BW + 10kg", rest: "60s", rpe: "8" },
-        ]
-      },
-    ],
-    progression: [
-      ["Exercise", "Week 9", "Week 10", "Week 11", "Week 12"],
-      ["Bench Press", "100kg", "100kg", "102.5kg", "102.5kg"],
-      ["Hack Squat", "115kg", "117.5kg", "117.5kg", "120kg"],
-      ["Romanian DL", "125kg", "125kg", "127.5kg", "127.5kg"],
-      ["Hip Thrust", "135kg", "137.5kg", "137.5kg", "140kg"],
-      ["Pull-Up (Weighted)", "BW+20", "BW+22.5", "BW+22.5", "BW+25"],
-      ["Incline DB Press", "42kg ea", "42kg ea", "42kg ea", "44kg ea"],
-      ["BB Row", "97.5kg", "100kg", "100kg", "100kg"],
     ]
-  }
+  },
 };
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -4195,12 +4121,12 @@ function closeModalBtn() {
 const CLIENT_CONFIG = {
   client: {
     firstName:   'Omar',
-    fullTitle:   "Omar's 4-Week AB REVEAL",
+    fullTitle:   "Omar's KO Cut",
     heroLine1:   "OMAR'S",
-    heroLine2:   'AB REVEAL',
-    heroSub:     '4-Week Peak · 77.5kg → ~76kg by Aug 1 · Diet break → Push → Peak · Standing-relaxed 6-pack',
-    startWeight: 77.5,
-    goalWeight:  76,
+    heroLine2:   'KO CUT',
+    heroSub:     'Knockout · 3 Oct 2026 · 77.8kg → 74.5–75kg · Rolling Push / Pull / Legs · 2050 kcal held',
+    startWeight: 77.8,
+    goalWeight:  75,
     storageKey:  'omar',
   },
   trainer: {
@@ -4451,9 +4377,9 @@ function deleteCheckin(i){
 // ║                and macros per meal.                                     ║
 // ╚═════════════════════════════════════════════════════════════════════════╝
 const phaseTargets = {
-  1: { cal: 2200, p: 202, c: 226, f: 54, deficit: 400 },
-  2: { cal: 1800, p: 202, c: 126, f: 54, deficit: 600 },
-  3: { cal: 1700, p: 202, c: 102, f: 54, deficit: 800 },
+  1: { cal: 2050, p: 187, c: 204, f: 54, deficit: 750 },
+  2: { cal: 2050, p: 187, c: 204, f: 54, deficit: 750 },
+  3: { cal: 2050, p: 187, c: 204, f: 54, deficit: 750 },
 };
 
 const DAY_NAMES=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -4527,7 +4453,7 @@ function renderNutrition(){
   const macroEdited=isMacroOverridden(phase);
   const startWeek=phase===1?1:phase===2?5:9;
   const endWeek=phase===1?4:phase===2?8:12;
-  const rationale=['Foundation phase. Moderate deficit (400 kcal) to start losing fat steadily without cratering training. Protein high to protect muscle.','Build phase. Deficit tightens to 600 kcal as metabolism adapts. Carbs reduced and timed around training for performance.','Peak phase. Largest deficit (800 kcal). Carbs minimal except pre-workout. Every calorie earns its place.'][phase-1];
+  const rationale=['KO Block. 2050 kcal against an estimated 2800 maintenance - about a 750 kcal daily gap, roughly 0.6-0.7 kg a week. Protein 187g protects strength while the weight comes off.','Held on purpose. Losing 0.5-0.8 kg a week means the plan is working and nothing changes. A real stall on honest adherence gets a coach review, not a self-directed cut.','KO week. Food unchanged, isolation volume trimmed, hydration and sodium kept normal. Turn up fresh and full, not depleted.'][phase-1];
   const totalMacroKcal=(t.p*4)+(t.c*4)+(t.f*9);
   const pPct=Math.round((t.p*4/totalMacroKcal)*100);
   const cPct=Math.round((t.c*4/totalMacroKcal)*100);
