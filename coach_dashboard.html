@@ -727,6 +727,56 @@
   }
   .cc-ci-context .item .lbl { font-size: 0.7rem; color: var(--cc-muted); margin-bottom: 2px; }
 
+  /* Autopilot — priority/decision badges, evidence, primary reason (NEW rows only) */
+  .ap-badges { margin-bottom: 0.35rem; }
+  .ap-badge {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-right: 5px;
+    border: 1px solid transparent;
+  }
+  .ap-pri-attn   { background: rgba(217,74,44,0.14);  color: var(--cc-red);   border-color: rgba(217,74,44,0.35); }
+  .ap-pri-review { background: rgba(217,154,44,0.14); color: var(--cc-amber); border-color: rgba(217,154,44,0.35); }
+  .ap-pri-green  { background: rgba(46,168,110,0.14); color: var(--cc-green); border-color: rgba(46,168,110,0.35); }
+  .ap-badge.ap-dec { background: transparent; font-weight: 600; }
+  .ap-conf { font-size: 0.68rem; color: var(--cc-muted); }
+  .ap-evidence { margin: 0.3rem 0 0 0; padding-left: 1.1rem; font-size: 0.76rem; color: var(--cc-text); }
+  .ap-evidence li { margin-bottom: 1px; }
+  .ap-reason { margin-top: 0.3rem; font-size: 0.76rem; color: var(--cc-muted); font-style: italic; }
+  .ap-reason .ap-reason-src { font-style: normal; font-weight: 600; color: var(--cc-muted); }
+
+  /* Autopilot brief inside the check-in review modal */
+  .ap-brief {
+    background: var(--cc-surface2);
+    border: 1px solid var(--cc-border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .ap-brief .ap-brief-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+  .ap-brief .ap-brief-head h4 { margin: 0; font-size: 0.95rem; }
+  .ap-brief .ap-brief-section { margin-top: 0.55rem; }
+  .ap-brief .ap-brief-h { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cc-muted); margin-bottom: 0.2rem; }
+  .ap-brief .ap-brief-body { font-size: 0.85rem; color: var(--cc-text); }
+  .ap-brief ul.ap-brief-list { margin: 0; padding-left: 1.1rem; font-size: 0.82rem; }
+  .ap-brief textarea.ap-draft {
+    width: 100%;
+    min-height: 110px;
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 6px;
+    color: var(--cc-text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.6rem;
+    resize: vertical;
+  }
+  .ap-draft-note { font-size: 0.72rem; color: var(--cc-muted); margin-top: 0.25rem; }
+
   @media (max-width: 720px) {
     .cc-queue-row {
       grid-template-columns: 1fr;
@@ -6153,11 +6203,40 @@ function _queueAllRows() {
   const rows = [];
   COACH.clients.forEach(c => {
     if (!_isActiveClient(c)) return; // paused / completed excluded
-    const sum = _dashboardData[c.storageKey] || {};
+    const rawSum = _dashboardData[c.storageKey];
+    const isGap = _apSumIsGap(c.storageKey, rawSum);
+
+    if (isGap) {
+      // Temporary _dashboardData gap (key absent, undefined/null, or present
+      // but not shaped like a real dashboard() payload). Do NOT run
+      // computeCoachDecisionV2/computeAttention against this — there is
+      // nothing real to interpret. If we already know this client had a
+      // pending, unreviewed check-in before the gap started, keep its row
+      // visible (identity only — no measurement values) instead of letting
+      // it silently vanish. A client we've never seen a check-in for still
+      // correctly produces no row.
+      const known = _apLastKnownCheckIn[c.storageKey];
+      if (known && !_ciReviewMeta(c, known.timestamp)) {
+        rows.push({
+          client: c, sum: null, gap: true,
+          ci: { timestamp: known.timestamp, week: known.week },
+          state: 'new',
+        });
+      }
+      return;
+    }
+
+    const sum = rawSum;
     _checkInsForClient(sum).forEach(ci => {
       const meta = _ciReviewMeta(c, ci.timestamp);
       const state = _ciState(c, ci);
       rows.push({ client: c, sum, ci, state, meta });
+      // Remember identity (never a measurement) so a later gap can keep
+      // this row visible instead of disappearing.
+      const prevKnown = _apLastKnownCheckIn[c.storageKey];
+      if (!prevKnown || new Date(ci.timestamp) > new Date(prevKnown.timestamp)) {
+        _apLastKnownCheckIn[c.storageKey] = { timestamp: ci.timestamp, week: ci.week };
+      }
     });
     // Overdue "virtual" row per client (client-level, not per-checkin).
     // The payload-gap guard prevents an OVERDUE card from being fabricated
@@ -6200,11 +6279,30 @@ function renderCheckInQueue() {
   document.getElementById('cc-ci-tabs').innerHTML = tabs.map(t =>
     `<button class="cc-queue-tab ${CC.queueTab === t.k ? 'active' : ''} ${t.muted ? 'muted' : ''}" onclick="switchQueueTab('${t.k}')">${t.label}<span class="queue-count">${counts[t.k]}</span></button>`
   ).join('');
+  // Compute Autopilot priority exactly once per NEW row (in-memory, pure
+  // functions, no network calls) and cache it on the row for both sorting
+  // and rendering — avoids recomputing per comparison at 100+ clients.
+  if (CC.queueTab === 'new') {
+    // Gap rows carry no usable sum — never run the decision/attention
+    // engines against them. They sort as REVIEW-tier (visible, not buried,
+    // never falsely urgent, never GREEN) rather than getting a real _ap.
+    rows.filter(r => r.state === 'new' && !r.gap).forEach(r => {
+      const metrics30 = typeof build30DayMetrics === 'function' ? build30DayMetrics(r.sum) : {};
+      r._ap = _apPriority(r.client, r.sum, metrics30);
+    });
+  }
   const filtered = rows
     .filter(r => r.state === CC.queueTab)
     .sort((a, b) => {
       if (a.state === 'overdue' || b.state === 'overdue') {
         return (b.overdueDays || 0) - (a.overdueDays || 0);
+      }
+      // NEW tab: priority first (NEEDS ATTENTION → REVIEW → GREEN), existing
+      // chronological order preserved within the same priority.
+      if (a.state === 'new' && b.state === 'new') {
+        const rankA = a.gap ? AP_PRIORITY_RANK.REVIEW : (AP_PRIORITY_RANK[a._ap.priority] || 0);
+        const rankB = b.gap ? AP_PRIORITY_RANK.REVIEW : (AP_PRIORITY_RANK[b._ap.priority] || 0);
+        if (rankA !== rankB) return rankB - rankA;
       }
       return new Date(b.ci.timestamp) - new Date(a.ci.timestamp);
     });
@@ -6219,16 +6317,15 @@ function renderCheckInQueue() {
     el.innerHTML = `<div class="cc-queue-empty">${msg}</div>`;
     return;
   }
-  el.innerHTML = filtered.map(r => r.state === 'overdue' ? _renderQueueRowOverdue(r) : _renderQueueRow(r)).join('');
+  el.innerHTML = filtered.map(r =>
+    r.state === 'overdue' ? _renderQueueRowOverdue(r) : r.gap ? _renderQueueRowGap(r) : _renderQueueRow(r)
+  ).join('');
 }
 
 function _renderQueueRow(r) {
   const { client: c, sum, ci, state } = r;
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const wt = ci.weightKg;
-  // 7-day trend from weightHistory
-  const trend = _weightTrendKgLast14(sum);
-  const trendStr = trend === null ? _na('') : (trend > 0.15 ? '▲' : trend < -0.15 ? '▼' : '·') + ' ' + Math.abs(trend).toFixed(2) + 'kg';
   const nAdh = ci.dietAdherence1to10;
   const tAdh = ci.trainingAdherence1to10;
   const sleep = ci.sleepHours;
@@ -6248,12 +6345,55 @@ function _renderQueueRow(r) {
     : state === 'historical'
       ? `<span class="cc-cat-badge" style="margin-left:6px;">Historical · pre-rollout</span>`
       : '';
+
+  // ── Autopilot block — NEW/pending check-ins only. Reviewed/Historical
+  // rows keep their existing simple weight-trend display; priority triage
+  // is only meaningful for a check-in still awaiting the coach.
+  let weightBlockHtml, apBadgesHtml = '', apEvidenceHtml = '', apReasonHtml = '';
+  if (state === 'new') {
+    // Reuse the priority computed once in renderCheckInQueue() for sorting;
+    // fall back to computing it here if this row was rendered standalone.
+    const ap = r._ap || _apPriority(c, sum, typeof build30DayMetrics === 'function' ? build30DayMetrics(sum) : {});
+    const priClass = ap.priority === 'NEEDS_ATTENTION' ? 'attn' : ap.priority === 'REVIEW' ? 'review' : 'green';
+    const decPal = AP_DECISION_PALETTE[ap.dec.status] || { color: '#8a8f99', icon: 'ℹ', label: ap.dec.status };
+    apBadgesHtml = `
+      <div class="ap-badges">
+        <span class="ap-badge ap-pri-${priClass}">${AP_PRIORITY_LABEL[ap.priority]}</span>
+        <span class="ap-badge ap-dec" style="color:${decPal.color};border-color:${decPal.color};">${decPal.icon} ${esc(decPal.label)}</span>
+        <span class="ap-conf">Conf: ${esc(ap.dec.confidence)}</span>
+      </div>`;
+    const prev = _apPrevCheckIn(sum, ci.timestamp);
+    const weeklyDelta = (wt != null && prev && prev.weightKg != null) ? (wt - prev.weightKg) : null;
+    const weeklyDeltaStr = weeklyDelta === null ? _na('') : (weeklyDelta > 0 ? '+' : '') + weeklyDelta.toFixed(1) + 'kg';
+    const trend28 = _apTrend28(sum);
+    const trend28Str = trend28 === null ? _na('') : (trend28 > 0 ? '+' : '') + trend28.toFixed(1) + 'kg';
+    weightBlockHtml = `
+        <span class="qrow-metric"><span class="lbl">wt</span>${wt != null ? wt + 'kg' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">Δwk</span>${weeklyDeltaStr}</span>
+        <span class="qrow-metric"><span class="lbl">4wk</span>${trend28Str}</span>`;
+    const evidence = _apEvidence(ap.dec);
+    apEvidenceHtml = evidence.length
+      ? `<ul class="ap-evidence">${evidence.map(e => '<li>' + esc(e) + '</li>').join('')}</ul>`
+      : '';
+    const reasonSourceLabel = ap.source === 'attention' ? 'Operational' : 'Decision';
+    apReasonHtml = `<div class="ap-reason"><span class="ap-reason-src">${reasonSourceLabel}:</span> ${esc(ap.reason || '')}</div>`;
+  } else {
+    // Reviewed/Historical — unchanged, no live priority recompute.
+    const trend = _weightTrendKgLast14(sum);
+    const trendStr = trend === null ? _na('') : (trend > 0.15 ? '▲' : trend < -0.15 ? '▼' : '·') + ' ' + Math.abs(trend).toFixed(2) + 'kg';
+    weightBlockHtml = `
+        <span class="qrow-metric"><span class="lbl">wt</span>${wt ? wt + 'kg' : _na('')}</span>
+        <span class="qrow-metric"><span class="lbl">Δ14d</span>${trendStr}</span>`;
+  }
+
   return `
     <div class="cc-queue-row state-${state}">
       <div class="qrow-name">${esc(c.displayName)}${reviewedBadge}<span class="qrow-when">${esc(_fmtWhen(ci.timestamp))}${ci.week ? ' · wk ' + ci.week : ''}</span></div>
       <div class="qrow-metrics">
-        <span class="qrow-metric"><span class="lbl">wt</span>${wt ? wt + 'kg' : _na('')}</span>
-        <span class="qrow-metric"><span class="lbl">Δ7d</span>${trendStr}</span>
+        ${apBadgesHtml}
+        ${weightBlockHtml}
+        ${apEvidenceHtml}
+        ${apReasonHtml}
       </div>
       <div class="qrow-metrics">
         <span class="qrow-metric"><span class="lbl">nutr</span>${nAdh ? nAdh + '/10' : _na('')}</span>
@@ -6265,7 +6405,7 @@ function _renderQueueRow(r) {
       </div>
       <div class="qrow-actions">
         ${state === 'new'
-          ? `<button class="cc-btn primary sm" onclick="openCheckInReview('${key}','${iso}')">Review</button>`
+          ? `<button class="cc-btn primary sm" onclick="openCheckInReview('${key}','${iso}')">Review check-in</button>`
           : `<button class="cc-btn sm" onclick="openCheckInReview('${key}','${iso}')">View</button>`}
         <button class="cc-btn sm ghost" onclick="openDetail('${key}')">Open</button>
       </div>
@@ -6289,6 +6429,34 @@ function _renderQueueRowOverdue(r) {
       </div>
       <div class="qrow-actions">
         <button class="cc-btn sm" onclick="openDetail('${key}')">Open client</button>
+      </div>
+    </div>
+  `;
+}
+
+// A pending check-in whose summary is temporarily unavailable in
+// _dashboardData (absent, undefined, or not yet shaped like a real
+// dashboard() payload). Identity only — no computeCoachDecisionV2/
+// computeAttention call, no measurement value shown. The row stays
+// visible instead of disappearing; "Review check-in" is intentionally
+// omitted since there is nothing safe to review yet.
+function _renderQueueRowGap(r) {
+  const { client: c, ci } = r;
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const key = esc(c.storageKey);
+  return `
+    <div class="cc-queue-row state-new">
+      <div class="qrow-name">${esc(c.displayName)}<span class="qrow-when">${ci && ci.week ? 'wk ' + esc(ci.week) : ''}</span></div>
+      <div class="qrow-metrics">
+        <div class="ap-badges">
+          <span class="ap-badge ap-pri-review">REVIEW</span>
+        </div>
+        <div class="ap-brief-body" style="color:var(--cc-muted);">Data unavailable — decision pending</div>
+        <div class="ap-reason">A check-in is on file, but its summary data isn't loaded right now. Nothing here is computed from missing data.</div>
+      </div>
+      <div class="qrow-metrics"></div>
+      <div class="qrow-actions">
+        <button class="cc-btn sm ghost" onclick="openDetail('${key}')">Open client</button>
       </div>
     </div>
   `;
@@ -6370,6 +6538,11 @@ function openCheckInReview(storageKey, iso) {
        </div>`
     : '';
 
+  // ── Autopilot brief — computed lazily here (only when a check-in is
+  // actually opened), from computeCoachDecisionV2 + computeAttention +
+  // buildResponseDraftV2. No second decision engine, nothing persisted.
+  const apBriefHtml = _apBriefHtml(c, sum);
+
   document.getElementById('cc-ci-modal-body').innerHTML = `
     <button class="cc-btn ghost sm" style="float:right;" onclick="closeCheckInReview()">✕ Close</button>
     <h3>${esc(c.displayName)} — check-in ${esc(_fmtWhen(iso))}${esc(weekStr)}</h3>
@@ -6393,6 +6566,7 @@ function openCheckInReview(storageKey, iso) {
       ${macrosHtml}
     </div>
     ${curr.notes ? '<div class="cc-ci-notes"><strong style="color:var(--cc-muted);font-size:0.72rem;text-transform:uppercase;">Client notes</strong><br/>' + esc(curr.notes) + '</div>' : ''}
+    ${apBriefHtml}
     <label>Outcome <span style="color:var(--cc-red);">*</span></label>
     <select id="cc-ci-outcome">
       <option value="">— pick one —</option>
@@ -9439,6 +9613,214 @@ function buildResponseDraftV2(client, sum, templateIdHint) {
   return { text: RESPONSE_TEMPLATES_V2.general_weekly.build(dec.templateVars), template: 'general_weekly', note: '' };
 }
 // ─── TEMPLATES_v2_END ────────────────────────────────────────────────────
+
+// ─── AUTOPILOT_v1_START — priority fusion + brief assembly ────────────────
+// Check-in Autopilot does NOT introduce a second decision engine. It reads
+// computeCoachDecisionV2 (coaching recommendation) and computeAttention
+// (engagement/operational triage) — both unmodified — and organises their
+// existing outputs into one scan-speed signal. Nothing here is persisted;
+// priority is always recomputed live from current _dashboardData + roster
+// state, so it can never drift from what the canonical engines would say
+// right now. See Sprint "Check-in Autopilot V1" architecture audit.
+
+// Mirrors the label/color palette already used by renderCoachDecisionV2Card
+// (duplicated, not extracted, to avoid touching that working render path).
+const AP_DECISION_PALETTE = {
+  INSUFFICIENT_DATA: { color: '#8a8f99', icon: 'ℹ', label: 'INSUFFICIENT DATA' },
+  ON_TRACK:          { color: 'var(--cc-green)', icon: '✓', label: 'ON TRACK' },
+  WATCH:             { color: 'var(--cc-amber)',  icon: '⚠', label: 'WATCH' },
+  ACTION:            { color: 'var(--cc-red)',    icon: '⛔', label: 'ACTION' },
+};
+const AP_PRIORITY_RANK = { NEEDS_ATTENTION: 3, REVIEW: 2, GREEN: 1 };
+const AP_PRIORITY_LABEL = { NEEDS_ATTENTION: 'NEEDS ATTENTION', REVIEW: 'REVIEW', GREEN: 'GREEN' };
+
+// Fuses the two canonical engines into {priority, source, reason, dec, attn}.
+// source ∈ {'decision','attention'} — tells the UI which engine produced the
+// reason, so the badge can fuse urgency while the explanation stays honest
+// about which system actually raised it (per Autopilot spec, section 1).
+// "New check-in awaiting review" (computeAttention Rule 1c) is true, by
+// construction, for EVERY row that appears in the Check-in Queue's NEW tab
+// — that's the reason the row exists at all. Folding it into the fused
+// priority would make NEEDS ATTENTION fire on every single row and discard
+// the actual triage signal. It is excluded ONLY from this queue-priority
+// fusion; computeAttention's own return value is untouched, and the
+// roster-level Needs Attention list (which legitimately surfaces "you have
+// check-ins waiting" as a reason to open the queue) is unaffected.
+// computeAttention exposes no stable per-rule code — only a category shared
+// by multiple rules (e.g. 'COACH_ATTENTION' covers both "Coach task overdue"
+// and this one) plus human-readable `text`. So this matches EXACTLY the two
+// literal text forms Rule 1c can produce (coach_dashboard.html, Rule 1c,
+// ~computeAttention line 5374) — full-string equality/anchored pattern, not
+// a substring test — so no other rule's text can ever be caught by this
+// filter, today or after future wording changes elsewhere in the function:
+//   singular: "New check-in awaiting review"
+//   plural:   "<N> check-ins awaiting review"  (N = newCis.length)
+function _apIsAwaitingReviewReason(text) {
+  const t = text || '';
+  return t === 'New check-in awaiting review' || /^\d+ check-ins awaiting review$/.test(t);
+}
+function _apAttnReasonsForFusion(attn) {
+  return (attn.reasons || []).filter(r => !_apIsAwaitingReviewReason(r.text));
+}
+function _apEffectiveAttnTier(attn) {
+  const reasons = _apAttnReasonsForFusion(attn);
+  let best = CC_TIER.INFO;
+  reasons.forEach(r => { if (_tierRank(r.tier) > _tierRank(best)) best = r.tier; });
+  return best;
+}
+
+function _apPriority(client, sum, metrics30) {
+  const dec  = computeCoachDecisionV2(client, sum, metrics30);
+  const attn = computeAttention(client, sum) || { tier: null, reasons: [] };
+  const effTier = _apEffectiveAttnTier(attn);
+  const attnReasonOfTier = (tier) => {
+    const r = _apAttnReasonsForFusion(attn).find(x => x.tier === tier);
+    return r ? r.text : null;
+  };
+
+  if (dec.status === DEC_STATUS.ACTION) {
+    return { priority: 'NEEDS_ATTENTION', source: 'decision', reason: dec.interpretation, dec, attn };
+  }
+  if (effTier === CC_TIER.ACTION) {
+    return { priority: 'NEEDS_ATTENTION', source: 'attention', reason: attnReasonOfTier(CC_TIER.ACTION) || 'Coach attention required.', dec, attn };
+  }
+  if (dec.status === DEC_STATUS.INSUFFICIENT || dec.status === DEC_STATUS.WATCH) {
+    return { priority: 'REVIEW', source: 'decision', reason: dec.interpretation, dec, attn };
+  }
+  if (effTier === CC_TIER.WATCH) {
+    return { priority: 'REVIEW', source: 'attention', reason: attnReasonOfTier(CC_TIER.WATCH) || 'Worth monitoring.', dec, attn };
+  }
+  if (dec.confidence === DEC_CONF.LOW) {
+    return { priority: 'REVIEW', source: 'decision', reason: 'Decision confidence is low — evidence is thin.', dec, attn };
+  }
+  // GREEN requires an explicit ON_TRACK match — never an implicit fallthrough,
+  // so an unrecognised future status can't silently render as all-clear.
+  if (dec.status === DEC_STATUS.ON_TRACK) {
+    return { priority: 'GREEN', source: 'decision', reason: dec.interpretation, dec, attn };
+  }
+  return { priority: 'REVIEW', source: 'decision', reason: 'Unrecognised decision state — flagged for manual review.', dec, attn };
+}
+
+// Up to 3 concise evidence bullets, sourced verbatim from the canonical
+// decision's own observations — never re-derived or reworded.
+function _apEvidence(dec) {
+  return (dec && Array.isArray(dec.observations) ? dec.observations : []).filter(Boolean).slice(0, 3);
+}
+
+// Display-only 4-week trend. Never feeds decision/confidence/priority.
+// Returns null when there's insufficient history — caller renders '—'.
+function _apTrend28(sum) {
+  const hist = (sum && Array.isArray(sum.weightHistory)) ? sum.weightHistory : [];
+  return _dv2_trendKg(hist, 28);
+}
+
+// Previous check-in for a given (sum, iso) pair — same lookup already used
+// by openCheckInReview, factored out so the queue row can show the same
+// week-over-week weight delta without duplicating the search.
+function _apPrevCheckIn(sum, iso) {
+  const list = _checkInsForClient(sum);
+  const idx = list.findIndex(x => x.timestamp === iso);
+  if (idx < 0) return null;
+  return list[idx + 1] || null;
+}
+
+// ── Temporary _dashboardData gap handling ──────────────────────────────
+// _dashboardData is populated wholesale by loadAll() and can, for one
+// client, momentarily be absent/undefined/gap-shaped (page just loaded,
+// mid-refresh, a partial backend response). Without this, a check-in that
+// was already visible in the queue would silently DISAPPEAR during that
+// window — worse than showing a stale value, since the coach would have no
+// idea it ever existed. This cache remembers only IDENTITY (storageKey,
+// timestamp, week) from the last known-good render — never a measurement
+// value — purely so the row can stay visible with an explicit "data
+// unavailable" state instead of vanishing or fabricating numbers. In-memory
+// only, mirrors _dashboardData's own lifetime; nothing here is persisted.
+let _apLastKnownCheckIn = {};
+
+// True when sum is missing/undefined/null, OR present but doesn't carry the
+// shape the real dashboard() payload always sends (recentCheckIns and
+// latestCheckinTs are unconditionally initialised server-side for every
+// roster client — see Sprint 6 audit — so their total absence means this is
+// a client-side placeholder, not a genuine "zero activity" response).
+function _apSumIsGap(storageKey, sum) {
+  if (typeof _cd3SumMissing === 'function' && _cd3SumMissing(storageKey)) return true;
+  if (sum == null) return true;
+  return !('recentCheckIns' in sum) && !('latestCheckinTs' in sum);
+}
+
+// Renders the Autopilot brief card shown inside the check-in review modal.
+// Pure read of computeCoachDecisionV2 + computeAttention + buildResponseDraftV2
+// — no independent interpretation, nothing written back anywhere.
+function _apBriefHtml(client, sum) {
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const metrics30 = typeof build30DayMetrics === 'function' ? build30DayMetrics(sum) : {};
+  const ap = _apPriority(client, sum, metrics30);
+  const dec = ap.dec;
+  const decPal = AP_DECISION_PALETTE[dec.status] || { color: '#8a8f99', icon: 'ℹ', label: dec.status };
+  const priClass = ap.priority === 'NEEDS_ATTENTION' ? 'attn' : ap.priority === 'REVIEW' ? 'review' : 'green';
+  const reasonSourceLabel = ap.source === 'attention' ? 'Operational' : 'Decision';
+
+  const trend28 = _apTrend28(sum);
+  const trend28Str = trend28 === null ? '—' : (trend28 > 0 ? '+' : '') + trend28.toFixed(2) + 'kg';
+
+  const obsHtml = _apEvidence(dec).map(o => '<li>' + esc(o) + '</li>').join('');
+  const gapsHtml = (dec.dataGaps || []).map(g => '<li>' + esc(g) + '</li>').join('');
+
+  const draft = buildResponseDraftV2(client, sum);
+  const draftId = 'ap-draft-' + client.storageKey;
+  const draftNote = draft.note ? `<div class="ap-draft-note">${esc(draft.note)}</div>` : '';
+
+  return `
+    <div class="ap-brief">
+      <div class="ap-brief-head">
+        <h4>Autopilot brief</h4>
+        <span class="ap-badge ap-pri-${priClass}">${AP_PRIORITY_LABEL[ap.priority]}</span>
+        <span class="ap-badge ap-dec" style="color:${decPal.color};border-color:${decPal.color};">${decPal.icon} ${esc(decPal.label)}</span>
+        <span class="ap-conf">Confidence: ${esc(dec.confidence)}</span>
+      </div>
+      <div class="ap-reason"><span class="ap-reason-src">${reasonSourceLabel} — why this priority:</span> ${esc(ap.reason || '')}</div>
+
+      <div class="ap-brief-section">
+        <div class="ap-brief-h">4-week weight trend (display only)</div>
+        <div class="ap-brief-body">${trend28Str}${trend28 === null ? ' <span class="na">— insufficient history</span>' : ''}</div>
+      </div>
+
+      <div class="ap-brief-section">
+        <div class="ap-brief-h">What it means</div>
+        <div class="ap-brief-body">${esc(dec.interpretation)}</div>
+      </div>
+
+      <div class="ap-brief-section">
+        <div class="ap-brief-h">Recommended action</div>
+        <div class="ap-brief-body" style="font-weight:600;">${esc(dec.action)}</div>
+      </div>
+
+      ${obsHtml ? `<div class="ap-brief-section"><div class="ap-brief-h">Key evidence</div><ul class="ap-brief-list">${obsHtml}</ul></div>` : ''}
+      ${gapsHtml ? `<div class="ap-brief-section"><div class="ap-brief-h">Data gaps</div><ul class="ap-brief-list">${gapsHtml}</ul></div>` : ''}
+
+      <div class="ap-brief-section">
+        <div class="ap-brief-h">Draft response (editable — not sent)</div>
+        <textarea class="ap-draft" id="${draftId}">${esc(draft.text)}</textarea>
+        ${draftNote}
+        <div style="margin-top:0.4rem;">
+          <button class="cc-btn sm ghost" type="button" onclick="_apCopyDraft('${esc(client.storageKey)}')">Copy draft</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _apCopyDraft(storageKey) {
+  const el = document.getElementById('ap-draft-' + storageKey);
+  if (!el || !el.value) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+// ─── AUTOPILOT_v1_END ──────────────────────────────────────────────────────
 
 function loadTemplate(storageKey, templateId) {
   if (!templateId) return;
