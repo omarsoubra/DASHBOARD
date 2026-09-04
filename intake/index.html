@@ -210,11 +210,39 @@
     <div class="check">✓</div>
     <h1>Intake received bro</h1>
     <p>I'll build ur program + send u the link within 24-48 hrs.</p>
+    <p id="successPhotoNote" style="font-size:14px;"></p>
     <p style="margin-top:24px;color:var(--accent);font-weight:600;">— Omar</p>
   </div>
 
 <script>
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzqOeCQvc0XWjyFlJUF5-40Wroz1-tb_fSiot-G9vnOyCr1hwH4jErVBA8SN_3cc0O9gg/exec';
+// Supabase Edge Function. Replaces the Apps Script webhook: that path has been
+// silently mangling submissions since ~31 Aug (raw JSON into one sheet cell) and
+// its mode:'no-cors' transport made every failure look like a success.
+const API_URL = 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
+
+// One idempotency key per submission ATTEMPT, deliberately generated once and
+// REUSED on every retry: if the network drops after the server committed, the
+// retry returns that same intake instead of creating a second one. It is only
+// an idempotency token — it grants no access and never decides client linkage.
+const SUBMISSION_KEY = (function () {
+  try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : ((r & 0x3) | 0x8)).toString(16);
+  });
+})();
+
+const ERROR_TEXT = {
+  validation_failed:    'Some answers need fixing — check the highlighted fields.',
+  image_rejected:       'One of your photos couldn\’t be read. Try retaking it, or submit without photos.',
+  too_many_images:      'Only front, side and back photos can be sent.',
+  payload_too_large:    'Those photos are too large. Retake them and try again.',
+  photo_upload_failed:  'Your answers are saved — a photo didn’t upload. Press submit again to finish; you won’t lose anything.',
+  photo_link_failed:    'Your answers are saved — a photo didn’t finish saving. Press submit again to finish.',
+  photo_reselection_required: 'Your answers are saved. Please pick these photos again and submit: ',
+  intake_insert_failed: 'Couldn\’t save your intake. Try again in a moment.',
+  unknown_type:         'Something went wrong on our side. DM Omar directly.',
+};
 
 // Photo handling
 const photoData = { front: null, side: null, back: null };
@@ -266,29 +294,87 @@ document.getElementById('intakeForm').addEventListener('submit', async e => {
   status.textContent = '';
 
   const formData = new FormData(e.target);
-  const payload = { type: 'intake', timestamp: new Date().toISOString() };
+  const payload = { type: 'intakeSubmit', submissionKey: SUBMISSION_KEY };
   formData.forEach((v, k) => { payload[k] = v; });
   payload.photoFront = photoData.front || '';
   payload.photoSide = photoData.side || '';
   payload.photoBack = photoData.back || '';
 
+  // Which views the person actually picked — used to tell them the truth
+  // afterwards rather than implying all three were saved.
+  const selected = ['front', 'side', 'back'].filter(v => photoData[v]);
+
+  // Reset one photo slot back to its empty state so it can be re-picked.
+  function clearPhotoSlot(view) {
+    photoData[view] = null;
+    const input = document.getElementById('photo' + view.charAt(0).toUpperCase() + view.slice(1));
+    if (!input) return;
+    const slot = input.closest('.photo-slot');
+    if (!slot) return;
+    slot.innerHTML = '<div class="placeholder"><div class="icon">📷</div><div class="label">' +
+                     view.toUpperCase() + '</div></div>';
+    slot.appendChild(input);
+    input.value = '';
+  }
+
+  function failWith(msg) {
+    btn.disabled = false;
+    btn.textContent = 'SUBMIT INTAKE';
+    status.className = 'status err';
+    status.textContent = msg;
+    status.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   try {
-    await fetch(WEBHOOK_URL, {
+    // Real CORS request — the response is READ. No mode:'no-cors', so a
+    // failure can no longer masquerade as success. The form stays filled in
+    // on failure so nobody has to retype 26 answers.
+    const resp = await fetch(API_URL, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    // fire-and-forget in no-cors, always assume success unless network throws
+    let data = null;
+    try { data = await resp.json(); } catch (parseErr) { data = null; }
+
+    if (!resp.ok || !data || data.ok !== true) {
+      const code = (data && data.error) || 'network';
+      console.warn('Intake rejected', resp.status, data);
+      // The server keeps the answers on a photo failure, so the retry only
+      // needs the photos back. Clear just those slots and name them.
+      if (code === 'photo_reselection_required' && Array.isArray(data.views)) {
+        data.views.forEach(clearPhotoSlot);
+        return failWith(ERROR_TEXT[code] + data.views.join(', ') + '.');
+      }
+      if (code === 'photo_upload_failed' && data.view) clearPhotoSlot(data.view);
+      return failWith(ERROR_TEXT[code] || 'Something went wrong. Try again or DM Omar directly.');
+    }
+
+    // The browser NEVER shows success unless the backend confirms that every
+    // selected photo is stored. ok:true alone is not enough.
+    if (data.ingestionState && data.ingestionState !== 'complete') {
+      return failWith('Your answers are saved but the photos didn’t finish uploading. Press submit again.');
+    }
+
+    // Success is confirmed by the backend, not assumed.
+    const stored = selected.filter(v => data.photos && data.photos[v] === 'stored');
+    const note = document.getElementById('successPhotoNote');
+    if (note) {
+      if (!selected.length) {
+        note.textContent = 'No starting photos sent — that’s fine, we can take them later.';
+      } else if (stored.length === selected.length) {
+        note.textContent = 'Starting photos saved: ' + stored.join(', ') + '.';
+      } else {
+        note.textContent = 'Saved ' + stored.length + ' of ' + selected.length +
+          ' photos. Send the rest to Omar directly.';
+      }
+    }
     document.getElementById('formContainer').style.display = 'none';
     document.getElementById('successScreen').classList.add('show');
     window.scrollTo(0, 0);
   } catch (err) {
     console.error('Submit error', err);
-    btn.disabled = false;
-    btn.textContent = 'SUBMIT INTAKE';
-    status.className = 'status err';
-    status.textContent = 'Something went wrong. Try again or DM Omar directly.';
+    failWith('Couldn’t reach the server. Check your connection and press submit again — it won’t double-submit.');
   }
 });
 </script>

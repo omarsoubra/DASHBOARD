@@ -9894,8 +9894,10 @@ function renderPhotoTimelineSection(c, sum) {
   // Shell — actual photos loaded async from Drive via ?type=photosGet endpoint.
   // Async loading avoids blocking the detail panel render.
   setTimeout(() => loadClientPhotos(c.storageKey), 0);
+  setTimeout(() => loadBaselineLinkControl(c.storageKey), 0);
   return `
     <div class="log-section" id="photo-timeline-${c.storageKey}" style="border-top:2px solid var(--border);padding-top:1.5rem;">
+      <div id="baseline-link-${c.storageKey}" style="margin-bottom:1rem;"></div>
       <h3 style="margin-bottom:0.8rem;">📸 Photo comparison</h3>
       <div id="photo-compare-${c.storageKey}" class="log-empty">Loading photos…</div>
       <div style="margin-top:1.4rem;padding-top:1.2rem;border-top:1px solid var(--border);">
@@ -9928,16 +9930,44 @@ async function loadClientPhotos(storageKey) {
     // two check-ins that happened to share a week number).
     const groups = {};
     photos.forEach(p => {
+      const isBaseline = p.source === 'intake';
       const day = String(p.ts || '').slice(0, 10);
-      const key = 'wk' + (p.week ?? '?') + '_' + day;
-      if (!groups[key]) groups[key] = { week: p.week, ts: p.ts, front: null, side: null, back: null };
+      // Baseline photos group by their originating INTAKE, so one intake can
+      // only ever produce one baseline card. Weekly check-ins keep the
+      // existing week+day key so their behaviour is completely unchanged.
+      const key = isBaseline ? ('intake_' + (p.intakeId || day))
+                             : ('wk' + (p.week ?? '?') + '_' + day);
+      if (!groups[key]) groups[key] = {
+        week:           isBaseline ? null : p.week,
+        ts:             p.ts,
+        source:         isBaseline ? 'intake' : 'checkin',
+        intakeId:       p.intakeId || null,
+        baselineWeight: isBaseline ? (p.baselineWeight ?? null) : null,
+        front: null, side: null, back: null,
+      };
       if (p.view === 'front' || p.view === 'side' || p.view === 'back') groups[key][p.view] = p.url;
       // Keep the earliest ts seen for this card as its representative timestamp.
       if (p.ts && (!groups[key].ts || p.ts < groups[key].ts)) groups[key].ts = p.ts;
     });
     const cards = Object.values(groups)
       .filter(g => g.front || g.side || g.back) // drop check-ins with no usable view (e.g. view:'other' only)
-      .sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
+      .sort((a, b) => {
+        // A baseline always sorts first, so the existing "Baseline ↔ Latest"
+        // button (cards[0] ↔ cards[last]) becomes correct with no change to
+        // the compare logic. Without a baseline, ordering is unchanged.
+        const ab = a.source === 'intake' ? 0 : 1;
+        const bb = b.source === 'intake' ? 0 : 1;
+        if (ab !== bb) return ab - bb;
+        return new Date(a.ts || 0) - new Date(b.ts || 0);
+      });
+
+    // Server-flagged conflict: more than one linked intake carries photos.
+    // Surfaced to the coach; never silently resolved here.
+    window._cd3PhotoMeta = window._cd3PhotoMeta || {};
+    window._cd3PhotoMeta[storageKey] = {
+      multipleBaselines: !!(data && data.multipleBaselines),
+      baselineIntakeIds: (data && data.baselineIntakeIds) || [],
+    };
 
     window._cd3PhotoCards = window._cd3PhotoCards || {};
     window._cd3PhotoCards[storageKey] = cards;
@@ -9970,6 +10000,85 @@ async function loadClientPhotos(storageKey) {
   }
 }
 
+// ── BASELINE / INTAKE LINK ────────────────────────────────────
+// The smallest coach-authenticated action that establishes intake -> client
+// identity. Lives inside the existing Progress photos card; no second screen.
+// Linking is by exact intake UUID that Omar picks. Names are never matched,
+// and nothing is ever linked automatically.
+window._cd3Intakes = window._cd3Intakes || null;
+
+async function loadBaselineLinkControl(storageKey) {
+  const el = document.getElementById('baseline-link-' + storageKey);
+  if (!el) return;
+  el.innerHTML = '<div class="log-empty" style="padding:0.4rem 0;">Checking baseline intake\u2026</div>';
+  try {
+    const data = await coachFetch('intakeList');
+    const all = (data && data.intakes) || [];
+    window._cd3Intakes = all;
+    // The server resolves linked client UUIDs to storage keys, so the
+    // dashboard never handles a raw client UUID and never matches on names.
+    const linked = all.filter(i => i.linkedStorageKey === storageKey);
+    const linkable = all.filter(i => !i.linkedClientId && (i.photoViews.length || i.legacyPhotoViews.length));
+    el.innerHTML = _cd3RenderBaselineLink(storageKey, linked, linkable);
+  } catch (err) {
+    console.warn('intakeList failed:', err);
+    el.innerHTML = '<div class="log-empty" style="padding:0.4rem 0;">Couldn\'t load intakes (' + _esc(err.message) + ').</div>';
+  }
+}
+
+function _cd3IntakeOptionLabel(i) {
+  const d = i.submittedAt ? new Date(i.submittedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '?';
+  const views = i.photoViews.length ? i.photoViews.join('/') : (i.legacyPhotoViews.length ? i.legacyPhotoViews.join('/') + ' (legacy)' : 'no photos');
+  // Surface a submission whose photo upload never finished, so it is never
+  // mistaken for a complete intake in the picker.
+  const stuck = (i.ingestionState && i.ingestionState !== 'complete') ? ' \u26a0 ' + i.ingestionState : '';
+  return (i.fullName || '(no name)').trim() + ' \u00b7 ' + d + ' \u00b7 ' + views + stuck;
+}
+
+function _cd3RenderBaselineLink(storageKey, linked, linkable) {
+  const box = 'border:1px solid var(--border);border-radius:8px;padding:0.7rem 0.8rem;font-size:0.8rem;line-height:1.5;max-width:100%;box-sizing:border-box;';
+  if (linked.length) {
+    return `<div style="${box}">
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.05em;color:var(--muted);margin-bottom:0.3rem;">BASELINE INTAKE</div>
+      ${linked.map(i => `<div style="overflow-wrap:anywhere;">\u2713 ${_esc(_cd3IntakeOptionLabel(i))}</div>`).join('')}
+    </div>`;
+  }
+  if (!linkable.length) {
+    return `<div style="${box}color:var(--muted);">No unlinked intake with photos available to set as this client's baseline.</div>`;
+  }
+  return `<div style="${box}">
+    <div style="font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.05em;color:var(--muted);margin-bottom:0.4rem;">SET BASELINE FROM INTAKE</div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+      <select id="baseline-pick-${_esc(storageKey)}" class="cd3-photo-select" style="flex:1 1 200px;min-width:0;max-width:100%;">
+        <option value="">Choose an intake\u2026</option>
+        ${linkable.map(i => `<option value="${_esc(i.intakeId)}">${_esc(_cd3IntakeOptionLabel(i))}</option>`).join('')}
+      </select>
+      <button class="cd3-btn ghost" style="flex:0 0 auto;padding:0.4rem 0.7rem;font-size:0.75rem;" onclick="_cd3LinkIntake('${_esc(storageKey)}')">Link + promote baseline</button>
+    </div>
+    <div style="color:var(--muted);margin-top:0.4rem;font-size:0.72rem;">Links by exact intake ID and promotes its photos to this client's baseline. Nothing is matched by name.</div>
+  </div>`;
+}
+
+async function _cd3LinkIntake(storageKey) {
+  const sel = document.getElementById('baseline-pick-' + storageKey);
+  const intakeId = sel && sel.value;
+  if (!intakeId) return;
+  const chosen = (window._cd3Intakes || []).find(i => i.intakeId === intakeId);
+  const label = chosen ? _cd3IntakeOptionLabel(chosen) : intakeId;
+  if (!confirm('Set this intake as the baseline for ' + storageKey + '?\n\n' + label +
+               '\n\nThis links the intake to the client and promotes its photos. It can be re-run safely.')) return;
+  try {
+    const r = await coachFetch('intakeLink', { intakeId: intakeId, storageKey: storageKey });
+    const promoted = (r && r.promoted) || {};
+    const done = Object.keys(promoted).filter(k => promoted[k] === 'promoted' || promoted[k] === 'already_promoted');
+    alert('Baseline linked. Views: ' + (done.length ? done.join(', ') : 'none') + '.');
+    loadBaselineLinkControl(storageKey);
+    loadClientPhotos(storageKey);
+  } catch (err) {
+    alert('Link failed: ' + err.message);
+  }
+}
+
 // ── Photo comparison ───────────────────────────────────────────────────────
 // Compares two photo check-ins (matching views only — front↔front, side↔side,
 // back↔back). All data — week, date, matched weight — comes from the single
@@ -9978,6 +10087,8 @@ async function loadClientPhotos(storageKey) {
 let _cd3PhotoCompareSel = {}; // storageKey -> { left: cardIdx, right: cardIdx }
 
 function _cd3PhotoCardLabel(card) {
+  // An intake photo is a BASELINE, not "Week 0" — it predates week 1.
+  if (card && card.source === 'intake') return 'Baseline \u00b7 Intake';
   if (card.week != null && card.week !== '') return 'Week ' + card.week;
   return card.ts ? new Date(card.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Check-in';
 }
@@ -9985,6 +10096,11 @@ function _cd3PhotoCardDateStr(card) {
   return card.ts ? new Date(card.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
 }
 function _cd3PhotoCardWeight(card, sum) {
+  // Baseline weight comes ONLY from the linked intake row. It is never
+  // matched against a weekly check-in and never fabricated.
+  if (card && card.source === 'intake') {
+    return Number.isFinite(card.baselineWeight) ? card.baselineWeight : null;
+  }
   if (card.week == null || card.week === '') return null;
   const ci = ((sum && sum.recentCheckIns) || []).find(x => String(x.week) === String(card.week));
   return (ci && Number.isFinite(ci.weightKg)) ? ci.weightKg : null;
@@ -10017,9 +10133,20 @@ function _cd3PhotoCompareColumn(card, sum) {
   `;
 }
 function renderPhotoCompareBody(storageKey, cards) {
-  if (!cards.length) return '<div class="log-empty">No progress photos yet.</div>';
+  const meta = (window._cd3PhotoMeta && window._cd3PhotoMeta[storageKey]) || {};
+  const conflict = meta.multipleBaselines
+    ? `<div style="border:1px solid #f59e0b;background:rgba(245,158,11,0.08);color:#f59e0b;border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:0.8rem;font-size:0.8rem;line-height:1.45;">
+         <strong>MULTIPLE BASELINES \u2014 COACH REVIEW.</strong>
+         ${meta.baselineIntakeIds.length} linked intakes carry baseline photos for this client.
+         Nothing has been chosen automatically. Unlink the intake that does not belong to this client before relying on Baseline \u2194 Latest.
+       </div>`
+    : '';
+  if (!cards.length) return conflict + '<div class="log-empty">No progress photos yet.</div>';
   if (cards.length === 1) {
-    return `<div class="log-empty">Add another check-in with photos to compare progress.</div>`;
+    const only = cards[0].source === 'intake'
+      ? 'Baseline is in. Add a check-in with photos to compare against it.'
+      : 'Add another check-in with photos to compare progress.';
+    return conflict + `<div class="log-empty">${only}</div>`;
   }
 
   const sel = _cd3PhotoCompareSel[storageKey] || (_cd3PhotoCompareSel[storageKey] = { left: 0, right: cards.length - 1 });
@@ -10043,7 +10170,7 @@ function renderPhotoCompareBody(storageKey, cards) {
     deltaHtml = `<div class="cd3-photo-delta">${leftW} kg → ${rightW} kg &nbsp; <strong>(${sign}${Math.abs(diff)} kg)</strong></div>`;
   }
 
-  return `
+  return conflict + `
     <div class="cd3-photo-compare-selectors">
       <select class="cd3-photo-select" onchange="_cd3PhotoCompareChange('${_esc(storageKey)}','left',this.value)">${buildOptions(sel.left)}</select>
       <span class="cd3-photo-vs">vs</span>

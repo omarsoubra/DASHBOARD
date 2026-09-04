@@ -74,6 +74,75 @@ function logEfError(op: string, clientKey: string | null, code: string, detail: 
   }));
 }
 
+// ── INTAKE BASELINE PHOTOS — shared constants + helpers ────────────────────
+// The client-photos bucket is PRIVATE. Nothing in this file may call
+// getPublicUrl(); every browser-visible URL is a short-lived signed URL
+// minted by photosGet() behind the existing auth gate.
+const PHOTO_BUCKET          = 'client-photos';
+const SIGNED_URL_TTL_SEC    = 15 * 60;          // 15 minutes — see report
+const PHOTO_VIEWS           = ['front', 'side', 'back'] as const;
+const MAX_IMAGE_BYTES       = 3 * 1024 * 1024;  // per image, decoded
+const MAX_TOTAL_IMAGE_BYTES = 9 * 1024 * 1024;  // per submission, decoded
+const MAX_IMAGES            = 3;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type Sniff = { ok: true; ext: string; mime: string } | { ok: false; reason: string };
+
+// Magic-byte sniff on the DECODED bytes. The data: prefix and any
+// caller-supplied mimeType are advisory only and are never trusted.
+function sniffImage(b: Uint8Array): Sniff {
+  if (b.length < 12) return { ok: false, reason: 'too_small' };
+  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) {
+    // JPEG must also terminate with EOI, else it is truncated.
+    if (!(b[b.length - 2] === 0xFF && b[b.length - 1] === 0xD9)) {
+      return { ok: false, reason: 'truncated_jpeg' };
+    }
+    return { ok: true, ext: 'jpg', mime: 'image/jpeg' };
+  }
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47 &&
+      b[4] === 0x0D && b[5] === 0x0A && b[6] === 0x1A && b[7] === 0x0A) {
+    return { ok: true, ext: 'png', mime: 'image/png' };
+  }
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) {
+    return { ok: true, ext: 'webp', mime: 'image/webp' };
+  }
+  return { ok: false, reason: 'unsupported_image_type' };
+}
+
+type Decoded = { ok: true; bytes: Uint8Array; ext: string; mime: string }
+             | { ok: false; reason: string };
+
+// Accepts only a well-formed data:image/...;base64,... URL and returns
+// validated bytes. Rejects malformed base64, zero-byte payloads, oversized
+// payloads (before allocation) and anything that is not a real image.
+function decodeImageDataUrl(raw: unknown): Decoded {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  if (!s) return { ok: false, reason: 'empty' };
+  const m = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/=\s]+)$/i.exec(s);
+  if (!m) return { ok: false, reason: 'not_an_image_data_url' };
+  const b64 = m[1].replace(/\s+/g, '');
+  if (!b64) return { ok: false, reason: 'empty' };
+  // Cheap size gate before we allocate anything.
+  if (b64.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 8) {
+    return { ok: false, reason: 'too_large' };
+  }
+  if (b64.length % 4 !== 0) return { ok: false, reason: 'bad_base64' };
+  let bin: string;
+  try { bin = atob(b64); } catch { return { ok: false, reason: 'bad_base64' }; }
+  if (bin.length === 0)              return { ok: false, reason: 'zero_bytes' };
+  if (bin.length > MAX_IMAGE_BYTES)  return { ok: false, reason: 'too_large' };
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  const sn = sniffImage(bytes);
+  if (!sn.ok) return { ok: false, reason: sn.reason };
+  return { ok: true, bytes, ext: sn.ext, mime: sn.mime };
+}
+
+async function sha256Bytes(b: Uint8Array): Promise<string> {
+  const dig = await crypto.subtle.digest('SHA-256', b);
+  return Array.from(new Uint8Array(dig)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
 // ── router entry ───────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -154,7 +223,11 @@ Deno.serve(async (req) => {
       case 'meal':               return clientWrite('meal', body);
       case 'workout':            return clientWrite('workout', body);
       case 'photoUpload':        return clientWrite('photoUpload', body);
-      case 'intake':             return intake(body);
+      case 'intake':             return intakeSubmit(body);   // legacy alias — same safe handler
+      case 'intakeSubmit':       return intakeSubmit(body);
+      case 'intakeList':         return intakeList(body);
+      case 'intakeLink':         return intakeLink(body);
+      case 'intakePromote':      return intakePromote(body);
       case 'legacyQueueGet':     return legacyQueueGet(body);
       case 'legacyQueuePromote': return legacyQueuePromote(body);
       case 'legacyQueueReject':  return legacyQueueReject(body);
@@ -370,13 +443,82 @@ async function weightLog(body: any) {
   return json((data ?? []).map(r => ({ timestamp: r.logged_at, weightKg: r.weight_kg, notes: r.notes })));
 }
 
+// photosGet — the authenticated read gate for a PRIVATE bucket.
+// Auth is unchanged (coach token, or the matching client's own token).
+// What changed: the bucket is private, so a stored storage_url is no longer
+// browser-usable. Every row with a storage_path gets a fresh short-lived
+// signed URL. storage_url survives only as backward-compatible metadata for
+// pre-migration rows that have no storage_path (legacy Google Drive links).
+// Signed URLs are returned to the caller and never written back to the table.
 async function photosGet(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
   const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
-  const { data } = await admin.from('photo_uploads').select('storage_url, view, week, uploaded_at').eq('client_key', key).order('uploaded_at', { ascending: true });
-  return ok({ photos: (data ?? []).map(p => ({ url: p.storage_url, view: p.view, week: p.week, ts: p.uploaded_at })) });
+  if (!key) return err('bad_storageKey');
+
+  const { data, error: selErr } = await admin.from('photo_uploads')
+    .select('id, storage_url, storage_path, view, week, uploaded_at, source, intake_id, bytes_size, mime_type')
+    .eq('client_key', key)
+    .order('uploaded_at', { ascending: true });
+  if (selErr) {
+    logEfError('photosGet', key, 'photo_select_failed', selErr.message);
+    return err('photo_select_failed', { detail: selErr.message });
+  }
+  const rows = data ?? [];
+
+  // Baseline weight comes ONLY from the linked intake row, never from a
+  // weekly check-in. Fetch just the intakes actually referenced here.
+  const intakeIds = [...new Set(rows.filter(r => r.source === 'intake' && r.intake_id).map(r => r.intake_id))];
+  const intakeById: Record<string, any> = {};
+  if (intakeIds.length) {
+    const { data: ints } = await admin.from('intakes')
+      .select('id, weight_kg, submitted_at, linked_client_id').in('id', intakeIds);
+    for (const i of (ints ?? [])) intakeById[i.id] = i;
+  }
+
+  // One batched signing call for every private object on this client.
+  const paths = [...new Set(rows.map(r => r.storage_path).filter(Boolean))] as string[];
+  const signedByPath: Record<string, string> = {};
+  if (paths.length) {
+    const { data: signed, error: sErr } = await admin.storage
+      .from(PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SEC);
+    if (sErr) logEfError('photosGet', key, 'sign_failed', sErr.message);
+    for (const s of (signed ?? [])) {
+      if (s && (s as any).signedUrl && !(s as any).error) signedByPath[(s as any).path] = (s as any).signedUrl;
+    }
+  }
+
+  const photos = rows.map(r => {
+    const source = r.source ?? 'checkin';
+    const isIntake = source === 'intake';
+    const signed = r.storage_path ? (signedByPath[r.storage_path] ?? null) : null;
+    // Legacy fallback: rows written before this migration have no
+    // storage_path. Their stored URL is a Google Drive link, still valid.
+    const url = signed ?? (r.storage_path ? null : (r.storage_url ?? null));
+    return {
+      url,
+      urlKind:  signed ? 'signed' : (url ? 'legacy' : 'unavailable'),
+      view:     r.view,
+      week:     isIntake ? null : r.week,
+      ts:       r.uploaded_at,
+      source,
+      intakeId: r.intake_id ?? null,
+      label:    isIntake ? 'Baseline'
+                         : (r.week != null && r.week !== '' ? 'Week ' + r.week : null),
+      baselineWeight: isIntake ? (intakeById[r.intake_id]?.weight_kg ?? null) : null,
+    };
+  });
+
+  // Never pick between competing baselines here — surface the conflict and
+  // let the coach resolve it.
+  const baselineIntakeIds = [...new Set(rows.filter(r => r.source === 'intake' && r.intake_id).map(r => r.intake_id))];
+  return ok({
+    photos,
+    signedUrlTtlSec:    SIGNED_URL_TTL_SEC,
+    baselineIntakeIds,
+    multipleBaselines:  baselineIntakeIds.length > 1,
+  });
 }
 
 // G1: Override GET — fixed to use correct client_overrides schema
@@ -609,25 +751,56 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
     return ok({ tab: 'workout_log_entries', id: data?.id });
   }
   if (kind === 'photoUpload') {
-    // Upload to storage first, then record the URL.
-    const base64 = String(body.base64 ?? '');
-    const blob = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const view = String(body.view ?? 'other');
+    // Weekly check-in photo. `key` is derived from the verified client token,
+    // never from the body. Hardened: view is allow-listed, week is coerced to
+    // an integer, and the image is validated by magic bytes and size before
+    // anything is written — previously both view and week were interpolated
+    // into the storage path straight from caller input.
+    const view = String(body.view ?? '').toLowerCase();
+    if (!(PHOTO_VIEWS as readonly string[]).includes(view)) {
+      logEfError('photoUpload', key, 'bad_view', view.slice(0, 40));
+      return err('bad_view', { allowed: PHOTO_VIEWS });
+    }
+    const weekNum = Number(body.week);
+    const week = Number.isFinite(weekNum) ? Math.trunc(weekNum) : null;
+    if (week !== null && (week < 0 || week > 520)) return err('bad_week');
+
+    // Client shells send bare base64; accept a full data: URL too.
+    const rawB64 = String(body.base64 ?? '');
+    const dataUrl = rawB64.startsWith('data:')
+      ? rawB64
+      : `data:${String(body.mimeType ?? 'image/jpeg')};base64,${rawB64}`;
+    const dec = decodeImageDataUrl(dataUrl);
+    if (!dec.ok) {
+      logEfError('photoUpload', key, 'image_rejected', dec.reason);
+      return err('image_rejected', { reason: dec.reason });
+    }
+
     const ts   = (body.timestamp ?? new Date().toISOString()).replace(/[:.]/g, '-');
-    const path = `${key}/wk${body.week ?? 0}/${view}-${ts}.jpg`;
-    const { error: upErr } = await admin.storage.from('client-photos').upload(path, blob, { contentType: body.mimeType ?? 'image/jpeg', upsert: true });
+    const path = `${key}/wk${week ?? 0}/${view}-${ts}.${dec.ext}`;
+    const { error: upErr } = await admin.storage.from(PHOTO_BUCKET)
+      .upload(path, dec.bytes, { contentType: dec.mime, upsert: true });
     if (upErr) {
       logEfError('photoUpload', key, 'storage_upload_failed', upErr.message);
       return err('storage_upload_failed', { detail: upErr.message });
     }
-    const { data: pub } = admin.storage.from('client-photos').getPublicUrl(path);
-    const { data } = await admin.from('photo_uploads').insert({
-      client_id: clientId, client_key: key, week: body.week, view,
-      mime_type: body.mimeType ?? 'image/jpeg', bytes_size: blob.byteLength,
-      storage_url: pub.publicUrl, storage_path: path,
+    // NOTE: no getPublicUrl(). The bucket is private; photosGet signs on read.
+    // original_base64_sha256 stores the SHA-256 of the DECODED image bytes
+    // (not of the base64 text) so it is encoding-independent and usable for
+    // duplicate detection. No prior code wrote this column.
+    const { data, error: insErr } = await admin.from('photo_uploads').insert({
+      client_id: clientId, client_key: key, week, view,
+      source: 'checkin', intake_id: null,
+      mime_type: dec.mime, bytes_size: dec.bytes.byteLength,
+      original_base64_sha256: await sha256Bytes(dec.bytes),
+      storage_url: null, storage_path: path,
       uploaded_at: body.timestamp ?? new Date().toISOString(),
     }).select('id').single();
-    return ok({ tab: 'photo_uploads', id: data?.id, url: pub.publicUrl });
+    if (insErr) {
+      logEfError('photoUpload', key, 'photo_insert_failed', insErr.message);
+      return err('write_failed', { table: 'photo_uploads', detail: insErr.message });
+    }
+    return ok({ tab: 'photo_uploads', id: data?.id, path });
   }
   return err('unknown_write_kind');
 }
@@ -652,11 +825,433 @@ async function isKnownActiveRosterKey(key: string): Promise<boolean> {
   return roster.some((c) => String(c.storageKey).toLowerCase() === key && String(c.accessStatus ?? '').toLowerCase() === 'active');
 }
 
-async function intake(body: any) {
-  const { data } = await admin.from('intakes').insert({
-    ...body, submitted_at: new Date().toISOString(),
-  }).select('id, storage_key').single();
-  return ok({ tab: 'intakes', storageKey: data?.storage_key ?? '' });
+// ============================================================================
+// PUBLIC INTAKE — safe ingestion
+//
+// Replaces the previous handler, which spread `...body` straight into the
+// insert (mass assignment), never checked the DB error, and returned ok:true
+// after a failed write. Nothing about a caller's payload can now reach a
+// canonical field: id, submitted_at, status, linked_client_id and every
+// storage path are server-controlled.
+// ============================================================================
+
+// Form field -> DB column. This allow-list IS the security boundary: a key
+// that is not in it cannot reach the database, whatever the caller sends.
+const INTAKE_FIELD_MAP: Record<string, string> = {
+  fullName:           'full_name',
+  age:                'age',
+  sex:                'sex',
+  heightCm:           'height_cm',
+  weightKg:           'weight_kg',
+  location:           'location',
+  phone:              'phone',
+  email:              'email',
+  goal:               'goal',
+  successVision:      'success_vision',
+  whyNow:             'why_now',
+  trainingHistory:    'training_history',
+  currentRoutine:     'current_routine',
+  stoppedConsistency: 'stopped_consistency',
+  daysPerWeek:        'days_per_week',
+  trainingLocation:   'training_location',
+  trainingTime:       'training_time',
+  jobActivity:        'job_activity',
+  mealsPerDay:        'meals_per_day',
+  foodRestrictions:   'food_restrictions',
+  tracksMacros:       'tracks_macros',
+  enjoyEating:        'enjoy_eating',
+  mealVariety:        'meal_variety',
+  injuries:           'injuries',
+  sleepHours:         'sleep_hours',
+  stressLevel:        'stress_level',
+};
+// Server-side mirror of the form's own min/max. Never trust the browser.
+const INTAKE_NUMERIC: Record<string, [number, number]> = {
+  age:           [12, 99],
+  height_cm:     [120, 230],
+  weight_kg:     [30, 250],
+  days_per_week: [1, 7],
+  meals_per_day: [1, 8],
+  sleep_hours:   [3, 12],
+};
+// Confirmed live column types: age integer, days_per_week smallint,
+// meals_per_day smallint. Reject fractional input rather than letting
+// Postgres round or error at insert time.
+const INTAKE_INTEGER = new Set(['age', 'days_per_week', 'meals_per_day']);
+const INTAKE_ENUM: Record<string, string[]> = {
+  sex:               ['male', 'female'],
+  training_location: ['gym', 'home', 'hybrid'],
+  job_activity:      ['sedentary', 'moderate', 'active', 'very_active'],
+  tracks_macros:     ['yes_actively', 'have_app', 'no'],
+  meal_variety:      ['variety', 'rotating', 'repetitive'],
+  stress_level:      ['low', 'moderate', 'high'],
+};
+const INTAKE_TEXT_MAX = 4000;
+
+function intakePhotoPath(intakeId: string, view: string, ext: string): string {
+  // Deterministic and entirely server-derived: the DB-generated intake UUID
+  // plus an allow-listed view. No caller input reaches this string.
+  return `intakes/${intakeId}/${view}.${ext}`;
+}
+
+async function intakeSubmit(body: any) {
+  // ── 1. Idempotency / resume key. A browser-generated UUID identifies one
+  //      submission ATTEMPT and is replayed on every retry. Idempotency token
+  //      only: no identity, no access, no influence on client linkage.
+  const rawKey = typeof body?.submissionKey === 'string' ? body.submissionKey.trim().toLowerCase() : '';
+  const submissionKey = UUID_RE.test(rawKey) ? rawKey : null;
+
+  // ── 2. Whitelist + validate scalars. Runs on every attempt, including
+  //      retries, so a mutated retry payload cannot smuggle anything in.
+  const row: Record<string, unknown> = {};
+  const fieldErrors: Record<string, string> = {};
+  for (const [formKey, col] of Object.entries(INTAKE_FIELD_MAP)) {
+    const raw = body?.[formKey];
+    if (raw === undefined || raw === null || raw === '') continue;
+    if (INTAKE_NUMERIC[col]) {
+      const n = Number(raw);
+      const [lo, hi] = INTAKE_NUMERIC[col];
+      if (!Number.isFinite(n) || n < lo || n > hi) { fieldErrors[formKey] = `out_of_range_${lo}_${hi}`; continue; }
+      if (INTAKE_INTEGER.has(col) && !Number.isInteger(n)) { fieldErrors[formKey] = 'must_be_whole_number'; continue; }
+      row[col] = n;
+      continue;
+    }
+    const s = String(raw);
+    if (INTAKE_ENUM[col]) {
+      if (!INTAKE_ENUM[col].includes(s)) { fieldErrors[formKey] = 'not_an_allowed_value'; continue; }
+      row[col] = s;
+      continue;
+    }
+    if (s.length > INTAKE_TEXT_MAX) { fieldErrors[formKey] = 'too_long'; continue; }
+    row[col] = s;
+  }
+  if (!row.full_name) fieldErrors.fullName = 'required';
+  if (Object.keys(fieldErrors).length) return err('validation_failed', { fields: fieldErrors });
+
+  // ── 3. Validate every image supplied in THIS request, before any mutation.
+  const supplied: Record<string, { bytes: Uint8Array; ext: string; mime: string }> = {};
+  const photoErrors: Record<string, string> = {};
+  let totalBytes = 0;
+  for (const view of PHOTO_VIEWS) {
+    const raw = body?.['photo' + view.charAt(0).toUpperCase() + view.slice(1)];
+    if (raw === undefined || raw === null || raw === '') continue;   // not selected — legitimate
+    const dec = decodeImageDataUrl(raw);
+    if (!dec.ok) { photoErrors[view] = dec.reason; continue; }
+    totalBytes += dec.bytes.byteLength;
+    supplied[view] = { bytes: dec.bytes, ext: dec.ext, mime: dec.mime };
+  }
+  if (Object.keys(photoErrors).length)     return err('image_rejected', { photos: photoErrors });
+  const suppliedViews = Object.keys(supplied);
+  if (suppliedViews.length > MAX_IMAGES)   return err('too_many_images', { max: MAX_IMAGES });
+  if (totalBytes > MAX_TOTAL_IMAGE_BYTES)  return err('payload_too_large', { max: MAX_TOTAL_IMAGE_BYTES });
+
+  // ── 4. Resume or create. A submission_key NEVER produces a second intake.
+  let existing: any = null;
+  if (submissionKey) {
+    const { data } = await admin.from('intakes')
+      .select('id, ingestion_state, ingestion_expected_views, photo_front_path, photo_side_path, photo_back_path')
+      .eq('submission_key', submissionKey).maybeSingle();
+    existing = data ?? null;
+  }
+
+  // CASE 1 — already fully ingested. Idempotent success, no re-upload, no new row.
+  if (existing && existing.ingestion_state === 'complete') {
+    return ok({
+      intakeId: existing.id, deduped: true, ingestionState: 'complete',
+      photos: photoStatusMap(existing),
+    });
+  }
+
+  // CASE 2 — resume a pending / photo_failed submission on its existing row.
+  let intakeId!: string;
+  let stored!: Record<string, string | null>;
+  let expected!: string[];
+  let joinedRace = false;
+
+  if (!existing) {
+    const firstExpected = PHOTO_VIEWS.filter(v => suppliedViews.includes(v));
+    row.submitted_at             = new Date().toISOString();   // server clock is canonical
+    row.status                   = 'new';                      // business lifecycle — server owned
+    row.submission_key           = submissionKey;
+    row.ingestion_expected_views = firstExpected.length ? firstExpected : null;
+    // A no-photo intake is complete the moment the row lands.
+    row.ingestion_state          = firstExpected.length ? 'pending' : 'complete';
+    const { data: created, error: insErr } = await admin.from('intakes')
+      .insert(row).select('id').single();
+
+    if (insErr || !created?.id) {
+      // ── SAME-KEY RACE ────────────────────────────────────────────────────
+      // Two concurrent requests can both find nothing and both insert; the
+      // loser trips intakes_submission_key_uniq. That is a legitimate
+      // double-submit, NOT a server error. Load the winner's canonical row
+      // and join its submission instead of failing the person.
+      const raced = submissionKey && /submission_key|duplicate key|23505/i.test(
+        (insErr?.message ?? '') + ' ' + ((insErr as any)?.code ?? ''));
+      if (raced) {
+        const { data: winner } = await admin.from('intakes')
+          .select('id, ingestion_state, ingestion_expected_views, photo_front_path, photo_side_path, photo_back_path')
+          .eq('submission_key', submissionKey).maybeSingle();
+        if (winner) {
+          if (winner.ingestion_state === 'complete') {
+            return ok({ intakeId: winner.id, deduped: true, ingestionState: 'complete',
+                        photos: photoStatusMap(winner) });
+          }
+          existing = winner;
+          joinedRace = true;
+        }
+      }
+      if (!existing) {
+        logEfError('intakeSubmit', null, 'intake_insert_failed', insErr?.message ?? 'no row');
+        return err('intake_insert_failed', { detail: insErr?.message ?? 'no row returned' });
+      }
+    } else {
+      intakeId = created.id;
+      stored = { front: null, side: null, back: null };
+      expected = firstExpected;
+      if (!expected.length) {
+        return ok({ intakeId, deduped: false, ingestionState: 'complete',
+                    photos: { front: 'absent', side: 'absent', back: 'absent' } });
+      }
+    }
+  }
+
+  if (existing) {
+    intakeId = existing.id;
+    stored = { front: existing.photo_front_path, side: existing.photo_side_path, back: existing.photo_back_path };
+    // Views the original attempt committed to, plus anything this retry adds.
+    // A retry cannot quietly drop a view the prospect already selected.
+    const prior: string[] = Array.isArray(existing.ingestion_expected_views) ? existing.ingestion_expected_views : [];
+    expected = PHOTO_VIEWS.filter(v => prior.includes(v) || suppliedViews.includes(v) || stored[v]);
+  }
+
+  // ── 5. A view the prospect selected, that is not stored and whose bytes are
+  //      not in this request, cannot be recovered here. The ANSWERS ARE KEPT;
+  //      the caller is told to reselect that photo. Never a fake success.
+  const missing = expected.filter(v => !stored[v] && !supplied[v]);
+  if (missing.length) {
+    await markIngestion(intakeId!, 'photo_failed', expected, {});
+    return err('photo_reselection_required', {
+      intakeId, ingestionState: 'photo_failed', views: missing,
+      detail: 'Answers are saved. Reselect these photos and submit again.',
+    });
+  }
+
+  // ── 6. Upload only what is not already stored.
+  //
+  //      Re-read the row first: a concurrent request with the same key may
+  //      have confirmed a view since step 4. Picking that up here is what
+  //      makes "the other request already stored Front" a SATISFIED view
+  //      rather than a redundant upload.
+  //
+  //      Paths are deterministic by (intake_id, view), so even when two
+  //      requests do race onto the same path, upsert writes identical bytes
+  //      to one object — a collision can never produce a duplicate or a
+  //      spurious "already exists" failure.
+  const { data: fresh } = await admin.from('intakes')
+    .select('photo_front_path, photo_side_path, photo_back_path')
+    .eq('id', intakeId!).maybeSingle();
+  if (fresh) {
+    for (const v of PHOTO_VIEWS) stored[v] = stored[v] ?? fresh['photo_' + v + '_path'];
+  }
+
+  const pathPatch: Record<string, string> = {};
+  for (const view of expected) {
+    if (stored[view]) continue;                       // already confirmed — never re-uploaded
+    const img = supplied[view];
+    const path = intakePhotoPath(intakeId, view, img.ext);
+    const { error: upErr } = await admin.storage.from(PHOTO_BUCKET)
+      .upload(path, img.bytes, { contentType: img.mime, upsert: true });
+    if (upErr) {
+      logEfError('intakeSubmit', intakeId, 'intake_photo_upload_failed', upErr.message);
+      // Persist whatever DID succeed so the retry can skip it, keep the
+      // answers, and report failure honestly. The intake row is NOT deleted.
+      await markIngestion(intakeId!, 'photo_failed', expected, pathPatch);
+      return err('photo_upload_failed', {
+        intakeId, ingestionState: 'photo_failed', view, detail: upErr.message,
+      });
+    }
+    pathPatch['photo_' + view + '_path'] = path;
+  }
+
+  // ── 7. Every selected view is stored. Persist paths and complete, in one
+  //      write, so 'complete' can never be set without its paths.
+  const { error: updErr } = await admin.from('intakes').update({
+    ...pathPatch,
+    ingestion_state: 'complete',
+    ingestion_expected_views: expected.length ? expected : null,
+  }).eq('id', intakeId!);
+  if (updErr) {
+    logEfError('intakeSubmit', intakeId!, 'intake_path_update_failed', updErr.message);
+    await markIngestion(intakeId!, 'photo_failed', expected, pathPatch);
+    return err('photo_link_failed', { intakeId, ingestionState: 'photo_failed', detail: updErr.message });
+  }
+
+  const finalPaths = { ...stored, ...Object.fromEntries(Object.entries(pathPatch).map(([k, v]) => [k.slice(6, -5), v])) };
+  return ok({
+    intakeId, deduped: !!existing || joinedRace, ingestionState: 'complete',
+    photos: {
+      front: finalPaths.front ? 'stored' : 'absent',
+      side:  finalPaths.side  ? 'stored' : 'absent',
+      back:  finalPaths.back  ? 'stored' : 'absent',
+    },
+  });
+}
+
+function photoStatusMap(intakeRow: any) {
+  return {
+    front: intakeRow.photo_front_path ? 'stored' : 'absent',
+    side:  intakeRow.photo_side_path  ? 'stored' : 'absent',
+    back:  intakeRow.photo_back_path  ? 'stored' : 'absent',
+  };
+}
+
+// Records ingestion progress WITHOUT ever discarding the prospect's answers.
+// Successfully stored objects are kept: their paths are deterministic, so a
+// retry reuses them instead of uploading again.
+async function markIngestion(intakeId: string, state: string, expected: string[], pathPatch: Record<string, string>) {
+  // 'complete' is TERMINAL. A slower concurrent request that fails after a
+  // faster one already finished must never drag the submission backwards to
+  // photo_failed — the guard below makes that write a no-op.
+  let q = admin.from('intakes').update({
+    ...pathPatch,
+    ingestion_state: state,
+    ingestion_expected_views: expected.length ? expected : null,
+  }).eq('id', intakeId);
+  if (state !== 'complete') q = q.neq('ingestion_state', 'complete');
+  const { error } = await q;
+  if (error) logEfError('intakeSubmit', intakeId, 'ingestion_mark_failed', error.message);
+}
+
+// ── COACH: list intakes for the link picker ────────────────────────────────
+async function intakeList(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const { data, error } = await admin.from('intakes')
+    .select('id, submitted_at, full_name, phone, email, weight_kg, status, ingestion_state, linked_client_id, photo_front_path, photo_side_path, photo_back_path, photo_front_url, photo_side_url, photo_back_url')
+    .order('submitted_at', { ascending: false });
+  if (error) return err('intake_list_failed', { detail: error.message });
+  // Resolve linked client UUIDs to storage keys server-side so the dashboard
+  // never has to know or handle raw client UUIDs.
+  const linkedIds = [...new Set((data ?? []).map((i: any) => i.linked_client_id).filter(Boolean))];
+  const keyById: Record<string, string> = {};
+  if (linkedIds.length) {
+    const { data: cs } = await admin.from('clients').select('id, storage_key').in('id', linkedIds);
+    for (const c of (cs ?? [])) keyById[c.id] = c.storage_key;
+  }
+  const rows = (data ?? []).map((i: any) => ({
+    intakeId:    i.id,
+    submittedAt: i.submitted_at,
+    fullName:    i.full_name,
+    phone:       i.phone,
+    email:       i.email,
+    weightKg:    i.weight_kg,
+    status:         i.status,
+    ingestionState: i.ingestion_state ?? 'complete',
+    linkedClientId:   i.linked_client_id ?? null,
+    linkedStorageKey: i.linked_client_id ? (keyById[i.linked_client_id] ?? null) : null,
+    photoViews:  PHOTO_VIEWS.filter(v => i['photo_' + v + '_path']),
+    legacyPhotoViews: PHOTO_VIEWS.filter(v => !i['photo_' + v + '_path'] && i['photo_' + v + '_url']),
+  }));
+  return ok({ intakes: rows });
+}
+
+// ── COACH: link an intake to a client, then promote its baseline photos ────
+// Linkage is by exact intake UUID chosen by the coach. Name slugs are never
+// consulted and nothing is ever matched automatically.
+async function intakeLink(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const intakeId = String(body?.intakeId ?? '').trim().toLowerCase();
+  if (!UUID_RE.test(intakeId)) return err('bad_intake_id');
+  const storageKey = String(body?.storageKey ?? '').toLowerCase();
+  if (!storageKey) return err('bad_storageKey');
+
+  const { data: client } = await admin.from('clients')
+    .select('id, storage_key').eq('storage_key', storageKey).single();
+  if (!client) return err('unknown_client', { storageKey });
+
+  const { data: intake } = await admin.from('intakes')
+    .select('id, submitted_at, linked_client_id, photo_front_path, photo_side_path, photo_back_path')
+    .eq('id', intakeId).single();
+  if (!intake) return err('unknown_intake');
+
+  // Never silently re-point an intake that is already attached elsewhere.
+  if (intake.linked_client_id && intake.linked_client_id !== client.id) {
+    return err('intake_already_linked', { linkedClientId: intake.linked_client_id });
+  }
+  if (!intake.linked_client_id) {
+    const { error: linkErr } = await admin.from('intakes')
+      .update({ linked_client_id: client.id, status: 'linked' }).eq('id', intakeId);
+    if (linkErr) {
+      logEfError('intakeLink', storageKey, 'intake_link_failed', linkErr.message);
+      return err('intake_link_failed', { detail: linkErr.message });
+    }
+  }
+  const promoted = await promoteIntakeBaseline(intake, client);
+  return ok({ intakeId, clientId: client.id, storageKey, promoted });
+}
+
+// ── COACH: re-run promotion for an already linked intake ───────────────────
+async function intakePromote(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const intakeId = String(body?.intakeId ?? '').trim().toLowerCase();
+  if (!UUID_RE.test(intakeId)) return err('bad_intake_id');
+  const { data: intake } = await admin.from('intakes')
+    .select('id, submitted_at, linked_client_id, photo_front_path, photo_side_path, photo_back_path')
+    .eq('id', intakeId).single();
+  if (!intake) return err('unknown_intake');
+  if (!intake.linked_client_id) return err('intake_not_linked');
+  const { data: client } = await admin.from('clients')
+    .select('id, storage_key').eq('id', intake.linked_client_id).single();
+  if (!client) return err('unknown_client');
+  const promoted = await promoteIntakeBaseline(intake, client);
+  return ok({ intakeId, clientId: client.id, storageKey: client.storage_key, promoted });
+}
+
+// Idempotent baseline promotion. Guarded twice: a pre-check, plus the partial
+// unique index photo_uploads_intake_view_uniq which makes a concurrent double
+// promotion impossible. One Storage object, one canonical path — the intake's
+// object IS the baseline object; nothing is copied.
+async function promoteIntakeBaseline(intake: any, client: any): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const view of PHOTO_VIEWS) {
+    const path = intake['photo_' + view + '_path'];
+    if (!path) { out[view] = 'no_photo'; continue; }
+
+    const { data: existing } = await admin.from('photo_uploads')
+      .select('id').eq('intake_id', intake.id).eq('view', view).eq('source', 'intake').maybeSingle();
+    if (existing) { out[view] = 'already_promoted'; continue; }
+
+    // bytes_size is best-effort metadata; its absence must never block a promotion.
+    let bytes: number | null = null;
+    try {
+      const dir = path.slice(0, path.lastIndexOf('/'));
+      const name = path.slice(path.lastIndexOf('/') + 1);
+      const { data: listed } = await admin.storage.from(PHOTO_BUCKET).list(dir, { search: name });
+      bytes = (listed ?? []).find((f: any) => f.name === name)?.metadata?.size ?? null;
+    } catch { /* metadata only */ }
+
+    const { error: insErr } = await admin.from('photo_uploads').insert({
+      client_id:   client.id,
+      client_key:  client.storage_key,
+      week:        null,               // a baseline is not a week
+      view,
+      source:      'intake',
+      intake_id:   intake.id,
+      mime_type:   'image/jpeg',
+      bytes_size:  bytes,
+      storage_url: null,               // private bucket — photosGet signs on read
+      storage_path: path,
+      uploaded_at: intake.submitted_at,
+    });
+    if (insErr) {
+      // The unique index firing means another run already promoted this view.
+      if (/photo_uploads_intake_view_uniq/i.test(insErr.message || '')) { out[view] = 'already_promoted'; continue; }
+      logEfError('promoteIntakeBaseline', client.storage_key, 'promote_insert_failed', insErr.message);
+      out[view] = 'failed';
+      continue;
+    }
+    out[view] = 'promoted';
+  }
+  return out;
 }
 
 async function legacyQueueGet(body: any) {
