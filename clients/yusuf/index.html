@@ -4251,12 +4251,15 @@ async function saveCheckin(){
   const photoTokens = [];
   const statusEl = document.getElementById('photo-upload-status');
   const picked = ['front','side','back'].filter(v => _photoBase64[v]);
+  const photoFailures = [];
   if (picked.length && SHEETS_WEBHOOK_URL) {
     if (statusEl) { statusEl.style.display='block'; statusEl.textContent='📸 Uploading '+picked.length+' photo(s)...'; }
     for (const view of picked) {
       try {
-        await fetch(SHEETS_WEBHOOK_URL, {
-          method: 'POST', mode: 'no-cors',
+        // Real CORS request - the response is READ. mode:'no-cors' made every
+        // failure look like a success; a rejected upload cannot do that now.
+        const resp = await fetch(SHEETS_WEBHOOK_URL, {
+          method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             type: 'photoUpload',
@@ -4270,12 +4273,29 @@ async function saveCheckin(){
             timestamp: new Date().toISOString(),
           })
         });
+        let data = null;
+        try { data = await resp.json(); } catch (parseErr) { data = null; }
+        if (!resp.ok || !data || data.ok !== true) {
+          console.warn('Photo upload rejected ('+view+'):', resp.status, data);
+          photoFailures.push(view);
+          continue;
+        }
+        // Only now is the photo known to be stored, so only now does the
+        // check-in note claim it.
         photoTokens.push('[PHOTO_' + view.toUpperCase() + ':wk' + week + ']');
       } catch (err) {
         console.warn('Photo upload failed ('+view+'):', err);
+        photoFailures.push(view);
       }
     }
-    if (statusEl) { statusEl.textContent='✅ Photos uploaded (dashboard will show them next sync).'; setTimeout(()=>{ statusEl.style.display='none'; }, 6000); }
+    if (statusEl) {
+      if (photoFailures.length) {
+        statusEl.textContent = '⚠ ' + photoFailures.join(', ') + ' photo(s) did not upload. Your check-in still saved - try again or send them to Omar.';
+      } else {
+        statusEl.textContent = '✅ ' + photoTokens.length + ' photo(s) saved (dashboard will show them next sync).';
+        setTimeout(()=>{ statusEl.style.display='none'; }, 6000);
+      }
+    }
   }
   if (photoTokens.length) notes = (notes === '—' ? '' : notes + ' ') + photoTokens.join(' ');
   // Record last check-in timestamp so Sunday reminder banner can suppress itself
