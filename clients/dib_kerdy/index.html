@@ -1557,6 +1557,14 @@
       gap: 0.75rem !important;
     }
     .macro-summary-grid .info-card { padding: 0.9rem !important; }
+    /* The nutrition week strip is a full-bleed scroller: margin 0 -20px against
+       a section that only has 16px of padding on a phone, so it hung 4px past
+       each edge and kept the page itself scrolling sideways. Drop the bleed
+       below 480px - the strip still scrolls internally. */
+    .tweek-scroll {
+      margin-left: 0 !important; margin-right: 0 !important;
+      padding-left: 0 !important; padding-right: 0 !important;
+    }
   }
 
   @media (max-width: 500px) {
