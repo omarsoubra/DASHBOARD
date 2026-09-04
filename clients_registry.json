@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-04T04:51:46Z",
+  "generatedAt": "2026-09-04T08:22:22Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 35,
+  "clientCount": 37,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -85,6 +85,10 @@
       "programUrl": "clients/mayank/"
     },
     {
+      "storageKey": "michael_mahmoud",
+      "programUrl": "clients/michael_mahmoud/"
+    },
+    {
       "storageKey": "mohamad_mehajer",
       "programUrl": "clients/mohamad_mehajer/"
     },
@@ -139,6 +143,10 @@
     {
       "storageKey": "tufail_shinwar",
       "programUrl": "clients/tufail_shinwar/"
+    },
+    {
+      "storageKey": "yousef_hamze",
+      "programUrl": "clients/yousef_hamze/"
     },
     {
       "storageKey": "yusuf",
