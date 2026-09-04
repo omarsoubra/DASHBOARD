@@ -2948,6 +2948,7 @@ async function pullOverrides() {
     const url = CLIENT_CONFIG.sheetsWebhookUrl
               + (CLIENT_CONFIG.sheetsWebhookUrl.includes('?') ? '&' : '?')
               + 'client=' + encodeURIComponent(CLIENT_CONFIG.client.storageKey)
+              + '&token=' + encodeURIComponent(CLIENT_TOKEN)
               + '&_=' + Date.now();
     const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -3348,6 +3349,8 @@ function postMealLog(entry) {
     body: JSON.stringify({
       type: 'meal',
       client: CLIENT_CONFIG.client.storageKey,
+      storageKey: CLIENT_CONFIG.client.storageKey,
+      token: CLIENT_TOKEN,
       week:   entry.week,
       dayIdx: entry.dayIdx,
       mealIdx:entry.mealIdx,
@@ -3772,6 +3775,8 @@ function postWorkoutLog(entry) {
     body: JSON.stringify({
       type: 'workout',
       client: CLIENT_CONFIG.client.storageKey,
+      storageKey: CLIENT_CONFIG.client.storageKey,
+      token: CLIENT_TOKEN,
       phase: entry.phase,
       dayIdx: entry.dayIdx,
       exerciseName: entry.exName,
@@ -4266,6 +4271,8 @@ async function saveCheckin(){
           body: JSON.stringify({
             type: 'photoUpload',
             client: CLIENT_CONFIG.client.storageKey,
+            storageKey: CLIENT_CONFIG.client.storageKey,
+            token: CLIENT_TOKEN,
             week: week,
             view: view,
             base64: _photoBase64[view].split(',')[1] || _photoBase64[view], // strip data URL prefix
@@ -4349,6 +4356,8 @@ async function saveCheckin(){
         body: JSON.stringify({
           type: 'weight',
           client: CLIENT_CONFIG.client.storageKey,
+          storageKey: CLIENT_CONFIG.client.storageKey,
+          token: CLIENT_TOKEN,
           weightKg: weight,
           notes: 'check-in week ' + week,
           timestamp: new Date().toISOString(),
@@ -4361,6 +4370,8 @@ async function saveCheckin(){
         body: JSON.stringify({
           type: 'checkin',
           client: CLIENT_CONFIG.client.storageKey,
+          storageKey: CLIENT_CONFIG.client.storageKey,
+          token: CLIENT_TOKEN,
           week: week,
           weightKg: weight,
           energy1to10: energy,
@@ -5743,7 +5754,9 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
     } catch(e){}
     if (!mealsEmpty && !workoutsEmpty) return; // nothing to do
 
-    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard';
+    const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard'
+              + '&client=' + encodeURIComponent(CLIENT_CONFIG.client.storageKey)
+              + '&token=' + encodeURIComponent(CLIENT_TOKEN);
     fetch(url).then(r => r.json()).then(data => {
       const c = data && data[clientKey];
       if (!c) return;
