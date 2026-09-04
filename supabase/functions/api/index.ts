@@ -210,6 +210,7 @@ Deno.serve(async (req) => {
       case 'rosterGet':          return rosterGet(body);
       case 'rosterPut':          return rosterPut(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
+      case 'clientCreate':       return clientCreate(body);
       case 'issueClientToken':   return issueClientToken(body);
       case 'setAccessStatus':    return setAccessStatus(body);
       case 'setClientProgram':   return setClientProgram(body);
@@ -381,6 +382,97 @@ async function issueClientToken(body: any) {
     reason: body?.reason ?? 'coach_issue', token_hash: hash,
   });
   return ok({ token, storageKey });
+}
+
+// ── NEW CLIENT ONBOARDING ──────────────────────────────────────────────────
+// The only supported way to create a canonical public.clients row. The coach
+// dashboard Add Client form calls this BEFORE it persists a roster snapshot,
+// so the roster can never again claim a client that does not exist in the
+// database. Strictly allow-listed: no field of the request body reaches the
+// database unless it is named below. Idempotent on storage_key.
+const CLIENT_KEY_RE = /^[a-z0-9_]{2,40}$/;
+
+function _numField(v: any, min: number, max: number): number | null | false {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || n > max) return false;   // false = invalid
+  return n;
+}
+
+async function clientCreate(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+
+  const storageKey  = String(body?.storageKey ?? '').trim().toLowerCase();
+  const displayName = String(body?.displayName ?? '').trim();
+  if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey');
+  if (!displayName || displayName.length > 120) return err('bad_displayName');
+
+  const age         = _numField(body?.age,          10,  100);
+  const heightCm    = _numField(body?.heightCm,     100, 250);
+  const startWeight = _numField(body?.startWeight,  25,  400);
+  const goalWeight  = _numField(body?.goalWeight,   25,  400);
+  if (age === false || heightCm === false || startWeight === false || goalWeight === false) {
+    return err('bad_numeric_field');
+  }
+
+  const programType = body?.programType ? String(body.programType).trim().slice(0, 80)  : null;
+  const programUrl  = body?.programUrl  ? String(body.programUrl).trim().slice(0, 300)  : null;
+  const email       = body?.email       ? String(body.email).trim().slice(0, 200)       : null;
+  const phone       = body?.phone       ? String(body.phone).trim().slice(0, 40)        : null;
+  const startDate   = /^\d{4}-\d{2}-\d{2}$/.test(String(body?.startDate ?? ''))
+                        ? String(body.startDate) : null;
+
+  // ── idempotency / duplicate safety ───────────────────────────────────────
+  const { data: existing } = await admin.from('clients')
+    .select('id, storage_key, display_name')
+    .eq('storage_key', storageKey).maybeSingle();
+  if (existing) {
+    const sameIdentity =
+      String(existing.display_name ?? '').trim().toLowerCase() === displayName.toLowerCase();
+    if (!sameIdentity) {
+      return err('storage_key_conflict', {
+        storageKey, existingDisplayName: existing.display_name,
+      });
+    }
+    return ok({ clientId: existing.id, storageKey, already_exists: true });
+  }
+
+  // clients.profile_id is NOT NULL, so the profile comes first. If the client
+  // insert then fails the profile is removed again - no orphan is left behind.
+  const { data: profile, error: pErr } = await admin.from('profiles')
+    .insert({ role: 'client', full_name: displayName, email, phone })
+    .select('id').single();
+  if (pErr || !profile?.id) {
+    logEfError('clientCreate', storageKey, 'profile_insert_failed', pErr?.message ?? 'no_id');
+    return err('profile_insert_failed', { detail: pErr?.message });
+  }
+
+  const { data: created, error: cErr } = await admin.from('clients').insert({
+    profile_id:   profile.id,
+    storage_key:  storageKey,
+    display_name: displayName,
+    age, height_cm: heightCm,
+    start_weight: startWeight,
+    goal_weight:  goalWeight,
+    start_date:   startDate,
+    program_type: programType,
+    program_url:  programUrl,
+  }).select('id').single();
+
+  if (cErr || !created?.id) {
+    await admin.from('profiles').delete().eq('id', profile.id);
+    // A concurrent create trips clients_storage_key_key. That is a duplicate
+    // request, not a server fault - return the winner.
+    if (/duplicate key|23505/i.test((cErr?.message ?? '') + ' ' + ((cErr as any)?.code ?? ''))) {
+      const { data: winner } = await admin.from('clients')
+        .select('id').eq('storage_key', storageKey).maybeSingle();
+      if (winner) return ok({ clientId: winner.id, storageKey, already_exists: true });
+    }
+    logEfError('clientCreate', storageKey, 'client_insert_failed', cErr?.message ?? 'no_id');
+    return err('client_insert_failed', { detail: cErr?.message });
+  }
+
+  return ok({ clientId: created.id, storageKey, already_exists: false });
 }
 
 async function setAccessStatus(body: any) {

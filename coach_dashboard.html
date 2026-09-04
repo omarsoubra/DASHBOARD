@@ -2546,6 +2546,16 @@
           <h3 class="cf-section-h" id="cf-h-goal">Goal<span class="cf-section-hint">Baseline &amp; target — not overwritten on edit</span></h3>
           <div class="cf-grid">
             <div class="cf-field">
+              <label for="cf-age">Age <span class="cf-unit">(years)</span></label>
+              <input id="cf-age" type="number" min="10" max="100" step="1" placeholder="e.g. 20" />
+              <div class="cf-err" id="cf-err-age"></div>
+            </div>
+            <div class="cf-field">
+              <label for="cf-height">Height <span class="cf-unit">(cm)</span></label>
+              <input id="cf-height" type="number" min="100" max="250" step="1" placeholder="e.g. 178" />
+              <div class="cf-err" id="cf-err-height"></div>
+            </div>
+            <div class="cf-field">
               <label for="cf-start-weight">Start weight <span class="cf-unit">(kg)</span></label>
               <input id="cf-start-weight" type="number" min="20" max="300" step="0.1" placeholder="e.g. 95" />
               <div class="cf-err" id="cf-err-startw"></div>
@@ -4240,11 +4250,11 @@ function _flashToast(msg) {
   _flashToast._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
 }
 
-function saveClientForm() {
+async function saveClientForm() {
   const $ = id => document.getElementById(id);
   const setErr = (id, msg) => { const n = $(id); if (n) n.textContent = msg || ''; };
   // Clear errors
-  ['cf-err-name','cf-err-email','cf-err-phone','cf-err-startw','cf-err-goalw','cf-err-kcal','cf-err-macros','cf-form-error'].forEach(id => setErr(id));
+  ['cf-err-name','cf-err-email','cf-err-phone','cf-err-age','cf-err-height','cf-err-startw','cf-err-goalw','cf-err-kcal','cf-err-macros','cf-form-error'].forEach(id => setErr(id));
 
   const isEdit = !!_editingStorageKey;
 
@@ -4257,6 +4267,10 @@ function saveClientForm() {
   if (!_phoneLooksValid(phone)) { setErr('cf-err-phone', 'Phone doesn\'t look valid.'); return; }
   const startW = $('cf-start-weight').value === '' ? null : parseFloat($('cf-start-weight').value);
   if (startW !== null && (!Number.isFinite(startW) || startW <= 0 || startW > 400)) { setErr('cf-err-startw', 'Start weight must be a positive number ≤ 400.'); return; }
+  const age = $('cf-age') && $('cf-age').value !== '' ? parseInt($('cf-age').value, 10) : null;
+  if (age !== null && (!Number.isFinite(age) || age < 10 || age > 100)) { setErr('cf-err-age', 'Age must be between 10 and 100.'); return; }
+  const heightCm = $('cf-height') && $('cf-height').value !== '' ? parseInt($('cf-height').value, 10) : null;
+  if (heightCm !== null && (!Number.isFinite(heightCm) || heightCm < 100 || heightCm > 250)) { setErr('cf-err-height', 'Height must be between 100 and 250 cm.'); return; }
   const goalW = $('cf-goal-weight').value === '' ? null : parseFloat($('cf-goal-weight').value);
   if (goalW !== null && (!Number.isFinite(goalW) || goalW <= 0 || goalW > 400)) { setErr('cf-err-goalw', 'Goal weight must be a positive number ≤ 400.'); return; }
   const kcal = $('cf-kcal').value === '' ? null : parseInt($('cf-kcal').value, 10);
@@ -4320,11 +4334,66 @@ function saveClientForm() {
   // NEW clients default to onboarding + active access. Existing clients keep
   // their lifecycle + access untouched — those change through explicit buttons.
   const c = Object.assign({}, existing, patch);
-  if (!isEdit) {
-    c.programStatus = 'onboarding';
-    c.isPaused = false;
-    c.accessStatus = 'active';
-    _coachEventPush(c, 'client_created', {});
+  // A roster entry saved before 2026-09-04 has no canonical row behind it.
+  // Saving such a client backfills it opportunistically; only a genuinely NEW
+  // client is blocked on the database accepting it.
+  const mustCreate = !isEdit;
+  const backfill   = isEdit && !existing.clientId;
+  if (mustCreate || backfill) {
+    // ── CANONICAL CLIENT FIRST (2026-09-04) ────────────────────────────────
+    // The roster is a MIRROR. Until this change Add Client wrote only the
+    // mirror, so a client the dashboard reported as created had no row in
+    // public.clients and issueClientToken could never mint them an access
+    // link. The mirror is now written only if the database accepted them.
+    const btn = document.getElementById('cf-submit-btn');
+    const label = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+    let created = null;
+    try {
+      created = await coachFetch('clientCreate', {
+        storageKey:  storageKey,
+        displayName: name,
+        age:         age,
+        heightCm:    heightCm,
+        startWeight: startW,
+        goalWeight:  goalW,
+        startDate:   $('cf-start-date').value || null,
+        programType: patch.programType,
+        programUrl:  programUrl,
+        email:       email || null,
+        phone:       phone || null,
+      });
+    } catch (e) {
+      created = { ok: false, error: (e && e.message) ? e.message : 'network_error' };
+    }
+    if (btn) { btn.disabled = false; if (label !== null) btn.textContent = label; }
+    if (!created || created.ok !== true) {
+      if (mustCreate) {
+        const why = (created && (created.error || created.detail)) || 'unknown error';
+        setErr('cf-form-error',
+          'NOT created — the database refused this client (' + why + '). ' +
+          'Nothing has been saved. Fix the details and try again.');
+        return;
+      }
+      // Backfill only. The client already exists in the roster; a refusal here
+      // must never block an ordinary edit, so it is logged and the save
+      // continues without stamping a client id.
+      console.warn('clientCreate backfill skipped for ' + storageKey + ':',
+                   created && (created.error || created.detail));
+    } else {
+      if (created.clientId) c.clientId = created.clientId;
+      if (mustCreate) {
+        _coachEventPush(c, 'client_created', {
+          clientId: created.clientId || null,
+          alreadyExisted: !!created.already_exists,
+        });
+      }
+    }
+    if (mustCreate) {
+      c.programStatus = 'onboarding';
+      c.isPaused = false;
+      c.accessStatus = 'active';
+    }
   }
   addClient(c);
   closeClientForm();
