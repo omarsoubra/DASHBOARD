@@ -2512,6 +2512,12 @@ const phases = {
       { label: "Focus", val: "Chest / Back / Delts / Arms", desc: "4 gym sessions a week, about 45 min each, evenings" },
       { label: "Boxing", val: "Your schedule", desc: "Conditioning and a real recovery cost - never a lifting day" },
     ],
+    progression: [
+      ["Movement", "Week 1", "Week 2", "Week 3", "Week 4"],
+      ["Primaries (chest press, pulldown, row, shoulder press, leg press)", "Find your load: 8-12 clean with 3 left", "Same load, chase reps", "All sets at 12? add the smallest jump", "Hold the new load, rebuild reps"],
+      ["Accessories (flies, curls, extensions, raises, calves, core)", "Find your load: 10-15 with 3 left", "Same load, chase reps", "All sets at the top? smallest jump", "Hold the new load, rebuild reps"],
+      ["The rule", "Write every set down", "Beat last week on reps first", "Then on load", "Never by adding sets"],
+    ],
     days: [
       {
         label: "Day 1 — GYM · Chest + Triceps",
@@ -2573,6 +2579,12 @@ const phases = {
       { label: "Focus", val: "Beat the log", desc: "Same movements, heavier or more reps than last week" },
       { label: "Boxing", val: "Your schedule", desc: "Conditioning and a real recovery cost - never a lifting day" },
     ],
+    progression: [
+      ["Movement", "Week 5", "Week 6", "Week 7", "Week 8"],
+      ["Primaries", "8-10 with 2 left", "Same load, chase reps", "All sets at 10? add the smallest jump", "Hold the new load, rebuild reps"],
+      ["Accessories", "10-12 with 2 left", "Same load, chase reps", "All sets at the top? smallest jump", "Hold the new load, rebuild reps"],
+      ["The rule", "Beat the log or match it", "Reps before load", "Load only when every set is at the top", "Volume stays at 18-20 sets"],
+    ],
     days: [
       {
         label: "Day 1 — GYM · Chest + Triceps",
@@ -2633,6 +2645,12 @@ const phases = {
       { label: "Intensity", val: "RIR 2", desc: "About RPE 8. Heavier primaries, fewer reps, still 2 in the tank." },
       { label: "Focus", val: "Strength retention", desc: "Hold the log. Losing reps two weeks running is a calorie signal." },
       { label: "Boxing", val: "Your schedule", desc: "Conditioning and a real recovery cost - never a lifting day" },
+    ],
+    progression: [
+      ["Movement", "Week 9", "Week 10", "Week 11", "Week 12"],
+      ["Primaries", "6-8 with 2 left", "Hold the load, hold the reps", "Add reps if they are there", "Match week 11 - holding is a win"],
+      ["Accessories", "10-12 with 2 left", "Same load, chase reps", "Smallest jump if all sets top out", "Match week 11"],
+      ["The rule", "Calories are lowest here", "Holding the log is success", "Losing reps 2 weeks running is a calorie signal, not a training one", "Finish the block"],
     ],
     days: [
       {
@@ -6149,7 +6167,7 @@ function updateBottomNav(id) {
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-09-04T04:57:49.244056Z
+  generatedAt: 2026-09-04T05:03:29.677452Z
   clientStorageKey: mohamad_mehajer
   configPath: mohamad_mehajer.json
   safetyBlockers: 0
