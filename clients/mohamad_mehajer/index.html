@@ -2057,7 +2057,7 @@
 
   <div style="background:rgba(79,127,255,0.07);border:1px solid rgba(79,127,255,0.3);border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:2rem;">
     <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);letter-spacing:0.2em;margin-bottom:0.5rem;">THE SCIENCE</div>
-    <div style="font-size:0.85rem;color:var(--muted);line-height:1.7;">TDEE ~2,924 kcal (moderate job + training). Protein set at <strong style="color:var(--text)">1.9753086419753085g/kg (~160g/day)</strong> per Morton et al. (2018) for hypertrophy. Deficit increases progressively as the program progresses to maintain consistent rate of fat loss. Carbs concentrated around training; pre-bed casein/cottage cheese supports overnight muscle protein synthesis.</div>
+    <div style="font-size:0.85rem;color:var(--muted);line-height:1.7;">TDEE ~2,924 kcal (moderate job + training). Protein set at <strong style="color:var(--text)">1.98g/kg (~160g/day)</strong> per Morton et al. (2018) for hypertrophy. Deficit increases progressively as the program progresses to maintain consistent rate of fat loss. Carbs concentrated around training; pre-bed casein/cottage cheese supports overnight muscle protein synthesis.</div>
   </div>
 
   <div style="background:rgba(79,127,255,0.07);border:1px solid rgba(79,127,255,0.3);border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:2rem;">
@@ -4480,7 +4480,7 @@ function renderNutrition(){
     ${editPrompt ? `<div style="margin-bottom:0.5rem;text-align:right;">${editPrompt} ${macroResetBtn}</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Daily Calories ${macroEdited ? '<span class="trainer-edited-badge">EDITED</span>' : ''}</div><div class="info-card-val">${t.cal.toLocaleString()}</div><div class="info-card-desc">~${t.deficit} kcal deficit</div></div>
-      <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">1.9753086419753085g/kg · muscle shield</div></div>
+      <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">1.98g/kg · muscle shield</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Carbs</div><div class="info-card-val" style="color:var(--accent2)">${t.c}g</div><div class="info-card-desc">Around workouts</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Fat</div><div class="info-card-val" style="color:var(--accent3)">${t.f}g</div><div class="info-card-desc">Hormones + satiety</div></div>
     </div>
@@ -6167,7 +6167,7 @@ function updateBottomNav(id) {
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-09-04T05:03:29.677452Z
+  generatedAt: 2026-09-04T05:07:02.141656Z
   clientStorageKey: mohamad_mehajer
   configPath: mohamad_mehajer.json
   safetyBlockers: 0
