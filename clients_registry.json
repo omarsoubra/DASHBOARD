@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-04T08:22:22Z",
+  "generatedAt": "2026-09-06T07:24:11Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 37,
+  "clientCount": 38,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -115,6 +115,10 @@
     {
       "storageKey": "omar_yagmour",
       "programUrl": "clients/omar_yagmour/"
+    },
+    {
+      "storageKey": "omer_al_amoodi",
+      "programUrl": "clients/omer_al_amoodi/"
     },
     {
       "storageKey": "salman_ghanem",
