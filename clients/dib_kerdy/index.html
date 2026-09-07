@@ -4287,7 +4287,53 @@ const EMAILJS_SERVICE_ID  = CLIENT_CONFIG.emailjs.serviceId;
 const EMAILJS_TEMPLATE_ID = CLIENT_CONFIG.emailjs.templateId;
 const EMAILJS_PUBLIC_KEY  = CLIENT_CONFIG.emailjs.publicKey;
 const SHEETS_WEBHOOK_URL  = CLIENT_CONFIG.sheetsWebhookUrl;
-const CLIENT_TOKEN        = '8748c046aa114284a65c25c37fe5c9c084e2fe9d5e844fda8303ea7c139d26cf';
+// ─── AUTH BOOTSTRAP (PENDING_TOKEN_ROTATION) ───────────────────────────────
+// Resolution order: ?t= link  ->  stored token  ->  legacy constant.
+// The legacy constant below is a TEMPORARY compatibility fallback so this
+// client's existing bookmark keeps working. It is still published in this
+// public file and MUST be removed once this client has been rotated onto a
+// freshly issued access link.
+const CLIENT_TOKEN_LEGACY = '8748c046aa114284a65c25c37fe5c9c084e2fe9d5e844fda8303ea7c139d26cf'; // PENDING_TOKEN_ROTATION
+const CLIENT_TOKEN = (function () {
+  const KEY = CLIENT_CONFIG.client.storageKey + '_access_token';
+  let tok = '';
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromLink = params.get('t');
+    if (fromLink) {
+      tok = fromLink;
+      try { localStorage.setItem(KEY, tok); } catch (e) {}
+      params.delete('t');
+      const qs = params.toString();
+      try {
+        history.replaceState(null, '',
+          window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+      } catch (e) {}
+    }
+  } catch (e) {}
+  if (!tok) { try { tok = localStorage.getItem(KEY) || ''; } catch (e) {} }
+  if (!tok) { tok = CLIENT_TOKEN_LEGACY; } // TEMPORARY - remove on rotation
+  return tok;
+})();
+
+// Truthful failure: if no credential resolves at all, every cloud write is
+// refused by the backend. Say so rather than logging into nothing.
+if (!CLIENT_TOKEN) {
+  try {
+    console.warn('No access token. Open the link Omar sent you (it ends in ?t=...).');
+    window.addEventListener('DOMContentLoaded', function () {
+      const bar = document.createElement('div');
+      bar.setAttribute('role', 'alert');
+      bar.style.cssText = 'position:sticky;top:0;z-index:9999;padding:0.7rem 1rem;'
+        + 'background:#4a1520;color:#ffd7de;font:500 0.82rem/1.45 system-ui,sans-serif;'
+        + 'border-bottom:1px solid #7a2436;text-align:center;';
+      bar.textContent = 'This page is missing its access code, so nothing you log here '
+        + 'will reach Omar. Open the personal link he sent you (it ends in ?t=...) and '
+        + 'bookmark that one.';
+      document.body.insertBefore(bar, document.body.firstChild);
+    });
+  } catch (e) {}
+}
 const LS_KEYS = {
   checkins: CLIENT_CONFIG.client.storageKey + '_checkins',
   start:    CLIENT_CONFIG.client.storageKey + '_start',
