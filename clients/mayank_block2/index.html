@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Redirecting…</title>
+<script>
+  // Legacy compatibility shim. Mayank's Block 2 program was consolidated into
+  // clients/mayank/ (commit 11e7f5a); links and home-screen apps saved against
+  // the old path were left 404ing. This forwards them on.
+  //
+  // The query string is carried through verbatim because an old access link
+  // may contain the live ?t= client token. It is never read, stored or logged
+  // here — it is passed straight to the canonical page.
+  (function () {
+    var target = '../mayank/' + window.location.search + window.location.hash;
+    window.location.replace(target);
+  })();
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=../mayank/"></noscript>
+</head>
+<body style="font-family:system-ui,-apple-system,sans-serif;margin:0;padding:2rem;text-align:center;color:#333;">
+  <p>Your program has moved.</p>
+  <p><a href="../mayank/">Open your program</a></p>
+  <noscript><p>JavaScript is off — tap the link above. If your old link had a personal access code in it, open the link Omar sent you instead.</p></noscript>
+</body>
+</html>
