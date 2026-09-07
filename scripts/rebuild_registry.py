@@ -46,6 +46,17 @@ FORBIDDEN_FIELDS = frozenset({
 ALLOWED_ENTRY_FIELDS = frozenset({"storageKey", "programUrl"})
 
 
+# ─── EXPLICIT REGISTRY OPT-OUT ────────────────────────────────────────────────
+# A folder under clients/ that exists only to keep an old URL alive (a redirect
+# shim for a link a client already has saved) is NOT a client and must not enter
+# the registry or the coach roster.
+#
+# The opt-out is deliberately EXPLICIT: the page declares this marker itself.
+# There is no heuristic sniffing of redirect-looking HTML — a real client page
+# must never be dropped by accident.
+REGISTRY_SKIP_MARKER = '<meta name="x-registry-skip" content="redirect-shim">'
+
+
 def collect_clients() -> list[dict]:
     if not CLIENTS_DIR.is_dir():
         return []
@@ -55,8 +66,14 @@ def collect_clients() -> list[dict]:
             continue
         if folder.name.startswith(("_", ".")):
             continue
-        if not (folder / "index.html").is_file():
+        index_html = folder / "index.html"
+        if not index_html.is_file():
             continue
+        try:
+            if REGISTRY_SKIP_MARKER in index_html.read_text(encoding="utf-8", errors="ignore"):
+                continue
+        except OSError as exc:
+            print(f"[registry] WARNING: could not read {index_html}: {exc}", file=sys.stderr)
         entries.append({
             "storageKey": folder.name,
             "programUrl": f"clients/{folder.name}/",
