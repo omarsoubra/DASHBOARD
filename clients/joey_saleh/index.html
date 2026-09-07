@@ -4263,13 +4263,6 @@ const EMAILJS_SERVICE_ID  = CLIENT_CONFIG.emailjs.serviceId;
 const EMAILJS_TEMPLATE_ID = CLIENT_CONFIG.emailjs.templateId;
 const EMAILJS_PUBLIC_KEY  = CLIENT_CONFIG.emailjs.publicKey;
 const SHEETS_WEBHOOK_URL  = CLIENT_CONFIG.sheetsWebhookUrl;
-// ─── AUTH BOOTSTRAP (PENDING_TOKEN_ROTATION) ───────────────────────────────
-// Resolution order: ?t= link  ->  stored token  ->  legacy constant.
-// The legacy constant below is a TEMPORARY compatibility fallback so this
-// client's existing bookmark keeps working. It is still published in this
-// public file and MUST be removed once this client has been rotated onto a
-// freshly issued access link.
-const CLIENT_TOKEN_LEGACY = '33bd612cf52c4dfcbdc7aede48e40a3bfb65315c2c9846deac8769a62d42dfd2'; // PENDING_TOKEN_ROTATION
 const CLIENT_TOKEN = (function () {
   const KEY = CLIENT_CONFIG.client.storageKey + '_access_token';
   let tok = '';
@@ -4288,12 +4281,11 @@ const CLIENT_TOKEN = (function () {
     }
   } catch (e) {}
   if (!tok) { try { tok = localStorage.getItem(KEY) || ''; } catch (e) {} }
-  if (!tok) { tok = CLIENT_TOKEN_LEGACY; } // TEMPORARY - remove on rotation
   return tok;
 })();
 
-// Truthful failure: if no credential resolves at all, every cloud write is
-// refused by the backend. Say so rather than logging into nothing.
+// Truthful failure: without a token every cloud write is refused by the
+// backend. Say so rather than letting the client log a month into nothing.
 if (!CLIENT_TOKEN) {
   try {
     console.warn('No access token. Open the link Omar sent you (it ends in ?t=...).');
