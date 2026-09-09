@@ -141,6 +141,7 @@
   .photo-grid img { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
 
   .empty { text-align: center; color: var(--muted); padding: 1rem; font-size: 0.85rem; border: 1px dashed var(--border); border-radius: 8px; }
+  .day-label { color: var(--muted); font-size: 0.75rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 .5rem; }
 
   .status-ok { color: var(--good); }
   .status-warn { color: var(--warn); }
@@ -419,9 +420,13 @@ function _showUpdateBanner() {
 async function boot() {
   // Fire-and-forget SW/cache purge before we touch the backend.
   _purgeStaleServiceWorkers();
-  const token = _readToken();
+  // Identity MUST be resolved before the token is read: _lsToken() namespaces
+  // the token by STORAGE_KEY, so reading first looks up 'sbo_client_token_'
+  // (empty key) and both the magic-link and returning-visit paths fail closed
+  // to the login screen.
   STORAGE_KEY = _resolveKey();
   if (!STORAGE_KEY) { show('screen-login'); return; }
+  const token = _readToken();
   if (!token) { show('screen-login'); return; }
   try {
     const auth = await apiPost('authClient', {});
@@ -548,11 +553,20 @@ function render() {
   renderTrainDay();
 }
 
+// Week number is derived from the program payload at runtime. Nothing about
+// the client is baked into this file, so there is no START_DATE constant to
+// read; the start date and the program length both arrive from clientProgram.
 function _currentWeek() {
-  if (!START_DATE) return 1;
+  const P = PROGRAM || {};
+  const c = P.client || {};
+  const start = c.startDate || '';
+  const total = Number(c.durationWeeks || P.durationWeeks || 12) || 12;
+  if (!start) return 1;
   try {
-    const days = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
-    return Math.max(1, Math.min(12, Math.ceil((days + 1) / 7)));
+    const t = new Date(start).getTime();
+    if (!isFinite(t)) return 1;
+    const days = Math.floor((Date.now() - t) / 86400000);
+    return Math.max(1, Math.min(total, Math.ceil((days + 1) / 7)));
   } catch (e) { return 1; }
 }
 function _currentPhase(P) {
@@ -584,13 +598,27 @@ function _pickDay(i) {
   document.querySelectorAll('.day-tab').forEach((el, idx) => el.classList.toggle('on', idx % 7 === i));
 }
 
+// A stored day may be either a bare array of items or an object that also
+// carries a label ({label, meals} / {label, exercises}). Accept both rather
+// than forcing one payload shape on the programs table.
+function _dayItems(day, key) {
+  if (!day) return [];
+  if (Array.isArray(day)) return day;
+  const v = day[key];
+  return Array.isArray(v) ? v : [];
+}
+function _dayLabel(day) {
+  return (day && !Array.isArray(day) && day.label) ? String(day.label) : '';
+}
+
 function renderMealDay() {
   const list = document.getElementById('meal-list');
   const P = PROGRAM || {};
   const wk = P.mealPlan && P.mealPlan[CURRENT_WEEK];
   const day = wk && wk[CURRENT_DAY_IDX];
-  if (!day || !day.length) { list.innerHTML = '<div class="empty">No meals scheduled for this day.</div>'; return; }
-  list.innerHTML = day.map(m => `
+  const items = _dayItems(day, 'meals');
+  if (!items.length) { list.innerHTML = '<div class="empty">No meals scheduled for this day.</div>'; return; }
+  list.innerHTML = items.map(m => `
     <div class="meal-row">
       <div><span class="time">${_esc(m.time || '')}</span><span class="name">${_esc(m.name || '')}</span></div>
       ${m.desc ? '<div class="desc">' + _esc(m.desc) + '</div>' : ''}
@@ -608,8 +636,13 @@ function renderTrainDay() {
   const P = PROGRAM || {};
   const wk = P.trainingPlan && P.trainingPlan[CURRENT_WEEK];
   const day = wk && wk[CURRENT_DAY_IDX];
-  if (!day || !day.length) { list.innerHTML = '<div class="empty">Rest day — or no training scheduled.</div>'; return; }
-  list.innerHTML = day.map(e => `
+  const items = _dayItems(day, 'exercises');
+  const label = _dayLabel(day);
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">' + (label ? _esc(label) : 'Rest day — or no training scheduled.') + '</div>';
+    return;
+  }
+  list.innerHTML = (label ? '<div class="day-label">' + _esc(label) + '</div>' : '') + items.map(e => `
     <div class="ex-row">
       <div class="name">${_esc(e.name || e.exercise || '')}</div>
       <div class="kc"><span>${e.sets || '—'} × ${e.reps || '—'}</span>${e.weight ? '<span>@ ' + _esc(e.weight) + '</span>' : ''}${e.notes ? '<span>' + _esc(e.notes) + '</span>' : ''}</div>
