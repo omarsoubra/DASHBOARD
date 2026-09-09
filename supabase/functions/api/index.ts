@@ -40,6 +40,304 @@ function verifyCoachToken(token: string | undefined): boolean {
   if (!token || !COACH_PASSWORD_HASH) return false;
   return token === COACH_PASSWORD_HASH;
 }
+
+// ── entitlements + capabilities ─────────────────────────────────────────────
+// AUTHORITATIVE ACCESS MODEL.
+//
+// Capabilities are derived server-side from ACTIVE rows in client_entitlements.
+// Nothing the caller sends influences the result: there is no tier in the
+// request body, and clients.current_tier is display-only and never read here.
+//
+// Legacy safety: a client with NO entitlement rows resolves to locked_in_1to1.
+// Every client predates this system, so the migration running late, partially,
+// or not at all can never remove access from an existing 1:1 client.
+
+type Capability =
+  | 'view_program' | 'log_workout' | 'view_nutrition' | 'log_weight'
+  | 'submit_self_checkin' | 'receive_automated_progression'
+  | 'receive_automated_adjustment' | 'view_recipes' | 'view_education'
+  | 'direct_coach_messaging' | 'manual_coach_review'
+  | 'coach_program_customisation' | 'coach_nutrition_adjustment' | 'form_review';
+
+const ALL_CAPABILITIES: Capability[] = [
+  'view_program', 'log_workout', 'view_nutrition', 'log_weight',
+  'submit_self_checkin', 'receive_automated_progression',
+  'receive_automated_adjustment', 'view_recipes', 'view_education',
+  'direct_coach_messaging', 'manual_coach_review',
+  'coach_program_customisation', 'coach_nutrition_adjustment', 'form_review',
+];
+
+// One matrix. Do not scatter tier checks through handlers — call
+// requireCapability() instead, so every gate reads from this table.
+const PRODUCT_CAPABILITIES: Record<string, Partial<Record<Capability, boolean>>> = {
+  locked_in_1to1: {
+    view_program: true, log_workout: true, view_nutrition: true, log_weight: true,
+    submit_self_checkin: true, receive_automated_progression: true,
+    receive_automated_adjustment: false,          // a coach decides, not a rule engine
+    view_recipes: true, view_education: true,
+    direct_coach_messaging: true, manual_coach_review: true,
+    coach_program_customisation: true, coach_nutrition_adjustment: true, form_review: true,
+  },
+  locked_in_self_guided_12w: {
+    view_program: true, log_workout: true, view_nutrition: true, log_weight: true,
+    submit_self_checkin: true, receive_automated_progression: true,
+    receive_automated_adjustment: true,
+    view_recipes: true, view_education: true,
+    direct_coach_messaging: false, manual_coach_review: false,
+    coach_program_customisation: false, coach_nutrition_adjustment: false, form_review: false,
+  },
+};
+
+const LEGACY_PRODUCT_CODE = 'locked_in_1to1';
+const DENIED_TIER = 'none';
+
+// Is the entitlement system live yet? Probed once per isolate.
+//
+// If client_entitlements does not exist, the migration has not run, therefore
+// no SELF-GUIDED customer can possibly have been provisioned and every client
+// present is a 1:1 client. That is the ONLY condition under which a missing
+// entitlement grants access. Any other database error fails closed.
+type EntMode = 'strict' | 'pre_migration';
+let _entModeCache: EntMode | null = null;
+
+async function entitlementSystemMode(): Promise<EntMode> {
+  if (_entModeCache === 'strict') return 'strict';   // a table cannot un-exist
+  const { error } = await admin.from('client_entitlements').select('id').limit(1);
+  if (!error) { _entModeCache = 'strict'; return 'strict'; }
+  const code = String((error as any)?.code ?? '');
+  const msg  = String((error as any)?.message ?? '');
+  const undefinedTable =
+    code === '42P01' || /^PGRST20[0-9]$/.test(code) ||
+    /does not exist|could not find the table|unknown relation|schema cache/i.test(msg);
+  if (undefinedTable) return 'pre_migration';
+  throw new Error('entitlement_backend_unavailable');   // caller denies
+}
+
+function capabilitiesForProducts(codes: string[]): Record<Capability, boolean> {
+  const out = {} as Record<Capability, boolean>;
+  for (const c of ALL_CAPABILITIES) out[c] = false;
+  for (const code of codes) {
+    const grant = PRODUCT_CAPABILITIES[code];
+    if (!grant) continue;                        // unknown product grants nothing
+    for (const c of ALL_CAPABILITIES) if (grant[c]) out[c] = true;   // union; true wins
+  }
+  return out;
+}
+
+function entitlementRowIsActive(row: { status?: string; starts_at?: string | null; ends_at?: string | null }, nowMs: number): boolean {
+  if (row?.status !== 'active') return false;
+  if (row.starts_at && Date.parse(row.starts_at) > nowMs) return false;
+  if (row.ends_at   && Date.parse(row.ends_at)  <= nowMs) return false;
+  return true;
+}
+
+type Resolved = {
+  products: string[];
+  capabilities: Record<Capability, boolean>;
+  legacy: boolean;
+  tier: string;
+  status: 'entitled' | 'provisioning_incomplete';
+  basis: 'entitlement' | 'legacy_marker' | 'pre_migration' | 'none';
+};
+
+const DENIED_RESOLVED = (): Resolved => ({
+  products: [], capabilities: capabilitiesForProducts([]),
+  legacy: false, tier: DENIED_TIER,
+  status: 'provisioning_incomplete', basis: 'none',
+});
+
+// AUTHORITATIVE RESOLUTION — fails closed.
+//
+//   active entitlement rows        -> those capabilities
+//   none, entitlement_legacy=true  -> premium (pre-cutover client only)
+//   none, entitlement_legacy=false -> DENIED  (new client, provisioning incomplete)
+//
+// A client created after the cutover defaults to entitlement_legacy = false, so
+// a failed or missing entitlement grant can never promote them to premium.
+async function resolveEntitlements(clientId: string): Promise<Resolved> {
+  let mode: EntMode;
+  try { mode = await entitlementSystemMode(); }
+  catch { return DENIED_RESOLVED(); }              // backend unavailable -> deny
+
+  if (mode === 'pre_migration') {
+    return {
+      products: [LEGACY_PRODUCT_CODE],
+      capabilities: capabilitiesForProducts([LEGACY_PRODUCT_CODE]),
+      legacy: true, tier: LEGACY_PRODUCT_CODE,
+      status: 'entitled', basis: 'pre_migration',
+    };
+  }
+
+  const nowMs = Date.now();
+  const { data: rows, error: rowsErr } = await admin.from('client_entitlements')
+    .select('product_code, status, starts_at, ends_at')
+    .eq('client_id', clientId);
+  if (rowsErr) return DENIED_RESOLVED();
+
+  const active = (rows ?? []).filter((r) => entitlementRowIsActive(r, nowMs))
+                             .map((r) => String(r.product_code));
+  if (active.length > 0) {
+    const tier = active.includes(LEGACY_PRODUCT_CODE) ? LEGACY_PRODUCT_CODE : active[0];
+    return {
+      products: active, capabilities: capabilitiesForProducts(active),
+      legacy: false, tier, status: 'entitled', basis: 'entitlement',
+    };
+  }
+
+  // No active grant. Only an explicit pre-cutover marker may rescue this.
+  const { data: c, error: cErr } = await admin.from('clients')
+    .select('entitlement_legacy').eq('id', clientId).single();
+  if (cErr) return DENIED_RESOLVED();
+  if (c?.entitlement_legacy === true) {
+    return {
+      products: [LEGACY_PRODUCT_CODE],
+      capabilities: capabilitiesForProducts([LEGACY_PRODUCT_CODE]),
+      legacy: true, tier: LEGACY_PRODUCT_CODE,
+      status: 'entitled', basis: 'legacy_marker',
+    };
+  }
+  return DENIED_RESOLVED();
+}
+
+// Gate helper. Resolves the client by storage key, then checks one capability.
+async function requireCapability(storageKey: string, cap: Capability):
+  Promise<{ ok: boolean; clientId?: string; resolved?: Resolved; reason?: string }> {
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', storageKey).single();
+  if (!client) return { ok: false, reason: 'unknown_client' };
+  const resolved = await resolveEntitlements(client.id);
+  if (!resolved.capabilities[cap]) {
+    const reason = resolved.status === 'provisioning_incomplete' ? 'provisioning_incomplete' : 'forbidden_tier';
+    return { ok: false, clientId: client.id, resolved, reason };
+  }
+  return { ok: true, clientId: client.id, resolved };
+}
+
+// ── entitlement endpoints ───────────────────────────────────────────────────
+async function entitlementsGet(body: any) {
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  const isCoach = verifyCoachToken(body?.coachToken);
+  if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
+  const key = String(body?.storageKey ?? body?.client ?? '').toLowerCase();
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).single();
+  if (!client) return err('unknown_client');
+  const r = await resolveEntitlements(client.id);
+  return ok({ storageKey: key, tier: r.tier, products: r.products, capabilities: r.capabilities,
+              legacy: r.legacy, status: r.status, basis: r.basis });
+}
+
+// Manual/admin provisioning. This is the seam a billing provider will later
+// call on payment success — the application never talks to a payment provider.
+async function entitlementGrant(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.storageKey ?? '').toLowerCase();
+  const productCode = String(body?.productCode ?? '');
+  if (!key || !productCode) return err('bad_params', { detail: 'storageKey and productCode required' });
+  if (!PRODUCT_CAPABILITIES[productCode]) return err('unknown_product', { detail: productCode });
+  const source = String(body?.source ?? 'manual');
+  if (!['manual', 'billing', 'migration', 'admin', 'promotional'].includes(source)) return err('bad_params', { detail: 'bad source' });
+
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).single();
+  if (!client) return err('unknown_client');
+
+  const startsAt = body?.startsAt ? new Date(body.startsAt).toISOString() : new Date().toISOString();
+  let endsAt: string | null = body?.endsAt ? new Date(body.endsAt).toISOString() : null;
+  if (!endsAt) {
+    const { data: prod } = await admin.from('products').select('duration_weeks').eq('code', productCode).single();
+    const weeks = Number(prod?.duration_weeks ?? 0);
+    if (weeks > 0) endsAt = new Date(Date.parse(startsAt) + weeks * 7 * 86400_000).toISOString();
+  }
+
+  // Supersede any existing active grant of the same product rather than
+  // inserting a duplicate (the partial unique index would reject it anyway).
+  await admin.from('client_entitlements')
+    .update({ status: 'revoked', updated_at: new Date().toISOString() })
+    .eq('client_id', client.id).eq('product_code', productCode).eq('status', 'active');
+
+  const { error: insErr } = await admin.from('client_entitlements').insert({
+    client_id: client.id, product_code: productCode, status: 'active',
+    starts_at: startsAt, ends_at: endsAt, source, notes: body?.notes ?? null,
+  });
+  if (insErr) { logEfError('entitlementGrant', key, 'grant_failed', insErr.message); return err('grant_failed', { detail: insErr.message }); }
+
+  const r = await resolveEntitlements(client.id);
+  await admin.from('clients').update({ current_tier: r.tier }).eq('id', client.id);
+  return ok({ storageKey: key, productCode, startsAt, endsAt, tier: r.tier, capabilities: r.capabilities });
+}
+
+async function entitlementRevoke(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.storageKey ?? '').toLowerCase();
+  const productCode = String(body?.productCode ?? '');
+  if (!key || !productCode) return err('bad_params', { detail: 'storageKey and productCode required' });
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).single();
+  if (!client) return err('unknown_client');
+  await admin.from('client_entitlements')
+    .update({ status: 'revoked', updated_at: new Date().toISOString() })
+    .eq('client_id', client.id).eq('product_code', productCode).eq('status', 'active');
+  const r = await resolveEntitlements(client.id);
+  await admin.from('clients').update({ current_tier: r.tier }).eq('id', client.id);
+  return ok({ storageKey: key, productCode, tier: r.tier, legacy: r.legacy });
+}
+
+// Provision a SELF-GUIDED customer in one authorised call.
+//
+// Full cross-table transactionality is not available through PostgREST, so
+// safety comes from the fail-closed rule instead: a client created here has
+// entitlement_legacy = false and therefore holds NO capabilities until the
+// entitlement row lands. A partially provisioned account is unusable, never
+// over-privileged. If step 2 fails the caller is told exactly how to finish.
+async function provisionSelfGuidedClient(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const storageKey = String(body?.storageKey ?? '').toLowerCase();
+  if (!storageKey) return err('bad_params', { detail: 'storageKey required' });
+  const productCode = String(body?.productCode ?? 'locked_in_self_guided_12w');
+  if (!PRODUCT_CAPABILITIES[productCode]) return err('unknown_product', { detail: productCode });
+
+  // 1. Client row. Denied by default until step 2 succeeds.
+  const createResp = await clientCreate(body);
+  const created: any = await createResp.json();
+  if (!created?.ok) return err('provision_failed', { stage: 'client_create', detail: created?.error });
+
+  // 2. Entitlement.
+  const grantResp = await entitlementGrant({ ...body, productCode, source: body?.source ?? 'manual' });
+  const granted: any = await grantResp.json();
+  if (!granted?.ok) {
+    logEfError('provisionSelfGuidedClient', storageKey, 'grant_failed', String(granted?.error));
+    return err('provisioning_incomplete', {
+      stage: 'entitlement_grant', storageKey, clientId: created.clientId, detail: granted?.error,
+      note: 'Client row exists but has no entitlement, so the account is denied all access. Re-run provisionSelfGuidedClient or call entitlementGrant to finish.',
+    });
+  }
+  return ok({
+    storageKey, clientId: created.clientId, alreadyExisted: !!created.already_exists,
+    productCode, tier: granted.tier, startsAt: granted.startsAt, endsAt: granted.endsAt,
+    capabilities: granted.capabilities,
+    next: 'Call issueClientToken to mint the access link.',
+  });
+}
+
+// Premium-only surface. This is the "Need more help?" path: it confirms the
+// entitlement and nothing else. SELF-GUIDED receives forbidden_tier plus the
+// upgrade message — enforced here, not in the UI.
+async function coachReviewRequest(body: any) {
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(body?.storageKey ?? '').toLowerCase();
+  const gate = await requireCapability(key, 'manual_coach_review');
+  if (!gate.ok) {
+    if (gate.reason === 'provisioning_incomplete') {
+      return err('provisioning_incomplete', { detail: 'This account has no active entitlement.' });
+    }
+    if (gate.reason === 'forbidden_tier') {
+      return err('forbidden_tier', {
+        capability: 'manual_coach_review',
+        upgrade: 'Direct coach support is available with LOCKED IN 1:1.',
+      });
+    }
+    return err(gate.reason ?? 'unauthorized');
+  }
+  return ok({ storageKey: key, eligible: true, channel: 'coach' });
+}
 async function verifyClientToken(token: string | undefined, storageKey: string | undefined): Promise<{ ok: boolean; storageKey?: string; reason?: string }> {
   if (!token || !storageKey) return { ok: false, reason: 'missing_credentials' };
   const { data, error } = await admin
@@ -215,6 +513,11 @@ Deno.serve(async (req) => {
       case 'setAccessStatus':    return setAccessStatus(body);
       case 'setClientProgram':   return setClientProgram(body);
       case 'clientProgram':      return clientProgram(body);
+      case 'entitlementsGet':    return entitlementsGet(body);
+      case 'entitlementGrant':   return entitlementGrant(body);
+      case 'entitlementRevoke':  return entitlementRevoke(body);
+      case 'coachReviewRequest': return coachReviewRequest(body);
+      case 'provisionSelfGuidedClient': return provisionSelfGuidedClient(body);
       case 'weightLog':          return weightLog(body);
       case 'photosGet':          return photosGet(body);
       case 'overrideGet':        return overrideGet(body);
@@ -521,6 +824,16 @@ async function clientProgram(body: any) {
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
   const key = String(body?.storageKey ?? body?.client ?? '').toLowerCase();
+  // Entitlement gate. Coach reads bypass it; a client must hold view_program.
+  if (!isCoach) {
+    const gate = await requireCapability(key, 'view_program');
+    if (!gate.ok) {
+      if (gate.reason === 'provisioning_incomplete') {
+        return err('provisioning_incomplete', { detail: 'Your account setup is not finished yet.' });
+      }
+      return err(gate.reason ?? 'forbidden_tier');
+    }
+  }
   const { data } = await admin.from('programs').select('payload').eq('storage_key', key).single();
   if (!data) return err('program_missing');
   return ok({ program: data.payload });
@@ -634,6 +947,17 @@ async function overrideGet(body: any) {
 // G1: Override PUT — fixed to use correct client_overrides schema with temporal versioning
 async function overridePut(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  // Defence in depth: even a valid coach token cannot hand-customise the
+  // program of a client whose product does not include coach customisation.
+  {
+    const targetKey = String(body?.storageKey ?? '').toLowerCase();
+    if (targetKey) {
+      const gate = await requireCapability(targetKey, 'coach_program_customisation');
+      if (!gate.ok && gate.reason === 'forbidden_tier') {
+        return err('forbidden_tier', { capability: 'coach_program_customisation', storageKey: targetKey });
+      }
+    }
+  }
   const storageKey = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
   const overrideKey = String(body?.key ?? '');
   const value = body?.value;

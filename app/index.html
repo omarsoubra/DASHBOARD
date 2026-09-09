@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  StrengthByO — CLIENT SHELL v1 (Sprint 5)
+  ============================================================
+  This is a THIN authenticated shell.
+
+  What it does NOT contain (deliberately):
+    * meal plans
+    * training plans
+    * phase codes, trainer password
+    * personal notes or client-specific config
+
+  All protected client data is fetched from the backend AFTER
+  the client authenticates with their per-client token. Old
+  cached-open programs (fat 400KB HTML) are replaced by this
+  shell on deploy — visiting the URL directly reveals only:
+    * StrengthByO branding
+    * a login screen
+    * a webhook URL (public by design)
+
+  Magic-link flow:
+    1. Coach sends a link  clients/<key>/?t=<token>
+    2. Shell strips ?t=, stores token in localStorage under
+       'sbo_client_token_<storageKey>', reloads to a clean URL.
+    3. Subsequent visits verify token → fetch program JSON.
+    4. Revoked/suspended → clean status screen. Invalid → login.
+
+  Replaced tokens at server side render this shell useless
+  without a new magic link.
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Sprint 5.1 hardening: never let a stale HTML shell get served from browser cache. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>LOCKED IN</title>
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0e1015">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08090d; --surface: #14161c; --surface2: #0e1015;
+    --border: rgba(255,255,255,0.08);
+    --text: #f2f2f5; --muted: #8a8f99;
+    --accent: #6ea8ff; --good: #7fd28c; --warn: #ffb84a; --danger: #ff5b5b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+  body { min-height: 100vh; }
+  a { color: var(--accent); }
+  h1, h2, h3 { margin: 0; font-weight: 500; letter-spacing: 0; }
+  input, button, select, textarea { font-family: inherit; font-size: 1rem; }
+  button { cursor: pointer; }
+  .hidden { display: none !important; }
+
+  /* Screens */
+  .screen { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px 18px; }
+  .screen.on { display: flex; }
+  .screen .card {
+    width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem 1.4rem; text-align: center;
+  }
+  .brand { font-size: 1.1rem; letter-spacing: 0.02em; margin-bottom: 0.35rem; color: var(--text); }
+  .brand .sub { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.14em; }
+  .btn { background: var(--accent); color: #001a3f; border: 0; padding: 0.7rem 1.2rem; border-radius: 8px; font-weight: 600; }
+  .btn.ghost { background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
+  .btn.danger { background: var(--danger); color: #240404; }
+  input.text {
+    width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text);
+    padding: 0.7rem 0.9rem; border-radius: 8px; margin: 0.5rem 0;
+  }
+  .msg { font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin: 0.6rem 0; }
+  .msg.warn { color: var(--warn); }
+  .msg.danger { color: var(--danger); }
+  .msg.ok { color: var(--good); }
+
+  /* App */
+  #app { display: none; padding: 0 0 80px 0; }
+  #app.on { display: block; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.1rem; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .topbar .who { font-size: 0.85rem; }
+  .topbar .who strong { font-weight: 600; }
+  .topbar .who small { color: var(--muted); display: block; font-size: 0.7rem; margin-top: 2px; }
+  .topbar .actions { display: flex; gap: 6px; }
+  .topbar .btn.icon { padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 500; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 1rem 1.1rem; display: grid; gap: 1rem; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem 1.1rem;
+  }
+  .card h2 { font-size: 0.98rem; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card h2 .sub { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+  .card .kv { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 4px 0; }
+  .card .kv .k { color: var(--muted); }
+  .card .kv .v { color: var(--text); font-weight: 500; }
+
+  .macros { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-top: 6px; }
+  .macros .m { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 6px; text-align: center; }
+  .macros .m .n { font-size: 1.1rem; font-weight: 600; }
+  .macros .m .l { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  .day-tabs { display: flex; gap: 4px; overflow-x: auto; margin: 0 -4px 8px; padding: 0 4px; }
+  .day-tab { background: transparent; border: 0; color: var(--muted); padding: 0.4rem 0.7rem; font-size: 0.78rem; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .day-tab.on { color: var(--text); border-bottom-color: var(--accent); }
+
+  .meal-row, .ex-row {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin: 6px 0;
+    background: rgba(255,255,255,0.02); font-size: 0.85rem;
+  }
+  .meal-row .time { color: var(--muted); font-size: 0.72rem; margin-right: 6px; }
+  .meal-row .name { font-weight: 500; }
+  .meal-row .desc { color: var(--muted); font-size: 0.78rem; margin-top: 3px; line-height: 1.45; }
+  .meal-row .kc { display: flex; gap: 8px; margin-top: 4px; font-size: 0.72rem; color: var(--muted); }
+  .meal-row .kc span strong { color: var(--text); }
+
+  .field { display: block; margin: 0.5rem 0; }
+  .field label { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text);
+    padding: 0.55rem 0.7rem; border-radius: 6px; font-size: 0.9rem;
+  }
+  .field textarea { min-height: 60px; resize: vertical; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row .field { margin: 0; }
+
+  .btn-full { width: 100%; margin-top: 8px; }
+
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .photo-grid img { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+
+  .empty { text-align: center; color: var(--muted); padding: 1rem; font-size: 0.85rem; border: 1px dashed var(--border); border-radius: 8px; }
+
+  .status-ok { color: var(--good); }
+  .status-warn { color: var(--warn); }
+  .status-bad { color: var(--danger); }
+
+  @media (max-width: 460px) {
+    .macros { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN / STATUS SCREENS ══════════ -->
+<div id="screen-loading" class="screen on"><div class="card"><div class="brand">StrengthByO<div class="sub">Loading</div></div><p class="msg">One sec…</p></div></div>
+
+<div id="coach-block" class="card" data-cap="manual_coach_review" hidden>
+  <div class="brand" style="font-size:1rem">Need Omar to look at this?</div>
+  <button class="btn btn-full" onclick="requestCoachReview()">Request a coach review</button>
+  <div id="coach-msg" class="sub"></div>
+</div>
+<div id="upgrade-note" class="card" hidden>
+  <div class="sub">Direct coach support is available with LOCKED IN 1:1 &mdash; direct access, manual weekly reviews, personalised adjustments and individual decision-making.</div>
+</div>
+<div id="screen-login" class="screen"><div class="card">
+  <div class="brand">StrengthByO<div class="sub">Client access</div></div>
+  <p class="msg">Paste the access link your coach sent you, or your access code.</p>
+  <input class="text" id="login-input" type="text" placeholder="Access code or full link" autocomplete="off" />
+  <button class="btn btn-full" id="login-btn">Continue</button>
+  <p class="msg" id="login-err" style="display:none;color:var(--danger)">That link or code didn't work. Message your coach.</p>
+</div></div>
+
+<div id="screen-suspended" class="screen"><div class="card">
+  <div class="brand">StrengthByO</div>
+  <p class="msg warn">Your coaching access is temporarily paused. Message your coach if you have questions.</p>
+  <button class="btn ghost btn-full" onclick="_logout()">Log out</button>
+</div></div>
+
+<div id="screen-revoked" class="screen"><div class="card">
+  <div class="brand">StrengthByO</div>
+  <p class="msg danger">Your coaching access is no longer active. If you believe this is an error, please contact your coach.</p>
+  <button class="btn ghost btn-full" onclick="_logout()">Log out</button>
+</div></div>
+
+<div id="screen-error" class="screen"><div class="card">
+  <div class="brand">StrengthByO</div>
+  <p class="msg danger" id="error-msg">Something went wrong.</p>
+  <button class="btn ghost btn-full" onclick="location.reload()">Retry</button>
+</div></div>
+
+<!-- ══════════ APP SHELL — populated after auth ══════════ -->
+<div id="app">
+  <div class="topbar">
+    <div class="who">
+      <div><strong id="app-name">—</strong></div>
+      <small><span id="app-program">—</span> · Week <span id="app-week">—</span></small>
+    </div>
+    <div class="actions">
+      <button class="btn icon ghost" onclick="location.reload()" title="Refresh">↻</button>
+      <button class="btn icon ghost" onclick="_logout()" title="Log out">✕</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="card">
+      <h2>Today's targets <span class="sub" id="phase-label">Phase —</span></h2>
+      <div class="macros">
+        <div class="m"><div class="n" id="m-kcal">—</div><div class="l">kcal</div></div>
+        <div class="m"><div class="n" id="m-p">—</div><div class="l">Protein g</div></div>
+        <div class="m"><div class="n" id="m-c">—</div><div class="l">Carbs g</div></div>
+        <div class="m"><div class="n" id="m-f">—</div><div class="l">Fat g</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Meal plan <span class="sub" id="meal-day-label">Today</span></h2>
+      <div class="day-tabs" id="meal-day-tabs"></div>
+      <div id="meal-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>Training <span class="sub" id="train-day-label">Today</span></h2>
+      <div class="day-tabs" id="train-day-tabs"></div>
+      <div id="train-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>Weight log</h2>
+      <div class="row">
+        <div class="field"><label>Weight (kg)</label><input id="w-kg" type="number" step="0.1" min="20" max="300" /></div>
+        <div class="field"><label>&nbsp;</label><button class="btn btn-full" onclick="submitWeight()">Log weight</button></div>
+      </div>
+      <p class="msg" id="w-status"></p>
+    </div>
+
+    <div class="card">
+      <h2>Weekly check-in</h2>
+      <div class="row">
+        <div class="field"><label>Week</label><input id="ci-week" type="number" min="1" max="52" /></div>
+        <div class="field"><label>Weight (kg)</label><input id="ci-weight" type="number" step="0.1" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Energy /10</label><input id="ci-energy" type="number" min="0" max="10" /></div>
+        <div class="field"><label>Sleep (hr)</label><input id="ci-sleep" type="number" step="0.5" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Stress /10</label><input id="ci-stress" type="number" min="0" max="10" /></div>
+        <div class="field"><label>Diet adh /10</label><input id="ci-diet" type="number" min="0" max="10" /></div>
+      </div>
+      <div class="field"><label>Training adh /10</label><input id="ci-train" type="number" min="0" max="10" /></div>
+      <div class="field"><label>Notes</label><textarea id="ci-notes" placeholder="How's the week going? Anything you want the coach to know."></textarea></div>
+      <button class="btn btn-full" onclick="submitCheckin()">Send check-in</button>
+      <p class="msg" id="ci-status"></p>
+    </div>
+
+    <div class="card">
+      <h2>Log a meal</h2>
+      <div class="row">
+        <div class="field"><label>Name</label><input id="ml-name" type="text" placeholder="e.g. Chicken + rice" /></div>
+        <div class="field"><label>Kcal</label><input id="ml-cal" type="number" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Protein g</label><input id="ml-p" type="number" /></div>
+        <div class="field"><label>Carbs g</label><input id="ml-c" type="number" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Fat g</label><input id="ml-f" type="number" /></div>
+        <div class="field"><label>&nbsp;</label><button class="btn btn-full" onclick="submitMeal()">Log meal</button></div>
+      </div>
+      <p class="msg" id="ml-status"></p>
+    </div>
+
+    <div class="card">
+      <h2>Log a workout</h2>
+      <div class="field"><label>Exercise</label><input id="wo-ex" type="text" placeholder="e.g. Bench press" /></div>
+      <div class="row">
+        <div class="field"><label>Weight (kg)</label><input id="wo-w" type="number" step="0.5" /></div>
+        <div class="field"><label>Reps</label><input id="wo-r" type="number" min="0" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Sets</label><input id="wo-s" type="number" min="0" /></div>
+        <div class="field"><label>RPE (0-10)</label><input id="wo-rpe" type="number" min="0" max="10" step="0.5" /></div>
+      </div>
+      <button class="btn btn-full" onclick="submitWorkout()">Log set</button>
+      <p class="msg" id="wo-status"></p>
+    </div>
+
+    <div class="card">
+      <h2>Progress photos</h2>
+      <div id="photo-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// StrengthByO CLIENT SHELL runtime
+// ══════════════════════════════════════════════════════════════════════
+// The webhook URL is public — the auth guard is server-side.
+const WEBHOOK_URL = 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
+// ── Runtime identity ────────────────────────────────────────────────────
+// Nothing about a client is baked into this file. One shell serves every
+// SELF-GUIDED customer; identity arrives in the access link and is then held
+// in localStorage. The token is still verified server-side against this key,
+// so editing ?c= in the URL just fails auth — it grants nothing.
+const LS_KEY = 'sbo_client_key';
+let STORAGE_KEY  = '';
+let DISPLAY_NAME = '';
+let PROGRAM_TYPE = '';
+let CAPS = {};          // resolved from the backend, never trusted from the client
+
+function _lsToken() { return 'sbo_client_token_' + STORAGE_KEY; }
+
+function _resolveKey() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const c = (params.get('c') || '').trim().toLowerCase();
+    if (c && /^[a-z0-9_]+$/.test(c)) { localStorage.setItem(LS_KEY, c); return c; }
+    return (localStorage.getItem(LS_KEY) || '').trim().toLowerCase();
+  } catch (e) { return ''; }
+}
+
+// ── Screen switching ──
+function show(id) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('on'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('on');
+  document.getElementById('app').classList.toggle('on', id === 'app');
+}
+function _logout() {
+  try { localStorage.removeItem(_lsToken()); localStorage.removeItem(LS_KEY); } catch (e) {}
+  location.reload();
+}
+
+// ── Token acquisition (magic link first-visit) ──
+function _grabTokenFromUrl() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const t = params.get('t');
+    if (t) {
+      localStorage.setItem(_lsToken(), t);
+      // Strip ?t= and ?c= from URL so they don't sit in browser history.
+      const clean = location.pathname + location.hash;
+      history.replaceState({}, '', clean);
+      return t;
+    }
+  } catch (e) {}
+  return null;
+}
+function _readToken() {
+  return _grabTokenFromUrl() || (function () {
+    try { return localStorage.getItem(_lsToken()) || ''; } catch (e) { return ''; }
+  })();
+}
+
+// ── Backend fetch (POST, text/plain to avoid CORS preflight) ──
+async function apiPost(type, body) {
+  const token = _readToken();
+  const payload = Object.assign({ type: type, token: token, storageKey: STORAGE_KEY }, body || {});
+  const resp = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return await resp.json();
+}
+
+// ── Boot ──
+let PROGRAM = null;      // populated from clientProgram response
+let CURRENT_DAY_IDX = 0; // 0=today's day-of-week
+let CURRENT_WEEK = 1;
+
+document.addEventListener('DOMContentLoaded', boot);
+
+// ── Sprint 5.1: Purge any stale service-worker + old cache from earlier
+// sprints. Old PWA installs from Sprint 3 could otherwise serve a cached
+// fat program forever. Runs once per shell load; no-op after cleanup.
+async function _purgeStaleServiceWorkers() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) {
+      // NOTE: This does NOT touch localStorage. Client auth token at
+      // 'sbo_client_token_<key>' is preserved across purge + reload.
+      try { await r.unregister(); } catch (_) {}
+    }
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k).catch(() => {})));
+    }
+  } catch (e) { /* best-effort; never block boot */ }
+}
+
+// LOCKED IN Sprint — Update-available banner.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (evt) => {
+    if (evt && evt.data && evt.data.type === 'sw_updated') { _showUpdateBanner(); }
+  });
+}
+let _updateBannerShown = false;
+function _showUpdateBanner() {
+  if (_updateBannerShown) return;
+  _updateBannerShown = true;
+  const bar = document.createElement('div');
+  bar.setAttribute('role', 'status');
+  bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:rgba(20,22,28,0.98);color:#f2f2f5;border:1px solid rgba(110,168,255,0.35);border-radius:10px;padding:0.75rem 0.9rem;display:flex;gap:0.75rem;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-family:Inter,system-ui,sans-serif;font-size:0.85rem;';
+  bar.innerHTML = '<span>LOCKED IN has been updated. Reload to get the latest version.</span><button type=\"button\" style=\"background:#6ea8ff;color:#0e1015;border:0;border-radius:6px;padding:0.45rem 0.9rem;font-weight:600;cursor:pointer;\">Update now</button>';
+  bar.querySelector('button').addEventListener('click', () => window.location.reload());
+  document.body.appendChild(bar);
+}
+
+async function boot() {
+  // Fire-and-forget SW/cache purge before we touch the backend.
+  _purgeStaleServiceWorkers();
+  const token = _readToken();
+  STORAGE_KEY = _resolveKey();
+  if (!STORAGE_KEY) { show('screen-login'); return; }
+  if (!token) { show('screen-login'); return; }
+  try {
+    const auth = await apiPost('authClient', {});
+    if (!auth || auth.ok === false) {
+      if (auth && auth.error === 'access_suspended') return show('screen-suspended');
+      if (auth && auth.error === 'access_revoked')  return show('screen-revoked');
+      // bad_token / unknown_client / no_credential_issued → login
+      _logout();
+      return;
+    }
+    const prog = await apiPost('clientProgram', {});
+    if (!prog || prog.ok === false) {
+      if (prog && prog.error === 'access_suspended') return show('screen-suspended');
+      if (prog && prog.error === 'access_revoked')  return show('screen-revoked');
+      if (prog && prog.error === 'provisioning_incomplete') {
+        document.getElementById('error-msg').textContent =
+          'Your account setup isn\u2019t finished yet. If you\u2019ve just purchased, this usually clears within a few minutes.';
+        return show('screen-error');
+      }
+      if (prog && prog.error === 'forbidden_tier') {
+        document.getElementById('error-msg').textContent =
+          'This program isn\u2019t available on your current plan.';
+        return show('screen-error');
+      }
+      if (prog && prog.error === 'program_missing') {
+        document.getElementById('error-msg').textContent = 'Your program is being prepared. Message your coach if this persists.';
+        return show('screen-error');
+      }
+      document.getElementById('error-msg').textContent = 'Program load failed: ' + (prog && prog.error || 'unknown');
+      return show('screen-error');
+    }
+    PROGRAM = prog.program || {};
+    // Entitlements are advisory for the UI only — the server enforces them.
+    try {
+      const ent = await apiPost('entitlementsGet', {});
+      if (ent && ent.ok) { CAPS = ent.capabilities || {}; PROGRAM_TYPE = ent.tier || ''; }
+    } catch (e) { CAPS = {}; }
+    render();
+    applyCapabilities();
+    show('app');
+    loadPhotos();
+  } catch (e) {
+    console.error('boot err', e);
+    document.getElementById('error-msg').textContent = 'Connection error. Check your internet and reload.';
+    show('screen-error');
+  }
+}
+
+// ── Login form ──
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('login-btn');
+  if (btn) btn.addEventListener('click', tryLogin);
+  const input = document.getElementById('login-input');
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+});
+function tryLogin() {
+  const raw = (document.getElementById('login-input').value || '').trim();
+  if (!raw) return;
+  // Accept either a bare code or a full URL with ?t=
+  let token = raw;
+  const m = raw.match(/[?&]t=([^&#]+)/);
+  if (m) token = decodeURIComponent(m[1]);
+  // A pasted access link may carry the client key too.
+  const km = raw.match(/[?&]c=([a-z0-9_]+)/i);
+  if (km) { STORAGE_KEY = km[1].toLowerCase(); try { localStorage.setItem(LS_KEY, STORAGE_KEY); } catch (e) {} }
+  if (!STORAGE_KEY) {
+    document.getElementById('login-msg') && (document.getElementById('login-msg').textContent =
+      'Paste the full access link from your welcome email.');
+    return;
+  }
+  try { localStorage.setItem(_lsToken(), token); } catch (e) {}
+  location.href = location.pathname;
+}
+
+// ── Capabilities ────────────────────────────────────────────────────────
+// Consumed from the backend. Hiding UI here is a courtesy, not a control:
+// every restricted action is refused server-side regardless of this object.
+function applyCapabilities() {
+  document.querySelectorAll('[data-cap]').forEach(el => {
+    const need = el.getAttribute('data-cap');
+    const allowed = !!CAPS[need];
+    el.hidden = !allowed;
+  });
+  const up = document.getElementById('upgrade-note');
+  if (up) up.hidden = !!CAPS.manual_coach_review;
+}
+
+async function requestCoachReview() {
+  const r = await apiPost('coachReviewRequest', {});
+  const msg = document.getElementById('coach-msg');
+  if (!msg) return;
+  if (r && r.ok) msg.textContent = 'Sent. Omar will pick this up at your next review.';
+  else if (r && r.error === 'forbidden_tier') msg.textContent = r.upgrade || 'Direct coach support is available with LOCKED IN 1:1.';
+  else msg.textContent = 'Could not send that right now.';
+}
+
+// ── Render app ──
+function render() {
+  const P = PROGRAM || {};
+  const c = P.client || {};
+  document.getElementById('app-name').textContent = c.firstName || DISPLAY_NAME;
+  document.getElementById('app-program').textContent = P.branding && P.branding.programTypeLabel || PROGRAM_TYPE || 'Program';
+  const week = _currentWeek();
+  CURRENT_WEEK = week;
+  document.getElementById('app-week').textContent = week + '/' + (c.durationWeeks || 12);
+
+  // Phase
+  const phase = _currentPhase(P);
+  document.getElementById('phase-label').textContent = phase ? ('Phase ' + phase.number) : '';
+  const macros = phase && phase.macros || {};
+  document.getElementById('m-kcal').textContent = macros.kcal || '—';
+  document.getElementById('m-p').textContent    = macros.p    || '—';
+  document.getElementById('m-c').textContent    = macros.c    || '—';
+  document.getElementById('m-f').textContent    = macros.f    || '—';
+
+  // Set default check-in week input
+  const ciW = document.getElementById('ci-week');
+  if (ciW && !ciW.value) ciW.value = week;
+
+  // Meal + training day tabs
+  renderDayTabs('meal-day-tabs', () => renderMealDay());
+  renderDayTabs('train-day-tabs', () => renderTrainDay());
+  renderMealDay();
+  renderTrainDay();
+}
+
+function _currentWeek() {
+  if (!START_DATE) return 1;
+  try {
+    const days = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
+    return Math.max(1, Math.min(12, Math.ceil((days + 1) / 7)));
+  } catch (e) { return 1; }
+}
+function _currentPhase(P) {
+  const w = _currentWeek();
+  const phases = P.phases || {};
+  // phases keyed by 1/2/3, each with weeksRange:[start,end] or unlockAfterDays
+  for (const k of Object.keys(phases).sort()) {
+    const ph = phases[k];
+    const r = ph.weeksRange || [1, 12];
+    if (w >= r[0] && w <= r[1]) return Object.assign({ number: k }, ph);
+  }
+  return null;
+}
+
+function renderDayTabs(elId, onClick) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const todayIdx = ((new Date().getDay() + 6) % 7); // 0 = Mon
+  if (CURRENT_DAY_IDX === undefined) CURRENT_DAY_IDX = todayIdx;
+  el.innerHTML = days.map((d, i) =>
+    `<button class="day-tab ${i === CURRENT_DAY_IDX ? 'on' : ''}" onclick="_pickDay(${i})">${d}</button>`
+  ).join('');
+}
+function _pickDay(i) {
+  CURRENT_DAY_IDX = i;
+  renderMealDay();
+  renderTrainDay();
+  document.querySelectorAll('.day-tab').forEach((el, idx) => el.classList.toggle('on', idx % 7 === i));
+}
+
+function renderMealDay() {
+  const list = document.getElementById('meal-list');
+  const P = PROGRAM || {};
+  const wk = P.mealPlan && P.mealPlan[CURRENT_WEEK];
+  const day = wk && wk[CURRENT_DAY_IDX];
+  if (!day || !day.length) { list.innerHTML = '<div class="empty">No meals scheduled for this day.</div>'; return; }
+  list.innerHTML = day.map(m => `
+    <div class="meal-row">
+      <div><span class="time">${_esc(m.time || '')}</span><span class="name">${_esc(m.name || '')}</span></div>
+      ${m.desc ? '<div class="desc">' + _esc(m.desc) + '</div>' : ''}
+      <div class="kc">
+        <span><strong>${m.cal || 0}</strong> kcal</span>
+        <span>P <strong>${m.p || 0}</strong></span>
+        <span>C <strong>${m.c || 0}</strong></span>
+        <span>F <strong>${m.f || 0}</strong></span>
+      </div>
+    </div>
+  `).join('');
+}
+function renderTrainDay() {
+  const list = document.getElementById('train-list');
+  const P = PROGRAM || {};
+  const wk = P.trainingPlan && P.trainingPlan[CURRENT_WEEK];
+  const day = wk && wk[CURRENT_DAY_IDX];
+  if (!day || !day.length) { list.innerHTML = '<div class="empty">Rest day — or no training scheduled.</div>'; return; }
+  list.innerHTML = day.map(e => `
+    <div class="ex-row">
+      <div class="name">${_esc(e.name || e.exercise || '')}</div>
+      <div class="kc"><span>${e.sets || '—'} × ${e.reps || '—'}</span>${e.weight ? '<span>@ ' + _esc(e.weight) + '</span>' : ''}${e.notes ? '<span>' + _esc(e.notes) + '</span>' : ''}</div>
+    </div>
+  `).join('');
+}
+function _esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Client writes (authenticated) ──
+async function submitWeight() {
+  const kg = parseFloat(document.getElementById('w-kg').value);
+  if (!kg || kg < 20 || kg > 300) { _st('w-status', 'Enter a valid weight (kg).', 'warn'); return; }
+  try {
+    const r = await apiPost('weight', { weightKg: kg, timestamp: new Date().toISOString() });
+    if (r && r.ok) { _st('w-status', 'Logged.', 'ok'); document.getElementById('w-kg').value = ''; }
+    else _st('w-status', 'Failed: ' + (r && r.error || 'unknown'), 'danger');
+  } catch (e) { _st('w-status', 'Network error.', 'danger'); }
+}
+async function submitCheckin() {
+  const body = {
+    week: parseInt(document.getElementById('ci-week').value, 10) || null,
+    weightKg: parseFloat(document.getElementById('ci-weight').value) || null,
+    energy1to10: parseInt(document.getElementById('ci-energy').value, 10) || null,
+    sleepHours: parseFloat(document.getElementById('ci-sleep').value) || null,
+    stress1to10: parseInt(document.getElementById('ci-stress').value, 10) || null,
+    dietAdherence1to10: parseInt(document.getElementById('ci-diet').value, 10) || null,
+    trainingAdherence1to10: parseInt(document.getElementById('ci-train').value, 10) || null,
+    notes: document.getElementById('ci-notes').value || '',
+    timestamp: new Date().toISOString(),
+  };
+  if (!body.week || !body.weightKg) { _st('ci-status', 'Week + weight required.', 'warn'); return; }
+  try {
+    const r = await apiPost('checkin', body);
+    if (r && r.ok) {
+      _st('ci-status', 'Check-in sent. Coach will review.', 'ok');
+      ['ci-energy','ci-sleep','ci-stress','ci-diet','ci-train','ci-notes'].forEach(id => document.getElementById(id).value = '');
+    } else _st('ci-status', 'Failed: ' + (r && r.error || 'unknown'), 'danger');
+  } catch (e) { _st('ci-status', 'Network error.', 'danger'); }
+}
+async function submitMeal() {
+  const name = (document.getElementById('ml-name').value || '').trim();
+  if (!name) { _st('ml-status', 'Meal name required.', 'warn'); return; }
+  const body = {
+    name: name, desc: '',
+    cal: parseInt(document.getElementById('ml-cal').value, 10) || 0,
+    p:   parseInt(document.getElementById('ml-p').value, 10)   || 0,
+    c:   parseInt(document.getElementById('ml-c').value, 10)   || 0,
+    f:   parseInt(document.getElementById('ml-f').value, 10)   || 0,
+    timestamp: new Date().toISOString(),
+  };
+  try {
+    const r = await apiPost('meal', body);
+    if (r && r.ok) { _st('ml-status', 'Logged.', 'ok'); ['ml-name','ml-cal','ml-p','ml-c','ml-f'].forEach(id => document.getElementById(id).value=''); }
+    else _st('ml-status', 'Failed: ' + (r && r.error || 'unknown'), 'danger');
+  } catch (e) { _st('ml-status', 'Network error.', 'danger'); }
+}
+async function submitWorkout() {
+  const ex = (document.getElementById('wo-ex').value || '').trim();
+  if (!ex) { _st('wo-status', 'Exercise name required.', 'warn'); return; }
+  const body = {
+    exercise: ex,
+    weight: parseFloat(document.getElementById('wo-w').value) || '',
+    reps: parseInt(document.getElementById('wo-r').value, 10) || '',
+    sets: parseInt(document.getElementById('wo-s').value, 10) || '',
+    rpe: parseFloat(document.getElementById('wo-rpe').value) || '',
+    timestamp: new Date().toISOString(),
+  };
+  try {
+    const r = await apiPost('workout', body);
+    if (r && r.ok) { _st('wo-status', 'Logged.', 'ok'); ['wo-ex','wo-w','wo-r','wo-s','wo-rpe'].forEach(id => document.getElementById(id).value=''); }
+    else _st('wo-status', 'Failed: ' + (r && r.error || 'unknown'), 'danger');
+  } catch (e) { _st('wo-status', 'Network error.', 'danger'); }
+}
+function _st(id, msg, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg; el.className = 'msg ' + (cls || '');
+  setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+}
+
+// ── Photos ──
+async function loadPhotos() {
+  try {
+    const r = await apiPost('photosGet', {});
+    const list = document.getElementById('photo-list');
+    if (!r || !r.photos || !r.photos.length) { list.innerHTML = '<div class="empty">No progress photos yet.</div>'; return; }
+    list.innerHTML = '<div class="photo-grid">' +
+      r.photos.slice(-24).map(p => `<img src="${_esc(p.url)}" alt="progress" />`).join('') +
+      '</div>';
+  } catch (e) { /* silent — photos are optional */ }
+}
+</script>
+
+</body>
+</html>
