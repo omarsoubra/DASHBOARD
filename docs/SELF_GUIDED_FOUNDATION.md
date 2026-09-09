@@ -133,6 +133,87 @@ even fetch a program.
 - `scripts/rebuild_registry.py` scans `clients/` only, so `app/` is invisible to the registry and the GH Action.
 - 38-client nutrition regression re-run: unchanged (`omar`, `mayank` still the only drifters, untouched).
 
+## Client-facing access-control surface (complete audit)
+
+Every action reachable with a client token, and what gates it. This table is
+the contract; `tests/write_enforcement.test.js` PART B re-derives it from the
+dispatch switch on every run and fails if a new ungated client action appears.
+
+| Action | Kind | Capability required |
+|---|---|---|
+| `ping` | liveness | — (no auth, no data) |
+| `authClient` | bootstrap | **ungated by design** |
+| `entitlementsGet` | entitlement resolution | **ungated by design** |
+| `intakeSubmit` / `intake` | public pre-client write | **ungated by design** |
+| `clientProgram` | read | `view_program` |
+| `overrideGet` | read | `view_program` |
+| `weightLog` | read | `view_progress` |
+| `photosGet` | read | `view_progress` |
+| `weight` | write | `log_weight` |
+| `checkin` | write | `submit_self_checkin` |
+| `meal` | write | `log_meal` |
+| `workout` | write | `log_workout` |
+| `photoUpload` | write | `upload_photo` |
+| `coachReviewRequest` | write/request | `manual_coach_review` |
+
+Every other dispatched action (`dashboard`, `rosterGet`/`rosterPut`,
+`registryGetPrivate`, `clientCreate`, `issueClientToken`, `setAccessStatus`,
+`setClientProgram`, `entitlementGrant`/`entitlementRevoke`,
+`provisionSelfGuidedClient`, `overridePut`, `intakeList`/`intakeLink`/
+`intakePromote`, the `legacyQueue*` family, the `progression*` family) requires
+a coach token and is not reachable with client credentials.
+
+### Why three actions are ungated
+
+- **`authClient`** — bootstrap. Answers only "is this token valid for this key,
+  and is the account active?". Returns no program, nutrition, log or photo
+  data. Gating it would be circular: the shell could not discover that it is
+  unentitled without already being entitled.
+- **`entitlementsGet`** — entitlement resolution itself. Gating the action that
+  reports your capabilities on holding a capability is the same circularity. It
+  is also how a denied client learns it is denied, which is what lets the shell
+  show "your setup isn't finished" rather than a hard error. It discloses only
+  the caller's own tier and capability flags, and the caller's own token must
+  still verify against the key.
+- **`intakeSubmit`** — the public intake form. It has no client auth by design:
+  the person filling it in is not a client yet. It writes only to the `intakes`
+  queue through the `INTAKE_FIELD_MAP` allow-list, cannot reach `clients`,
+  `programs`, `client_entitlements` or any canonical client table, and cannot
+  link itself to an existing client — linkage is a separate coach-authorised
+  promotion step.
+
+### The legacy quarantine path
+
+`clientWrite` has a pre-existing compatibility branch: if the token fails but
+the storage key is on the latest active roster snapshot, a `weight` or
+`checkin` is captured to `legacy_intake_queue` and mirrored to the canonical
+table. The queue row records an *attempt* and is still written unconditionally —
+that is the point of a quarantine. **The canonical mirror is now held to the
+same capability gate as an authenticated write**, so this branch can no longer
+be used to write real client data for an unentitled key.
+
+### Capabilities added in this pass
+
+`log_meal`, `upload_photo`, `view_progress` — all `true` for both products.
+Logging and reading your own data is the product, not the tier, so 1:1
+behaviour is unchanged and SELF-GUIDED gets them too. Matrix is now 17
+capabilities: 1:1 holds 16 (all but `receive_automated_adjustment`),
+SELF-GUIDED holds 12.
+
+## Internal test accounts — `supabase/migrations/20260909120000_internal_test_accounts.sql`
+
+`clients.is_internal` (boolean, default false) marks non-paying internal
+accounts. `sg_canary` is set true and is the permanent SELF-GUIDED production
+regression canary.
+
+The flag is **presentational only**. It does not affect authentication,
+entitlements or capability enforcement — an internal account is gated exactly
+like a paying one, which is precisely why it can be used to regression-test
+that gating. It excludes the account from `dashboard` and
+`registryGetPrivate`; both accept `includeInternal: true` to see it
+deliberately. `provisionSelfGuidedClient` accepts `internal: true` so future
+canaries are marked at creation.
+
 ## Known limitations
 
 1. **Not deployed.** Migration must be run in the Supabase SQL editor; the EF must be deployed. Neither has happened.

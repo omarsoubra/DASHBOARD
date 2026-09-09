@@ -54,6 +54,7 @@ function verifyCoachToken(token: string | undefined): boolean {
 
 type Capability =
   | 'view_program' | 'log_workout' | 'view_nutrition' | 'log_weight'
+  | 'log_meal' | 'upload_photo' | 'view_progress'
   | 'submit_self_checkin' | 'receive_automated_progression'
   | 'receive_automated_adjustment' | 'view_recipes' | 'view_education'
   | 'direct_coach_messaging' | 'manual_coach_review'
@@ -61,6 +62,7 @@ type Capability =
 
 const ALL_CAPABILITIES: Capability[] = [
   'view_program', 'log_workout', 'view_nutrition', 'log_weight',
+  'log_meal', 'upload_photo', 'view_progress',
   'submit_self_checkin', 'receive_automated_progression',
   'receive_automated_adjustment', 'view_recipes', 'view_education',
   'direct_coach_messaging', 'manual_coach_review',
@@ -72,6 +74,7 @@ const ALL_CAPABILITIES: Capability[] = [
 const PRODUCT_CAPABILITIES: Record<string, Partial<Record<Capability, boolean>>> = {
   locked_in_1to1: {
     view_program: true, log_workout: true, view_nutrition: true, log_weight: true,
+    log_meal: true, upload_photo: true, view_progress: true,
     submit_self_checkin: true, receive_automated_progression: true,
     receive_automated_adjustment: false,          // a coach decides, not a rule engine
     view_recipes: true, view_education: true,
@@ -80,6 +83,7 @@ const PRODUCT_CAPABILITIES: Record<string, Partial<Record<Capability, boolean>>>
   },
   locked_in_self_guided_12w: {
     view_program: true, log_workout: true, view_nutrition: true, log_weight: true,
+    log_meal: true, upload_photo: true, view_progress: true,
     submit_self_checkin: true, receive_automated_progression: true,
     receive_automated_adjustment: true,
     view_recipes: true, view_education: true,
@@ -212,6 +216,58 @@ async function requireCapability(storageKey: string, cap: Capability):
   return { ok: true, clientId: client.id, resolved };
 }
 
+// Standard denial for a client-authenticated action whose capability check
+// failed. One shape everywhere, so the client shell can branch consistently.
+function capabilityDenied(reason: string | undefined) {
+  if (reason === 'provisioning_incomplete') {
+    return err('provisioning_incomplete', { detail: 'Your account setup is not finished yet.' });
+  }
+  if (reason === 'unknown_client') return err('unknown_client');
+  return err('forbidden_tier');
+}
+
+// ── INTENTIONALLY UNGATED CLIENT-CALLABLE ACTIONS ───────────────────────────
+//
+// Every other client-callable action is gated. These three are not, and each
+// is safe for a specific reason. Do not add a fourth without a reason of the
+// same kind.
+//
+//   authClient      Bootstrap. Answers "is this token valid for this key, and
+//                   is the account active?" and nothing else. It returns no
+//                   program, nutrition, log or photo data. Gating it would
+//                   create a circular dependency: the shell could not discover
+//                   that it is unentitled without already being entitled.
+//
+//   entitlementsGet Entitlement RESOLUTION itself. Gating the action that
+//                   reports your capabilities on holding a capability is the
+//                   same circularity. It is also the mechanism by which a
+//                   denied client learns it is denied, which is what lets the
+//                   shell show "setup isn't finished" instead of an error. It
+//                   discloses only the caller's own tier and capability flags —
+//                   never program, nutrition, log or photo data — and the
+//                   caller's own token must still verify against the key.
+//
+//   intakeSubmit    Public pre-client intake form. It has no client auth by
+//                   design: the person filling it in is not a client yet. It
+//                   writes ONLY to the intakes queue through a strict field
+//                   allow-list (INTAKE_FIELD_MAP), cannot touch clients,
+//                   programs, entitlements or any canonical client table, and
+//                   cannot link itself to an existing client — linkage is a
+//                   separate coach-authorised promotion step.
+//
+// Client-callable WRITES -> the capability each one requires.
+//
+// This map IS the enforcement boundary for the write surface. A kind absent
+// from it is refused outright rather than defaulting to allowed, so adding a
+// new client write without deciding its capability fails closed.
+const CLIENT_WRITE_CAPABILITY: Record<string, Capability> = {
+  weight:      'log_weight',
+  checkin:     'submit_self_checkin',
+  meal:        'log_meal',
+  workout:     'log_workout',
+  photoUpload: 'upload_photo',
+};
+
 // ── entitlement endpoints ───────────────────────────────────────────────────
 async function entitlementsGet(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
@@ -297,6 +353,11 @@ async function provisionSelfGuidedClient(body: any) {
   const createResp = await clientCreate(body);
   const created: any = await createResp.json();
   if (!created?.ok) return err('provision_failed', { stage: 'client_create', detail: created?.error });
+
+  // 1b. Internal/test account marking. Display-only; grants nothing.
+  if (body?.internal === true) {
+    await admin.from('clients').update({ is_internal: true }).eq('id', created.clientId);
+  }
 
   // 2. Entitlement.
   const grantResp = await entitlementGrant({ ...body, productCode, source: body?.source ?? 'manual' });
@@ -572,23 +633,39 @@ async function dashboard(body: any) {
   const ninetyAgo = new Date(Date.now() - 90 * 86400_000).toISOString();
   const weekAgo   = new Date(Date.now() -  7 * 86400_000).toISOString();
   const todayStr  = new Date().toISOString().slice(0, 10);
-  const [{ data: clients }, { data: weights }, { data: checkins }, { data: meals }, { data: workouts }] = await Promise.all([
-    admin.from('clients').select('id, storage_key'),
+  // Internal/test accounts (sg_canary) are excluded from the numbers Omar
+  // reads as his business. Pass includeInternal:true to see them deliberately.
+  const showInternal = body?.includeInternal === true;
+  const [{ data: clientsAll }, { data: weights }, { data: checkins }, { data: meals }, { data: workouts }] = await Promise.all([
+    admin.from('clients').select('id, storage_key, is_internal'),
     admin.from('weight_logs').select('client_key, logged_at, weight_kg').gte('logged_at', ninetyAgo),
     admin.from('check_ins').select('client_key, submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10, notes').gte('submitted_at', ninetyAgo),
     admin.from('meal_logs').select('client_id, logged_at, meal_name, kcal, protein_g, carbs_g, fat_g').gte('logged_at', ninetyAgo),
     admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, weight, sets_done, reps_done, rpe, phase_key, day_index').gte('logged_at', ninetyAgo),
   ]);
-  const per: Record<string, any> = {};
-  const ensure = (key: string) => per[key] ??= {
+  const allRows = clientsAll ?? [];
+  const hidden = new Set(allRows.filter((c: any) => c.is_internal === true).map((c: any) => c.storage_key));
+  // Hide ONLY internal accounts. An unknown log key (a legacy or orphaned row)
+  // still surfaces exactly as it did before, so nothing Omar could previously
+  // see disappears; only the empty-key phantom is dropped.
+  const visible = (key: string | undefined | null) =>
+    !!key && (showInternal || !hidden.has(key));
+  const clients = allRows.filter((c: any) => visible(c.storage_key));
+  const emptyStats = () => ({
     latestWeight: null, latestWeightTs: null, weightHistory: [],
     latestWorkoutTs: null, workoutsThisWeek: 0,
     latestMealTs: null, mealsToday: 0,
     latestCheckinTs: null, recentMeals: [], recentWorkouts: [], recentCheckIns: [],
-  };
-  // Build client_id → storage_key map for meal_logs (no client_key column on meal_logs)
-  const keyById: Record<string, string> = Object.fromEntries((clients ?? []).map(c => [c.id, c.storage_key]));
-  (clients ?? []).forEach(c => ensure(c.storage_key));
+  });
+  const per: Record<string, any> = {};
+  // Rows for a hidden or unknown key accumulate into a throwaway that is never
+  // returned, so no caller sees them and no phantom key appears.
+  const ensure = (key: string) => visible(key) ? (per[key] ??= emptyStats()) : emptyStats();
+  // Build client_id → storage_key map for meal_logs (no client_key column on
+  // meal_logs). Built from ALL rows so a hidden client's meals resolve to its
+  // real key and are then dropped by visible(), rather than becoming a phantom.
+  const keyById: Record<string, string> = Object.fromEntries(allRows.map((c: any) => [c.id, c.storage_key]));
+  clients.forEach((c: any) => ensure(c.storage_key));
   (weights ?? []).forEach(r => {
     const p = ensure(r.client_key);
     p.weightHistory.push({ ts: r.logged_at, kg: r.weight_kg });
@@ -657,8 +734,9 @@ async function rosterPut(body: any) {
 async function registryGetPrivate(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
   const { data } = await admin.from('clients')
-    .select('id, storage_key, display_name, program_type, start_weight, goal_weight, start_date, program_url, phone');
-  return ok({ clients: data ?? [] });
+    .select('id, storage_key, display_name, program_type, start_weight, goal_weight, start_date, program_url, phone, is_internal');
+  const rows = (data ?? []).filter((c: any) => body?.includeInternal === true || c.is_internal !== true);
+  return ok({ clients: rows });
 }
 
 async function issueClientToken(body: any) {
@@ -844,6 +922,12 @@ async function weightLog(body: any) {
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
   const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
+  // ENTITLEMENT GATE (coach reads bypass — Omar must be able to inspect a
+  // revoked or lapsed client's data).
+  if (!isCoach) {
+    const gate = await requireCapability(key, 'view_progress');
+    if (!gate.ok) return capabilityDenied(gate.reason);
+  }
   const { data } = await admin.from('weight_logs').select('logged_at, weight_kg, notes').eq('client_key', key).order('logged_at', { ascending: true });
   return json((data ?? []).map(r => ({ timestamp: r.logged_at, weightKg: r.weight_kg, notes: r.notes })));
 }
@@ -861,6 +945,12 @@ async function photosGet(body: any) {
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
   const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
   if (!key) return err('bad_storageKey');
+  // ENTITLEMENT GATE (coach reads bypass — Omar must be able to inspect a
+  // revoked or lapsed client's data).
+  if (!isCoach) {
+    const gate = await requireCapability(key, 'view_progress');
+    if (!gate.ok) return capabilityDenied(gate.reason);
+  }
 
   const { data, error: selErr } = await admin.from('photo_uploads')
     .select('id, storage_url, storage_path, view, week, uploaded_at, source, intake_id, bytes_size, mime_type')
@@ -933,6 +1023,12 @@ async function overrideGet(body: any) {
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
   const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
+  // ENTITLEMENT GATE (coach reads bypass — Omar must be able to inspect a
+  // revoked or lapsed client's data).
+  if (!isCoach) {
+    const gate = await requireCapability(key, 'view_program');
+    if (!gate.ok) return capabilityDenied(gate.reason);
+  }
   const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).single();
   if (!client) return err('unknown_client');
   const { data } = await admin.from('client_overrides')
@@ -1072,12 +1168,24 @@ async function clientWrite(kind: string, body: any) {
   const storageKey = String((v.ok ? body.storageKey : body?.client) ?? '').toLowerCase();
 
   if (v.ok) {
+    // ENTITLEMENT GATE. A valid token proves identity, not entitlement. A
+    // revoked, expired or never-provisioned client authenticates but holds no
+    // capabilities and must not be able to write client-owned data.
+    const cap = CLIENT_WRITE_CAPABILITY[kind];
+    if (!cap) return err('unknown_write_kind', { kind });
+    const gate = await requireCapability(v.storageKey!, cap);
+    if (!gate.ok) return capabilityDenied(gate.reason);
     return doWrite(kind, { ...body, client: v.storageKey! });
   }
   // Legacy quarantine path — write to queue AND (if known-active) mirror to canonical table.
   const active = await isKnownActiveRosterKey(storageKey);
   if (['checkin','weight'].includes(kind) && active) {
     const queueRow = await queueInsert(kind, body, v.reason ?? 'unauthorized');
+    // The queue row records an ATTEMPT and is written regardless — that is the
+    // whole point of a quarantine. The canonical mirror is real client data and
+    // is therefore held to the same capability gate as an authenticated write.
+    const qGate = await requireCapability(storageKey, CLIENT_WRITE_CAPABILITY[kind]);
+    if (!qGate.ok) return err(v.reason ?? 'unauthorized');
     const canonical = await doWrite(kind, { ...body, client: storageKey }, /*silent=*/true);
     // Mark queue row as promoted
     await admin.from('legacy_intake_queue').update({
