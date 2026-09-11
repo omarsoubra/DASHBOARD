@@ -4184,7 +4184,6 @@ const CLIENT_CONFIG = {
     2: { unlockCode: 'MALAK20', unlockAfterDays: 21 },
     3: { unlockCode: 'MALAK30', unlockAfterDays: 42 },
   },
-  trainerPassword: '__SERVER_ONLY__',
 };;
 
 // ─── DERIVED — don't edit, these all read from CLIENT_CONFIG above ──────────
@@ -4911,16 +4910,19 @@ if (typeof pullOverrides === 'function') {
 }
 
 // ─── TRAINER OVERRIDE ────────────────────────────────────────────────────
-// Knowing CLIENT_CONFIG.trainerPassword lets the trainer unlock all phases
-// regardless of the per-phase codes or unlock timer. The state persists in
-// localStorage so the page stays unlocked across reloads (clear via the
-// trainer logout button).
+// REVOKED. This page previously carried a shared override credential in
+// plaintext. It has been removed; this block is retained only so existing
+// entry points fail closed and stale local flags are cleared.
 const LS_TRAINER_KEY = CLIENT_CONFIG.client.storageKey + '_trainer_mode';
 function isTrainerMode(){return localStorage.getItem(LS_TRAINER_KEY)==='1';}
 function trainerLogin(){
-  const pw = prompt('Trainer password — leave blank to cancel:');
-  if(pw===null||pw==='')return;
-  if(pw === CLIENT_CONFIG.trainerPassword){
+  // SECURITY: the shared trainer override credential was removed from this
+  // public file. Coach editing is available only via the authenticated coach
+  // dashboard, which validates server-side. This entry point fails closed.
+  alert('Trainer access is not available on this page.');
+  return;
+  const pw = null;
+  if(false){
     setUnlocked(2); setUnlocked(3);
     localStorage.setItem(LS_TRAINER_KEY,'1');
     showTrainerBadge();
@@ -4989,11 +4991,10 @@ window.addEventListener('load', function(){
   b.onmouseleave = () => b.style.opacity = '0.55';
   document.body.appendChild(b);
 });
-// On boot: if trainer mode was already enabled, show the badge
+// On boot: the trainer override is revoked. Clear any stale local flag so a
+// previously-unlocked device does not retain elevated affordances.
 if(isTrainerMode()){
-  // Make sure phases stay unlocked
-  setUnlocked(2); setUnlocked(3);
-  window.addEventListener('load', showTrainerBadge);
+  localStorage.removeItem(LS_TRAINER_KEY);
 }
 // ─── END TRAINER OVERRIDE ────────────────────────────────────────────────
 
