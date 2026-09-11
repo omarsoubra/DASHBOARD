@@ -4810,8 +4810,8 @@ function tryUnlock(phase) {
 function submitCode() {
   const input = document.getElementById('unlock-input').value.trim().toUpperCase();
   // Timer gate removed — code alone unlocks the phase. Clients advance when
-  // ready, not when a timer says so. Trainer override (OMARTRAINS) still
-  // unlocks both phases at once as before.
+  // ready, not when a timer says so. The shared trainer override has been
+  // revoked; coach access is server-side only.
 
   if (input === CODES[attemptingPhase]) {
     setUnlocked(attemptingPhase);
