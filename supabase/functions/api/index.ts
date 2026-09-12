@@ -881,7 +881,15 @@ async function setClientProgram(body: any) {
   // Program payload written verbatim into programs table. Coach dashboard
   // handles the multi-table breakdown; this endpoint just persists the JSON.
   const storageKey = String(body?.storageKey ?? '').toLowerCase();
-  const program = body?.program ?? {};
+  let program = body?.program ?? {};
+  // v3 is held to the schema. Older shapes are still accepted (the coach
+  // dashboard writes them) but never stored with credential-shaped keys.
+  if (Number((program as any)?.schemaVersion) === 3) {
+    const v = validateProgramV3(program);
+    if (!v.ok) return err('invalid_program_v3', { reason: v.error, detail: v.detail });
+  } else {
+    program = stripUnsafe(program);
+  }
   const { data: client } = await admin.from('clients').select('id').eq('storage_key', storageKey).single();
   if (!client) return err('unknown_client');
   // Derive duration_weeks from program payload (coach JSON) or default 0
@@ -896,6 +904,122 @@ async function setClientProgram(body: any) {
   }, { onConflict: 'storage_key' });
   return ok({ storageKey });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// CLIENT PROGRAM PAYLOAD — v3 ALLOWLIST
+// ════════════════════════════════════════════════════════════════════════════
+// The client shell is thin: it holds no program data and fetches everything
+// from clientProgram after authenticating. That makes this response the only
+// delivery path for a client's program, so it is an allowlist, not a filter.
+//
+// Two rules:
+//   1. Unknown TOP-LEVEL keys never reach the browser. A future generator that
+//      starts stashing state in the payload cannot leak it by accident.
+//   2. Any key that looks like a credential is dropped at any depth. This is
+//      defence in depth: 33 stored payloads were found carrying
+//      CLIENT_CONFIG.trainerPassword on 2026-09-12. They were cleaned, and this
+//      guarantees a dirty row can never be served even if one reappears.
+//
+// Phase unlock codes are deliberately dropped. The client-side phase lock was
+// decorative (the codes and the locked content both shipped in the page) and is
+// retired: an authenticated client sees their whole approved program.
+
+const UNSAFE_KEY_RE =
+  /(password|passwd|secret|credential|coach_?token|api_?key|bearer|private_?key|token_hash|salt)/i;
+
+const PROGRAM_V3_KEYS = [
+  'schemaVersion', 'generatedAt', 'storageKey',
+  'client', 'copy', 'rationale', 'dayTypes', 'phases', 'mealPlan', 'nutrition',
+] as const;
+
+// Legacy rows (schemaVersion 2, and three older coach-authored shapes) are still
+// served while clients migrate. They get their own allowlist rather than a free
+// pass, so nothing new can ride along.
+const PROGRAM_LEGACY_KEYS = [
+  'schemaVersion', 'generatedAt', 'client', 'CLIENT_CONFIG', 'howTos', 'phases',
+  'mealPlan', 'branding', 'nutrition', 'training', 'trainingPlan', 'lifestyle',
+  'tracker', 'clientFacingNotes', 'durationWeeks',
+];
+
+function stripUnsafe(v: any, depth = 0): any {
+  if (depth > 40 || v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map((x) => stripUnsafe(x, depth + 1));
+  const out: Record<string, any> = {};
+  for (const k of Object.keys(v)) {
+    if (UNSAFE_KEY_RE.test(k)) continue;
+    if (k === 'unlockCode' || k === 'unlock') continue;   // retired phase locks
+    out[k] = stripUnsafe(v[k], depth + 1);
+  }
+  return out;
+}
+
+function projectProgram(payload: any): any {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return {};
+  const v3 = Number(payload.schemaVersion) === 3;
+  const allow: readonly string[] = v3 ? PROGRAM_V3_KEYS : PROGRAM_LEGACY_KEYS;
+  const out: Record<string, any> = {};
+  for (const k of allow) {
+    if (payload[k] !== undefined) out[k] = stripUnsafe(payload[k]);
+  }
+  return out;
+}
+
+function unsafeKeyPaths(v: any, path = '', depth = 0, hits: string[] = []): string[] {
+  if (depth > 40 || v === null || typeof v !== 'object') return hits;
+  if (Array.isArray(v)) { v.forEach((x, i) => unsafeKeyPaths(x, path + '[' + i + ']', depth + 1, hits)); return hits; }
+  for (const k of Object.keys(v)) {
+    if (UNSAFE_KEY_RE.test(k) || k === 'unlockCode' || k === 'unlock') { hits.push(path + '.' + k); continue; }
+    unsafeKeyPaths(v[k], path + '.' + k, depth + 1, hits);
+  }
+  return hits;
+}
+
+// Write-side validation. A v3 payload is held to the schema; anything else is
+// accepted (the coach dashboard still writes older shapes) but is stripped of
+// credential-shaped keys before it is stored, so the database cannot re-acquire
+// the problem this allowlist exists to contain.
+function validateProgramV3(payload: any): { ok: boolean; error?: string; detail?: any } {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { ok: false, error: 'payload_not_object' };
+  }
+  const extra = Object.keys(payload).filter((k) => !(PROGRAM_V3_KEYS as readonly string[]).includes(k));
+  if (extra.length) return { ok: false, error: 'unknown_top_level_fields', detail: extra };
+
+  const unsafe = unsafeKeyPaths(payload);
+  if (unsafe.length) return { ok: false, error: 'unsafe_fields', detail: unsafe.slice(0, 20) };
+
+  const c = payload.client;
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return { ok: false, error: 'client_missing' };
+  if (!c.firstName || typeof c.firstName !== 'string') return { ok: false, error: 'client_firstName_missing' };
+
+  const mp = payload.mealPlan;
+  if (!mp || typeof mp !== 'object' || Array.isArray(mp)) return { ok: false, error: 'mealPlan_missing' };
+  const weeks = Object.keys(mp);
+  if (!weeks.length) return { ok: false, error: 'mealPlan_empty' };
+  for (const w of weeks) {
+    if (!Array.isArray(mp[w])) return { ok: false, error: 'mealPlan_week_not_array', detail: w };
+  }
+
+  const ph = payload.phases;
+  if (!ph || typeof ph !== 'object' || Array.isArray(ph)) return { ok: false, error: 'phases_missing' };
+  if (!Object.keys(ph).length) return { ok: false, error: 'phases_empty' };
+
+  if (payload.rationale !== undefined && !Array.isArray(payload.rationale)) {
+    return { ok: false, error: 'rationale_not_array' };
+  }
+  if (payload.dayTypes !== undefined && !Array.isArray(payload.dayTypes)) {
+    return { ok: false, error: 'dayTypes_not_array' };
+  }
+  if (payload.copy !== undefined && (typeof payload.copy !== 'object' || Array.isArray(payload.copy))) {
+    return { ok: false, error: 'copy_not_object' };
+  }
+
+  const bytes = JSON.stringify(payload).length;
+  if (bytes > 2_000_000) return { ok: false, error: 'payload_too_large', detail: bytes };
+
+  return { ok: true };
+}
+
 
 async function clientProgram(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
@@ -914,7 +1038,8 @@ async function clientProgram(body: any) {
   }
   const { data } = await admin.from('programs').select('payload').eq('storage_key', key).single();
   if (!data) return err('program_missing');
-  return ok({ program: data.payload });
+  // Never return the stored object verbatim - project it through the allowlist.
+  return ok({ program: projectProgram(data.payload) });
 }
 
 async function weightLog(body: any) {
