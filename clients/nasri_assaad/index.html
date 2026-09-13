@@ -335,6 +335,15 @@
   .info-card-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--accent3); }
   .info-card-desc { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
 
+  /* Macro/stat card rows. These were three inline repeat(4,1fr) grids, which a
+     media query cannot override, so they never collapsed and the nutrition tab
+     scrolled ~85px horizontally on a phone. */
+  .macro-grid      { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  .macro-grid.tight{ gap: 0.75rem; }
+  @media (max-width: 700px) {
+    .macro-grid, .macro-grid.tight { grid-template-columns: repeat(2, 1fr); }
+  }
+
   /* ─── WORKOUT TABLE ─── */
   .workout-day-title {
     font-family: 'Bebas Neue', sans-serif;
@@ -1302,6 +1311,12 @@
     scrollbar-width: none;
   }
   .tweek-scroll::-webkit-scrollbar { display: none; }
+  /* The strip bleeds edge-to-edge with a negative margin. That margin has to
+     match the section's own padding or it pushes past the viewport: at <=700px
+     the section pads 16px, not 20px, which left a ~4px horizontal scroll. */
+  @media (max-width: 700px) {
+    .tweek-scroll { margin: 0 -16px 12px; padding: 0 16px 4px; }
+  }
   .tweek-row { display: flex; gap: 8px; padding-bottom: 4px; }
   .tweek-btn {
     padding: 10px 14px;
@@ -4482,7 +4497,7 @@ function renderNutrition(){
   const macroResetBtn = (trainerMode && macroEdited) ? `<button class="trainer-reset-btn" onclick="resetPhaseMacros(${phase})">↶ Reset Phase ${phase} Macros</button>` : '';
   document.getElementById('nutrition-main').innerHTML=`
     ${editPrompt ? `<div style="margin-bottom:0.5rem;text-align:right;">${editPrompt} ${macroResetBtn}</div>` : ''}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
+    <div class="macro-grid" style="margin-bottom:1.5rem;">
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Daily Calories ${macroEdited ? '<span class="trainer-edited-badge">EDITED</span>' : ''}</div><div class="info-card-val">${t.cal.toLocaleString()}</div><div class="info-card-desc">~${t.deficit} kcal deficit</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">2.05g/kg · protects muscle through the cut</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Carbs</div><div class="info-card-val" style="color:var(--accent2)">${t.c}g</div><div class="info-card-desc">Around workouts</div></div>
@@ -4597,7 +4612,7 @@ function renderNutritionDayContent(){
         <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.15em;margin-bottom:0.75rem;">
           MY ACTUAL TODAY · ${a.logged}/${a.planned} meals logged ${completePct === 100 ? '· ✓ COMPLETE' : ''}
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;">
+        <div class="macro-grid">
           <div><div style="font-size:0.65rem;color:var(--muted);">Calories</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:${calPctActual>=90?'var(--accent3)':'var(--accent)'};">${a.cal}</div><div style="font-size:0.65rem;color:var(--muted);">vs ${t.cal} target · ${calPctActual}%</div></div>
           <div><div style="font-size:0.65rem;color:var(--muted);">Protein</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:${pPctActual>=90?'var(--accent3)':'var(--accent)'};">${a.p}g</div><div style="font-size:0.65rem;color:var(--muted);">vs ${t.p}g · ${pPctActual}%</div></div>
           <div><div style="font-size:0.65rem;color:var(--muted);">Carbs</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--accent2);">${a.c}g</div><div style="font-size:0.65rem;color:var(--muted);">vs ${t.c}g</div></div>
@@ -4637,7 +4652,7 @@ function renderNutritionDayContent(){
     <div class="meal-cards trial-mode" style="margin-bottom:1.5rem;">${mealRows}</div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;box-shadow:var(--shadow);">
       <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;color:var(--muted);letter-spacing:0.12em;margin-bottom:0.75rem;text-transform:uppercase;font-weight:700;">Planned Day Totals</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;">
+      <div class="macro-grid tight">
         <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Kcal</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${calPct>=90?'var(--accent3)':'var(--accent)'};line-height:1;margin-top:2px;">${totalCal}</div><div style="font-size:11px;color:var(--muted);">of ${t.cal}</div></div>
         <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Protein</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent2);line-height:1;margin-top:2px;">${totalP}g</div><div style="font-size:11px;color:var(--muted);">of ${t.p}g</div></div>
         <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Carbs</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--amber);line-height:1;margin-top:2px;">${totalC}g</div><div style="font-size:11px;color:var(--muted);">of ${t.c}g</div></div>
@@ -6166,7 +6181,7 @@ function updateBottomNav(id) {
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-09-12T11:44:33.708160Z
+  generatedAt: 2026-09-13T06:06:31.203500Z
   clientStorageKey: nasri_assaad
   configPath: nasri_assaad.json
   safetyBlockers: 0
