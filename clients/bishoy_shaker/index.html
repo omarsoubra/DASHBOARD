@@ -796,6 +796,12 @@
      Phone first. Progressive disclosure: target, then saved picks, then the
      two fields that matter, then a verdict once there is enough to judge. */
   .modal.swapv2 { padding-top: 1.5rem; }
+  /* The `hidden` attribute is only display:none from the UA stylesheet, so any
+     author rule that sets display beats it. #sw2-extra carries .sw2-row2
+     (display:grid) and stayed visible in Quick log with the "+ Add carbs & fat"
+     link still showing above it. Caught on a screenshot, not by reading .hidden
+     - the property was true the whole time. */
+  .modal.swapv2 [hidden] { display: none !important; }
   .sw2-replacing {
     font-size: 0.82rem; color: var(--muted); margin: -0.4rem 0 0.9rem;
   }
