@@ -36,6 +36,14 @@ const snippet = [
   grab(/async function entitlementGrant/, '\n}'),
   grab(/async function entitlementRevoke/, '\n}'),
   grab(/async function entitlementsGet/, '\n}'),
+  // clientProgram now projects the stored payload through the v3/legacy
+  // allowlist (commit 7ed7371), so these helpers must come along or the
+  // harness fails with "projectProgram is not defined".
+  grab(/const UNSAFE_KEY_RE/, ';'),
+  grab(/const PROGRAM_V3_KEYS/, '] as const;'),
+  grab(/const PROGRAM_LEGACY_KEYS/, '\n];'),
+  grab(/function stripUnsafe/, '\n}'),
+  grab(/function projectProgram/, '\n}'),
   grab(/async function clientProgram/, '\n}'),
   grab(/async function weightLog/, '\n}'),
   grab(/async function overrideGet/, '\n}'),
