@@ -6454,6 +6454,11 @@ function updateBottomNav(id) {
   fit();
   vv.addEventListener('resize', fit);
   vv.addEventListener('scroll', fit);
+  /* visualViewport's own resize event does not fire in every situation that
+     changes the visible height (proved in test: the value was correct on
+     vv.height but no event arrived). window.resize does, so listen to both and
+     let fit() read the authoritative number either way. */
+  window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', function () { setTimeout(fit, 250); });
 })();
 </script>
