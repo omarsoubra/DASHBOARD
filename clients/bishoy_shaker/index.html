@@ -938,6 +938,13 @@
   }
   .sw3-help:hover { border-color: var(--accent); }
 
+  /* The persistent "⟳ synced 1m ago" pill is z-index 150, so it renders behind
+     the modal and cannot steal a tap - but on a short viewport it sits on the
+     dimmed backdrop right beside the action row and reads as clutter during a
+     task that should feel like one decision. Hidden while any modal is open.
+     :has() is a progressive enhancement; without it nothing changes. */
+  body:has(.modal-overlay.open) .sync-status-badge { display: none; }
+
   .sw3-target {
     font-size: 0.8rem; color: var(--muted); background: var(--surface2);
     border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; margin-bottom: 0.85rem;
