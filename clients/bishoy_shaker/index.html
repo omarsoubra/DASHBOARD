@@ -7092,12 +7092,26 @@ function sw3Rank(t, currentName, limit) {
     /* one entry per dish - the variant that fits today's target best */
     if (!groups[k] || s < groups[k]._s) { groups[k] = Object.assign({ _s: s, _k: k }, x); }
   });
-  return Object.keys(groups).map(function (k) { return groups[k]; })
+  var ranked = Object.keys(groups).map(function (k) { return groups[k]; })
     .sort(function (a, b) {
       if (a._s !== b._s) return a._s - b._s;
       return Math.abs(a.cal - t.cal) - Math.abs(b.cal - t.cal);
-    })
-    .slice(0, limit || 3);
+    });
+  var n = limit || 3;
+  var top = ranked.slice(0, n);
+
+  /* Same-slot guarantee. Scoring alone once answered a 7:00am breakfast with
+     three 1:00pm meal-prep lunches: that breakfast is the highest-protein
+     breakfast in the plan, so every lunch beat every other breakfast on the
+     protein term. Nutritionally correct, and not what a coach would say.
+     If any candidate shares the target's time of day and none reached the
+     list, the best of them takes the last place. The slot weight itself stays
+     small on purpose - this is a floor, not a thumb on the scale. */
+  if (t.time && top.length && !top.some(function (x) { return x.time === t.time; })) {
+    var sameSlot = ranked.filter(function (x) { return x.time === t.time; })[0];
+    if (sameSlot) top[top.length - 1] = sameSlot;
+  }
+  return top;
 }
 
 /* One short line. The verdict comes from the same engine V2 uses, so the card
