@@ -928,6 +928,51 @@
     .sw2-chip .n { max-width: 52vw; }
   }
 
+
+  /* ═══ HELP ME SWAP THIS — V3, Bishoy pilot, 2026-09-14 ════════════════════ */
+  .sw3-help {
+    display: block; width: 100%; margin: 0 0 0.2rem;
+    background: transparent; border: 1px dashed var(--border); border-radius: 11px;
+    color: var(--accent); cursor: pointer; min-height: 46px;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sw3-help:hover { border-color: var(--accent); }
+
+  .sw3-target {
+    font-size: 0.8rem; color: var(--muted); background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; margin-bottom: 0.85rem;
+  }
+  .sw3-target b { color: var(--text); font-family: 'DM Mono', monospace; }
+
+  .sw3-card {
+    border: 1px solid var(--border); border-radius: 13px; padding: 0.75rem 0.85rem;
+    margin-bottom: 0.6rem; background: var(--surface2);
+  }
+  .sw3-card.best { border-color: rgba(0,229,160,0.4); background: rgba(0,229,160,0.06); }
+  .sw3-rank {
+    font-family: 'DM Mono', monospace; font-size: 0.55rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); display: flex; gap: 0.4rem; align-items: center;
+  }
+  .sw3-card.best .sw3-rank { color: var(--accent3); }
+  .sw3-src {
+    border: 1px solid var(--border); border-radius: 5px; padding: 0.05rem 0.3rem;
+    font-size: 0.52rem; color: var(--muted); letter-spacing: 0.08em;
+  }
+  .sw3-name { font-size: 0.92rem; color: var(--text); font-weight: 600; margin: 0.25rem 0 0.1rem; line-height: 1.3; }
+  .sw3-macros { font-family: 'DM Mono', monospace; font-size: 0.74rem; color: var(--muted); }
+  .sw3-delta { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text); margin-top: 0.15rem; }
+  .sw3-why { font-size: 0.76rem; color: var(--muted); margin-top: 0.3rem; }
+  .sw3-use {
+    width: 100%; margin-top: 0.6rem; min-height: 44px; border-radius: 9px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sw3-card.best .sw3-use { background: var(--accent); color: #fff; }
+  .sw3-empty {
+    text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.5;
+    border: 1px dashed var(--border); border-radius: 12px; padding: 1.2rem 0.9rem;
+  }
+
   /* ─── PROGRESSION TABLE ─── */
   .prog-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); margin-top: 2rem; }
 
@@ -2556,6 +2601,7 @@
         </div>
       </div>
 
+      <button type="button" class="sw3-help" id="sw3-help" onclick="sw3Open()">Help me swap this</button>
       <div id="sw2-picks"></div>
 
       <div class="sw2-tabs" role="tablist">
@@ -2602,6 +2648,17 @@
       <button type="button" class="sw2-fav-btn" id="sw2-fav-btn" onclick="sw2SaveFavourite()">♡ Save as favourite</button>
       <div class="sw2-actions">
         <button type="button" class="sw2-btn-go" onclick="cancelSwap()">Done</button>
+      </div>
+    </div>
+
+    <!-- ─── RECOMMENDATIONS VIEW (V3) ─── -->
+    <div id="swapv3-recs" hidden>
+      <div class="modal-title">Help me swap this</div>
+      <div class="sw2-replacing">Replacing <strong id="sw3-orig">—</strong></div>
+      <div class="sw3-target" id="sw3-target">Target <b id="sw3-t-cal">0</b> kcal · <b id="sw3-t-p">0</b>g protein</div>
+      <div id="sw3-list"></div>
+      <div class="sw2-actions">
+        <button type="button" class="sw2-btn-ghost" onclick="sw3Back()">Enter my own swap</button>
       </div>
     </div>
 
@@ -6846,6 +6903,7 @@ function openSwapModal(week, dayIdx, mealIdx) {
   document.getElementById('sw2-save-msg').hidden = true;
   document.getElementById('swapv2-entry').hidden = false;
   document.getElementById('swapv2-done').hidden = true;
+  document.getElementById('swapv3-recs').hidden = true;
   var fb = document.getElementById('sw2-fav-btn');
   fb.textContent = '♡ Save as favourite'; fb.classList.remove('saved'); fb.disabled = false;
   var log = document.getElementById('sw2-log'); log.disabled = false;
@@ -6934,6 +6992,189 @@ async function sw2Save() {
   } else {
     _sw2Msg('✗ Not saved — try again', 'err');
   }
+}
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELP ME SWAP THIS — SWAP UX V3, Bishoy pilot, 2026-09-14
+   ═══════════════════════════════════════════════════════════════════════════
+   Deterministic. No model, no external API, no invented nutrition. Every
+   candidate is a meal that already exists in Bishoy's own 12-week plan, or a
+   swap he has already logged himself (favourite / recent). If a candidate has
+   no calories or no protein it is not offered, because it could not be compared
+   honestly.
+
+   FOOD_DB is deliberately NOT a candidate source. Its rows are single
+   ingredients ("200g chicken breast"), not meals, and offering an ingredient as
+   a replacement for a composed meal would be a worse suggestion than none. It
+   still backs the V2 free-text parser.
+
+   Nothing here writes. Viewing or picking a recommendation only fills in the V2
+   form; the only write is still the existing Log swap -> postMealLog path.   */
+
+/* ── candidate identity ────────────────────────────────────────────────────
+   "MEAL PREP: Chicken + Rice + Broccoli (air fryer)" and
+   "Chicken + Rice + Broccoli (air fryer)" are the same dish at a different
+   time of day and portion, so the key drops the MEAL PREP prefix and the
+   trailing appliance note. It keeps everything else, so "Chicken Thigh + Rice"
+   and "Chicken Thigh + Rice + Veg" stay separate meals.                     */
+function sw3Key(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/^meal prep:\s*/, '')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .replace(/[^a-z0-9+ ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sw3Pool() {
+  var out = [];
+  try {
+    Object.keys(mealPlan).forEach(function (wk) {
+      (mealPlan[wk] || []).forEach(function (day) {
+        ((day && day.meals) || []).forEach(function (m) {
+          if (!m || !m.name || !m.cal || m.p == null) return;
+          out.push({ name: m.name, time: m.time || '', cal: m.cal, p: m.p, c: m.c, f: m.f, src: 'plan' });
+        });
+      });
+    });
+  } catch (e) {}
+  try {
+    _sw2Read(SW2_FAVS).forEach(function (x) {
+      if (x && x.name && x.cal != null && x.p != null)
+        out.push({ name: x.name, time: '', cal: x.cal, p: x.p, c: x.c, f: x.f, src: 'fav' });
+    });
+    _sw2Read(SW2_RECENTS).forEach(function (x) {
+      if (x && x.name && x.cal != null && x.p != null)
+        out.push({ name: x.name, time: '', cal: x.cal, p: x.p, c: x.c, f: x.f, src: 'recent' });
+    });
+  } catch (e) {}
+  return out;
+}
+
+/* ── ranking ───────────────────────────────────────────────────────────────
+   Lower is better.
+
+     calPen  |cal - target| / target            calorie proximity, the main term
+     proPen  shortfall only, x1.2               protein is a FLOOR, never a
+                                                ceiling - extra protein is free
+     overPen anything past +25% calories, x1.5  stops a high-protein candidate
+                                                buying its way in on calories
+     slot    same time of day -0.12,            breakfast stays breakfast;
+             different time   +0.06             a saved swap has no time and is
+                                                neither rewarded nor punished
+     fam     favourite -0.10, recent -0.06      his own patterns break ties
+
+   Anything more than 35% away on calories is dropped entirely - that is not a
+   swap, it is a different meal, and offering it would be worse than offering
+   nothing.                                                                  */
+var SW3_MAX_CAL_DRIFT = 0.35;
+
+function sw3Score(t, x) {
+  var rel = (x.cal - t.cal) / t.cal;
+  var calPen = Math.abs(rel);
+  var proPen = t.p ? Math.max(0, (t.p - x.p) / t.p) * 1.2 : 0;
+  var overPen = Math.max(0, rel - 0.25) * 1.5;
+  var slot = x.time ? (x.time === t.time ? -0.12 : 0.06) : 0;
+  var fam = x.src === 'fav' ? -0.10 : x.src === 'recent' ? -0.06 : 0;
+  return calPen + proPen + overPen + slot + fam;
+}
+
+function sw3Rank(t, currentName, limit) {
+  var excl = sw3Key(currentName);
+  var groups = {};
+  sw3Pool().forEach(function (x) {
+    var k = sw3Key(x.name);
+    if (!k || k === excl) return;
+    if (Math.abs(x.cal - t.cal) / t.cal > SW3_MAX_CAL_DRIFT) return;
+    var s = sw3Score(t, x);
+    /* one entry per dish - the variant that fits today's target best */
+    if (!groups[k] || s < groups[k]._s) { groups[k] = Object.assign({ _s: s, _k: k }, x); }
+  });
+  return Object.keys(groups).map(function (k) { return groups[k]; })
+    .sort(function (a, b) {
+      if (a._s !== b._s) return a._s - b._s;
+      return Math.abs(a.cal - t.cal) - Math.abs(b.cal - t.cal);
+    })
+    .slice(0, limit || 3);
+}
+
+/* One short line. The verdict comes from the same engine V2 uses, so the card
+   and the form can never disagree with each other. */
+function sw3Why(t, x) {
+  var v = sw2Judge(t, x.cal, x.p);
+  if (v.k === 'good') return '✓ Great match';
+  if (v.k === 'close') return 'Close enough';
+  if (x.cal > t.cal && t.p && x.p >= t.p) return 'Higher calories, but protein is on target';
+  if (t.p && x.p < t.p * 0.75) return 'Lower protein than planned';
+  return 'Bigger change to the meal';
+}
+
+function sw3Open() {
+  var t = _sw2.target;
+  var meal = (getMealDay(_swapCtx.week, _swapCtx.dayIdx) || [])[_swapCtx.mealIdx] || {};
+  t.time = meal.time || '';
+  document.getElementById('sw3-orig').textContent = meal.name || 'this meal';
+  document.getElementById('sw3-t-cal').textContent = t.cal;
+  document.getElementById('sw3-t-p').textContent = t.p;
+
+  var picks = sw3Rank(t, meal.name, 3);
+  var host = document.getElementById('sw3-list');
+
+  if (!picks.length) {
+    host.innerHTML = '<div class="sw3-empty">No good matches found from your plan.<br>'
+                   + 'Enter what you ate instead and we’ll check it against the target.</div>';
+  } else {
+    _sw2.recs = picks;
+    host.innerHTML = picks.map(function (x, i) {
+      var dCal = Math.round(x.cal - t.cal), dP = Math.round(x.p - (t.p || 0));
+      var srcLabel = x.src === 'fav' ? 'Favourite' : x.src === 'recent' ? 'Recent' : 'From your plan';
+      return '<div class="sw3-card' + (i === 0 ? ' best' : '') + '">'
+        + '<div class="sw3-rank">' + (i === 0 ? 'Best match' : 'Another option')
+        + '<span class="sw3-src">' + srcLabel + '</span></div>'
+        + '<div class="sw3-name">' + _sw2Esc(x.name) + '</div>'
+        + '<div class="sw3-macros">' + x.cal + ' kcal · ' + x.p + 'g protein</div>'
+        + '<div class="sw3-delta">' + _sw2Sign(dCal, ' kcal') + '  ' + _sw2Sign(dP, 'g P') + '</div>'
+        + '<div class="sw3-why">' + _sw2Esc(sw3Why(t, x)) + '</div>'
+        + '<button type="button" class="sw3-use" onclick="sw3Use(' + i + ')">Use this</button>'
+        + '</div>';
+    }).join('');
+  }
+  document.getElementById('swapv2-entry').hidden = true;
+  document.getElementById('swapv2-done').hidden = true;
+  document.getElementById('swapv3-recs').hidden = false;
+  document.getElementById('swap-modal-overlay').scrollTop = 0;
+}
+
+function sw3Back() {
+  document.getElementById('swapv3-recs').hidden = true;
+  document.getElementById('swapv2-entry').hidden = false;
+  document.getElementById('swap-modal-overlay').scrollTop = 0;
+  var d = document.getElementById('sw-desc'); if (d) d.focus();
+}
+
+/* Fills the V2 form and hands control straight back to it. Nothing is written:
+   the verdict is recomputed from scratch against the meal being replaced, and
+   the only write is still Log swap. */
+function sw3Use(i) {
+  var x = (_sw2.recs || [])[i];
+  if (!x) return;
+  _sw2.touched = true;
+  document.getElementById('sw-desc').value = x.name;
+  document.getElementById('sw-cal').value = x.cal;
+  document.getElementById('sw-p').value = x.p;
+  document.getElementById('sw-c').value = x.c != null ? x.c : '';
+  document.getElementById('sw-f').value = x.f != null ? x.f : '';
+  if (x.c != null || x.f != null) {
+    document.getElementById('sw2-extra').hidden = false;
+    document.getElementById('sw2-more').hidden = true;
+  }
+  document.getElementById('swapv3-recs').hidden = true;
+  document.getElementById('swapv2-entry').hidden = false;
+  document.getElementById('swap-modal-overlay').scrollTop = 0;
+  sw2RenderVerdict();
+  sw2RenderNote();
 }
 </script>
 <script>
