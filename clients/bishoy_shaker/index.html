@@ -2819,46 +2819,104 @@ function saveOverridesLocal(o) {
   localStorage.setItem(_lsOverridesKey(), JSON.stringify(o));
 }
 
-function showSyncMsg(text, cls) {
+// ═════════════════════════════════════════════════════════════════════════
+// AUTHENTICATED CLOUD WRITE  —  P0 2026-09-14
+// Every client write used mode:'no-cors'. That response is opaque, so .then()
+// fired on 401, 403, 500, a dead token and a successful save alike, and the UI
+// printed "✓ logged" for writes the backend never accepted. A client could
+// log for weeks into nothing and never be told.
+//
+// The Edge Function serves Access-Control-Allow-Origin:* and returns JSON, so a
+// normal readable fetch works and the answer can actually be checked. Verified
+// live 2026-09-14: a valid write returns {"ok":true,...} and a bad token returns
+// {"ok":false,"error":"bad_token"} — both readable from this origin.
+//
+// Returns { ok, error, data }. ok is true ONLY when the backend said so.
+// ═════════════════════════════════════════════════════════════════════════
+async function cloudWrite(type, payload, opts) {
+  const timeoutMs = (opts && opts.timeoutMs) || 15000;
+  if (!CLIENT_CONFIG.sheetsWebhookUrl) return { ok: false, error: 'no_endpoint' };
+  if (!CLIENT_TOKEN)                   return { ok: false, error: 'no_token' };
+  let ctl = null, timer = null;
+  try { if (typeof AbortController !== 'undefined') { ctl = new AbortController(); timer = setTimeout(function(){ try{ctl.abort();}catch(e){} }, timeoutMs); } } catch (e) {}
+  try {
+    const resp = await fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      cache: 'no-store',
+      signal: ctl ? ctl.signal : undefined,
+      body: JSON.stringify(Object.assign({
+        type: type,
+        client: CLIENT_CONFIG.client.storageKey,
+        storageKey: CLIENT_CONFIG.client.storageKey,
+        token: CLIENT_TOKEN,
+        timestamp: new Date().toISOString(),
+      }, payload || {})),
+    });
+    if (timer) clearTimeout(timer);
+    if (!resp.ok) return { ok: false, error: 'http_' + resp.status };
+    let j = null;
+    try { j = await resp.json(); } catch (e) { return { ok: false, error: 'bad_response' }; }
+    if (!j || j.ok !== true) return { ok: false, error: (j && j.error) || 'refused', data: j };
+    return { ok: true, data: j };
+  } catch (e) {
+    if (timer) clearTimeout(timer);
+    const aborted = e && (e.name === 'AbortError');
+    return { ok: false, error: aborted ? 'timeout' : 'network' };
+  }
+}
+
+function _markSync(state) {
+  try {
+    if (typeof _lastSyncMs !== 'undefined') { _lastSyncMs = Date.now(); _lastSyncStatus = state; }
+    if (typeof updateSyncBadge === 'function') updateSyncBadge();
+  } catch (e) {}
+}
+function syncSaving(what) { showSyncMsg('saving' + (what ? ' ' + what : '') + '…', 'pending', true); }
+function syncSaved()      { showSyncMsg('✓ saved', 'ok'); _markSync('ok'); }
+function syncFailed(err) {
+  const m = err === 'no_token'     ? '✗ not saved — reopen your link'
+          : err === 'bad_token'    ? '✗ not saved — your link has expired'
+          : err === 'network'      ? '✗ not saved — no connection'
+          : err === 'timeout'      ? '✗ not saved — timed out'
+          : err === 'no_endpoint'  ? '✗ not saved — no cloud configured'
+          : '✗ not saved — will retry';
+  showSyncMsg(m, 'err');
+  _markSync('err');
+}
+
+function showSyncMsg(text, cls, sticky) {
   const el = document.getElementById('sync-indicator');
   if (!el) return;
   el.textContent = text;
   el.className = 'sync-indicator show ' + (cls || '');
   clearTimeout(window._syncTimeout);
-  window._syncTimeout = setTimeout(() => el.classList.remove('show'), 2500);
+  // A "saving…" message must stay on screen until the write resolves, or the
+  // client sees a message vanish and assumes it finished.
+  if (!sticky) window._syncTimeout = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
+// TRAINER-MODE OVERRIDES — LOCAL ONLY, AND NOW SAID OUT LOUD.
+//
+// Pre-existing defect found during the 2026-09-14 P0 audit, NOT introduced by it:
+// this function posted a body with no `type` field and no coach token. The Edge
+// Function router dispatches on body.type, so every one of these writes has been
+// answered with `unknown_type` since the Apps Script migration — and
+// mode:'no-cors' hid it behind a green "✓ synced to cloud".
+//
+// overridePut requires a COACH token (verifyCoachToken) and takes key/value.
+// A client shell has no coach credential and must never carry one, so there is
+// no honest way to make this write from here. Until the backend grows a
+// client-authorised self-override endpoint, trainer edits made inside a client's
+// shell live on that device only — which is now what the UI says.
 function postOverride(dayKey, exercises) {
-  if (!CLIENT_CONFIG.sheetsWebhookUrl) {
-    showSyncMsg('saved locally (no cloud)', 'warn');
-    return;
-  }
-  // POST is mode:'no-cors' → opaque response (can't read status). We mark
-  // success optimistically, then verify with a follow-up GET in 2.5s. If
-  // the GET doesn't show our change, the badge flips to "sync failed".
-  fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      client: CLIENT_CONFIG.client.storageKey,
-      dayKey: dayKey,
-      exercises: exercises,
-      timestamp: new Date().toISOString()
-    })
-  }).then(() => {
-    _lastSyncMs = Date.now();
-    _lastSyncStatus = 'ok';
-    updateSyncBadge();
-    showSyncMsg('✓ synced to cloud', 'ok');
-    // Verify the write actually landed by re-pulling after a short delay
-    setTimeout(pullOverrides, 2500);
-  }).catch(e => {
-    console.warn('Sync POST failed:', e);
-    _lastSyncStatus = 'err';
-    updateSyncBadge();
-    showSyncMsg('✗ sync failed', 'err');
-  });
+  showSyncMsg('saved on this device only', 'warn');
+  try {
+    console.warn('[overrides] Saved locally. Server override writes need a coach '
+      + 'token and are not available from a client shell; make this change from '
+      + 'the coach dashboard if it must follow the client to another device.');
+  } catch (e) {}
+  return { ok: false, error: 'local_only' };
 }
 
 let _lastSyncMs = 0;
@@ -3290,76 +3348,111 @@ function saveMealLogLocal(logs) {
   localStorage.setItem(_mealLogKey(), JSON.stringify(logs));
 }
 
-function postMealLog(entry) {
-  if (!CLIENT_CONFIG.sheetsWebhookUrl) {
-    showSyncMsg('saved locally (no cloud)', 'warn');
-    return;
-  }
-  fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      type: 'meal',
-      client: CLIENT_CONFIG.client.storageKey,
-      storageKey: CLIENT_CONFIG.client.storageKey,
-      token: CLIENT_TOKEN,
-      week:   entry.week,
-      dayIdx: entry.dayIdx,
-      mealIdx:entry.mealIdx,
-      mealName: entry.mealName,
-      status: entry.status,
-      swapDesc: entry.swapDesc || '',
-      calActual: entry.cal || 0,
-      pActual: entry.p || 0,
-      cActual: entry.c || 0,
-      fActual: entry.f || 0,
-      timestamp: new Date().toISOString(),
-    })
-  }).then(() => {
-    showSyncMsg('✓ logged', 'ok');
-    if (typeof _lastSyncMs !== 'undefined') {
-      _lastSyncMs = Date.now();
-      _lastSyncStatus = 'ok';
-      updateSyncBadge();
-    }
-  }).catch(e => {
-    console.warn('Meal log POST failed:', e);
-    showSyncMsg('✗ log sync failed', 'err');
+// Pending guard: one in-flight write per meal slot. The backend meal_logs table
+// is still append-only (canonical meal_status lands in Track B), so this is a
+// CLIENT-SIDE guard only — it stops a double tap becoming two rows, it is not
+// server idempotency.
+const _mealPending = new Set();
+
+async function postMealLog(entry) {
+  const r = await cloudWrite('meal', {
+    week:      entry.week,
+    dayIdx:    entry.dayIdx,
+    mealIdx:   entry.mealIdx,
+    mealName:  entry.mealName,
+    status:    entry.status,
+    swapDesc:  entry.swapDesc || '',
+    calActual: entry.cal || 0,
+    pActual:   entry.p   || 0,
+    cActual:   entry.c   || 0,
+    fActual:   entry.f   || 0,
   });
+  // Record the truth on the entry itself so an unsynced tap can be retried
+  // later instead of being silently dropped.
+  try {
+    const logs = loadMealLogs();
+    const id = _mealLogId(entry.week, entry.dayIdx, entry.mealIdx);
+    if (logs[id]) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error; saveMealLogLocal(logs); }
+  } catch (e) {}
+  if (r.ok) syncSaved(); else syncFailed(r.error);
+  return r;
 }
 
-function logMealQuick(week, dayIdx, mealIdx, status) {
-  // status = 'ate' | 'skip'   (swap uses logMealSwap)
+// Re-send anything a previous session failed to land. Bounded, no queueing
+// engine: it runs once per load over whatever is already in local state.
+async function retryUnsyncedMeals() {
+  let logs;
+  try { logs = loadMealLogs(); } catch (e) { return; }
+  const stuck = Object.keys(logs).filter(k => logs[k] && logs[k].synced === false);
+  if (!stuck.length || !CLIENT_TOKEN) return;
+  for (const k of stuck.slice(0, 25)) {
+    const e = logs[k];
+    const r = await cloudWrite('meal', {
+      week: e.week, dayIdx: e.dayIdx, mealIdx: e.mealIdx, mealName: e.mealName,
+      status: e.status, swapDesc: e.swapDesc || '',
+      calActual: e.cal || 0, pActual: e.p || 0, cActual: e.c || 0, fActual: e.f || 0,
+      timestamp: e.ts || undefined,
+    });
+    const cur = loadMealLogs();
+    if (cur[k]) { cur[k].synced = !!r.ok; cur[k].syncErr = r.ok ? null : r.error; saveMealLogLocal(cur); }
+    if (!r.ok) break;   // stop on the first failure; try again next load
+  }
+}
+
+async function logMealQuick(week, dayIdx, mealIdx, status) {
+  // status = 'ate' | 'skip'   (swap uses saveSwap)
+  const id = _mealLogId(week, dayIdx, mealIdx);
+  if (_mealPending.has(id)) return;           // rapid repeat tap — ignore
   const meals = getMealDay(week, dayIdx);
   const meal = meals[mealIdx];
   if (!meal) return;
-  const logs = loadMealLogs();
-  const id = _mealLogId(week, dayIdx, mealIdx);
-  const entry = {
-    week, dayIdx, mealIdx,
-    mealName: meal.name,
-    status,
-    cal: status === 'ate' ? (meal.cal || 0) : 0,
-    p:   status === 'ate' ? (meal.p   || 0) : 0,
-    c:   status === 'ate' ? (meal.c   || 0) : 0,
-    f:   status === 'ate' ? (meal.f   || 0) : 0,
-    ts:  new Date().toISOString(),
-  };
-  logs[id] = entry;
-  saveMealLogLocal(logs);
-  postMealLog(entry);
-  renderNutritionDay();
+  _mealPending.add(id);
+  try {
+    const logs = loadMealLogs();
+    const entry = {
+      week, dayIdx, mealIdx,
+      mealName: meal.name,
+      status,
+      cal: status === 'ate' ? (meal.cal || 0) : 0,
+      p:   status === 'ate' ? (meal.p   || 0) : 0,
+      c:   status === 'ate' ? (meal.c   || 0) : 0,
+      f:   status === 'ate' ? (meal.f   || 0) : 0,
+      ts:  new Date().toISOString(),
+      synced: false,
+    };
+    logs[id] = entry;
+    saveMealLogLocal(logs);          // optimistic: the tap is never lost
+    renderNutritionDay();            // repaint with the pending state
+    syncSaving();
+    await postMealLog(entry);
+    renderNutritionDay();            // repaint with the confirmed/failed state
+  } finally {
+    _mealPending.delete(id);
+  }
 }
 
-function unlogMeal(week, dayIdx, mealIdx) {
-  const logs = loadMealLogs();
+async function unlogMeal(week, dayIdx, mealIdx) {
   const id = _mealLogId(week, dayIdx, mealIdx);
-  delete logs[id];
-  saveMealLogLocal(logs);
-  // Push a "delete" status — coach dashboard ignores rows without status
-  postMealLog({ week, dayIdx, mealIdx, mealName: '', status: 'undo' });
-  renderNutritionDay();
+  if (_mealPending.has(id)) return;
+  _mealPending.add(id);
+  try {
+    const logs = loadMealLogs();
+    delete logs[id];
+    saveMealLogLocal(logs);
+    renderNutritionDay();
+    syncSaving();
+    // Until canonical meal_status ships (Track B) this is still an append-only
+    // 'undo' marker on the server, not a state change. The local delete is what
+    // the client sees; the server row is a breadcrumb for the coach.
+    const r = await cloudWrite('meal', {
+      week, dayIdx, mealIdx, mealName: '', status: 'undo',
+      calActual: 0, pActual: 0, cActual: 0, fActual: 0,
+    });
+    if (r.ok) syncSaved(); else syncFailed(r.error);
+    renderNutritionDay();
+  } finally {
+    _mealPending.delete(id);
+  }
 }
 
 // ─── Swap modal ───
@@ -3416,7 +3509,7 @@ function updateAutoMacros() {
   preview.style.display = '';
 }
 
-function saveSwap() {
+async function saveSwap() {
   if (!_swapCtx) return;
   const desc = document.getElementById('sw-desc').value.trim();
   if (!desc) { alert('Describe what you ate.'); return; }
@@ -3453,11 +3546,15 @@ function saveSwap() {
     cal: finalCal, p: finalP, c: finalC, f: finalF,
     ts: new Date().toISOString(),
   };
+  if (_mealPending.has(id)) return;
+  entry.synced = false;
   logs[id] = entry;
   saveMealLogLocal(logs);
-  postMealLog(entry);
   cancelSwap();
   renderNutritionDay();
+  _mealPending.add(id);
+  syncSaving();
+  postMealLog(entry).finally(() => { _mealPending.delete(id); renderNutritionDay(); });
 }
 
 // ╔═════════════════════════════════════════════════════════════════════════╗
@@ -3716,41 +3813,26 @@ function getWorkoutLogEntry(phase, dayIdx, exName) {
   return loadWorkoutLogs()[_workoutLogId(phase, dayIdx, exName)] || null;
 }
 
-function postWorkoutLog(entry) {
-  if (!CLIENT_CONFIG.sheetsWebhookUrl) {
-    showSyncMsg('saved locally (no cloud)', 'warn');
-    return;
-  }
-  fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      type: 'workout',
-      client: CLIENT_CONFIG.client.storageKey,
-      storageKey: CLIENT_CONFIG.client.storageKey,
-      token: CLIENT_TOKEN,
-      phase: entry.phase,
-      dayIdx: entry.dayIdx,
-      exerciseName: entry.exName,
-      setsActual: entry.sets,
-      repsActual: entry.reps,
-      weightActual: entry.weight,
-      rpeActual: entry.rpe,
-      notes: entry.notes || '',
-      timestamp: new Date().toISOString(),
-    })
-  }).then(() => {
-    showSyncMsg('✓ workout logged', 'ok');
-    if (typeof _lastSyncMs !== 'undefined') {
-      _lastSyncMs = Date.now();
-      _lastSyncStatus = 'ok';
-      updateSyncBadge();
-    }
-  }).catch(e => {
-    console.warn('Workout log POST failed:', e);
-    showSyncMsg('✗ workout sync failed', 'err');
+const _workoutPending = new Set();
+
+async function postWorkoutLog(entry) {
+  const r = await cloudWrite('workout', {
+    phase:        entry.phase,
+    dayIdx:       entry.dayIdx,
+    exerciseName: entry.exName,
+    setsActual:   entry.sets,
+    repsActual:   entry.reps,
+    weightActual: entry.weight,
+    rpeActual:    entry.rpe,
+    notes:        entry.notes || '',
   });
+  try {
+    const logs = loadWorkoutLogs();
+    const id = _workoutLogId(entry.phase, entry.dayIdx, entry.exName);
+    if (logs[id]) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error; saveWorkoutLogsLocal(logs); }
+  } catch (e) {}
+  if (r.ok) syncSaved(); else syncFailed(r.error);
+  return r;
 }
 
 let _workoutLogCtx = null;
@@ -3788,12 +3870,17 @@ function saveWorkoutLog() {
     notes:  document.getElementById('wl-notes').value.trim(),
     ts:     new Date().toISOString(),
   };
+  const id = _workoutLogId(entry.phase, entry.dayIdx, entry.exName);
+  if (_workoutPending.has(id)) return;
+  entry.synced = false;
   const logs = loadWorkoutLogs();
-  logs[_workoutLogId(entry.phase, entry.dayIdx, entry.exName)] = entry;
+  logs[id] = entry;
   saveWorkoutLogsLocal(logs);
-  postWorkoutLog(entry);
   cancelWorkoutLog();
   renderDay();
+  _workoutPending.add(id);
+  syncSaving('workout');
+  postWorkoutLog(entry).finally(() => { _workoutPending.delete(id); try { renderDay(); } catch (e) {} });
 }
 
 // ─── Daily actuals from log ───
@@ -4096,6 +4183,14 @@ const CLIENT_CONFIG = {
     startWeight: 89,
     goalWeight:  83.5,
     storageKey:  'bishoy_shaker',
+    durationWeeks: 12,
+    // CANONICAL PROGRAM START. P0 2026-09-14: phase gating used to read a start
+    // date that the shell WROTE ITSELF the first time any context opened, so a
+    // client ten weeks in who opened the Home-Screen app was reset to Phase 1 and
+    // told to wait 28 days for Phase 2. This value comes from the coach roster and
+    // is the same on every device. null keeps the old local-only behaviour for
+    // configs that have not been given one yet.
+    startDate:   '2026-09-13',
   },
   trainer: {
     recipientEmail: 'omarrsoubra@gmail.com',
@@ -4143,22 +4238,119 @@ const CLIENT_TOKEN = (function () {
   return tok;
 })();
 
-// Truthful failure: without a token every cloud write is refused by the
-// backend. Say so rather than letting the client log a month into nothing.
+// ═════════════════════════════════════════════════════════════════════════
+// RELINK SCREEN  —  P0 2026-09-14
+// A fresh context (new phone, cleared site data, iOS's eviction of unused-site
+// storage, or an installed Home-Screen app — which on iOS gets its own storage
+// and launches at the token-free URL this shell rewrites the address bar to)
+// has no token. It used to show a thin red banner and otherwise behave as if it
+// were working: every write was refused and every tap still went green.
+//
+// Now it locks, and offers the one recovery that is safe here: paste the
+// personal link, or just the code at the end of it. The token is validated
+// against authClient BEFORE it is stored, so a bad token or another client's
+// token leaves the app locked.
+//
+// No token is ever written into a committed file, a manifest, or a start_url.
+// ═════════════════════════════════════════════════════════════════════════
+function _extractToken(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  const m = t.match(/[?&]t=([A-Za-z0-9_\-]+)/);   // full link or ?t= fragment
+  if (m) return m[1];
+  if (/^[A-Za-z0-9_\-]{16,}$/.test(t)) return t; // bare code
+  return '';
+}
+
+async function _validateAndStoreToken(candidate) {
+  const tok = _extractToken(candidate);
+  if (!tok) return { ok: false, error: 'That does not look like your access link.' };
+  if (!CLIENT_CONFIG.sheetsWebhookUrl) return { ok: false, error: 'No cloud endpoint configured.' };
+  let j = null;
+  try {
+    const resp = await fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      cache: 'no-store',
+      body: JSON.stringify({
+        type: 'authClient',
+        client: CLIENT_CONFIG.client.storageKey,
+        storageKey: CLIENT_CONFIG.client.storageKey,
+        token: tok,
+      }),
+    });
+    j = await resp.json();
+  } catch (e) {
+    return { ok: false, error: 'No connection. Check your internet and try again.' };
+  }
+  // The server resolves the token against THIS shell's storageKey, so another
+  // client's token comes back bad_token and stays locked.
+  if (!j || j.ok !== true) return { ok: false, error: 'That link is not valid for this program. Ask Omar for a new one.' };
+  try { localStorage.setItem(CLIENT_CONFIG.client.storageKey + '_access_token', tok); } catch (e) {}
+  return { ok: true, token: tok };
+}
+
+function _showRelinkScreen() {
+  if (document.getElementById('relink-screen')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'relink-screen';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0b0b0d;color:#f2f2f4;'
+    + 'display:flex;align-items:center;justify-content:center;padding:24px;'
+    + 'font:400 15px/1.55 system-ui,-apple-system,sans-serif;overflow-y:auto;';
+  wrap.innerHTML =
+      '<div style="max-width:420px;width:100%;">'
+    +   '<div style="font:700 13px/1 system-ui;letter-spacing:.12em;color:#8a8a92;margin-bottom:10px;">LOCKED IN</div>'
+    +   '<h1 style="font:700 25px/1.2 system-ui;margin:0 0 14px;">Reconnect this device</h1>'
+    +   '<p style="margin:0 0 18px;color:#b9b9c2;">This copy of your program is not linked to your account yet, '
+    +     'so nothing you log here would reach Omar. Paste the personal link he sent you '
+    +     '(or just the code at the end of it) and you are back in.</p>'
+    +   '<input id="relink-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" '
+    +     'spellcheck="false" placeholder="Paste your link or code" '
+    +     'style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:11px;border:1px solid #34343d;'
+    +     'background:#17171c;color:#fff;font:400 15px system-ui;margin-bottom:10px;"/>'
+    +   '<button id="relink-go" style="width:100%;padding:13px 14px;border-radius:11px;border:0;'
+    +     'background:#e8e8ef;color:#111;font:700 15px system-ui;cursor:pointer;">Unlock my program</button>'
+    +   '<div id="relink-msg" role="status" aria-live="polite" style="min-height:22px;margin-top:12px;font-size:13.5px;"></div>'
+    +   '<p style="margin:16px 0 0;color:#7a7a84;font-size:12.5px;">Lost the link? Message Omar and he will send a new one. '
+    +     'Adding this page to your Home Screen does not carry the link across — that is why you are seeing this.</p>'
+    + '</div>';
+  document.body.appendChild(wrap);
+  const input = wrap.querySelector('#relink-input');
+  const btn   = wrap.querySelector('#relink-go');
+  const msg   = wrap.querySelector('#relink-msg');
+  let busy = false;
+  const go = async function () {
+    if (busy) return;
+    busy = true; btn.disabled = true;
+    const label = btn.textContent; btn.textContent = 'Checking…';
+    msg.style.color = '#b9b9c2'; msg.textContent = '';
+    const r = await _validateAndStoreToken(input.value);
+    if (r.ok) {
+      msg.style.color = '#8fe3a6'; msg.textContent = 'Linked. Loading your program…';
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('t');
+        const qs = params.toString();
+        history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+      } catch (e) {}
+      setTimeout(function () { window.location.reload(); }, 350);
+      return;
+    }
+    msg.style.color = '#ff9aa9'; msg.textContent = r.error;
+    busy = false; btn.disabled = false; btn.textContent = label;
+  };
+  btn.addEventListener('click', go);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+  setTimeout(function () { try { input.focus(); } catch (e) {} }, 120);
+}
+
 if (!CLIENT_TOKEN) {
   try {
     console.warn('No access token. Open the link Omar sent you (it ends in ?t=...).');
-    window.addEventListener('DOMContentLoaded', function () {
-      const bar = document.createElement('div');
-      bar.setAttribute('role', 'alert');
-      bar.style.cssText = 'position:sticky;top:0;z-index:9999;padding:0.7rem 1rem;'
-        + 'background:#4a1520;color:#ffd7de;font:500 0.82rem/1.45 system-ui,sans-serif;'
-        + 'border-bottom:1px solid #7a2436;text-align:center;';
-      bar.textContent = 'This page is missing its access code, so nothing you log here '
-        + 'will reach Omar. Open the personal link he sent you (it ends in ?t=...) and '
-        + 'bookmark that one.';
-      document.body.insertBefore(bar, document.body.firstChild);
-    });
+    if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', _showRelinkScreen);
+    else _showRelinkScreen();
   } catch (e) {}
 };
 
@@ -4199,24 +4391,22 @@ async function saveCheckin(){
     if (statusEl) { statusEl.style.display='block'; statusEl.textContent='📸 Uploading '+picked.length+' photo(s)...'; }
     for (const view of picked) {
       try {
-        await fetch(SHEETS_WEBHOOK_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            type: 'photoUpload',
-            client: CLIENT_CONFIG.client.storageKey,
-            storageKey: CLIENT_CONFIG.client.storageKey,
-            token: CLIENT_TOKEN,
-            week: week,
-            view: view,
-            base64: _photoBase64[view].split(',')[1] || _photoBase64[view], // strip data URL prefix
-            mimeType: 'image/jpeg',
-            timestamp: new Date().toISOString(),
-          })
-        });
-        photoTokens.push('[PHOTO_' + view.toUpperCase() + ':wk' + week + ']');
+        const pr = await cloudWrite('photoUpload', {
+          week: week,
+          view: view,
+          base64: _photoBase64[view].split(',')[1] || _photoBase64[view], // strip data URL prefix
+          mimeType: 'image/jpeg',
+        }, { timeoutMs: 45000 });
+        if (pr.ok) {
+          photoTokens.push('[PHOTO_' + view.toUpperCase() + ':wk' + week + ']');
+        } else {
+          // Never claim a photo landed when it did not.
+          console.warn('Photo upload refused (' + view + '):', pr.error);
+          if (statusEl) { statusEl.textContent = '✗ ' + view + ' photo did not upload (' + pr.error + ')'; }
+        }
       } catch (err) {
         console.warn('Photo upload failed ('+view+'):', err);
+        if (statusEl) { statusEl.textContent = '✗ ' + view + ' photo did not upload'; }
       }
     }
     if (statusEl) { statusEl.textContent='✅ Photos uploaded (dashboard will show them next sync).'; setTimeout(()=>{ statusEl.style.display='none'; }, 6000); }
@@ -4265,47 +4455,27 @@ async function saveCheckin(){
   // v2 Apps Script: send TWO POSTs — one to WeightLog, one to CheckIns.
   // This way the dashboard tracks weight history separately from check-ins.
   if(SHEETS_WEBHOOK_URL){
-    try {
-      // 1. Push to WeightLog tab
-      await fetch(SHEETS_WEBHOOK_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          type: 'weight',
-          client: CLIENT_CONFIG.client.storageKey,
-          storageKey: CLIENT_CONFIG.client.storageKey,
-          token: CLIENT_TOKEN,
-          weightKg: weight,
-          notes: 'check-in week ' + week,
-          timestamp: new Date().toISOString(),
-        })
-      });
-      // 2. Push to CheckIns tab
-      await fetch(SHEETS_WEBHOOK_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          type: 'checkin',
-          client: CLIENT_CONFIG.client.storageKey,
-          storageKey: CLIENT_CONFIG.client.storageKey,
-          token: CLIENT_TOKEN,
-          week: week,
-          weightKg: weight,
-          energy1to10: energy,
-          sleepHours: sleep,
-          stress1to10: stress,
-          dietAdherence1to10: feeling,
-          trainingAdherence1to10: feeling,
-          notes: notes,
-          timestamp: new Date().toISOString(),
-        })
-      });
-      sheetsOk = true;
-      console.log('Sheet updated (weight + checkin)');
-    } catch(err) {
-      console.error('Sheets:', err);
-      sheetsOk = false;
-    }
+    // P0 2026-09-14: both writes are now readable. sheetsOk is true ONLY when the
+    // backend acknowledged BOTH rows; it used to be set to true unconditionally
+    // because mode:'no-cors' gave nothing to check.
+    syncSaving('check-in');
+    const wRes = await cloudWrite('weight', {
+      weightKg: weight,
+      notes: 'check-in week ' + week,
+    });
+    const cRes = await cloudWrite('checkin', {
+      week: week,
+      weightKg: weight,
+      energy1to10: energy,
+      sleepHours: sleep,
+      stress1to10: stress,
+      dietAdherence1to10: feeling,
+      trainingAdherence1to10: feeling,
+      notes: notes,
+    });
+    sheetsOk = !!(wRes.ok && cRes.ok);
+    if (sheetsOk) { syncSaved(); }
+    else { syncFailed((wRes.ok ? cRes.error : wRes.error)); }
   }
   showStatus('✅ Logged! '+(emailOk?'📧 Email sent':'⚠ Email failed')+' · '+(sheetsOk?'📊 Sheet updated':'⚠ Sheet failed'),emailOk&&sheetsOk?'var(--accent3)':'var(--accent2)');
   btn.textContent='📊 Log Check-In + Send to Trainer';btn.disabled=false;
@@ -4666,7 +4836,20 @@ const CODES = { 2: CLIENT_CONFIG.phases[2].unlockCode,    3: CLIENT_CONFIG.phase
 const TIMER_DAYS = { 2: CLIENT_CONFIG.phases[2].unlockAfterDays, 3: CLIENT_CONFIG.phases[3].unlockAfterDays };
 
 // Start date is set automatically the first time the page is opened by the client.
-const START_DATE = localStorage.getItem(LS_KEYS.start) || null;
+// CANONICAL PROGRAM START  —  P0 2026-09-14
+// This used to read localStorage only, and initLockState() wrote "today" into it
+// the first time ANY context opened. A client ten weeks in who opened the
+// Home-Screen app was therefore reset to Phase 1 and told to wait 28 days.
+// The coach-set start date now wins whenever it exists; the local value is only
+// a fallback for configs that have not been given one yet.
+const CANONICAL_START = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.startDate) || null;
+const START_DATE = CANONICAL_START || localStorage.getItem(LS_KEYS.start) || null;
+// Keep the local copy in step so anything else reading it agrees.
+try {
+  if (CANONICAL_START && localStorage.getItem(LS_KEYS.start) !== CANONICAL_START) {
+    localStorage.setItem(LS_KEYS.start, CANONICAL_START);
+  }
+} catch (e) {}
 
 let attemptingPhase = null;
 let countdownInterval = null;
@@ -4754,8 +4937,10 @@ function submitCode() {
 }
 
 function initLockState() {
-  // If no start date saved, set it now (first time opening)
-  if (!localStorage.getItem(LS_KEYS.start)) {
+  // Only stamp "today" when there is no canonical date to use. With a canonical
+  // start date this branch never runs, so a fresh context cannot restart the
+  // client's program clock.
+  if (!CANONICAL_START && !localStorage.getItem(LS_KEYS.start)) {
     localStorage.setItem(LS_KEYS.start, new Date().toISOString().split('T')[0]);
   }
 
@@ -5652,6 +5837,7 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
 (function cloudRestore(){
   const KEY_MEAL = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_meal_log';
   const KEY_WORKOUT = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_workout_log';
+  const KEY_CHECKINS = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_checkins';
   const KEY_LAST_RESTORE = () => (CLIENT_CONFIG.client.storageKey || 'client') + '_last_restore_ts';
 
   function hydrateFromCloud() {
@@ -5659,82 +5845,127 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
     const clientKey = CLIENT_CONFIG.client && CLIENT_CONFIG.client.storageKey;
     if (!clientKey) return;
 
-    // Only restore when local logs are empty (data wiped by iOS or fresh install)
-    let mealsEmpty = true, workoutsEmpty = true;
-    try {
-      const m = JSON.parse(localStorage.getItem(KEY_MEAL()) || '{}');
-      mealsEmpty = Object.keys(m).length === 0;
-    } catch(e){}
-    try {
-      const w = JSON.parse(localStorage.getItem(KEY_WORKOUT()) || '{}');
-      workoutsEmpty = Object.keys(w).length === 0;
-    } catch(e){}
-    if (!mealsEmpty && !workoutsEmpty) return; // nothing to do
+    // P0 2026-09-14: this used to bail out unless local logs were COMPLETELY
+    // empty, so two contexts on the same phone could hold permanently divergent
+    // state and never reconcile. It now runs on every authenticated load and
+    // MERGES: server fills anything local is missing, and where both hold the
+    // same record the newer timestamp wins.
+    if (!CLIENT_TOKEN) return;   // a locked context has nothing to authenticate with
+
+    const _newer = (a, b) => {
+      const ta = Date.parse((a && a.ts) || 0) || 0;
+      const tb = Date.parse((b && b.ts) || 0) || 0;
+      return tb > ta;
+    };
 
     const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard'
               + '&client=' + encodeURIComponent(CLIENT_CONFIG.client.storageKey)
               + '&token=' + encodeURIComponent(CLIENT_TOKEN);
-    fetch(url).then(r => r.json()).then(data => {
+    fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(data => {
       const c = data && data[clientKey];
       if (!c) return;
       let restoredCount = 0;
 
-      // Rebuild meal_log if wiped
-      if (mealsEmpty && Array.isArray(c.recentMeals) && c.recentMeals.length) {
-        const meals = {};
-        c.recentMeals.forEach(m => {
-          if (m.week == null || m.dayIdx == null || m.mealIdx == null) return;
-          const id = 'w' + m.week + '.d' + m.dayIdx + '.m' + m.mealIdx;
-          meals[id] = {
-            week: m.week, dayIdx: m.dayIdx, mealIdx: m.mealIdx,
-            mealName: m.mealName || '', status: m.status || 'ate',
-            swapDesc: m.swapDesc || '',
-            cal: Number(m.calActual) || Number(m.cal) || 0,
-            p:   Number(m.pActual)   || Number(m.p)   || 0,
-            c:   Number(m.cActual)   || Number(m.c)   || 0,
-            f:   Number(m.fActual)   || Number(m.f)   || 0,
-            ts:  m.timestamp,
-          };
-        });
-        if (Object.keys(meals).length) {
+      // ── MEALS ───────────────────────────────────────────────────────────
+      // meal_logs carries no week/dayIdx/mealIdx, so a server meal cannot be
+      // mapped back onto a slot in the plan. Every row is skipped, exactly as
+      // before. This is the one thing Track A cannot fix: canonical meal_status
+      // is a backend change (Track B). Left explicit rather than silent.
+      if (Array.isArray(c.recentMeals) && c.recentMeals.length) {
+        const usable = c.recentMeals.filter(m => m.week != null && m.dayIdx != null && m.mealIdx != null);
+        if (usable.length) {
+          const meals = JSON.parse(localStorage.getItem(KEY_MEAL()) || '{}');
+          usable.forEach(m => {
+            const id = 'w' + m.week + '.d' + m.dayIdx + '.m' + m.mealIdx;
+            const incoming = {
+              week: m.week, dayIdx: m.dayIdx, mealIdx: m.mealIdx,
+              mealName: m.mealName || '', status: m.status || 'ate',
+              swapDesc: m.swapDesc || '',
+              cal: Number(m.calActual) || Number(m.cal) || 0,
+              p:   Number(m.pActual)   || Number(m.p)   || 0,
+              c:   Number(m.cActual)   || Number(m.c)   || 0,
+              f:   Number(m.fActual)   || Number(m.f)   || 0,
+              ts:  m.timestamp, synced: true,
+            };
+            if (!meals[id] || _newer(meals[id], incoming)) { meals[id] = incoming; restoredCount++; }
+          });
           try { localStorage.setItem(KEY_MEAL(), JSON.stringify(meals)); } catch(e){}
-          restoredCount += Object.keys(meals).length;
+        } else {
+          console.info('[cloudRestore] ' + c.recentMeals.length + ' server meals carry no '
+            + 'week/day/meal coordinates and cannot be mapped to the plan. Meal ticks stay '
+            + 'device-local until canonical meal_status ships.');
         }
       }
 
-      // Rebuild workout_log if wiped
-      if (workoutsEmpty && Array.isArray(c.recentWorkouts) && c.recentWorkouts.length) {
-        const workouts = {};
+      // ── WORKOUTS ────────────────────────────────────────────────────────
+      if (Array.isArray(c.recentWorkouts) && c.recentWorkouts.length) {
+        const workouts = JSON.parse(localStorage.getItem(KEY_WORKOUT()) || '{}');
         c.recentWorkouts.forEach(w => {
           if (w.phase == null || w.dayIdx == null || !w.exerciseName) return;
           const id = 'p' + w.phase + '.d' + w.dayIdx + '.' + w.exerciseName;
-          workouts[id] = {
-            phase: w.phase, dayIdx: w.dayIdx, exerciseName: w.exerciseName,
-            setsActual:   w.setsActual   || '',
-            repsActual:   w.repsActual   || '',
-            weightActual: w.weightActual || '',
-            rpeActual:    w.rpeActual    || '',
-            notes:        w.notes        || '',
-            ts:           w.timestamp,
+          const incoming = {
+            phase: w.phase, dayIdx: w.dayIdx, exerciseName: w.exerciseName, exName: w.exerciseName,
+            sets:   w.setsActual   || '', reps:   w.repsActual   || '',
+            weight: w.weightActual || '', rpe:    w.rpeActual    || '',
+            setsActual:   w.setsActual   || '', repsActual:   w.repsActual   || '',
+            weightActual: w.weightActual || '', rpeActual:    w.rpeActual    || '',
+            notes: w.notes || '', ts: w.timestamp, synced: true,
           };
+          if (!workouts[id] || _newer(workouts[id], incoming)) { workouts[id] = incoming; restoredCount++; }
         });
-        if (Object.keys(workouts).length) {
-          try { localStorage.setItem(KEY_WORKOUT(), JSON.stringify(workouts)); } catch(e){}
-          restoredCount += Object.keys(workouts).length;
-        }
+        try { localStorage.setItem(KEY_WORKOUT(), JSON.stringify(workouts)); } catch(e){}
+      }
+
+      // ── CHECK-INS ───────────────────────────────────────────────────────
+      // A4. The server already returns everything the check-in history needs;
+      // the shell simply never read it, so a fresh context showed no history and
+      // an empty weight chart. Merged by week number, newest submission wins.
+      if (Array.isArray(c.recentCheckIns) && c.recentCheckIns.length) {
+        let local = [];
+        try { local = JSON.parse(localStorage.getItem(KEY_CHECKINS()) || '[]') || []; } catch(e){}
+        const byWeek = {};
+        local.forEach(x => { if (x && x.week != null) byWeek[x.week] = x; });
+        c.recentCheckIns.forEach(r => {
+          if (r.week == null) return;
+          const incoming = {
+            week: r.week,
+            weight: r.weightKg,
+            energy: r.energy1to10,
+            sleep:  r.sleepHours,
+            stress: r.stress1to10,
+            feeling: r.dietAdherence1to10,
+            notes:  r.notes || '',
+            date:   r.timestamp,
+            ts:     r.timestamp,
+            synced: true,
+          };
+          const cur = byWeek[r.week];
+          const curTs = cur && (cur.ts || cur.date);
+          if (!cur || (Date.parse(r.timestamp) || 0) > (Date.parse(curTs) || 0)) {
+            byWeek[r.week] = incoming; restoredCount++;
+          }
+        });
+        const merged = Object.keys(byWeek).map(k => byWeek[k])
+          .sort((x, y) => (Number(x.week) || 0) - (Number(y.week) || 0));
+        try { localStorage.setItem(KEY_CHECKINS(), JSON.stringify(merged)); } catch(e){}
+        try { if (typeof checkins !== 'undefined') checkins = merged; } catch(e){}
       }
 
       try { localStorage.setItem(KEY_LAST_RESTORE(), String(Date.now())); } catch(e){}
 
-      // Re-render home if we actually restored something (so rings + heatmap refresh)
       if (restoredCount > 0) {
         setTimeout(() => {
           try { if (typeof renderHome === 'function') renderHome(); } catch(e){}
           try { if (typeof renderMealSection === 'function') renderMealSection(); } catch(e){}
           try { if (typeof renderTraining === 'function') renderTraining(); } catch(e){}
+          try { if (typeof renderNutritionDay === 'function') renderNutritionDay(); } catch(e){}
+          try { if (typeof renderCheckinHistory === 'function') renderCheckinHistory(); } catch(e){}
+          try { if (typeof renderWeightChart === 'function') renderWeightChart(); } catch(e){}
         }, 300);
-        console.log('[cloudRestore] restored ' + restoredCount + ' entries from Sheet');
+        console.log('[cloudRestore] merged ' + restoredCount + ' records from the server');
       }
+      // Re-send anything a previous session failed to land.
+      try { if (typeof retryUnsyncedMeals === 'function') retryUnsyncedMeals(); } catch(e){}
     }).catch(() => {}); // silent on network fail
   }
 
@@ -6172,7 +6403,7 @@ function updateBottomNav(id) {
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-09-13T14:36:16.657768Z
+  generatedAt: 2026-09-14T11:10:33.772491Z
   clientStorageKey: bishoy_shaker
   configPath: bishoy_shaker.json
   safetyBlockers: 0
