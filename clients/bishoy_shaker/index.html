@@ -768,6 +768,12 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    /* .bottom-nav is position:fixed, 72px tall, and also z-index:200. Equal
+       z-index means DOM order wins and the nav painted OVER the modal, so the
+       bottom 38px of the action row - the "Log it" button - sat underneath it
+       and taps there hit the nav. 320 clears the nav (200) and the quick sheet
+       (310) while staying under the celebration layers (9997/9998). */
+    z-index: 320;
   }
   .modal-overlay.open {
     top: var(--vv-top, 0px);
