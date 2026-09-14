@@ -746,6 +746,45 @@
 
   .modal-close:hover { color: var(--text); border-color: var(--accent); }
 
+  /* ─── MOBILE MODAL REACHABILITY · 2026-09-14 ──────────────────────────────
+     .modal-overlay is position:fixed, inset:0, align-items:center, with no
+     overflow, and .modal carries no max-height. Once the swap form's
+     auto-macro preview renders, the modal measures ~908px - taller than an
+     iPhone 14 viewport - so a centred flex item overflowed past BOTH edges and
+     the "Log it" button sat below a boundary nothing could scroll.
+
+     Auto margins are the fix: inside a scrollable flex container they centre
+     the modal when there is room and let it scroll when there is not, which
+     align-items:center alone cannot do (it clips the overflowing top instead).
+
+     --vv-h / --vv-top are written by the visualViewport hook at the end of the
+     page. On iOS the on-screen keyboard shrinks the VISUAL viewport while the
+     layout viewport - and therefore a fixed inset:0 overlay - stays full
+     height, so the lower part of the overlay ends up under the keyboard with
+     no way to reach it. Binding the open overlay to the visual viewport keeps
+     the whole form inside the area the client can actually see. Both fall back
+     to the previous full-viewport behaviour when unset. */
+  .modal-overlay {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .modal-overlay.open {
+    top: var(--vv-top, 0px);
+    height: var(--vv-h, 100%);
+    bottom: auto;
+  }
+  .modal { margin: auto; }
+
+  @media (max-width: 700px) {
+    .modal-overlay {
+      padding: 0.9rem 0.75rem;
+      padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+    }
+    .modal { padding: 1.25rem; }
+    .modal-title { font-size: 1.5rem; margin-bottom: 0.7rem; }
+  }
+
   /* ─── PROGRESSION TABLE ─── */
   .prog-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); margin-top: 2rem; }
 
@@ -6395,6 +6434,27 @@ function updateBottomNav(id) {
       };
     }
   } catch (e) {}
+})();
+</script>
+<script>
+/* Mobile modal reachability (2026-09-14): publish the visual viewport as CSS
+   custom properties so an open .modal-overlay can bind to the area the client
+   can actually see while the on-screen keyboard is up. Writes two custom
+   properties and nothing else; no-op where window.visualViewport is absent. */
+(function () {
+  var vv = window.visualViewport;
+  if (!vv) return;
+  function fit() {
+    try {
+      var r = document.documentElement.style;
+      r.setProperty('--vv-h', vv.height + 'px');
+      r.setProperty('--vv-top', (vv.offsetTop || 0) + 'px');
+    } catch (e) {}
+  }
+  fit();
+  vv.addEventListener('resize', fit);
+  vv.addEventListener('scroll', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 250); });
 })();
 </script>
 </body>
