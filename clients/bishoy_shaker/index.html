@@ -791,6 +791,137 @@
     .modal-title { font-size: 1.5rem; margin-bottom: 0.7rem; }
   }
 
+
+  /* ═══ SWAP UX V2 — Bishoy pilot, 2026-09-14 ══════════════════════════════
+     Phone first. Progressive disclosure: target, then saved picks, then the
+     two fields that matter, then a verdict once there is enough to judge. */
+  .modal.swapv2 { padding-top: 1.5rem; }
+  .sw2-replacing {
+    font-size: 0.82rem; color: var(--muted); margin: -0.4rem 0 0.9rem;
+  }
+  .sw2-replacing strong { color: var(--text); font-weight: 600; }
+
+  .sw2-target {
+    display: flex; align-items: center; gap: 0.9rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.7rem 0.9rem; margin-bottom: 0.9rem;
+  }
+  .sw2-target::before {
+    content: 'TARGET';
+    font-family: 'DM Mono', monospace; font-size: 0.55rem; letter-spacing: 0.14em;
+    color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg);
+  }
+  .sw2-target-kcal { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; line-height: 1; color: var(--accent); }
+  .sw2-target-kcal small { font-size: 0.5rem; letter-spacing: 0.12em; display: block; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .sw2-target-macros { display: flex; gap: 0.85rem; font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .sw2-target-macros b { color: var(--text); font-size: 0.85rem; }
+
+  /* saved picks — favourites first, then recents */
+  .sw2-picks-head {
+    font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 0.14em;
+    color: var(--muted); text-transform: uppercase; margin: 0.7rem 0 0.35rem;
+  }
+  .sw2-chips { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.25rem; scrollbar-width: none; }
+  .sw2-chips::-webkit-scrollbar { display: none; }
+  .sw2-chip {
+    flex: 0 0 auto; text-align: left; cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.45rem 0.6rem; min-height: 44px; color: var(--text);
+    font-family: inherit; font-size: 0.76rem; line-height: 1.25; max-width: 62vw;
+  }
+  .sw2-chip .n { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
+  .sw2-chip .m { display: block; font-family: 'DM Mono', monospace; font-size: 0.64rem; color: var(--muted); }
+  .sw2-chip.fav { border-color: rgba(255,184,74,0.45); }
+  .sw2-chip .x { float: right; margin-left: 0.4rem; color: var(--muted); padding: 0 0.2rem; }
+
+  .sw2-tabs { display: flex; gap: 0.3rem; background: var(--surface2); border-radius: 10px; padding: 0.2rem; margin: 0.9rem 0 0.8rem; }
+  .sw2-tab {
+    flex: 1; min-height: 40px; border: 0; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sw2-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+
+  .sw2-label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.25rem;
+  }
+  .modal.swapv2 input[type="text"], .modal.swapv2 input[type="number"] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.7rem 0.75rem; border-radius: 9px;
+    font-family: 'DM Mono', monospace; font-size: 0.95rem; min-height: 46px;
+  }
+  .modal.swapv2 input:focus { outline: none; border-color: var(--accent); }
+  .sw2-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.7rem; }
+  .sw2-more {
+    background: none; border: 0; color: var(--accent); cursor: pointer;
+    font-family: inherit; font-size: 0.78rem; padding: 0.6rem 0 0.1rem; min-height: 40px;
+  }
+
+  .sw2-verdict { border-radius: 12px; padding: 0.7rem 0.85rem; margin-top: 0.9rem; border: 1px solid var(--border); }
+  .sw2-verdict .v-head { font-size: 0.92rem; font-weight: 600; }
+  .sw2-verdict .v-sub  { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; line-height: 1.45; }
+  .sw2-verdict.good  { background: rgba(0,229,160,0.10); border-color: rgba(0,229,160,0.35); }
+  .sw2-verdict.good .v-head  { color: var(--accent3); }
+  .sw2-verdict.close { background: rgba(255,184,74,0.10); border-color: rgba(255,184,74,0.35); }
+  .sw2-verdict.close .v-head { color: var(--warn); }
+  .sw2-verdict.big   { background: rgba(255,107,53,0.10); border-color: rgba(255,107,53,0.40); }
+  .sw2-verdict.big .v-head   { color: var(--accent2); }
+  .sw2-verdict.wait  { background: var(--surface2); }
+  .sw2-verdict.wait .v-head  { color: var(--muted); font-weight: 500; font-size: 0.82rem; }
+
+  /* diff row — the arrow carries the direction, colour only carries the verdict */
+  .sw2-diff { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.55rem; }
+  .sw2-diff span {
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text);
+    background: rgba(255,255,255,0.05); border-radius: 6px; padding: 0.2rem 0.4rem;
+  }
+  .sw2-diff span.zero { color: var(--muted); }
+
+  .sw2-note {
+    margin-top: 0.6rem; font-size: 0.75rem; line-height: 1.45; color: var(--warn);
+    background: rgba(255,184,74,0.08); border: 1px solid rgba(255,184,74,0.28);
+    border-radius: 10px; padding: 0.55rem 0.7rem;
+  }
+  .sw2-save-msg { margin-top: 0.7rem; font-size: 0.82rem; text-align: center; }
+  .sw2-save-msg.pending { color: var(--muted); }
+  .sw2-save-msg.offline { color: var(--warn); }
+  .sw2-save-msg.err     { color: var(--danger); }
+
+  .sw2-actions { display: flex; gap: 0.6rem; margin-top: 1rem; }
+  .sw2-btn-ghost, .sw2-btn-go {
+    flex: 1; min-height: 50px; border-radius: 11px; cursor: pointer;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem; letter-spacing: 0.08em;
+    text-transform: uppercase; border: 1px solid var(--border);
+  }
+  .sw2-btn-ghost { background: transparent; color: var(--muted); }
+  .sw2-btn-go    { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .sw2-btn-go[disabled] { opacity: 0.55; cursor: default; }
+  .sw2-btn-go.anyway { background: transparent; color: var(--accent2); border-color: var(--accent2); }
+
+  #swapv2-done { text-align: center; padding: 0.5rem 0 0; }
+  .sw2-done-tick {
+    width: 54px; height: 54px; margin: 0 auto 0.7rem; border-radius: 50%;
+    background: rgba(0,229,160,0.14); color: var(--accent3);
+    display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+  }
+  .sw2-done-head { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--text); letter-spacing: 0.02em; }
+  .sw2-done-name { font-size: 0.95rem; color: var(--text); margin-top: 0.2rem; }
+  .sw2-done-macros { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+  .sw2-done-verdict { font-size: 0.85rem; color: var(--accent3); margin-top: 0.6rem; }
+  .sw2-fav-btn {
+    margin-top: 0.9rem; background: transparent; border: 1px solid var(--border);
+    border-radius: 10px; color: var(--muted); cursor: pointer; min-height: 44px;
+    padding: 0 0.9rem; font-family: inherit; font-size: 0.8rem;
+  }
+  .sw2-fav-btn.saved { color: var(--warn); border-color: rgba(255,184,74,0.45); cursor: default; }
+
+  @media (max-width: 700px) {
+    .sw2-target-kcal { font-size: 1.6rem; }
+    .sw2-chip { max-width: 70vw; }
+    .sw2-chip .n { max-width: 52vw; }
+  }
+
   /* ─── PROGRESSION TABLE ─── */
   .prog-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); margin-top: 2rem; }
 
@@ -2400,31 +2531,74 @@
   </div>
 </div>
 
-<!-- CLIENT MEAL SWAP MODAL — for "I ate something different" logging -->
+<!-- CLIENT MEAL SWAP MODAL — SWAP UX V2 (Bishoy pilot, 2026-09-14) -->
 <div class="modal-overlay" id="swap-modal-overlay" onclick="closeSwapModal(event)">
-  <div class="modal" style="max-width:580px;">
+  <div class="modal swapv2" style="max-width:520px;">
     <button class="modal-close" onclick="cancelSwap()">✕</button>
-    <div class="modal-title" id="swap-modal-title">What did you eat instead?</div>
-    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.8rem;">Describe what you ate using foods + quantities. Example: <code style="background:var(--surface2);padding:0.1rem 0.3rem;border-radius:3px;color:var(--accent3);">200g chicken, 1 cup rice, 1 tbsp olive oil</code>. Macros auto-calculate from our food database.</p>
-    <div style="margin-bottom:0.8rem;">
-      <label for="sw-desc" style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;">What I ate</label>
-      <input id="sw-desc" type="text" placeholder="e.g. 200g chicken, 1 cup rice, broccoli" oninput="updateAutoMacros()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.7rem 0.8rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.85rem;margin-top:0.3rem;" />
+
+    <!-- ─── ENTRY VIEW ─── -->
+    <div id="swapv2-entry">
+      <div class="modal-title" id="swap-modal-title">Swap meal</div>
+      <div class="sw2-replacing">Replacing <strong id="sw2-orig">—</strong></div>
+
+      <div class="sw2-target" id="sw2-target">
+        <div class="sw2-target-kcal"><span id="sw2-t-cal">0</span><small>KCAL</small></div>
+        <div class="sw2-target-macros">
+          <span><b id="sw2-t-p">0</b>g P</span>
+          <span><b id="sw2-t-c">0</b>g C</span>
+          <span><b id="sw2-t-f">0</b>g F</span>
+        </div>
+      </div>
+
+      <div id="sw2-picks"></div>
+
+      <div class="sw2-tabs" role="tablist">
+        <button type="button" class="sw2-tab active" id="sw2-tab-quick" onclick="sw2SetMode('quick')">Quick log</button>
+        <button type="button" class="sw2-tab" id="sw2-tab-full" onclick="sw2SetMode('full')">Full macros</button>
+      </div>
+
+      <label class="sw2-label" for="sw-desc">What you ate</label>
+      <input id="sw-desc" type="text" autocomplete="off" placeholder="e.g. chicken wrap" oninput="sw2Input()" />
+
+      <div class="sw2-row2">
+        <div><label class="sw2-label" for="sw-cal">Calories</label>
+          <input id="sw-cal" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+        <div><label class="sw2-label" for="sw-p">Protein (g)</label>
+          <input id="sw-p" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+      </div>
+
+      <button type="button" class="sw2-more" id="sw2-more" onclick="sw2ToggleExtra()">+ Add carbs &amp; fat</button>
+
+      <div class="sw2-row2" id="sw2-extra" hidden>
+        <div><label class="sw2-label" for="sw-c">Carbs (g)</label>
+          <input id="sw-c" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+        <div><label class="sw2-label" for="sw-f">Fat (g)</label>
+          <input id="sw-f" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+      </div>
+
+      <div id="sw2-verdict" class="sw2-verdict" hidden></div>
+      <div id="sw2-note" class="sw2-note" hidden></div>
+      <div id="sw2-save-msg" class="sw2-save-msg" hidden></div>
+
+      <div class="sw2-actions">
+        <button type="button" class="sw2-btn-ghost" onclick="cancelSwap()">Cancel</button>
+        <button type="button" class="sw2-btn-go" id="sw2-log" onclick="sw2Save()">Log swap</button>
+      </div>
     </div>
-    <div id="auto-macro-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.7rem 1rem;margin-bottom:1rem;display:none;">
-      <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem;">Auto-calculated</div>
-      <div id="auto-macro-content"></div>
+
+    <!-- ─── SUCCESS VIEW ─── -->
+    <div id="swapv2-done" hidden>
+      <div class="sw2-done-tick">✓</div>
+      <div class="sw2-done-head">Meal swapped</div>
+      <div class="sw2-done-name" id="sw2-done-name">—</div>
+      <div class="sw2-done-macros" id="sw2-done-macros">—</div>
+      <div class="sw2-done-verdict" id="sw2-done-verdict">—</div>
+      <button type="button" class="sw2-fav-btn" id="sw2-fav-btn" onclick="sw2SaveFavourite()">♡ Save as favourite</button>
+      <div class="sw2-actions">
+        <button type="button" class="sw2-btn-go" onclick="cancelSwap()">Done</button>
+      </div>
     </div>
-    <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem;">Or override macros manually if you know them:</p>
-    <div class="edit-modal-grid">
-      <label for="sw-cal">Calories</label>        <input id="sw-cal" type="number" min="0" placeholder="auto" />
-      <label for="sw-p">Protein (g)</label>       <input id="sw-p" type="number" min="0" placeholder="auto" />
-      <label for="sw-c">Carbs (g)</label>         <input id="sw-c" type="number" min="0" placeholder="auto" />
-      <label for="sw-f">Fat (g)</label>           <input id="sw-f" type="number" min="0" placeholder="auto" />
-    </div>
-    <div class="edit-modal-actions">
-      <button class="edit-modal-cancel" onclick="cancelSwap()">Cancel</button>
-      <button class="edit-modal-save" onclick="saveSwap()">Log it</button>
-    </div>
+
   </div>
 </div>
 
@@ -4772,7 +4946,7 @@ function renderNutritionDayContent(){
     let statusBar = '';
     if (status) {
       const bl = status === 'ate' ? `✓ ATE IT · +${meal.cal} kcal logged`
-              : status === 'swap' ? `↔ SWAPPED${logEntry.swapDesc?' — '+logEntry.swapDesc:''} · +${logEntry.cal||meal.cal} kcal logged`
+              : status === 'swap' ? `↔ SWAPPED ✓${logEntry.swapDesc?' — '+logEntry.swapDesc:''} · ${logEntry.cal||meal.cal} kcal · ${logEntry.p!=null?logEntry.p+'g protein':''}`
               : `✗ SKIPPED · 0 kcal`;
       statusBar = `<div class="tmeal-status-bar ${status}">${bl}<span class="undo" onclick="unlogMeal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">undo</span></div>`;
     }
@@ -6441,6 +6615,320 @@ function updateBottomNav(id) {
     }
   } catch (e) {}
 })();
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   SWAP UX V2 — Bishoy pilot, 2026-09-14
+   ═══════════════════════════════════════════════════════════════════════════
+   Replaces openSwapModal / saveSwap / updateAutoMacros for the swap modal only.
+   ATE and SKIP (logMealQuick), unlogMeal, workouts, weight and check-ins are
+   untouched, and saving still goes through the Track A postMealLog path, so a
+   green state still means the server took it.
+
+   Recents and favourites are local to this device for the pilot. Nothing is
+   sent to the backend that was not sent before: the payload is the same swap
+   entry the old form produced.                                              */
+
+var SW2_RECENTS = CLIENT_CONFIG.client.storageKey + '_swap_recents';
+var SW2_FAVS    = CLIENT_CONFIG.client.storageKey + '_swap_favs';
+var SW2_MAX_RECENT = 5, SW2_MAX_FAV = 8;
+
+var _sw2 = { mode: 'quick', target: null, pending: false, last: null };
+
+function _sw2Read(k) { try { var v = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function _sw2Write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function _sw2Norm(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function _sw2Esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function _sw2Num(id) { var v = parseFloat((document.getElementById(id) || {}).value); return isFinite(v) ? v : null; }
+
+/* ── quality engine ────────────────────────────────────────────────────────
+   GOOD  : calories within +/-10% of the planned meal AND protein >= 90% of it
+   CLOSE : calories within +/-20%                     AND protein >= 75%
+   BIG   : anything else
+
+   Two deliberate properties. Protein is a FLOOR, never a ceiling - a client who
+   brings more protein than planned is not "off". And the verdict needs both
+   numbers: with calories alone we say so rather than implying the protein side
+   is fine. Where the planned meal carries no protein (only the Sunday prep
+   card, which has no calories either and cannot be swapped) the protein test is
+   skipped instead of dividing by zero.                                      */
+function sw2Judge(t, cal, prot) {
+  if (!t || !t.cal) return { k: 'wait', head: 'Add what you ate to see how close it is' };
+  if (cal == null) return { k: 'wait', head: 'Add calories to see how close this is' };
+  if (prot == null) return { k: 'wait', head: 'Add protein to see how close this is' };
+  var dCal = cal - t.cal;
+  var pctCal = Math.abs(dCal) / t.cal;
+  var pctP = t.p ? (prot / t.p) : 1;
+  var k = (pctCal <= 0.10 && pctP >= 0.90) ? 'good'
+        : (pctCal <= 0.20 && pctP >= 0.75) ? 'close' : 'big';
+  return { k: k, dCal: Math.round(dCal), dP: Math.round(prot - (t.p || 0)) };
+}
+
+function _sw2Sign(n, unit) {
+  var r = Math.round(n);
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r) + unit;
+}
+
+function sw2RenderVerdict() {
+  var box = document.getElementById('sw2-verdict');
+  var t = _sw2.target;
+  var cal = _sw2Num('sw-cal'), prot = _sw2Num('sw-p'), carb = _sw2Num('sw-c'), fat = _sw2Num('sw-f');
+  var v = sw2Judge(t, cal, prot);
+  var log = document.getElementById('sw2-log');
+
+  if (v.k === 'wait') {
+    box.className = 'sw2-verdict wait';
+    box.innerHTML = '<div class="v-head">' + _sw2Esc(v.head) + '</div>';
+    box.hidden = false;
+    log.textContent = 'Log swap'; log.classList.remove('anyway');
+    return v;
+  }
+
+  var head, sub;
+  if (v.k === 'good')  { head = '✓ Good swap'; sub = "You're close enough to the planned meal. Log it and move on."; }
+  else if (v.k === 'close') { head = 'Pretty close';
+    sub = 'This is ' + _sw2Sign(v.dCal, ' kcal') + ' and ' + _sw2Sign(v.dP, 'g protein') + ' compared with your planned meal.'; }
+  else { head = 'This changes the meal quite a bit'; sub = 'You can still log it — Omar sees the difference either way.'; }
+
+  var diff = '<div class="sw2-diff">' +
+    '<span' + (v.dCal === 0 ? ' class="zero"' : '') + '>' + _sw2Sign(v.dCal, ' kcal') + '</span>' +
+    '<span' + (v.dP === 0 ? ' class="zero"' : '') + '>' + _sw2Sign(v.dP, 'g P') + '</span>' +
+    (carb != null ? '<span>' + _sw2Sign(carb - (t.c || 0), 'g C') + '</span>' : '') +
+    (fat  != null ? '<span>' + _sw2Sign(fat  - (t.f || 0), 'g F') + '</span>' : '') +
+    '</div>';
+
+  box.className = 'sw2-verdict ' + v.k;
+  box.innerHTML = '<div class="v-head">' + head + '</div><div class="v-sub">' + _sw2Esc(sub) + '</div>' + diff;
+  box.hidden = false;
+  if (v.k === 'big') { log.textContent = 'Log anyway'; log.classList.add('anyway'); }
+  else { log.textContent = 'Log swap'; log.classList.remove('anyway'); }
+  return v;
+}
+
+/* Non-blocking label check: 4/4/9 against the entered calories. */
+function sw2RenderNote() {
+  var n = document.getElementById('sw2-note');
+  var cal = _sw2Num('sw-cal'), p = _sw2Num('sw-p'), c = _sw2Num('sw-c'), f = _sw2Num('sw-f');
+  if (cal == null || p == null || c == null || f == null) { n.hidden = true; return; }
+  var calc = p * 4 + c * 4 + f * 9;
+  var off = Math.abs(calc - cal);
+  if (off <= Math.max(40, cal * 0.12)) { n.hidden = true; return; }
+  n.textContent = 'These macros add up to roughly ' + Math.round(calc) + ' kcal. You entered '
+                + Math.round(cal) + ' kcal — double-check the label.';
+  n.hidden = false;
+}
+
+function sw2Input() {
+  /* Type a food the plan knows and the numbers fill themselves in. */
+  var desc = (document.getElementById('sw-desc').value || '').trim();
+  if (desc && typeof parseFoodEntry === 'function' && !_sw2.touched) {
+    try {
+      var parsed = parseFoodEntry(desc);
+      if (parsed && parsed.items && parsed.items.length && parsed.totals.kcal) {
+        if (!document.getElementById('sw-cal').value) document.getElementById('sw-cal').value = parsed.totals.kcal;
+        if (!document.getElementById('sw-p').value)   document.getElementById('sw-p').value   = parsed.totals.p;
+        if (_sw2.mode === 'full') {
+          if (!document.getElementById('sw-c').value) document.getElementById('sw-c').value = parsed.totals.c;
+          if (!document.getElementById('sw-f').value) document.getElementById('sw-f').value = parsed.totals.f;
+        }
+      }
+    } catch (e) {}
+  }
+  sw2RenderVerdict();
+  sw2RenderNote();
+}
+
+function sw2SetMode(m) {
+  _sw2.mode = m;
+  document.getElementById('sw2-tab-quick').classList.toggle('active', m === 'quick');
+  document.getElementById('sw2-tab-full').classList.toggle('active', m === 'full');
+  var extra = document.getElementById('sw2-extra'), more = document.getElementById('sw2-more');
+  if (m === 'full') { extra.hidden = false; more.hidden = true; }
+  else { extra.hidden = true; more.hidden = false; }
+  sw2RenderVerdict(); sw2RenderNote();
+}
+function sw2ToggleExtra() {
+  document.getElementById('sw2-extra').hidden = false;
+  document.getElementById('sw2-more').hidden = true;
+  var c = document.getElementById('sw-c'); if (c) c.focus();
+}
+
+/* ── favourites + recents ──────────────────────────────────────────────── */
+function sw2Picks() {
+  var favs = _sw2Read(SW2_FAVS), recents = _sw2Read(SW2_RECENTS);
+  var favNames = favs.map(function (x) { return _sw2Norm(x.name); });
+  var rec = recents.filter(function (x) { return favNames.indexOf(_sw2Norm(x.name)) === -1; }).slice(0, SW2_MAX_RECENT);
+  var html = '';
+  function chip(x, i, isFav) {
+    var macros = Math.round(x.cal) + ' kcal · ' + Math.round(x.p) + 'P';
+    return '<button type="button" class="sw2-chip' + (isFav ? ' fav' : '') + '" onclick="sw2Use(\'' + (isFav ? 'f' : 'r') + '\',' + i + ')">'
+      + (isFav ? '<span class="x" onclick="event.stopPropagation();sw2RemoveFav(' + i + ')" title="Remove">×</span>' : '')
+      + '<span class="n">' + _sw2Esc(x.name) + '</span><span class="m">' + macros + '</span></button>';
+  }
+  if (favs.length) {
+    html += '<div class="sw2-picks-head">♡ Favourites</div><div class="sw2-chips">'
+         + favs.map(function (x, i) { return chip(x, i, true); }).join('') + '</div>';
+  }
+  if (rec.length) {
+    html += '<div class="sw2-picks-head">Recent</div><div class="sw2-chips">'
+         + rec.map(function (x) { return chip(x, recents.indexOf(x), false); }).join('') + '</div>';
+  }
+  document.getElementById('sw2-picks').innerHTML = html;
+}
+
+function sw2Use(kind, i) {
+  var list = kind === 'f' ? _sw2Read(SW2_FAVS) : _sw2Read(SW2_RECENTS);
+  var x = list[i]; if (!x) return;
+  _sw2.touched = true;                      /* stop the parser overwriting these */
+  document.getElementById('sw-desc').value = x.name;
+  document.getElementById('sw-cal').value  = x.cal != null ? x.cal : '';
+  document.getElementById('sw-p').value    = x.p   != null ? x.p   : '';
+  document.getElementById('sw-c').value    = x.c   != null ? x.c   : '';
+  document.getElementById('sw-f').value    = x.f   != null ? x.f   : '';
+  if (x.c != null || x.f != null) { document.getElementById('sw2-extra').hidden = false; document.getElementById('sw2-more').hidden = true; }
+  /* judged against TODAY'S meal, never against the meal it was first used for */
+  sw2RenderVerdict(); sw2RenderNote();
+}
+
+function sw2RemoveFav(i) {
+  var favs = _sw2Read(SW2_FAVS);
+  if (i < 0 || i >= favs.length) return;
+  favs.splice(i, 1);                        /* recents keep their own copy */
+  _sw2Write(SW2_FAVS, favs);
+  sw2Picks();
+}
+
+function sw2PushRecent(entry) {
+  var list = _sw2Read(SW2_RECENTS);
+  var n = _sw2Norm(entry.name);
+  list = list.filter(function (x) { return _sw2Norm(x.name) !== n; });
+  list.unshift(entry);
+  _sw2Write(SW2_RECENTS, list.slice(0, SW2_MAX_RECENT * 3));
+}
+
+function sw2SaveFavourite() {
+  var e = _sw2.last; if (!e) return;
+  var favs = _sw2Read(SW2_FAVS);
+  var n = _sw2Norm(e.name);
+  if (favs.some(function (x) { return _sw2Norm(x.name) === n; })) { sw2FavMark(); return; }
+  favs.unshift(e);
+  _sw2Write(SW2_FAVS, favs.slice(0, SW2_MAX_FAV));
+  sw2FavMark();
+}
+function sw2FavMark() {
+  var b = document.getElementById('sw2-fav-btn');
+  if (b) { b.textContent = '♥ Saved to favourites'; b.classList.add('saved'); b.disabled = true; }
+}
+
+/* ── open / close ──────────────────────────────────────────────────────── */
+function openSwapModal(week, dayIdx, mealIdx) {
+  _swapCtx = { week: week, dayIdx: dayIdx, mealIdx: mealIdx };
+  var meal = getMealDay(week, dayIdx)[mealIdx] || {};
+  _sw2.target = { cal: meal.cal || 0, p: meal.p || 0, c: meal.c || 0, f: meal.f || 0 };
+  _sw2.pending = false; _sw2.last = null; _sw2.touched = false;
+
+  document.getElementById('swap-modal-title').textContent = 'Swap meal';
+  document.getElementById('sw2-orig').textContent = meal.name || 'this meal';
+  document.getElementById('sw2-t-cal').textContent = _sw2.target.cal;
+  document.getElementById('sw2-t-p').textContent = _sw2.target.p;
+  document.getElementById('sw2-t-c').textContent = _sw2.target.c;
+  document.getElementById('sw2-t-f').textContent = _sw2.target.f;
+
+  ['sw-desc', 'sw-cal', 'sw-p', 'sw-c', 'sw-f'].forEach(function (id) { document.getElementById(id).value = ''; });
+  document.getElementById('sw2-note').hidden = true;
+  document.getElementById('sw2-save-msg').hidden = true;
+  document.getElementById('swapv2-entry').hidden = false;
+  document.getElementById('swapv2-done').hidden = true;
+  var fb = document.getElementById('sw2-fav-btn');
+  fb.textContent = '♡ Save as favourite'; fb.classList.remove('saved'); fb.disabled = false;
+  var log = document.getElementById('sw2-log'); log.disabled = false;
+
+  sw2SetMode('quick');
+  sw2Picks();
+  sw2RenderVerdict();
+  document.getElementById('swap-modal-overlay').classList.add('open');
+}
+
+function cancelSwap() {
+  document.getElementById('swap-modal-overlay').classList.remove('open');
+  _sw2.pending = false;
+}
+function closeSwapModal(e) {
+  if (e && e.target === document.getElementById('swap-modal-overlay') && !_sw2.pending) cancelSwap();
+}
+function updateAutoMacros() { sw2Input(); }   /* old inline hook, kept harmless */
+
+/* ── save ──────────────────────────────────────────────────────────────── */
+function _sw2Msg(text, cls) {
+  var m = document.getElementById('sw2-save-msg');
+  m.textContent = text; m.className = 'sw2-save-msg ' + (cls || ''); m.hidden = !text;
+}
+
+async function sw2Save() {
+  if (!_swapCtx || _sw2.pending) return;
+  var name = (document.getElementById('sw-desc').value || '').trim();
+  if (!name) { _sw2Msg('Add what you ate first.', 'err'); document.getElementById('sw-desc').focus(); return; }
+
+  var t = _sw2.target;
+  var cal = _sw2Num('sw-cal'), p = _sw2Num('sw-p'), c = _sw2Num('sw-c'), f = _sw2Num('sw-f');
+  if (cal == null) cal = Math.round((t.cal || 0) * 0.8);
+  if (p == null)   p   = Math.round((t.p   || 0) * 0.8);
+  if (c == null)   c   = Math.round((t.c   || 0) * 0.8);
+  if (f == null)   f   = Math.round((t.f   || 0) * 0.8);
+
+  var meals = getMealDay(_swapCtx.week, _swapCtx.dayIdx);
+  var meal = meals[_swapCtx.mealIdx] || {};
+  var id = _mealLogId(_swapCtx.week, _swapCtx.dayIdx, _swapCtx.mealIdx);
+  if (_mealPending.has(id)) return;
+
+  var entry = {
+    week: _swapCtx.week, dayIdx: _swapCtx.dayIdx, mealIdx: _swapCtx.mealIdx,
+    mealName: meal.name, status: 'swap', swapDesc: name,
+    cal: Math.round(cal), p: Math.round(p), c: Math.round(c), f: Math.round(f),
+    ts: new Date().toISOString(), synced: false,
+  };
+
+  var verdict = sw2Judge(t, cal, p);
+  _sw2.pending = true;
+  _mealPending.add(id);
+  var log = document.getElementById('sw2-log');
+  log.disabled = true;
+  _sw2Msg('Saving…', 'pending');
+
+  var logs = loadMealLogs();
+  logs[id] = entry;
+  saveMealLogLocal(logs);
+
+  syncSaving();
+  var r;
+  try { r = await postMealLog(entry); } catch (e) { r = { ok: false, error: 'network' }; }
+  _mealPending.delete(id);
+  _sw2.pending = false;
+  log.disabled = false;
+  renderNutritionDay();
+
+  if (r && r.ok) {
+    _sw2.last = { name: name, cal: entry.cal, p: entry.p, c: entry.c, f: entry.f };
+    sw2PushRecent(_sw2.last);
+    _sw2Msg('', '');
+    document.getElementById('swapv2-entry').hidden = true;
+    document.getElementById('sw2-done-name').textContent = name;
+    document.getElementById('sw2-done-macros').textContent = entry.cal + ' kcal · ' + entry.p + 'g protein';
+    document.getElementById('sw2-done-verdict').textContent =
+      verdict.k === 'good' ? 'Right on target.'
+      : verdict.k === 'close' ? 'Close enough. Keep moving.'
+      : 'Logged. Omar will see the difference.';
+    document.getElementById('swapv2-done').hidden = false;
+    return;
+  }
+  var err = (r && r.error) || 'network';
+  if (err === 'network' || err === 'timeout' || err === 'no_endpoint') {
+    _sw2Msg("Offline — we'll save this when you're connected", 'offline');
+  } else {
+    _sw2Msg('✗ Not saved — try again', 'err');
+  }
+}
 </script>
 <script>
 /* Mobile modal reachability (2026-09-14): publish the visual viewport as CSS
