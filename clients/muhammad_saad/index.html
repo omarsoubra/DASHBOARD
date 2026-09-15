@@ -2829,13 +2829,15 @@ function saveOverridesLocal(o) {
   localStorage.setItem(_lsOverridesKey(), JSON.stringify(o));
 }
 
-function showSyncMsg(text, cls) {
+function showSyncMsg(text, cls, sticky) {
   const el = document.getElementById('sync-indicator');
   if (!el) return;
   el.textContent = text;
   el.className = 'sync-indicator show ' + (cls || '');
   clearTimeout(window._syncTimeout);
-  window._syncTimeout = setTimeout(() => el.classList.remove('show'), 2500);
+  // A "saving…" message must stay on screen until the write resolves, or the
+  // client sees a message vanish and assumes it finished.
+  if (!sticky) window._syncTimeout = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
 function postOverride(dayKey, exercises) {
@@ -3300,76 +3302,142 @@ function saveMealLogLocal(logs) {
   localStorage.setItem(_mealLogKey(), JSON.stringify(logs));
 }
 
-function postMealLog(entry) {
-  if (!CLIENT_CONFIG.sheetsWebhookUrl) {
-    showSyncMsg('saved locally (no cloud)', 'warn');
-    return;
+
+/* ── Track A write layer, backported 2026-09-15 ─────────────────────
+   Installed from master_template.html so it cannot drift from the
+   version proven on the modern shells. Replaces the opaque
+   mode:'no-cors' meal write with a readable one whose result the UI
+   can honestly report. Nothing else in this shell is touched. */
+async function cloudWrite(type, payload, opts) {
+  const timeoutMs = (opts && opts.timeoutMs) || 15000;
+  if (!CLIENT_CONFIG.sheetsWebhookUrl) return { ok: false, error: 'no_endpoint' };
+  if (!CLIENT_TOKEN)                   return { ok: false, error: 'no_token' };
+  let ctl = null, timer = null;
+  try { if (typeof AbortController !== 'undefined') { ctl = new AbortController(); timer = setTimeout(function(){ try{ctl.abort();}catch(e){} }, timeoutMs); } } catch (e) {}
+  try {
+    const resp = await fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      cache: 'no-store',
+      signal: ctl ? ctl.signal : undefined,
+      body: JSON.stringify(Object.assign({
+        type: type,
+        client: CLIENT_CONFIG.client.storageKey,
+        storageKey: CLIENT_CONFIG.client.storageKey,
+        token: CLIENT_TOKEN,
+        timestamp: new Date().toISOString(),
+      }, payload || {})),
+    });
+    if (timer) clearTimeout(timer);
+    if (!resp.ok) return { ok: false, error: 'http_' + resp.status };
+    let j = null;
+    try { j = await resp.json(); } catch (e) { return { ok: false, error: 'bad_response' }; }
+    if (!j || j.ok !== true) return { ok: false, error: (j && j.error) || 'refused', data: j };
+    return { ok: true, data: j };
+  } catch (e) {
+    if (timer) clearTimeout(timer);
+    const aborted = e && (e.name === 'AbortError');
+    return { ok: false, error: aborted ? 'timeout' : 'network' };
   }
-  fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      type: 'meal',
-      client: CLIENT_CONFIG.client.storageKey,
-      storageKey: CLIENT_CONFIG.client.storageKey,
-      token: CLIENT_TOKEN,
-      week:   entry.week,
-      dayIdx: entry.dayIdx,
-      mealIdx:entry.mealIdx,
-      mealName: entry.mealName,
-      status: entry.status,
-      swapDesc: entry.swapDesc || '',
-      calActual: entry.cal || 0,
-      pActual: entry.p || 0,
-      cActual: entry.c || 0,
-      fActual: entry.f || 0,
-      timestamp: new Date().toISOString(),
-    })
-  }).then(() => {
-    showSyncMsg('✓ logged', 'ok');
-    if (typeof _lastSyncMs !== 'undefined') {
-      _lastSyncMs = Date.now();
-      _lastSyncStatus = 'ok';
-      updateSyncBadge();
-    }
-  }).catch(e => {
-    console.warn('Meal log POST failed:', e);
-    showSyncMsg('✗ log sync failed', 'err');
+}
+function _markSync(state) {
+  try {
+    if (typeof _lastSyncMs !== 'undefined') { _lastSyncMs = Date.now(); _lastSyncStatus = state; }
+    if (typeof updateSyncBadge === 'function') updateSyncBadge();
+  } catch (e) {}
+}
+function syncSaving(what) { showSyncMsg('saving' + (what ? ' ' + what : '') + '…', 'pending', true); }
+function syncSaved()      { showSyncMsg('✓ saved', 'ok'); _markSync('ok'); }
+function syncFailed(err) {
+  const m = err === 'no_token'     ? '✗ not saved — reopen your link'
+          : err === 'bad_token'    ? '✗ not saved — your link has expired'
+          : err === 'network'      ? '✗ not saved — no connection'
+          : err === 'timeout'      ? '✗ not saved — timed out'
+          : err === 'no_endpoint'  ? '✗ not saved — no cloud configured'
+          : '✗ not saved — will retry';
+  showSyncMsg(m, 'err');
+  _markSync('err');
+}
+const _mealPending = new Set();
+
+async function postMealLog(entry) {
+  const r = await cloudWrite('meal', {
+    week:      entry.week,
+    dayIdx:    entry.dayIdx,
+    mealIdx:   entry.mealIdx,
+    mealName:  entry.mealName,
+    status:    entry.status,
+    swapDesc:  entry.swapDesc || '',
+    calActual: entry.cal || 0,
+    pActual:   entry.p   || 0,
+    cActual:   entry.c   || 0,
+    fActual:   entry.f   || 0,
   });
+  // Record the truth on the entry itself so an unsynced tap can be retried
+  // later instead of being silently dropped.
+  try {
+    const logs = loadMealLogs();
+    const id = _mealLogId(entry.week, entry.dayIdx, entry.mealIdx);
+    if (logs[id]) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error; saveMealLogLocal(logs); }
+  } catch (e) {}
+  if (r.ok) syncSaved(); else syncFailed(r.error);
+  return r;
 }
 
-function logMealQuick(week, dayIdx, mealIdx, status) {
-  // status = 'ate' | 'skip'   (swap uses logMealSwap)
+async function logMealQuick(week, dayIdx, mealIdx, status) {
+  // status = 'ate' | 'skip'   (swap uses saveSwap)
+  const id = _mealLogId(week, dayIdx, mealIdx);
+  if (_mealPending.has(id)) return;           // rapid repeat tap — ignore
   const meals = getMealDay(week, dayIdx);
   const meal = meals[mealIdx];
   if (!meal) return;
-  const logs = loadMealLogs();
-  const id = _mealLogId(week, dayIdx, mealIdx);
-  const entry = {
-    week, dayIdx, mealIdx,
-    mealName: meal.name,
-    status,
-    cal: status === 'ate' ? (meal.cal || 0) : 0,
-    p:   status === 'ate' ? (meal.p   || 0) : 0,
-    c:   status === 'ate' ? (meal.c   || 0) : 0,
-    f:   status === 'ate' ? (meal.f   || 0) : 0,
-    ts:  new Date().toISOString(),
-  };
-  logs[id] = entry;
-  saveMealLogLocal(logs);
-  postMealLog(entry);
-  renderNutritionDay();
+  _mealPending.add(id);
+  try {
+    const logs = loadMealLogs();
+    const entry = {
+      week, dayIdx, mealIdx,
+      mealName: meal.name,
+      status,
+      cal: status === 'ate' ? (meal.cal || 0) : 0,
+      p:   status === 'ate' ? (meal.p   || 0) : 0,
+      c:   status === 'ate' ? (meal.c   || 0) : 0,
+      f:   status === 'ate' ? (meal.f   || 0) : 0,
+      ts:  new Date().toISOString(),
+      synced: false,
+    };
+    logs[id] = entry;
+    saveMealLogLocal(logs);          // optimistic: the tap is never lost
+    renderNutritionDay();            // repaint with the pending state
+    syncSaving();
+    await postMealLog(entry);
+    renderNutritionDay();            // repaint with the confirmed/failed state
+  } finally {
+    _mealPending.delete(id);
+  }
 }
 
-function unlogMeal(week, dayIdx, mealIdx) {
-  const logs = loadMealLogs();
+async function unlogMeal(week, dayIdx, mealIdx) {
   const id = _mealLogId(week, dayIdx, mealIdx);
-  delete logs[id];
-  saveMealLogLocal(logs);
-  // Push a "delete" status — coach dashboard ignores rows without status
-  postMealLog({ week, dayIdx, mealIdx, mealName: '', status: 'undo' });
-  renderNutritionDay();
+  if (_mealPending.has(id)) return;
+  _mealPending.add(id);
+  try {
+    const logs = loadMealLogs();
+    delete logs[id];
+    saveMealLogLocal(logs);
+    renderNutritionDay();
+    syncSaving();
+    // Until canonical meal_status ships (Track B) this is still an append-only
+    // 'undo' marker on the server, not a state change. The local delete is what
+    // the client sees; the server row is a breadcrumb for the coach.
+    const r = await cloudWrite('meal', {
+      week, dayIdx, mealIdx, mealName: '', status: 'undo',
+      calActual: 0, pActual: 0, cActual: 0, fActual: 0,
+    });
+    if (r.ok) syncSaved(); else syncFailed(r.error);
+    renderNutritionDay();
+  } finally {
+    _mealPending.delete(id);
+  }
 }
 
 // ─── Swap modal ───
