@@ -797,11 +797,40 @@
     .modal-title { font-size: 1.5rem; margin-bottom: 0.7rem; }
   }
 
-  /* The persistent sync pill is z-index 150, so it renders behind the modal and
+  /* Two persistent floating chips sit outside the modal and have to stand down
+     while one is open.
+
+     The sync pill is z-index 150, so it already renders behind the modal and
      cannot steal a tap - but on a short viewport it sits on the dimmed backdrop
-     right beside the action row and reads as clutter. :has() is a progressive
-     enhancement; without it nothing changes. */
-  body:has(.modal-overlay.open) .sync-status-badge { display: none; }
+     right beside the action row and reads as clutter.
+
+     The trainer chip is z-index 9000, above the overlay's 320, so it is the one
+     element in the shell that can sit ON TOP of modal content. Hosted screenshot
+     QA (2026-09-14) measured it covering 7-12% of the swap modal's primary
+     action at every phone width, with elementFromPoint at that corner resolving
+     to the chip: a tap there opened trainer login instead of logging the meal.
+     Hiding it while a modal is open fixes every modal at once and leaves the
+     stacking order alone - lowering its z-index instead would drop it behind
+     .bottom-nav (200) when no modal is open. Trainer access is unaffected: the
+     backtick-x3 shortcut and the #trainer hash both still work, and the chip
+     returns the moment the modal closes.
+
+     Deliberately not scoped to a width - a chip that can cover a modal action is
+     wrong at every width, and one unconditional rule beats guessing a breakpoint.
+
+     The check-in banner is sticky at z-index 9999 and spans the full width of
+     the top 80px. A grid probe over the whole open modal at 390x400 (a phone
+     with the keyboard up) returned 368 foreign hit points, every one of them
+     inside the banner: it swallows the modal's title row and close button, so
+     tapping the modal's X hits the banner's DISMISS or DO IT NOW instead. The
+     nudge is not lost - the banner returns the moment the modal closes.
+     !important is load-bearing here: the banner is shown with an inline
+     display:block, which a plain stylesheet rule cannot beat.
+
+     :has() is a progressive enhancement; without it nothing changes. */
+  body:has(.modal-overlay.open) .sync-status-badge,
+  body:has(.modal-overlay.open) #sunday-checkin-reminder,
+  body:has(.modal-overlay.open) #trainer-btn { display: none !important; }
 
   /* ═══ SWAP UX V2 — 2026-09-14 ══════════════════════════════
      Phone first. Progressive disclosure: target, then saved picks, then the
@@ -1562,6 +1591,19 @@
   }
   .tday-btn .d-name { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.04em; }
   .tday-btn .d-type { font-size: 8px; opacity: 0.85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Narrow-phone day picker. .tday-grid is repeat(7, 1fr); a grid item defaults
+     to min-width:auto, so a long .d-type ("Weights") holds the button at its
+     min-content width (44.3px measured) against a 36px track and pushes the row
+     5px past the viewport - a real horizontal scroll at 320px. Tighten the
+     density below 360px and let the items shrink into their tracks. Scoped to
+     max-width 360px, so 375/390/393 and desktop render exactly as before. */
+  @media (max-width: 360px) {
+    .tday-grid { gap: 4px; }
+    .tday-btn { padding: 10px 1px; min-width: 0; }
+    .tday-btn .d-name { font-size: 12px; letter-spacing: 0; }
+    .tday-btn .d-type { font-size: 7px; letter-spacing: 0.02em; }
+  }
 
   /* NEW: day hero card */
   .tday-hero {
