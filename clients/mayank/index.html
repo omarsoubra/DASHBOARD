@@ -737,6 +737,288 @@
 
   .modal-close:hover { color: var(--text); border-color: var(--accent); }
 
+  /* ═══ MOBILE MODAL REACHABILITY · 2026-09-14 ═══════════════════════════════
+     Proven on the 2026-09-14 swap pilot, upstreamed as a bug fix. Applies to
+     every modal in the shell, not just one.
+
+     .modal-overlay was position:fixed, inset:0, align-items:center, with no
+     overflow, and .modal carried no max-height. Any modal taller than the
+     viewport therefore overflowed past BOTH edges with nothing able to scroll
+     it. On Bishoy's swap form the modal measured 908px against an iPhone 14's
+     841px and the primary button sat below an unreachable boundary - at EVERY
+     phone height tested, keyboard or not. The workout-log and check-in modals
+     carry the same fault; they have simply not been tall enough yet.
+
+     Auto margins are the fix: inside a scrollable flex container they centre the
+     modal when there is room and let it scroll when there is not, which
+     align-items:center cannot do - it clips the overflowing top instead. Desktop
+     centring measured at 0px deviation after the change.
+
+     z-index: .bottom-nav is position:fixed, 72px tall, and also z-index:200.
+     Equal z-index falls back to DOM order and the nav is later in the document,
+     so it painted OVER the modal and the bottom of the action row was behind an
+     opaque bar. 320 clears the nav (200) and the quick sheet (310) while staying
+     under the celebration layers (9997/9998).
+
+     --vv-h / --vv-top come from the visualViewport hook at the end of the page.
+     On iOS the on-screen keyboard shrinks the VISUAL viewport while the layout
+     viewport - and therefore a fixed inset:0 overlay - stays full height, so the
+     lower part of the overlay ends up under the keyboard with no way to reach
+     it. Both fall back to the previous full-viewport behaviour when unset, so
+     desktop and any browser without visualViewport are unchanged. */
+  .modal-overlay {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    z-index: 320;
+  }
+  .modal-overlay.open {
+    top: var(--vv-top, 0px);
+    height: var(--vv-h, 100%);
+    bottom: auto;
+  }
+  .modal { margin: auto; }
+
+  @media (max-width: 700px) {
+    .modal-overlay {
+      padding: 0.9rem 0.75rem;
+      padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+    }
+    .modal { padding: 1.25rem; }
+    .modal-title { font-size: 1.5rem; margin-bottom: 0.7rem; }
+  }
+
+  /* Two persistent floating chips sit outside the modal and have to stand down
+     while one is open.
+
+     The sync pill is z-index 150, so it already renders behind the modal and
+     cannot steal a tap - but on a short viewport it sits on the dimmed backdrop
+     right beside the action row and reads as clutter.
+
+     The trainer chip is z-index 9000, above the overlay's 320, so it is the one
+     element in the shell that can sit ON TOP of modal content. Hosted screenshot
+     QA (2026-09-14) measured it covering 7-12% of the swap modal's primary
+     action at every phone width, with elementFromPoint at that corner resolving
+     to the chip: a tap there opened trainer login instead of logging the meal.
+     Hiding it while a modal is open fixes every modal at once and leaves the
+     stacking order alone - lowering its z-index instead would drop it behind
+     .bottom-nav (200) when no modal is open. Trainer access is unaffected: the
+     backtick-x3 shortcut and the #trainer hash both still work, and the chip
+     returns the moment the modal closes.
+
+     Deliberately not scoped to a width - a chip that can cover a modal action is
+     wrong at every width, and one unconditional rule beats guessing a breakpoint.
+
+     The check-in banner is sticky at z-index 9999 and spans the full width of
+     the top 80px. A grid probe over the whole open modal at 390x400 (a phone
+     with the keyboard up) returned 368 foreign hit points, every one of them
+     inside the banner: it swallows the modal's title row and close button, so
+     tapping the modal's X hits the banner's DISMISS or DO IT NOW instead. The
+     nudge is not lost - the banner returns the moment the modal closes.
+     !important is load-bearing here: the banner is shown with an inline
+     display:block, which a plain stylesheet rule cannot beat.
+
+     :has() is a progressive enhancement; without it nothing changes. */
+  body:has(.modal-overlay.open) .sync-status-badge,
+  body:has(.modal-overlay.open) #sunday-checkin-reminder,
+  body:has(.modal-overlay.open) #trainer-btn { display: none !important; }
+
+  /* ═══ SWAP UX V2 — 2026-09-14 ══════════════════════════════
+     Phone first. Progressive disclosure: target, then saved picks, then the
+     two fields that matter, then a verdict once there is enough to judge. */
+  .modal.swapv2 { padding-top: 1.5rem; }
+  /* The `hidden` attribute is only display:none from the UA stylesheet, so any
+     author rule that sets display beats it. #sw2-extra carries .sw2-row2
+     (display:grid) and stayed visible in Quick log with the "+ Add carbs & fat"
+     link still showing above it. Caught on a screenshot, not by reading .hidden
+     - the property was true the whole time. */
+  .modal.swapv2 [hidden] { display: none !important; }
+  .sw2-replacing {
+    font-size: 0.82rem; color: var(--muted); margin: -0.4rem 0 0.9rem;
+  }
+  .sw2-replacing strong { color: var(--text); font-weight: 600; }
+
+  .sw2-target {
+    display: flex; align-items: center; gap: 0.9rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.7rem 0.9rem; margin-bottom: 0.9rem;
+  }
+  .sw2-target::before {
+    content: 'TARGET';
+    font-family: 'DM Mono', monospace; font-size: 0.55rem; letter-spacing: 0.14em;
+    color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg);
+  }
+  .sw2-target-kcal { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; line-height: 1; color: var(--accent); }
+  .sw2-target-kcal small { font-size: 0.5rem; letter-spacing: 0.12em; display: block; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .sw2-target-macros { display: flex; gap: 0.85rem; font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .sw2-target-macros b { color: var(--text); font-size: 0.85rem; }
+
+  /* saved picks — favourites first, then recents */
+  .sw2-picks-head {
+    font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 0.14em;
+    color: var(--muted); text-transform: uppercase; margin: 0.7rem 0 0.35rem;
+  }
+  .sw2-chips { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.25rem; scrollbar-width: none; }
+  .sw2-chips::-webkit-scrollbar { display: none; }
+  .sw2-chip {
+    flex: 0 0 auto; text-align: left; cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.45rem 0.6rem; min-height: 44px; color: var(--text);
+    font-family: inherit; font-size: 0.76rem; line-height: 1.25; max-width: 62vw;
+  }
+  .sw2-chip .n { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
+  .sw2-chip .m { display: block; font-family: 'DM Mono', monospace; font-size: 0.64rem; color: var(--muted); }
+  .sw2-chip.fav { border-color: rgba(255,184,74,0.45); }
+  .sw2-chip .x { float: right; margin-left: 0.4rem; color: var(--muted); padding: 0 0.2rem; }
+
+  .sw2-tabs { display: flex; gap: 0.3rem; background: var(--surface2); border-radius: 10px; padding: 0.2rem; margin: 0.9rem 0 0.8rem; }
+  .sw2-tab {
+    flex: 1; min-height: 40px; border: 0; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sw2-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+
+  .sw2-label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.25rem;
+  }
+  .modal.swapv2 input[type="text"], .modal.swapv2 input[type="number"] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.7rem 0.75rem; border-radius: 9px;
+    font-family: 'DM Mono', monospace; font-size: 0.95rem; min-height: 46px;
+  }
+  .modal.swapv2 input:focus { outline: none; border-color: var(--accent); }
+  .sw2-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.7rem; }
+  .sw2-more {
+    background: none; border: 0; color: var(--accent); cursor: pointer;
+    font-family: inherit; font-size: 0.78rem; padding: 0.6rem 0 0.1rem; min-height: 40px;
+  }
+
+  .sw2-verdict { border-radius: 12px; padding: 0.7rem 0.85rem; margin-top: 0.9rem; border: 1px solid var(--border); }
+  .sw2-verdict .v-head { font-size: 0.92rem; font-weight: 600; }
+  .sw2-verdict .v-sub  { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; line-height: 1.45; }
+  .sw2-verdict.good  { background: rgba(0,229,160,0.10); border-color: rgba(0,229,160,0.35); }
+  .sw2-verdict.good .v-head  { color: var(--accent3); }
+  .sw2-verdict.close { background: rgba(255,184,74,0.10); border-color: rgba(255,184,74,0.35); }
+  .sw2-verdict.close .v-head { color: var(--warn); }
+  .sw2-verdict.big   { background: rgba(255,107,53,0.10); border-color: rgba(255,107,53,0.40); }
+  .sw2-verdict.big .v-head   { color: var(--accent2); }
+  .sw2-verdict.wait  { background: var(--surface2); }
+  .sw2-verdict.wait .v-head  { color: var(--muted); font-weight: 500; font-size: 0.82rem; }
+
+  /* diff row — the arrow carries the direction, colour only carries the verdict */
+  .sw2-diff { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.55rem; }
+  .sw2-diff span {
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text);
+    background: rgba(255,255,255,0.05); border-radius: 6px; padding: 0.2rem 0.4rem;
+  }
+  .sw2-diff span.zero { color: var(--muted); }
+
+  .sw2-note {
+    margin-top: 0.6rem; font-size: 0.75rem; line-height: 1.45; color: var(--warn);
+    background: rgba(255,184,74,0.08); border: 1px solid rgba(255,184,74,0.28);
+    border-radius: 10px; padding: 0.55rem 0.7rem;
+  }
+  .sw2-save-msg { margin-top: 0.7rem; font-size: 0.82rem; text-align: center; }
+  .sw2-save-msg.pending { color: var(--muted); }
+  .sw2-save-msg.offline { color: var(--warn); }
+  .sw2-save-msg.err     { color: var(--danger); }
+
+  .sw2-actions { display: flex; gap: 0.6rem; margin-top: 1rem; }
+  .sw2-btn-ghost, .sw2-btn-go {
+    flex: 1; min-height: 50px; border-radius: 11px; cursor: pointer;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem; letter-spacing: 0.08em;
+    text-transform: uppercase; border: 1px solid var(--border);
+  }
+  .sw2-btn-ghost { background: transparent; color: var(--muted); }
+  .sw2-btn-go    { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .sw2-btn-go[disabled] { opacity: 0.55; cursor: default; }
+  .sw2-btn-go.anyway { background: transparent; color: var(--accent2); border-color: var(--accent2); }
+
+  #swapv2-done { text-align: center; padding: 0.5rem 0 0; }
+  .sw2-done-tick {
+    width: 54px; height: 54px; margin: 0 auto 0.7rem; border-radius: 50%;
+    background: rgba(0,229,160,0.14); color: var(--accent3);
+    display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+  }
+  .sw2-done-head { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--text); letter-spacing: 0.02em; }
+  .sw2-done-name { font-size: 0.95rem; color: var(--text); margin-top: 0.2rem; }
+  .sw2-done-macros { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+  .sw2-done-verdict { font-size: 0.85rem; color: var(--accent3); margin-top: 0.6rem; }
+  .sw2-fav-btn {
+    margin-top: 0.9rem; background: transparent; border: 1px solid var(--border);
+    border-radius: 10px; color: var(--muted); cursor: pointer; min-height: 44px;
+    padding: 0 0.9rem; font-family: inherit; font-size: 0.8rem;
+  }
+  .sw2-fav-btn.saved { color: var(--warn); border-color: rgba(255,184,74,0.45); cursor: default; }
+
+  @media (max-width: 700px) {
+    .sw2-target-kcal { font-size: 1.6rem; }
+    .sw2-chip { max-width: 70vw; }
+    .sw2-chip .n { max-width: 52vw; }
+  }
+
+
+  /* ═══ HELP ME SWAP THIS — V3, 2026-09-14 ════════════════════ */
+  .sw3-help {
+    display: block; width: 100%; margin: 0 0 0.2rem;
+    background: transparent; border: 1px dashed var(--border); border-radius: 11px;
+    color: var(--accent); cursor: pointer; min-height: 46px;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sw3-help:hover { border-color: var(--accent); }
+
+  /* Two persistent floating chips stand down while a modal is open: the sync
+     pill (z-index 150 - behind the modal already, but clutter beside the action
+     row on a short viewport), the check-in banner (sticky z-index 9999, which
+     swallows the modal's title row and close button on a short viewport) and the
+     trainer chip (z-index 9000 - the one element that can sit ON TOP of modal
+     content; hosted QA measured it covering 7-12% of the primary action at every
+     phone width). The shared modal block near the top of the stylesheet carries
+     the same rule and the full rationale; this copy rides along with the swap CSS
+     so the pilot and the template stay identical. !important is load-bearing: the
+     banner is shown with an inline display:block.
+     :has() is a progressive enhancement; without it nothing changes. */
+  body:has(.modal-overlay.open) .sync-status-badge,
+  body:has(.modal-overlay.open) #sunday-checkin-reminder,
+  body:has(.modal-overlay.open) #trainer-btn { display: none !important; }
+
+  .sw3-target {
+    font-size: 0.8rem; color: var(--muted); background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; margin-bottom: 0.85rem;
+  }
+  .sw3-target b { color: var(--text); font-family: 'DM Mono', monospace; }
+
+  .sw3-card {
+    border: 1px solid var(--border); border-radius: 13px; padding: 0.75rem 0.85rem;
+    margin-bottom: 0.6rem; background: var(--surface2);
+  }
+  .sw3-card.best { border-color: rgba(0,229,160,0.4); background: rgba(0,229,160,0.06); }
+  .sw3-rank {
+    font-family: 'DM Mono', monospace; font-size: 0.55rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); display: flex; gap: 0.4rem; align-items: center;
+  }
+  .sw3-card.best .sw3-rank { color: var(--accent3); }
+  .sw3-src {
+    border: 1px solid var(--border); border-radius: 5px; padding: 0.05rem 0.3rem;
+    font-size: 0.52rem; color: var(--muted); letter-spacing: 0.08em;
+  }
+  .sw3-name { font-size: 0.92rem; color: var(--text); font-weight: 600; margin: 0.25rem 0 0.1rem; line-height: 1.3; }
+  .sw3-macros { font-family: 'DM Mono', monospace; font-size: 0.74rem; color: var(--muted); }
+  .sw3-delta { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text); margin-top: 0.15rem; }
+  .sw3-why { font-size: 0.76rem; color: var(--muted); margin-top: 0.3rem; }
+  .sw3-use {
+    width: 100%; margin-top: 0.6rem; min-height: 44px; border-radius: 9px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sw3-card.best .sw3-use { background: var(--accent); color: #fff; }
+  .sw3-empty {
+    text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.5;
+    border: 1px dashed var(--border); border-radius: 12px; padding: 1.2rem 0.9rem;
+  }
+
   /* ─── PROGRESSION TABLE ─── */
   .prog-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); margin-top: 2rem; }
 
@@ -1353,6 +1635,13 @@
   }
   .tday-btn .d-name { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.04em; }
   .tday-btn .d-type { font-size: 8px; opacity: 0.85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  @media (max-width: 360px) {
+    .tday-grid { gap: 4px; }
+    .tday-btn { padding: 10px 1px; min-width: 0; }
+    .tday-btn .d-name { font-size: 12px; letter-spacing: 0; }
+    .tday-btn .d-type { font-size: 7px; letter-spacing: 0.02em; }
+  }
 
   /* NEW: day hero card */
   .tday-hero {
@@ -2396,31 +2685,86 @@
   </div>
 </div>
 
-<!-- CLIENT MEAL SWAP MODAL — for "I ate something different" logging -->
+<!-- CLIENT MEAL SWAP MODAL — SWAP UX V2 -->
 <div class="modal-overlay" id="swap-modal-overlay" onclick="closeSwapModal(event)">
-  <div class="modal" style="max-width:580px;">
+  <div class="modal swapv2" style="max-width:520px;">
     <button class="modal-close" onclick="cancelSwap()">✕</button>
-    <div class="modal-title" id="swap-modal-title">What did you eat instead?</div>
-    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.8rem;">Describe what you ate using foods + quantities. Example: <code style="background:var(--surface2);padding:0.1rem 0.3rem;border-radius:3px;color:var(--accent3);">200g chicken, 1 cup rice, 1 tbsp olive oil</code>. Macros auto-calculate from our food database.</p>
-    <div style="margin-bottom:0.8rem;">
-      <label for="sw-desc" style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;">What I ate</label>
-      <input id="sw-desc" type="text" placeholder="e.g. 200g chicken, 1 cup rice, broccoli" oninput="updateAutoMacros()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.7rem 0.8rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.85rem;margin-top:0.3rem;" />
+
+    <!-- ─── ENTRY VIEW ─── -->
+    <div id="swapv2-entry">
+      <div class="modal-title" id="swap-modal-title">Swap meal</div>
+      <div class="sw2-replacing">Replacing <strong id="sw2-orig">—</strong></div>
+
+      <div class="sw2-target" id="sw2-target">
+        <div class="sw2-target-kcal"><span id="sw2-t-cal">0</span><small>KCAL</small></div>
+        <div class="sw2-target-macros">
+          <span><b id="sw2-t-p">0</b>g P</span>
+          <span><b id="sw2-t-c">0</b>g C</span>
+          <span><b id="sw2-t-f">0</b>g F</span>
+        </div>
+      </div>
+
+      <button type="button" class="sw3-help" id="sw3-help" onclick="sw3Open()">Help me swap this</button>
+      <div id="sw2-picks"></div>
+
+      <div class="sw2-tabs" role="tablist">
+        <button type="button" class="sw2-tab active" id="sw2-tab-quick" onclick="sw2SetMode('quick')">Quick log</button>
+        <button type="button" class="sw2-tab" id="sw2-tab-full" onclick="sw2SetMode('full')">Full macros</button>
+      </div>
+
+      <label class="sw2-label" for="sw-desc">What you ate</label>
+      <input id="sw-desc" type="text" autocomplete="off" placeholder="e.g. chicken wrap" oninput="sw2Input()" />
+
+      <div class="sw2-row2">
+        <div><label class="sw2-label" for="sw-cal">Calories</label>
+          <input id="sw-cal" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+        <div><label class="sw2-label" for="sw-p">Protein (g)</label>
+          <input id="sw-p" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+      </div>
+
+      <button type="button" class="sw2-more" id="sw2-more" onclick="sw2ToggleExtra()">+ Add carbs &amp; fat</button>
+
+      <div class="sw2-row2" id="sw2-extra" hidden>
+        <div><label class="sw2-label" for="sw-c">Carbs (g)</label>
+          <input id="sw-c" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+        <div><label class="sw2-label" for="sw-f">Fat (g)</label>
+          <input id="sw-f" type="number" inputmode="numeric" min="0" placeholder="—" oninput="sw2Input()" /></div>
+      </div>
+
+      <div id="sw2-verdict" class="sw2-verdict" hidden></div>
+      <div id="sw2-note" class="sw2-note" hidden></div>
+      <div id="sw2-save-msg" class="sw2-save-msg" hidden></div>
+
+      <div class="sw2-actions">
+        <button type="button" class="sw2-btn-ghost" onclick="cancelSwap()">Cancel</button>
+        <button type="button" class="sw2-btn-go" id="sw2-log" onclick="sw2Save()">Log swap</button>
+      </div>
     </div>
-    <div id="auto-macro-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.7rem 1rem;margin-bottom:1rem;display:none;">
-      <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem;">Auto-calculated</div>
-      <div id="auto-macro-content"></div>
+
+    <!-- ─── SUCCESS VIEW ─── -->
+    <div id="swapv2-done" hidden>
+      <div class="sw2-done-tick">✓</div>
+      <div class="sw2-done-head">Meal swapped</div>
+      <div class="sw2-done-name" id="sw2-done-name">—</div>
+      <div class="sw2-done-macros" id="sw2-done-macros">—</div>
+      <div class="sw2-done-verdict" id="sw2-done-verdict">—</div>
+      <button type="button" class="sw2-fav-btn" id="sw2-fav-btn" onclick="sw2SaveFavourite()">♡ Save as favourite</button>
+      <div class="sw2-actions">
+        <button type="button" class="sw2-btn-go" onclick="cancelSwap()">Done</button>
+      </div>
     </div>
-    <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem;">Or override macros manually if you know them:</p>
-    <div class="edit-modal-grid">
-      <label for="sw-cal">Calories</label>        <input id="sw-cal" type="number" min="0" placeholder="auto" />
-      <label for="sw-p">Protein (g)</label>       <input id="sw-p" type="number" min="0" placeholder="auto" />
-      <label for="sw-c">Carbs (g)</label>         <input id="sw-c" type="number" min="0" placeholder="auto" />
-      <label for="sw-f">Fat (g)</label>           <input id="sw-f" type="number" min="0" placeholder="auto" />
+
+    <!-- ─── RECOMMENDATIONS VIEW (V3) ─── -->
+    <div id="swapv3-recs" hidden>
+      <div class="modal-title">Help me swap this</div>
+      <div class="sw2-replacing">Replacing <strong id="sw3-orig">—</strong></div>
+      <div class="sw3-target" id="sw3-target">Target <b id="sw3-t-cal">0</b> kcal · <b id="sw3-t-p">0</b>g protein</div>
+      <div id="sw3-list"></div>
+      <div class="sw2-actions">
+        <button type="button" class="sw2-btn-ghost" onclick="sw3Back()">Enter my own swap</button>
+      </div>
     </div>
-    <div class="edit-modal-actions">
-      <button class="edit-modal-cancel" onclick="cancelSwap()">Cancel</button>
-      <button class="edit-modal-save" onclick="saveSwap()">Log it</button>
-    </div>
+
   </div>
 </div>
 
@@ -4297,6 +4641,12 @@ const CLIENT_CONFIG = {
 // public file and MUST be removed once this client has been rotated onto a
 // freshly issued access link.
 const CLIENT_TOKEN_LEGACY = 'd3dbd9b9f7ac40da955aa372c43791183eff66a22ea349ddb4bc83166e277bd9'; // PENDING_TOKEN_ROTATION
+const FEATURES = {
+  swapUx: 3,
+  swapHelp: true,
+  swapCoveragePct: 100,
+};
+
 const CLIENT_TOKEN = (function () {
   const KEY = CLIENT_CONFIG.client.storageKey + '_access_token';
   let tok = '';
@@ -4757,7 +5107,7 @@ function renderNutritionDayContent(){
     let statusBar = '';
     if (status) {
       const bl = status === 'ate' ? `✓ ATE IT · +${meal.cal} kcal logged`
-              : status === 'swap' ? `↔ SWAPPED${logEntry.swapDesc?' — '+logEntry.swapDesc:''} · +${logEntry.cal||meal.cal} kcal logged`
+              : status === 'swap' ? `↔ SWAPPED ✓${logEntry.swapDesc?' — '+logEntry.swapDesc:''} · ${logEntry.cal||meal.cal} kcal · ${logEntry.p!=null?logEntry.p+'g protein':''}`
               : `✗ SKIPPED · 0 kcal`;
       statusBar = `<div class="tmeal-status-bar ${status}">${bl}<span class="undo" onclick="unlogMeal(${currentNutritionWeek},${currentNutritionDay},${mIdx})">undo</span></div>`;
     }
@@ -6362,6 +6712,552 @@ function updateBottomNav(id) {
       };
     }
   } catch (e) {}
+})();
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   SWAP UX V2 — 2026-09-14
+   ═══════════════════════════════════════════════════════════════════════════
+   Replaces openSwapModal / saveSwap / updateAutoMacros for the swap modal only.
+   ATE and SKIP (logMealQuick), unlogMeal, workouts, weight and check-ins are
+   untouched, and saving still goes through the Track A postMealLog path, so a
+   green state still means the server took it.
+
+   Recents and favourites are local to this device for the pilot. Nothing is
+   sent to the backend that was not sent before: the payload is the same swap
+   entry the old form produced.                                              */
+
+var SW2_RECENTS = CLIENT_CONFIG.client.storageKey + '_swap_recents';
+var SW2_FAVS    = CLIENT_CONFIG.client.storageKey + '_swap_favs';
+var SW2_MAX_RECENT = 5, SW2_MAX_FAV = 8;
+
+var _sw2 = { mode: 'quick', target: null, pending: false, last: null };
+
+function _sw2Read(k) { try { var v = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function _sw2Write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function _sw2Norm(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function _sw2Esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function _sw2Num(id) { var v = parseFloat((document.getElementById(id) || {}).value); return isFinite(v) ? v : null; }
+
+/* ── quality engine ────────────────────────────────────────────────────────
+   GOOD  : calories within +/-10% of the planned meal AND protein >= 90% of it
+   CLOSE : calories within +/-20%                     AND protein >= 75%
+   BIG   : anything else
+
+   Two deliberate properties. Protein is a FLOOR, never a ceiling - a client who
+   brings more protein than planned is not "off". And the verdict needs both
+   numbers: with calories alone we say so rather than implying the protein side
+   is fine. Where the planned meal carries no protein (only the Sunday prep
+   card, which has no calories either and cannot be swapped) the protein test is
+   skipped instead of dividing by zero.                                      */
+function sw2Judge(t, cal, prot) {
+  if (!t || !t.cal) return { k: 'wait', head: 'Add what you ate to see how close it is' };
+  if (cal == null) return { k: 'wait', head: 'Add calories to see how close this is' };
+  if (prot == null) return { k: 'wait', head: 'Add protein to see how close this is' };
+  var dCal = cal - t.cal;
+  var pctCal = Math.abs(dCal) / t.cal;
+  var pctP = t.p ? (prot / t.p) : 1;
+  var k = (pctCal <= 0.10 && pctP >= 0.90) ? 'good'
+        : (pctCal <= 0.20 && pctP >= 0.75) ? 'close' : 'big';
+  return { k: k, dCal: Math.round(dCal), dP: Math.round(prot - (t.p || 0)) };
+}
+
+function _sw2Sign(n, unit) {
+  var r = Math.round(n);
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r) + unit;
+}
+
+function sw2RenderVerdict() {
+  var box = document.getElementById('sw2-verdict');
+  var t = _sw2.target;
+  var cal = _sw2Num('sw-cal'), prot = _sw2Num('sw-p'), carb = _sw2Num('sw-c'), fat = _sw2Num('sw-f');
+  var v = sw2Judge(t, cal, prot);
+  var log = document.getElementById('sw2-log');
+
+  if (v.k === 'wait') {
+    box.className = 'sw2-verdict wait';
+    box.innerHTML = '<div class="v-head">' + _sw2Esc(v.head) + '</div>';
+    box.hidden = false;
+    log.textContent = 'Log swap'; log.classList.remove('anyway');
+    return v;
+  }
+
+  var head, sub;
+  if (v.k === 'good')  { head = '✓ Good swap'; sub = "You're close enough to the planned meal. Log it and move on."; }
+  else if (v.k === 'close') { head = 'Pretty close';
+    sub = 'This is ' + _sw2Sign(v.dCal, ' kcal') + ' and ' + _sw2Sign(v.dP, 'g protein') + ' compared with your planned meal.'; }
+  else { head = 'This changes the meal quite a bit'; sub = 'You can still log it — Omar sees the difference either way.'; }
+
+  var diff = '<div class="sw2-diff">' +
+    '<span' + (v.dCal === 0 ? ' class="zero"' : '') + '>' + _sw2Sign(v.dCal, ' kcal') + '</span>' +
+    '<span' + (v.dP === 0 ? ' class="zero"' : '') + '>' + _sw2Sign(v.dP, 'g P') + '</span>' +
+    (carb != null ? '<span>' + _sw2Sign(carb - (t.c || 0), 'g C') + '</span>' : '') +
+    (fat  != null ? '<span>' + _sw2Sign(fat  - (t.f || 0), 'g F') + '</span>' : '') +
+    '</div>';
+
+  box.className = 'sw2-verdict ' + v.k;
+  box.innerHTML = '<div class="v-head">' + head + '</div><div class="v-sub">' + _sw2Esc(sub) + '</div>' + diff;
+  box.hidden = false;
+  if (v.k === 'big') { log.textContent = 'Log anyway'; log.classList.add('anyway'); }
+  else { log.textContent = 'Log swap'; log.classList.remove('anyway'); }
+  return v;
+}
+
+/* Non-blocking label check: 4/4/9 against the entered calories. */
+function sw2RenderNote() {
+  var n = document.getElementById('sw2-note');
+  var cal = _sw2Num('sw-cal'), p = _sw2Num('sw-p'), c = _sw2Num('sw-c'), f = _sw2Num('sw-f');
+  if (cal == null || p == null || c == null || f == null) { n.hidden = true; return; }
+  var calc = p * 4 + c * 4 + f * 9;
+  var off = Math.abs(calc - cal);
+  if (off <= Math.max(40, cal * 0.12)) { n.hidden = true; return; }
+  n.textContent = 'These macros add up to roughly ' + Math.round(calc) + ' kcal. You entered '
+                + Math.round(cal) + ' kcal — double-check the label.';
+  n.hidden = false;
+}
+
+function sw2Input() {
+  /* Type a food the plan knows and the numbers fill themselves in. */
+  var desc = (document.getElementById('sw-desc').value || '').trim();
+  if (desc && typeof parseFoodEntry === 'function' && !_sw2.touched) {
+    try {
+      var parsed = parseFoodEntry(desc);
+      if (parsed && parsed.items && parsed.items.length && parsed.totals.kcal) {
+        if (!document.getElementById('sw-cal').value) document.getElementById('sw-cal').value = parsed.totals.kcal;
+        if (!document.getElementById('sw-p').value)   document.getElementById('sw-p').value   = parsed.totals.p;
+        if (_sw2.mode === 'full') {
+          if (!document.getElementById('sw-c').value) document.getElementById('sw-c').value = parsed.totals.c;
+          if (!document.getElementById('sw-f').value) document.getElementById('sw-f').value = parsed.totals.f;
+        }
+      }
+    } catch (e) {}
+  }
+  sw2RenderVerdict();
+  sw2RenderNote();
+}
+
+function sw2SetMode(m) {
+  _sw2.mode = m;
+  document.getElementById('sw2-tab-quick').classList.toggle('active', m === 'quick');
+  document.getElementById('sw2-tab-full').classList.toggle('active', m === 'full');
+  var extra = document.getElementById('sw2-extra'), more = document.getElementById('sw2-more');
+  if (m === 'full') { extra.hidden = false; more.hidden = true; }
+  else { extra.hidden = true; more.hidden = false; }
+  sw2RenderVerdict(); sw2RenderNote();
+}
+function sw2ToggleExtra() {
+  document.getElementById('sw2-extra').hidden = false;
+  document.getElementById('sw2-more').hidden = true;
+  var c = document.getElementById('sw-c'); if (c) c.focus();
+}
+
+/* ── favourites + recents ──────────────────────────────────────────────── */
+function sw2Picks() {
+  var favs = _sw2Read(SW2_FAVS), recents = _sw2Read(SW2_RECENTS);
+  var favNames = favs.map(function (x) { return _sw2Norm(x.name); });
+  var rec = recents.filter(function (x) { return favNames.indexOf(_sw2Norm(x.name)) === -1; }).slice(0, SW2_MAX_RECENT);
+  var html = '';
+  function chip(x, i, isFav) {
+    var macros = Math.round(x.cal) + ' kcal · ' + Math.round(x.p) + 'P';
+    return '<button type="button" class="sw2-chip' + (isFav ? ' fav' : '') + '" onclick="sw2Use(\'' + (isFav ? 'f' : 'r') + '\',' + i + ')">'
+      + (isFav ? '<span class="x" onclick="event.stopPropagation();sw2RemoveFav(' + i + ')" title="Remove">×</span>' : '')
+      + '<span class="n">' + _sw2Esc(x.name) + '</span><span class="m">' + macros + '</span></button>';
+  }
+  if (favs.length) {
+    html += '<div class="sw2-picks-head">♡ Favourites</div><div class="sw2-chips">'
+         + favs.map(function (x, i) { return chip(x, i, true); }).join('') + '</div>';
+  }
+  if (rec.length) {
+    html += '<div class="sw2-picks-head">Recent</div><div class="sw2-chips">'
+         + rec.map(function (x) { return chip(x, recents.indexOf(x), false); }).join('') + '</div>';
+  }
+  document.getElementById('sw2-picks').innerHTML = html;
+}
+
+function sw2Use(kind, i) {
+  var list = kind === 'f' ? _sw2Read(SW2_FAVS) : _sw2Read(SW2_RECENTS);
+  var x = list[i]; if (!x) return;
+  _sw2.touched = true;                      /* stop the parser overwriting these */
+  document.getElementById('sw-desc').value = x.name;
+  document.getElementById('sw-cal').value  = x.cal != null ? x.cal : '';
+  document.getElementById('sw-p').value    = x.p   != null ? x.p   : '';
+  document.getElementById('sw-c').value    = x.c   != null ? x.c   : '';
+  document.getElementById('sw-f').value    = x.f   != null ? x.f   : '';
+  /* Same state defect sw3Use had: revealing the extra fields by hand left
+     _sw2.mode at 'quick', so the QUICK LOG tab stayed lit over a form showing
+     four macros, and sw2Input()'s carb/fat autofill (gated on _sw2.mode) would
+     not fill the fields the client could see. sw2SetMode is the one source of
+     truth for the pair. A two-macro pick carries no c/f, so it stays in quick. */
+  if (x.c != null || x.f != null) { sw2SetMode('full'); }
+  /* judged against TODAY'S meal, never against the meal it was first used for */
+  sw2RenderVerdict(); sw2RenderNote();
+}
+
+function sw2RemoveFav(i) {
+  var favs = _sw2Read(SW2_FAVS);
+  if (i < 0 || i >= favs.length) return;
+  favs.splice(i, 1);                        /* recents keep their own copy */
+  _sw2Write(SW2_FAVS, favs);
+  sw2Picks();
+}
+
+function sw2PushRecent(entry) {
+  var list = _sw2Read(SW2_RECENTS);
+  var n = _sw2Norm(entry.name);
+  list = list.filter(function (x) { return _sw2Norm(x.name) !== n; });
+  list.unshift(entry);
+  _sw2Write(SW2_RECENTS, list.slice(0, SW2_MAX_RECENT * 3));
+}
+
+function sw2SaveFavourite() {
+  var e = _sw2.last; if (!e) return;
+  var favs = _sw2Read(SW2_FAVS);
+  var n = _sw2Norm(e.name);
+  if (favs.some(function (x) { return _sw2Norm(x.name) === n; })) { sw2FavMark(); return; }
+  favs.unshift(e);
+  _sw2Write(SW2_FAVS, favs.slice(0, SW2_MAX_FAV));
+  sw2FavMark();
+}
+function sw2FavMark() {
+  var b = document.getElementById('sw2-fav-btn');
+  if (b) { b.textContent = '♥ Saved to favourites'; b.classList.add('saved'); b.disabled = true; }
+}
+
+/* ── open / close ──────────────────────────────────────────────────────── */
+function openSwapModal(week, dayIdx, mealIdx) {
+  _swapCtx = { week: week, dayIdx: dayIdx, mealIdx: mealIdx };
+  var meal = getMealDay(week, dayIdx)[mealIdx] || {};
+  _sw2.target = { cal: meal.cal || 0, p: meal.p || 0, c: meal.c || 0, f: meal.f || 0 };
+  _sw2.pending = false; _sw2.last = null; _sw2.touched = false;
+
+  document.getElementById('swap-modal-title').textContent = 'Swap meal';
+  document.getElementById('sw2-orig').textContent = meal.name || 'this meal';
+  document.getElementById('sw2-t-cal').textContent = _sw2.target.cal;
+  document.getElementById('sw2-t-p').textContent = _sw2.target.p;
+  document.getElementById('sw2-t-c').textContent = _sw2.target.c;
+  document.getElementById('sw2-t-f').textContent = _sw2.target.f;
+
+  ['sw-desc', 'sw-cal', 'sw-p', 'sw-c', 'sw-f'].forEach(function (id) { document.getElementById(id).value = ''; });
+  document.getElementById('sw2-note').hidden = true;
+  document.getElementById('sw2-save-msg').hidden = true;
+  document.getElementById('swapv2-entry').hidden = false;
+  document.getElementById('swapv2-done').hidden = true;
+  document.getElementById('swapv3-recs').hidden = true;
+  var fb = document.getElementById('sw2-fav-btn');
+  fb.textContent = '♡ Save as favourite'; fb.classList.remove('saved'); fb.disabled = false;
+  var log = document.getElementById('sw2-log'); log.disabled = false;
+
+  sw2SetMode('quick');
+  sw2Picks();
+  sw2RenderVerdict();
+  document.getElementById('swap-modal-overlay').classList.add('open');
+}
+
+function cancelSwap() {
+  document.getElementById('swap-modal-overlay').classList.remove('open');
+  _sw2.pending = false;
+}
+function closeSwapModal(e) {
+  if (e && e.target === document.getElementById('swap-modal-overlay') && !_sw2.pending) cancelSwap();
+}
+function updateAutoMacros() { sw2Input(); }   /* old inline hook, kept harmless */
+
+/* ── save ──────────────────────────────────────────────────────────────── */
+function _sw2Msg(text, cls) {
+  var m = document.getElementById('sw2-save-msg');
+  m.textContent = text; m.className = 'sw2-save-msg ' + (cls || ''); m.hidden = !text;
+}
+
+async function sw2Save() {
+  if (!_swapCtx || _sw2.pending) return;
+  var name = (document.getElementById('sw-desc').value || '').trim();
+  if (!name) { _sw2Msg('Add what you ate first.', 'err'); document.getElementById('sw-desc').focus(); return; }
+
+  var t = _sw2.target;
+  var cal = _sw2Num('sw-cal'), p = _sw2Num('sw-p'), c = _sw2Num('sw-c'), f = _sw2Num('sw-f');
+  if (cal == null) cal = Math.round((t.cal || 0) * 0.8);
+  if (p == null)   p   = Math.round((t.p   || 0) * 0.8);
+  if (c == null)   c   = Math.round((t.c   || 0) * 0.8);
+  if (f == null)   f   = Math.round((t.f   || 0) * 0.8);
+
+  var meals = getMealDay(_swapCtx.week, _swapCtx.dayIdx);
+  var meal = meals[_swapCtx.mealIdx] || {};
+  var id = _mealLogId(_swapCtx.week, _swapCtx.dayIdx, _swapCtx.mealIdx);
+  if (_mealPending.has(id)) return;
+
+  var entry = {
+    week: _swapCtx.week, dayIdx: _swapCtx.dayIdx, mealIdx: _swapCtx.mealIdx,
+    mealName: meal.name, status: 'swap', swapDesc: name,
+    cal: Math.round(cal), p: Math.round(p), c: Math.round(c), f: Math.round(f),
+    ts: new Date().toISOString(), synced: false,
+  };
+
+  var verdict = sw2Judge(t, cal, p);
+  _sw2.pending = true;
+  _mealPending.add(id);
+  var log = document.getElementById('sw2-log');
+  log.disabled = true;
+  _sw2Msg('Saving…', 'pending');
+
+  var logs = loadMealLogs();
+  logs[id] = entry;
+  saveMealLogLocal(logs);
+
+  syncSaving();
+  var r;
+  try { r = await postMealLog(entry); } catch (e) { r = { ok: false, error: 'network' }; }
+  _mealPending.delete(id);
+  _sw2.pending = false;
+  log.disabled = false;
+  renderNutritionDay();
+
+  if (r && r.ok) {
+    _sw2.last = { name: name, cal: entry.cal, p: entry.p, c: entry.c, f: entry.f };
+    sw2PushRecent(_sw2.last);
+    _sw2Msg('', '');
+    document.getElementById('swapv2-entry').hidden = true;
+    document.getElementById('sw2-done-name').textContent = name;
+    document.getElementById('sw2-done-macros').textContent = entry.cal + ' kcal · ' + entry.p + 'g protein';
+    document.getElementById('sw2-done-verdict').textContent =
+      verdict.k === 'good' ? 'Right on target.'
+      : verdict.k === 'close' ? 'Close enough. Keep moving.'
+      : 'Logged. Omar will see the difference.';
+    document.getElementById('swapv2-done').hidden = false;
+    return;
+  }
+  var err = (r && r.error) || 'network';
+  if (err === 'network' || err === 'timeout' || err === 'no_endpoint') {
+    _sw2Msg("Offline — we'll save this when you're connected", 'offline');
+  } else {
+    _sw2Msg('✗ Not saved — try again', 'err');
+  }
+}
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELP ME SWAP THIS — SWAP UX V3, 2026-09-14
+   ═══════════════════════════════════════════════════════════════════════════
+   Deterministic. No model, no external API, no invented nutrition. Every
+   candidate is a meal that already exists in this client's own plan, or a
+   swap he has already logged himself (favourite / recent). If a candidate has
+   no calories or no protein it is not offered, because it could not be compared
+   honestly.
+
+   FOOD_DB is deliberately NOT a candidate source. Its rows are single
+   ingredients ("200g chicken breast"), not meals, and offering an ingredient as
+   a replacement for a composed meal would be a worse suggestion than none. It
+   still backs the V2 free-text parser.
+
+   Nothing here writes. Viewing or picking a recommendation only fills in the V2
+   form; the only write is still the existing Log swap -> postMealLog path.   */
+
+/* ── candidate identity ────────────────────────────────────────────────────
+   "MEAL PREP: <dish> (air fryer)" and "<dish> (air fryer)" are the same dish
+   at a different
+   time of day and portion, so the key drops the MEAL PREP prefix and the
+   trailing appliance note. It keeps everything else, so "<meat> + Rice" and
+   "<meat> + Rice + Veg" stay separate meals.                     */
+function sw3Key(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/^meal prep:\s*/, '')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .replace(/[^a-z0-9+ ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sw3Pool() {
+  var out = [];
+  try {
+    Object.keys(mealPlan).forEach(function (wk) {
+      (mealPlan[wk] || []).forEach(function (day) {
+        ((day && day.meals) || []).forEach(function (m) {
+          if (!m || !m.name || !m.cal || m.p == null) return;
+          out.push({ name: m.name, time: m.time || '', cal: m.cal, p: m.p, c: m.c, f: m.f, src: 'plan' });
+        });
+      });
+    });
+  } catch (e) {}
+  try {
+    _sw2Read(SW2_FAVS).forEach(function (x) {
+      if (x && x.name && x.cal != null && x.p != null)
+        out.push({ name: x.name, time: '', cal: x.cal, p: x.p, c: x.c, f: x.f, src: 'fav' });
+    });
+    _sw2Read(SW2_RECENTS).forEach(function (x) {
+      if (x && x.name && x.cal != null && x.p != null)
+        out.push({ name: x.name, time: '', cal: x.cal, p: x.p, c: x.c, f: x.f, src: 'recent' });
+    });
+  } catch (e) {}
+  return out;
+}
+
+/* ── ranking ───────────────────────────────────────────────────────────────
+   Lower is better.
+
+     calPen  |cal - target| / target            calorie proximity, the main term
+     proPen  shortfall only, x1.2               protein is a FLOOR, never a
+                                                ceiling - extra protein is free
+     overPen anything past +25% calories, x1.5  stops a high-protein candidate
+                                                buying its way in on calories
+     slot    same time of day -0.12,            breakfast stays breakfast;
+             different time   +0.06             a saved swap has no time and is
+                                                neither rewarded nor punished
+     fam     favourite -0.10, recent -0.06      his own patterns break ties
+
+   Anything more than 35% away on calories is dropped entirely - that is not a
+   swap, it is a different meal, and offering it would be worse than offering
+   nothing.                                                                  */
+var SW3_MAX_CAL_DRIFT = 0.35;
+
+function sw3Score(t, x) {
+  var rel = (x.cal - t.cal) / t.cal;
+  var calPen = Math.abs(rel);
+  var proPen = t.p ? Math.max(0, (t.p - x.p) / t.p) * 1.2 : 0;
+  var overPen = Math.max(0, rel - 0.25) * 1.5;
+  var slot = x.time ? (x.time === t.time ? -0.12 : 0.06) : 0;
+  var fam = x.src === 'fav' ? -0.10 : x.src === 'recent' ? -0.06 : 0;
+  return calPen + proPen + overPen + slot + fam;
+}
+
+function sw3Rank(t, currentName, limit) {
+  var excl = sw3Key(currentName);
+  var groups = {};
+  sw3Pool().forEach(function (x) {
+    var k = sw3Key(x.name);
+    if (!k || k === excl) return;
+    if (Math.abs(x.cal - t.cal) / t.cal > SW3_MAX_CAL_DRIFT) return;
+    var s = sw3Score(t, x);
+    /* one entry per dish - the variant that fits today's target best */
+    if (!groups[k] || s < groups[k]._s) { groups[k] = Object.assign({ _s: s, _k: k }, x); }
+  });
+  var ranked = Object.keys(groups).map(function (k) { return groups[k]; })
+    .sort(function (a, b) {
+      if (a._s !== b._s) return a._s - b._s;
+      return Math.abs(a.cal - t.cal) - Math.abs(b.cal - t.cal);
+    });
+  var n = limit || 3;
+  var top = ranked.slice(0, n);
+
+  /* Same-slot guarantee. Scoring alone once answered a breakfast-slot meal with
+     three 1:00pm meal-prep lunches: that breakfast is the highest-protein
+     breakfast in the plan, so every lunch beat every other breakfast on the
+     protein term. Nutritionally correct, and not what a coach would say.
+     If any candidate shares the target's time of day and none reached the
+     list, the best of them takes the last place. The slot weight itself stays
+     small on purpose - this is a floor, not a thumb on the scale. */
+  if (t.time && top.length && !top.some(function (x) { return x.time === t.time; })) {
+    var sameSlot = ranked.filter(function (x) { return x.time === t.time; })[0];
+    if (sameSlot) top[top.length - 1] = sameSlot;
+  }
+  return top;
+}
+
+/* One short line. The verdict comes from the same engine V2 uses, so the card
+   and the form can never disagree with each other. */
+function sw3Why(t, x) {
+  var v = sw2Judge(t, x.cal, x.p);
+  if (v.k === 'good') return '✓ Great match';
+  if (v.k === 'close') return 'Close enough';
+  if (x.cal > t.cal && t.p && x.p >= t.p) return 'Higher calories, but protein is on target';
+  if (t.p && x.p < t.p * 0.75) return 'Lower protein than planned';
+  return 'Bigger change to the meal';
+}
+
+function sw3Open() {
+  var t = _sw2.target;
+  var meal = (getMealDay(_swapCtx.week, _swapCtx.dayIdx) || [])[_swapCtx.mealIdx] || {};
+  t.time = meal.time || '';
+  document.getElementById('sw3-orig').textContent = meal.name || 'this meal';
+  document.getElementById('sw3-t-cal').textContent = t.cal;
+  document.getElementById('sw3-t-p').textContent = t.p;
+
+  var picks = sw3Rank(t, meal.name, 3);
+  var host = document.getElementById('sw3-list');
+
+  if (!picks.length) {
+    host.innerHTML = '<div class="sw3-empty">No good matches found from your plan.<br>'
+                   + 'Enter what you ate instead and we’ll check it against the target.</div>';
+  } else {
+    _sw2.recs = picks;
+    host.innerHTML = picks.map(function (x, i) {
+      var dCal = Math.round(x.cal - t.cal), dP = Math.round(x.p - (t.p || 0));
+      var srcLabel = x.src === 'fav' ? 'Favourite' : x.src === 'recent' ? 'Recent' : 'From your plan';
+      return '<div class="sw3-card' + (i === 0 ? ' best' : '') + '">'
+        + '<div class="sw3-rank">' + (i === 0 ? 'Best match' : 'Another option')
+        + '<span class="sw3-src">' + srcLabel + '</span></div>'
+        + '<div class="sw3-name">' + _sw2Esc(x.name) + '</div>'
+        + '<div class="sw3-macros">' + x.cal + ' kcal · ' + x.p + 'g protein</div>'
+        + '<div class="sw3-delta">' + _sw2Sign(dCal, ' kcal') + '  ' + _sw2Sign(dP, 'g P') + '</div>'
+        + '<div class="sw3-why">' + _sw2Esc(sw3Why(t, x)) + '</div>'
+        + '<button type="button" class="sw3-use" onclick="sw3Use(' + i + ')">Use this</button>'
+        + '</div>';
+    }).join('');
+  }
+  document.getElementById('swapv2-entry').hidden = true;
+  document.getElementById('swapv2-done').hidden = true;
+  document.getElementById('swapv3-recs').hidden = false;
+  document.getElementById('swap-modal-overlay').scrollTop = 0;
+}
+
+function sw3Back() {
+  document.getElementById('swapv3-recs').hidden = true;
+  document.getElementById('swapv2-entry').hidden = false;
+  document.getElementById('swap-modal-overlay').scrollTop = 0;
+  var d = document.getElementById('sw-desc'); if (d) d.focus();
+}
+
+/* Fills the V2 form and hands control straight back to it. Nothing is written:
+   the verdict is recomputed from scratch against the meal being replaced, and
+   the only write is still Log swap. */
+function sw3Use(i) {
+  var x = (_sw2.recs || [])[i];
+  if (!x) return;
+  _sw2.touched = true;
+  document.getElementById('sw-desc').value = x.name;
+  document.getElementById('sw-cal').value = x.cal;
+  document.getElementById('sw-p').value = x.p;
+  document.getElementById('sw-c').value = x.c != null ? x.c : '';
+  document.getElementById('sw-f').value = x.f != null ? x.f : '';
+  /* A recommendation carries all four macros, so the form has to move to full
+     mode - not just reveal the two extra fields. Doing it by hand here left
+     _sw2.mode at 'quick' while carbs and fat were on screen: the QUICK LOG tab
+     stayed lit, and sw2Input()'s carb/fat autofill (gated on _sw2.mode) would
+     not fill the fields the client could see. sw2SetMode does both halves. */
+  if (x.c != null || x.f != null) {
+    sw2SetMode('full');
+  }
+  document.getElementById('swapv3-recs').hidden = true;
+  document.getElementById('swapv2-entry').hidden = false;
+  document.getElementById('swap-modal-overlay').scrollTop = 0;
+  sw2RenderVerdict();
+  sw2RenderNote();
+}
+</script>
+<script>
+/* Mobile modal reachability (2026-09-14): publish the visual viewport as CSS
+   custom properties so an open .modal-overlay can bind to the area the client
+   can actually see while the on-screen keyboard is up. Writes two custom
+   properties and nothing else; no-op where window.visualViewport is absent. */
+(function () {
+  var vv = window.visualViewport;
+  if (!vv) return;
+  function fit() {
+    try {
+      var r = document.documentElement.style;
+      r.setProperty('--vv-h', vv.height + 'px');
+      r.setProperty('--vv-top', (vv.offsetTop || 0) + 'px');
+    } catch (e) {}
+  }
+  fit();
+  vv.addEventListener('resize', fit);
+  vv.addEventListener('scroll', fit);
+  /* visualViewport's own resize event does not fire in every situation that
+     changes the visible height (proved in test: vv.height was correct but no
+     event arrived). window.resize does, so listen to both. */
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 250); });
 })();
 </script>
 </body>
