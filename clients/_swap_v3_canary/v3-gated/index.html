@@ -6954,7 +6954,12 @@ function sw2Use(kind, i) {
   document.getElementById('sw-p').value    = x.p   != null ? x.p   : '';
   document.getElementById('sw-c').value    = x.c   != null ? x.c   : '';
   document.getElementById('sw-f').value    = x.f   != null ? x.f   : '';
-  if (x.c != null || x.f != null) { document.getElementById('sw2-extra').hidden = false; document.getElementById('sw2-more').hidden = true; }
+  /* Same state defect sw3Use had: revealing the extra fields by hand left
+     _sw2.mode at 'quick', so the QUICK LOG tab stayed lit over a form showing
+     four macros, and sw2Input()'s carb/fat autofill (gated on _sw2.mode) would
+     not fill the fields the client could see. sw2SetMode is the one source of
+     truth for the pair. A two-macro pick carries no c/f, so it stays in quick. */
+  if (x.c != null || x.f != null) { sw2SetMode('full'); }
   /* judged against TODAY'S meal, never against the meal it was first used for */
   sw2RenderVerdict(); sw2RenderNote();
 }
