@@ -938,12 +938,40 @@
   }
   .sw3-help:hover { border-color: var(--accent); }
 
-  /* The persistent "⟳ synced 1m ago" pill is z-index 150, so it renders behind
-     the modal and cannot steal a tap - but on a short viewport it sits on the
-     dimmed backdrop right beside the action row and reads as clutter during a
-     task that should feel like one decision. Hidden while any modal is open.
+  /* Two persistent floating chips sit outside the modal and have to stand down
+     while one is open.
+
+     The "⟳ synced 1m ago" pill is z-index 150, so it already renders behind the
+     modal and cannot steal a tap - but on a short viewport it sits on the dimmed
+     backdrop right beside the action row and reads as clutter during a task that
+     should feel like one decision.
+
+     The trainer chip is z-index 9000, above the overlay's 320, so it is the one
+     element in the shell that can sit ON TOP of modal content. Hosted screenshot
+     QA (2026-09-14) measured it covering 7-12% of this modal's primary action at
+     every phone width, with elementFromPoint at that corner resolving to the
+     chip: a tap there opened trainer login instead of logging the meal. Hiding it
+     while a modal is open fixes every modal at once and leaves the stacking order
+     alone - lowering its z-index instead would drop it behind .bottom-nav (200)
+     when no modal is open. Trainer access is unaffected: the backtick-x3 shortcut
+     and the #trainer hash both still work, and the chip returns on close.
+
+     Deliberately not scoped to a width - a chip that can cover a modal action is
+     wrong at every width, and one unconditional rule beats guessing a breakpoint.
+
+     The check-in banner is sticky at z-index 9999 and spans the full width of
+     the top 80px. A grid probe over the whole open modal at 390x400 (a phone
+     with the keyboard up) returned 368 foreign hit points, every one of them
+     inside the banner: it swallows the modal's title row and close button, so
+     tapping the modal's X hits the banner's DISMISS or DO IT NOW instead. The
+     nudge is not lost - the banner returns the moment the modal closes.
+     !important is load-bearing here: the banner is shown with an inline
+     display:block, which a plain stylesheet rule cannot beat.
+
      :has() is a progressive enhancement; without it nothing changes. */
-  body:has(.modal-overlay.open) .sync-status-badge { display: none; }
+  body:has(.modal-overlay.open) .sync-status-badge,
+  body:has(.modal-overlay.open) #sunday-checkin-reminder,
+  body:has(.modal-overlay.open) #trainer-btn { display: none !important; }
 
   .sw3-target {
     font-size: 0.8rem; color: var(--muted); background: var(--surface2);
@@ -1602,6 +1630,19 @@
   }
   .tday-btn .d-name { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.04em; }
   .tday-btn .d-type { font-size: 8px; opacity: 0.85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Narrow-phone day picker. .tday-grid is repeat(7, 1fr); a grid item defaults
+     to min-width:auto, so a long .d-type ("Weights") holds the button at its
+     min-content width (44.3px measured) against a 36px track and pushes the row
+     5px past the viewport - a real horizontal scroll at 320px. Tighten the
+     density below 360px and let the items shrink into their tracks. Scoped to
+     max-width 360px, so 375/390/393 and desktop render exactly as before. */
+  @media (max-width: 360px) {
+    .tday-grid { gap: 4px; }
+    .tday-btn { padding: 10px 1px; min-width: 0; }
+    .tday-btn .d-name { font-size: 12px; letter-spacing: 0; }
+    .tday-btn .d-type { font-size: 7px; letter-spacing: 0.02em; }
+  }
 
   /* NEW: day hero card */
   .tday-hero {
@@ -7187,9 +7228,13 @@ function sw3Use(i) {
   document.getElementById('sw-p').value = x.p;
   document.getElementById('sw-c').value = x.c != null ? x.c : '';
   document.getElementById('sw-f').value = x.f != null ? x.f : '';
+  /* A recommendation carries all four macros, so the form has to move to full
+     mode - not just reveal the two extra fields. Doing it by hand here left
+     _sw2.mode at 'quick' while carbs and fat were on screen: the QUICK LOG tab
+     stayed lit, and sw2Input()'s carb/fat autofill (gated on _sw2.mode) would
+     not fill the fields the client could see. sw2SetMode does both halves. */
   if (x.c != null || x.f != null) {
-    document.getElementById('sw2-extra').hidden = false;
-    document.getElementById('sw2-more').hidden = true;
+    sw2SetMode('full');
   }
   document.getElementById('swapv3-recs').hidden = true;
   document.getElementById('swapv2-entry').hidden = false;
