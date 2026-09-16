@@ -2112,7 +2112,7 @@
 <div id="sunday-checkin-reminder" style="display:none;position:sticky;top:0;z-index:9999;background:linear-gradient(90deg,#ffb84a,#ff8c42);color:#000;padding:0.9rem 1rem;text-align:center;border-bottom:2px solid #000;font-family:'DM Sans',sans-serif;font-weight:700;font-size:0.92rem;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
   📊 SUNDAY CHECK-IN DUE — please submit this week's form
   <button onclick="scrollToCheckin()" style="margin-left:0.8rem;background:#000;color:#ffb84a;border:none;padding:0.35rem 0.9rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.75rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">DO IT NOW (2 MIN)</button>
-  <button onclick="document.getElementById('sunday-checkin-reminder').style.display='none'" style="margin-left:0.4rem;background:transparent;color:#000;border:1px solid rgba(0,0,0,0.4);padding:0.35rem 0.6rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;cursor:pointer;">DISMISS</button>
+  <button onclick="dismissCheckinBanner()" style="margin-left:0.4rem;background:transparent;color:#000;border:1px solid rgba(0,0,0,0.4);padding:0.35rem 0.6rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:0.72rem;cursor:pointer;">DISMISS</button>
 </div>
 
 <!-- MOBILE STICKY HEADER (greeting + initials avatar) — shown on all pages -->
@@ -5340,19 +5340,70 @@ function scrollToCheckin() {
   setTimeout(() => { const w = document.getElementById('input-weight'); if (w) w.focus(); }, 500);
 }
 
-function _lastCheckinTsFromLocalStorage() {
+/* CHECKIN-BANNER-V2 */
+/* Newest VALID check-in timestamp, or null when there genuinely is none.
+   Never returns a sentinel - callers must treat null as UNKNOWN, not as overdue.
+   Scans every entry rather than trusting array position: hydrateFromCloud sorts
+   restored check-ins ASCENDING, so arr[0] was the OLDEST, which made a client who
+   checked in yesterday look weeks overdue on a restored device. */
+function _lastCheckinTs() {
+  var best = null;
+  var horizon = Date.now() + 86400000;          // tomorrow: anything later is not real
+  function take(v) {
+    if (v === null || v === undefined || v === '') return;
+    var t = (typeof v === 'number') ? v : Date.parse(v);
+    if (!t || isNaN(t) || t <= 0 || t > horizon) return;   // malformed / absurd -> ignored
+    if (best === null || t > best) best = t;
+  }
   try {
-    const key = (CLIENT_CONFIG.client.storageKey || 'client') + '_last_checkin_ts';
-    const v = localStorage.getItem(key);
-    if (v) return Number(v);
-    // Fallback: check the legacy checkins array
-    const arr = JSON.parse(localStorage.getItem(LS_KEYS.checkins) || '[]');
-    if (arr.length > 0 && arr[0].date) {
-      const parsed = new Date(arr[0].date).getTime();
-      return isNaN(parsed) ? 0 : parsed;
+    var k = (CLIENT_CONFIG.client.storageKey || 'client') + '_last_checkin_ts';
+    var raw = localStorage.getItem(k);
+    if (raw) take(Number(raw));
+  } catch (e) {}
+  try {
+    var arr = JSON.parse(localStorage.getItem(LS_KEYS.checkins) || '[]');
+    if (Array.isArray(arr)) {
+      for (var i = 0; i < arr.length; i++) {
+        if (!arr[i]) continue;
+        take(arr[i].ts);
+        take(arr[i].date);
+      }
     }
   } catch (e) {}
-  return 0;
+  return best;
+}
+
+/* Program start, or null when absent/unparseable. Used ONLY to decide whether a
+   client with no history yet is "coming up" or "due" - never to invent a count. */
+function _programStartTs() {
+  try {
+    var s = CLIENT_CONFIG.programStartDate
+         || (CLIENT_CONFIG.client && CLIENT_CONFIG.client.startDate) || '';
+    if (!s) return null;
+    var t = Date.parse(s);
+    return (!t || isNaN(t)) ? null : t;
+  } catch (e) { return null; }
+}
+
+/* Explicit state. There is no numeric fallback anywhere in here: a day count is
+   produced ONLY from a real check-in timestamp. */
+function _checkinBannerState() {
+  var isSunday = new Date().getDay() === 0;
+  var last = _lastCheckinTs();
+  if (last !== null) {
+    var days = Math.floor((Date.now() - last) / 86400000);
+    if (days < 0) return { kind: 'none' };
+    if (isSunday && days >= 6) return { kind: 'due_today' };
+    if (days >= 8) return { kind: 'overdue', days: days };
+    return { kind: 'none' };
+  }
+  var start = _programStartTs();
+  if (start === null) return { kind: 'first_upcoming' };   // unknown schedule -> neutral
+  var since = Math.floor((Date.now() - start) / 86400000);
+  if (since < 0) return { kind: 'first_upcoming' };
+  if (isSunday && since >= 6) return { kind: 'due_today' };
+  if (since >= 8) return { kind: 'first_due' };
+  return { kind: 'first_upcoming' };
 }
 
 function _showCheckinReminder(overdueDays, isSunday) {
@@ -5383,13 +5434,67 @@ function _showCheckinReminder(overdueDays, isSunday) {
   } catch (e) { /* Notifications not supported */ }
 }
 
-window.addEventListener('load', function() {
-  const now = new Date();
-  const isSunday = now.getDay() === 0; // 0 = Sunday in JS
-  const lastTs = _lastCheckinTsFromLocalStorage();
-  const daysSince = lastTs ? Math.floor((Date.now() - lastTs) / 86400000) : -1;  // no check-in history yet: do not greet a new client with CHECK-IN OVERDUE
-  _showCheckinReminder(daysSince, isSunday);
-});
+var _checkinDismissed = false;
+var _checkinHydrationPending = false;   // set synchronously when a cloud restore is scheduled
+
+function dismissCheckinBanner() {
+  _checkinDismissed = true;
+  var b = document.getElementById('sunday-checkin-reminder');
+  if (b) b.style.display = 'none';
+}
+
+/* Single render entry point. Safe to call repeatedly; called again the moment
+   cloud hydration settles, so a restored device corrects itself without a timer. */
+function renderCheckinBanner() {
+  var banner = document.getElementById('sunday-checkin-reminder');
+  if (!banner) return;
+  if (_checkinDismissed) { banner.style.display = 'none'; return; }
+
+  /* Loading-safe: while a restore is in flight and there is no local history yet,
+     local state is not the truth. Show nothing rather than a wrong state that
+     flips a moment later. */
+  if (_checkinHydrationPending && _lastCheckinTs() === null) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  var st = _checkinBannerState();
+  var msg;
+  if (st.kind === 'due_today') {
+    msg = '\uD83D\uDCCA SUNDAY CHECK-IN DUE \u2014 please submit this week\'s form ';
+  } else if (st.kind === 'overdue') {
+    msg = '\u26A0 CHECK-IN OVERDUE (' + st.days + ' days) \u2014 quick 2-min form below ';
+  } else if (st.kind === 'first_due') {
+    msg = '\uD83D\uDCCB FIRST CHECK-IN DUE \u2014 quick 2-min form below ';
+  } else if (st.kind === 'first_upcoming') {
+    msg = '\uD83D\uDC4B FIRST CHECK-IN COMING UP \u2014 2-min form whenever you are ready ';
+  } else {
+    banner.style.display = 'none';
+    return;
+  }
+  banner.childNodes[0].nodeValue = msg;
+  banner.style.display = 'block';
+  _maybeNotifyCheckin(st);
+}
+
+/* Notifications only for states that are genuinely actionable now. A brand-new
+   client is not nagged by a push. */
+function _maybeNotifyCheckin(st) {
+  if (st.kind !== 'due_today' && st.kind !== 'overdue' && st.kind !== 'first_due') return;
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      var n = new Notification(st.kind === 'due_today' ? 'Sunday check-in due' : 'Check-in due', {
+        body: 'Take 2 minutes to submit this week\'s check-in \u2014 helps me adjust your plan.',
+        tag: 'checkin-reminder', renotify: false,
+      });
+      n.onclick = function () { window.focus(); scrollToCheckin(); n.close(); };
+    } else if ('Notification' in window && Notification.permission === 'default') {
+      setTimeout(function () { Notification.requestPermission(); }, 3000);
+    }
+  } catch (e) {}
+}
+
+window.addEventListener('load', function () { renderCheckinBanner(); });
 
 // Auto-fill the "Week Number" input based on the program start date (from CLIENT_CONFIG or 'today - 1 wk').
 // Coach can set CLIENT_CONFIG.programStartDate = 'YYYY-MM-DD' to make this exact; otherwise defaults to Week 1.
@@ -6087,7 +6192,7 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
     const url = CLIENT_CONFIG.sheetsWebhookUrl + '?type=dashboard'
               + '&client=' + encodeURIComponent(CLIENT_CONFIG.client.storageKey)
               + '&token=' + encodeURIComponent(CLIENT_TOKEN);
-    fetch(url).then(r => r.json()).then(data => {
+    return fetch(url).then(r => r.json()).then(data => {
       const c = data && data[clientKey];
       if (!c) return;
       let restoredCount = 0;
@@ -6151,10 +6256,22 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
     }).catch(() => {}); // silent on network fail
   }
 
+  /* CHECKIN-BANNER-V2 hydration lifecycle */
+  _checkinHydrationPending = true;
+  function _checkinHydrationSettle() {
+    _checkinHydrationPending = false;
+    try { if (typeof renderCheckinBanner === 'function') renderCheckinBanner(); } catch (e) {}
+  }
+  function _hydrateThenSettle() {
+    var p;
+    try { p = hydrateFromCloud(); } catch (e) {}
+    if (p && typeof p.then === 'function') p.then(_checkinHydrationSettle, _checkinHydrationSettle);
+    else _checkinHydrationSettle();
+  }
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(hydrateFromCloud, 800);
+    setTimeout(_hydrateThenSettle, 800);
   } else {
-    window.addEventListener('DOMContentLoaded', () => setTimeout(hydrateFromCloud, 800));
+    window.addEventListener('DOMContentLoaded', () => setTimeout(_hydrateThenSettle, 800));
   }
 })();
 
