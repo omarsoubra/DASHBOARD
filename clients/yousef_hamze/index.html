@@ -4111,6 +4111,122 @@ function _workoutLogId(phase, dayIdx, exName) {
   return 'p' + phase + '.d' + dayIdx + '.' + exName;
 }
 
+/* FIND-LOAD-V1 */
+/* ══ FIND LOAD V1 ═══════════════════════════════════════════════════════════
+   ONE canonical interpreter for historical workout load, used by BOTH the
+   history line and the right-side badge, so the two can never disagree.
+
+   This is display/carry-forward only:
+     - it reports what was LOGGED, never what to lift next
+     - it performs no arithmetic on a load and produces no recommendation
+     - it never activates, reads or feeds the parked progression engine
+   An ambiguous value yields NO load state rather than an invented kilogram.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* The logged load text. Legacy cloud restore writes only `weightActual`, so a
+   restored device has no `.weight`. Read both rather than change the schema. */
+function _logWeightText(e) {
+  if (!e) return '';
+  var v = e.weight;
+  if (v === undefined || v === null || v === '') v = e.weightActual;
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
+/* Hard deny-list. Anything matching this is NOT a load, whatever digits it
+   contains. parseFloat('2 RIR') === 2 and parseFloat('RPE 8') === 8 - those are
+   exactly the values this exists to refuse. Checked BEFORE any numeric parse. */
+var _FL_NON_LOAD = /(\brir\b|\brpe\b|\bbw\b|body\s*weight|\bassist\w*\b|\bband\b|km\s*\/?\s*h|incline|%|\bpace\b|\bsteady\b|all[\s-]?out|max\s*hr|max\s*intent|\bhard\b|\beasy\b|\bround\b|\bmin\b|\bsec\b|\bfail\w*\b|\bamrap\b)/i;
+
+/* A single token -> kilograms, or no match. Strict by construction: a bare
+   number, optionally 'kg', optionally a per-side qualifier. Nothing else. */
+var _FL_TOKEN = /^\s*(\d+(?:\.\d+)?)\s*(?:kgs?)?\s*(ea|each|per\s*side|\/\s*side|ps)?\s*$/i;
+
+function _fmtKg(n) {
+  var r = Math.round(n * 100) / 100;
+  return String(r);
+}
+
+/* -> { state: 'none' | 'single' | 'mixed' | 'non_load', loadKg, display } */
+function _loadState(entry) {
+  var NONE     = { state: 'none',     loadKg: null, display: null };
+  var NON_LOAD = { state: 'non_load', loadKg: null, display: null };
+  var raw = _logWeightText(entry);
+  if (!raw) return NONE;
+  if (_FL_NON_LOAD.test(raw)) return NON_LOAD;
+
+  var parts = raw.split(/[,;\/]+|\bthen\b|\band\b/i);
+  var vals = [], qual = '';
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i].trim();
+    if (p === '') continue;
+    var m = _FL_TOKEN.exec(p);
+    if (!m) return NON_LOAD;                 /* one unparseable token poisons the whole entry */
+    var v = parseFloat(m[1]);
+    if (!isFinite(v) || v <= 0) return NON_LOAD;
+    vals.push(v);
+    if (m[2] && !qual) qual = ' EA';
+  }
+  if (!vals.length) return NONE;
+
+  for (var j = 1; j < vals.length; j++) {
+    /* MIXED: do not pick first / last / highest / lowest / mean. The detailed
+       history line stays truthful; the badge points the client at it. */
+    if (vals[j] !== vals[0]) return { state: 'mixed', loadKg: null, display: 'SEE LOG' };
+  }
+  return { state: 'single', loadKg: vals[0], display: 'LAST ' + _fmtKg(vals[0]) + 'KG' + qual };
+}
+
+/* Authored `exercise.weight` -> 'explicit' | 'find' | 'other'.
+     explicit : a genuine coach-prescribed load. ALWAYS wins over history.
+     find     : a load-finding / carry-forward instruction. History may replace it.
+     other    : effort (RIR/RPE), bodyweight, conditioning, anything else.
+                NEVER replaced - removing it would delete a real prescription. */
+var _FL_AUTH_KG   = /\d+(?:\.\d+)?\s*kg|^\s*[+-]?\d+(?:\.\d+)?\s*$|assist\s*-\s*\d+/i;
+var _FL_AUTH_FIND = /find\s+(?:your\s+)?load|your\s+logged\s+load|beat\s+the\s+log|^\s*set\s+wk\d+/i;
+
+function _authoredLoadKind(w) {
+  var s = String(w === undefined || w === null ? '' : w).trim();
+  if (!s) return 'other';
+  if (_FL_AUTH_KG.test(s))   return 'explicit';
+  if (_FL_AUTH_FIND.test(s)) return 'find';
+  return 'other';
+}
+
+/* An effort cue embedded in a load-finding string ('Beat the log - RIR 2') is a
+   real prescription. It survives the swap instead of being thrown away. */
+var _FL_EFFORT = /\bRIR\s*\d+(?:\s*[-–]\s*\d+)?|\d+(?:\s*[-–]\s*\d+)?\s*\+?\s*RIR\b|\bRPE\s*\d+(?:\s*[-–]\s*\d+)?/i;
+function _authoredEffortCue(w) {
+  var m = _FL_EFFORT.exec(String(w === undefined || w === null ? '' : w));
+  return m ? m[0].toUpperCase().replace(/\s+/g, ' ').replace(/–/g, '-') : '';
+}
+
+function _fl_esc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* Precedence:
+     1. genuine explicit coach load  -> coach prescription, untouched
+     2. otherwise usable history     -> LAST xKG / SEE LOG (+ any authored effort cue)
+     3. otherwise                    -> the authored state, untouched
+   Consequence, and the invariant this feature exists to hold: a logged entry
+   that yields a load can never leave the badge reading 'Find load'. */
+function _resolveLoadBadge(ex, entry) {
+  var authored = (ex && ex.weight !== undefined && ex.weight !== null) ? ex.weight : '';
+  var kind = _authoredLoadKind(authored);
+  if (kind !== 'find') return _fl_esc(authored);
+
+  var st = _loadState(entry);
+  if (st.state !== 'single' && st.state !== 'mixed') return _fl_esc(authored);
+
+  var cue = _authoredEffortCue(authored);
+  return _fl_esc(st.display) + (cue
+    ? '<span style="display:block;font-family:\'DM Mono\',monospace;font-size:10px;'
+      + 'opacity:0.7;letter-spacing:0.02em;margin-top:2px;">' + _fl_esc(cue) + '</span>'
+    : '');
+}
+
 function getWorkoutLogEntry(phase, dayIdx, exName) {
   return loadWorkoutLogs()[_workoutLogId(phase, dayIdx, exName)] || null;
 }
@@ -4388,14 +4504,20 @@ function renderDay() {
          <button class="trainer-icon-btn del" onclick="deleteExercise(${i})" title="Delete">✕</button>`
       : '';
     // Client-side workout log button (non-trainer mode only)
-    let logBtn = '', logged = '';
+    let logBtn = '', logged = '', _ldEntry = null;   /* FIND-LOAD-V1 */
     if (!trainer) {
       const exNameEsc = ex.name.replace(/'/g, "\\'");
       const presEsc = JSON.stringify({ sets: ex.sets, reps: ex.reps, weight: ex.weight, rpe: ex.rpe }).replace(/"/g, '&quot;');
       logBtn = `<button class="log-set-btn" onclick="openWorkoutLog(${currentPhase},${currentDay},'${exNameEsc}',${presEsc})">📝 LOG</button>`;
       const logEntry = getWorkoutLogEntry(currentPhase, currentDay, ex.name);
+      _ldEntry = logEntry;                                        /* FIND-LOAD-V1 */
       if (logEntry) {
-        logged = `<span class="last-logged">✓ ${logEntry.sets || '?'}×${logEntry.reps || '?'} @ ${logEntry.weight || '?'}${logEntry.rpe ? ' · RPE ' + logEntry.rpe : ''}</span>`;
+        /* FIND-LOAD-V1: legacy cloud restore writes only the *Actual aliases. */
+        const _ls  = logEntry.sets   || logEntry.setsActual   || '?';
+        const _lr  = logEntry.reps   || logEntry.repsActual   || '?';
+        const _lw  = _logWeightText(logEntry) || '?';
+        const _lrp = logEntry.rpe    || logEntry.rpeActual    || '';
+        logged = `<span class="last-logged">✓ ${_ls}×${_lr} @ ${_lw}${_lrp ? ' · RPE ' + _lrp : ''}</span>`;
       }
     }
     const rpeCls = getRpeClass(ex.rpe);
@@ -4407,7 +4529,7 @@ function renderDay() {
           <div class="texercise-sets">${ex.sets} sets × ${ex.reps} · <span class="rpe-pill ${rpeCls}" style="padding:1px 6px;font-size:10px;">RPE ${ex.rpe}</span> · rest ${ex.rest}</div>
           <div class="texercise-tools">${btn}${edBtns}${logBtn}${logged}</div>
         </div>
-        <div class="texercise-weight">${ex.weight}</div>
+        <div class="texercise-weight">${_resolveLoadBadge(ex, trainer ? null : _ldEntry)}</div>
       </div>
     `;
   }).join('');
