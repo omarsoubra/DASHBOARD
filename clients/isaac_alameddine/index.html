@@ -2382,6 +2382,19 @@
 @media (prefers-reduced-motion:reduce){
   #section-training *,#tv2-sheet *,#tv2-rest{animation:none!important;transition:none!important;}
 }
+/* The rest bar is pinned above the nav, so the row being logged must never be
+   allowed to sit under it. Two parts: the bar gives back height on short
+   screens, and the live row carries a scroll margin so any programmatic
+   scroll lands it clear of the bar rather than beneath it. */
+@media (max-height:720px){
+  #tv2-rest{padding:.5rem 1rem;}
+  #tv2-rest .clock{font-size:22px;}
+  #tv2-rest.ready .clock{font-size:17px;}
+  #tv2-rest button{padding:.45rem .3rem;}
+  #tv2-rest button.box{padding:.45rem .55rem;}
+}
+.tv2-set.now, .tv2-set.edit{scroll-margin-bottom:104px;scroll-margin-top:96px;}
+
 @media (max-width:360px){
   .tv2-h1{font-size:29px!important;} .tv2-h2{font-size:23px!important;}
   .tv2-slhead,.tv2-set{grid-template-columns:28px 1fr 1fr 60px;gap:.35rem;}
@@ -7681,7 +7694,35 @@ function sw3Use(i) {
     T.paused = false; T.setNo = setNo; T.label = label;
     T.id = setInterval(restTick, 1000);
     restRender();
+    setTimeout(clearLiveRow, 30);
   }
+  /* The bar is a fixed overlay, so on a short screen the row being logged can
+     fall behind it. Move the page by the minimum needed to put that row fully
+     above the bar - the app does this, the client never has to. Never scrolls
+     the row up under the sticky workout header, and never runs when the row is
+     already clear. */
+  function clearLiveRow() {
+    var bar = q('tv2-rest');
+    if (!bar || !bar.classList.contains('on')) return;
+    var row = document.querySelector('#tv2-workout .tv2-set.edit')
+           || document.querySelector('#tv2-workout .tv2-set.now');
+    if (!row) return;
+    var b = bar.getBoundingClientRect(), r = row.getBoundingClientRect();
+    var GAP = 12;
+    var need = Math.round(r.bottom - (b.top - GAP));
+    if (need <= 0) return;
+    var head = document.querySelector('#tv2-workout .tv2-whead');
+    var headBottom = head ? head.getBoundingClientRect().bottom : 0;
+    var room = Math.round(r.top - headBottom - 8);
+    var by = Math.max(0, Math.min(need, room));
+    if (by <= 0) return;
+    var smooth = true;
+    try { smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    try { window.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' }); }
+    catch (e) { window.scrollBy(0, by); }
+  }
+  window.tv2ClearLiveRow = clearLiveRow;
+
   window.tv2RestToggle = function () { T.paused = !T.paused; restRender(); };
   window.tv2RestPlus = function () { if (!T.running) return; T.left += 30; T.total += 30; restRender(); };
   window.tv2RestStop = function () {
@@ -7689,7 +7730,9 @@ function sw3Use(i) {
     T.running = false; T.ready = false; T.paused = false;
     restRender();
   };
-  window.addEventListener('resize', function () { if (T.running || T.ready) restRender(); });
+  window.addEventListener('resize', function () {
+    if (T.running || T.ready) { restRender(); setTimeout(clearLiveRow, 30); }
+  });
 
   // ============================================================ HELPERS
   function shortName(label) {
@@ -8152,6 +8195,7 @@ function sw3Use(i) {
     if (v === 'prog') renderProg();
     if (v === 'done') renderDone();
     restPad();
+    if (v === 'workout') { try { setTimeout(window.tv2ClearLiveRow, 20); } catch (e) {} }
   }
   function top() { try { window.scrollTo(0, 0); } catch (e) {} }
 
