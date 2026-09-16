@@ -7707,9 +7707,25 @@ function sw3Use(i) {
     var row = document.querySelector('#tv2-workout .tv2-set.edit')
            || document.querySelector('#tv2-workout .tv2-set.now');
     if (!row) return;
-    var b = bar.getBoundingClientRect(), r = row.getBoundingClientRect();
+    var r = row.getBoundingClientRect();
+    /* Two things can sit over this row: the rest bar, and the shell's own
+       fixed Quick-Log FAB, which owns the bottom-right corner. Park above
+       whichever is higher, so no part of the row - inputs, LOG, or the RIR
+       chips - ends up underneath either of them. */
+    var tops = [bar.getBoundingClientRect().top];
+    var fab = document.getElementById('fab-btn');
+    if (fab) {
+      try {
+        var cs = getComputedStyle(fab);
+        if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+          var f = fab.getBoundingClientRect();
+          if (f.width && f.left < r.right && f.right > r.left) tops.push(f.top);
+        }
+      } catch (e) {}
+    }
+    var limit = Math.min.apply(null, tops);
     var GAP = 12;
-    var need = Math.round(r.bottom - (b.top - GAP));
+    var need = Math.round(r.bottom - (limit - GAP));
     if (need <= 0) return;
     var head = document.querySelector('#tv2-workout .tv2-whead');
     var headBottom = head ? head.getBoundingClientRect().bottom : 0;
