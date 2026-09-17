@@ -4263,16 +4263,116 @@ function postWorkoutLog(entry) {
 }
 
 let _workoutLogCtx = null;
+/* B5-PREFILL-V1 — the prescription is what was asked; the log is what happened.
+   Prescriptions render as placeholders, never as input values. A field only
+   carries a value the client typed (or explicitly copied from a trusted prior
+   log). saveWorkoutLog refuses anything else. */
+var _wlB5 = { rx: {}, src: {}, last: null };
+function _wlStr(v) { return (v === undefined || v === null) ? '' : String(v).trim(); }
+function _wlNorm(v) { return _wlStr(v).replace(/[–—]/g, '-').replace(/\s+/g, ' ').toLowerCase(); }
+function _wlIsBwRx(w) { return /^(bw|bodyweight|body\s*weight)$/i.test(_wlStr(w)); }
+function _wlLooksLikeLoad(w) {
+  var s = _wlNorm(w);
+  return /^[+-]?\d+(\.\d+)?\s*(kgs?)?\s*(ea|each|per\s*(side|hand)|\/\s*side)?$/.test(s)
+      || /^bw\s*\+\s*\d+(\.\d+)?\s*(kgs?)?(\s*plate)?$/.test(s)
+      || /^assist(ed)?\s*-?\s*\d+(\.\d+)?\s*(kgs?)?$/.test(s);
+}
+function _wlIsRange(v) { return /^\d+(\.\d+)?\s*-\s*\d+(\.\d+)?\s*[a-z]*$/.test(_wlNorm(v)); }
+function _wlPlainInt(v) { return /^\d{1,3}$/.test(_wlStr(v)); }
+function _wlField(id) { return document.getElementById(id); }
+function _wlSet(id, value, placeholder, src) {
+  var el = _wlField(id); if (!el) return;
+  el.value = _wlStr(value); el.placeholder = _wlStr(placeholder); _wlB5.src[id] = src;
+  if (!el.getAttribute('data-b5')) {
+    el.setAttribute('data-b5', '1');
+    el.addEventListener('input', function () { _wlB5.src[id] = 'typed'; });
+  }
+}
+function _wlHintBox() {
+  var el = document.getElementById('wl-b5-hint');
+  if (!el) {
+    var grid = document.querySelector('#workout-log-overlay .edit-modal-grid'); if (!grid) return null;
+    el = document.createElement('div'); el.id = 'wl-b5-hint';
+    el.style.cssText = 'font-size:0.78rem;line-height:1.35;margin:0.5rem 0 0;';
+    el.innerHTML = '<div id="wl-b5-last" style="margin-bottom:0.25rem;"></div><div id="wl-b5-msg" style="min-height:1.2em;"></div>';
+    grid.parentNode.insertBefore(el, grid.nextSibling);
+  }
+  return el;
+}
+/* kind: 'ok' | 'err' → the message line; 'last' → the persistent prior-log line with its button. */
+function _wlHint(text, kind) {
+  var box = _wlHintBox(); if (!box) return;
+  if (kind === 'last') {
+    var last = document.getElementById('wl-b5-last'); last.innerHTML = ''; last.style.color = 'var(--muted, #9a9ba0)';
+    if (!text) return;
+    last.appendChild(document.createTextNode(text + ' '));
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Use last';
+    b.style.cssText = 'font:inherit;font-size:0.78rem;padding:0.15rem 0.55rem;border-radius:999px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;';
+    b.onclick = _wlUseLast; last.appendChild(b);
+    return;
+  }
+  var msg = document.getElementById('wl-b5-msg');
+  msg.textContent = text || ''; msg.style.color = kind === 'err' ? '#ff5c5c' : 'var(--muted, #9a9ba0)';
+}
+/* A prior entry is only offered back when it is genuinely performed data:
+   alias-safe (cloud restore writes *Actual only), not a rep range, not
+   instructional load text, and not byte-identical to today's prescription
+   (a legacy tap-through would look exactly like that). */
+function _wlPriorActual(existing, rx) {
+  if (!existing) return null;
+  var l = { sets:   _wlStr(existing.sets   !== undefined ? existing.sets   : existing.setsActual),
+            reps:   _wlStr(existing.reps   !== undefined ? existing.reps   : existing.repsActual),
+            weight: _wlStr(existing.weight !== undefined ? existing.weight : existing.weightActual) };
+  if (!l.sets && !l.reps && !l.weight) return null;
+  if (existing.b5 === true) return l;
+  if (_wlIsRange(l.reps)) return null;
+  if (l.weight && _wlNorm(l.weight) === _wlNorm(rx.weight) && !_wlLooksLikeLoad(rx.weight) && !_wlIsBwRx(rx.weight)) return null;
+  if (_wlNorm(l.sets) === _wlNorm(rx.sets) && _wlNorm(l.reps) === _wlNorm(rx.reps) && _wlNorm(l.weight) === _wlNorm(rx.weight)) return null;
+  return l;
+}
+function _wlUseLast() {
+  var l = _wlB5.last; if (!l) return;
+  _wlSet('wl-sets',   l.sets,   _wlField('wl-sets').placeholder,   'typed');
+  _wlSet('wl-reps',   l.reps,   _wlField('wl-reps').placeholder,   'typed');
+  _wlSet('wl-weight', l.weight, _wlField('wl-weight').placeholder, 'typed');
+  _wlHint('Copied your last log — edit anything that was different today.', 'ok');
+}
+function _wlValidate() {
+  var rx = _wlB5.rx || {}, src = _wlB5.src || {};
+  var sets = _wlStr(_wlField('wl-sets').value), reps = _wlStr(_wlField('wl-reps').value),
+      weight = _wlStr(_wlField('wl-weight').value), rpe = _wlStr(_wlField('wl-rpe').value);
+  var ids = ['wl-sets', 'wl-reps', 'wl-weight', 'wl-rpe'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = _wlField(ids[i]);
+    if (el && _wlStr(el.value) && src[ids[i]] !== 'typed') return { ok: false, focus: ids[i], msg: 'Please confirm that value by typing it.' };
+  }
+  if (!_wlPlainInt(sets) || parseInt(sets, 10) < 1) return { ok: false, focus: 'wl-sets', msg: 'How many sets did you do?' };
+  if (!reps) return { ok: false, focus: 'wl-reps', msg: 'How many reps did you get?' };
+  if (_wlIsRange(reps)) return { ok: false, focus: 'wl-reps', msg: '"' + reps + '" is the target — type the reps you actually got.' };
+  if (!_wlPlainInt(reps) && _wlNorm(reps) === _wlNorm(rx.reps)) return { ok: false, focus: 'wl-reps', msg: 'That is the prescription — type what you did.' };
+  var bwRx = _wlIsBwRx(rx.weight), expectsLoad = _wlLooksLikeLoad(rx.weight);
+  if (expectsLoad && !weight) return { ok: false, focus: 'wl-weight', msg: 'What weight did you use?' };
+  if (weight && !bwRx && !expectsLoad && _wlNorm(weight) === _wlNorm(rx.weight)) return { ok: false, focus: 'wl-weight', msg: 'That is the prescription — type what you did (or leave it blank).' };
+  if (rpe && _wlIsRange(rpe)) return { ok: false, focus: 'wl-rpe', msg: 'RPE is one number for how it felt, not the target range.' };
+  return { ok: true };
+}
 function openWorkoutLog(phase, dayIdx, exName, prescribed) {
   _workoutLogCtx = { phase, dayIdx, exName };
   document.getElementById('workout-log-title').textContent = exName;
-  const existing = getWorkoutLogEntry(phase, dayIdx, exName);
-  // Pre-fill with prescribed values, or with last log if it exists
-  document.getElementById('wl-sets').value   = existing ? existing.sets   : (prescribed.sets || '');
-  document.getElementById('wl-reps').value   = existing ? existing.reps   : (prescribed.reps || '');
-  document.getElementById('wl-weight').value = existing ? existing.weight : (prescribed.weight || '');
-  document.getElementById('wl-rpe').value    = existing ? existing.rpe    : (prescribed.rpe || '');
-  document.getElementById('wl-notes').value  = existing ? existing.notes  : '';
+  var rx = prescribed || {};
+  _wlB5.rx = rx; _wlB5.src = {}; _wlB5.last = null;
+  var existing = getWorkoutLogEntry(phase, dayIdx, exName);
+  var bw = _wlIsBwRx(rx.weight);
+  _wlSet('wl-sets',   '', rx.sets   ? rx.sets   : 'e.g. 3',  'blank');
+  _wlSet('wl-reps',   '', rx.reps   ? rx.reps   : 'e.g. 8',  'blank');
+  _wlSet('wl-weight', '', rx.weight ? rx.weight : (bw ? 'BW' : 'e.g. 85kg'), 'blank');
+  _wlSet('wl-rpe',    '', rx.rpe    ? rx.rpe    : 'e.g. 8',  'blank');
+  var notes = _wlField('wl-notes'); if (notes) notes.value = existing ? _wlStr(existing.notes) : '';
+  var last = _wlPriorActual(existing, rx); _wlB5.last = last;
+  _wlHint('', 'last');
+  if (last) _wlHint('Last time: ' + [last.weight, last.sets ? last.sets + ' sets' : '', last.reps ? last.reps + ' reps' : ''].filter(Boolean).join(' · ') + '.', 'last');
+  if (!last && existing) _wlHint('Your last log matched the plan exactly — enter what you actually did today.', 'ok');
+  else _wlHint(bw ? 'Bodyweight — leave weight blank or note any added load.' : 'Greyed values are the plan. Type what you actually did.', 'ok');
   document.getElementById('workout-log-overlay').classList.add('open');
 }
 
@@ -4286,6 +4386,9 @@ function closeWorkoutLog(e) {
 
 function saveWorkoutLog() {
   if (!_workoutLogCtx) return;
+  /* B5-PREFILL-V1 — refuse anything that is not deliberately entered performance. */
+  var _b5v = _wlValidate();
+  if (!_b5v.ok) { _wlHint(_b5v.msg, 'err'); var _b5f = _wlField(_b5v.focus); if (_b5f) _b5f.focus(); return; }
   const entry = {
     phase:  _workoutLogCtx.phase,
     dayIdx: _workoutLogCtx.dayIdx,
@@ -4296,6 +4399,7 @@ function saveWorkoutLog() {
     rpe:    document.getElementById('wl-rpe').value.trim(),
     notes:  document.getElementById('wl-notes').value.trim(),
     ts:     new Date().toISOString(),
+    b5:     true,
   };
   const logs = loadWorkoutLogs();
   logs[_workoutLogId(entry.phase, entry.dayIdx, entry.exName)] = entry;
