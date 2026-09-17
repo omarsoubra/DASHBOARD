@@ -1988,6 +1988,14 @@ function _parseRepRange(s: string): RepRange | null {
 function _parseActualReps(s: string): number[] {
   if (!s) return [];
   const clean = s.trim();
+  /* PROGRESSION-B1B2: Training V2 emits "12, 10, 10". This used to work only by
+     accident — the whitespace split produced ["12,","10,","10"] and parseInt
+     stopped at each comma. B2 relies on positional alignment with the load list,
+     so the comma form is now explicit. */
+  if (clean.includes(',')) {
+    const nums = clean.split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
+    if (nums.length > 0) return nums;
+  }
   // Slash-separated: "10/9/8"
   if (clean.includes('/')) {
     const nums = clean.split('/').map(x => parseInt(x.trim())).filter(n => !isNaN(n));
@@ -2029,6 +2037,135 @@ function _nextLoadValue(load: number, qualifier: WeightParsed['qualifier']): num
 function _fmtLoad(value: number, qualifier: WeightParsed['qualifier']): string {
   const str = value % 1 === 0 ? String(value) : String(value);
   return qualifier === 'per_hand' ? `${str}kg ea` : `${str}kg`;
+}
+
+/* PROGRESSION-B1B2 */
+// ══ B1 — PRESCRIPTION CLASS ════════════════════════════════════════════════
+// `exercise.weight` carries three different kinds of instruction. Only one of
+// them is a number the engine may read or replace.
+//
+//   parseFloat("2 RIR")  === 2     ← the bug this exists to stop
+//   parseFloat("RPE 8")  === 8
+//   "Find load"                    ← unparseable, so the carry-forward guard was
+//                                    skipped entirely and the write proceeded
+//
+// Classification is by explicit pattern. parseFloat is never used to decide
+// what something IS — only to read a value once the class is already known.
+type RxClass =
+  | 'numeric_load'    // a genuine kg figure: "60kg", "10kg ea", "45kg sled", "+12.5kg"
+  | 'modality_load'   // load-bearing but not a plain kg: "BW", "BW + 10kg", "Assist -15"
+  | 'effort'          // "2 RIR", "1-2 RIR", "RPE 8"
+  | 'discovery'       // "Find load", "Beat the log - RIR 2", "Your logged load", "set wk1"
+  | 'empty'
+  | 'unclassified';   // anything else — treated as non-load, never written
+
+const _RX_EFFORT    = /^\s*(?:\d+(?:\s*[-–]\s*\d+)?\s*\+?\s*rir|rir\s*\d+(?:\s*[-–]\s*\d+)?\s*\+?|rpe\s*\d+(?:\s*[-–]\s*\d+)?)\s*$/i;
+const _RX_DISCOVERY = /find\s+(?:your\s+)?load|beat\s+the\s+log|your\s+logged\s+load|^\s*set\s+wk\d+/i;
+const _RX_ANY_EFFORT= /\brir\b|\brpe\b/i;
+const _RX_BW        = /^\s*(?:bw|bodyweight|body\s*weight)\s*$/i;
+const _RX_BW_PLUS   = /^\s*bw\s*\+/i;
+const _RX_ASSIST    = /^\s*assist\w*\s*[-–]?\s*\d/i;
+const _RX_KG        = /(?:^|[\s+])[+-]?\d+(?:\.\d+)?\s*kg\b|^\s*[+-]?\d+(?:\.\d+)?\s*$/i;
+
+function _classifyRx(raw: string | null | undefined): RxClass {
+  const s = String(raw ?? '').trim();
+  if (!s) return 'empty';
+  // Discovery first: "Find load - RIR 3" is a discovery instruction, not an effort target,
+  // and neither is a load. Both classes are protected, so the order only affects reporting.
+  if (_RX_DISCOVERY.test(s)) return 'discovery';
+  if (_RX_EFFORT.test(s))    return 'effort';
+  if (_RX_ANY_EFFORT.test(s)) return 'effort';   // any residual RIR/RPE mention is never a load
+  if (_RX_BW.test(s))        return 'modality_load';
+  if (_RX_BW_PLUS.test(s))   return 'modality_load';
+  if (_RX_ASSIST.test(s))    return 'modality_load';
+  if (_RX_KG.test(s))        return 'numeric_load';
+  return 'unclassified';
+}
+
+// May the engine READ a kilogram value out of this prescription?
+// Only a plain kg figure. This is what feeds `prescribedLoad`, and therefore the
+// rebase and overshoot comparisons.
+function _rxReadableLoad(cls: RxClass): boolean { return cls === 'numeric_load'; }
+
+// May the engine WRITE a kilogram string over this prescription?
+// Only a plain kg figure. "BW", "BW + 10kg" and "Assist -15" are load-bearing but
+// are NOT plain kg: replacing them with "40kg" would destroy a modality
+// instruction, so they are read-protected and write-protected alike.
+function _rxWritable(cls: RxClass): boolean { return cls === 'numeric_load'; }
+
+// ══ B2 — SET-ORDERED ACTUAL LOAD LIST ══════════════════════════════════════
+// Training V2's summarise() emits one entry per logged set, in set order, joined
+// with ", " — and emits the reps list the same way, positionally aligned:
+//     weight: uw.length === 1 ? uw[0] : w.join(', ')
+//     reps:   ur.length === 1 ? ur[0] : r.join(', ')
+// The previous parser took /^([\d.]+)/ — the FIRST set. On a ramped session
+// ("50kg, 60kg, 70kg") that anchors progression on the warm-up.
+//
+// RULE: the anchor is the HEAVIEST load in the list, and rep evaluation is
+// restricted to the sets performed at that load.
+//   · order-independent, so ramps and back-offs need no pattern detection;
+//   · the engine's question is "did every set reach the top of the range AT THIS
+//     LOAD" — reps done at a lighter set do not answer it;
+//   · conservative: progression is earned only at the heaviest load used.
+// A single-value string is unchanged: one token, so the anchor is that token and
+// every rep belongs to it.
+type ActualPerf = {
+  weight:      WeightParsed;
+  reps:        number[];
+  sets:        number;
+  loadList:    number[] | null;   // null when not a multi-load list
+  setsAtAnchor: number | null;
+};
+
+function _splitList(s: string): string[] {
+  return String(s ?? '').split(',').map(x => x.trim()).filter(x => x !== '');
+}
+
+function _resolveActualPerformance(weightStr: string, repsStr: string, setsStr: string): ActualPerf {
+  const rawW = String(weightStr ?? '').trim();
+  const reps = _parseActualReps(repsStr);
+  const sets = _parseSets(setsStr);
+
+  if (!rawW.includes(',')) {
+    return { weight: _parseWeightNum(rawW), reps, sets, loadList: null, setsAtAnchor: null };
+  }
+
+  const tokens = _splitList(rawW);
+  const parsed = tokens.map(t => _parseWeightNum(t));
+
+  // Fail safe: one unreadable or empty token poisons the list. Mixed qualifiers
+  // (e.g. "BW, 20kg") are not a single progression subject either.
+  const bad = parsed.some(p => p.qualifier === 'unparseable' || p.qualifier === 'empty');
+  const quals = Array.from(new Set(parsed.map(p => p.qualifier)));
+  if (bad || quals.length !== 1) {
+    return { weight: { value: null, qualifier: 'unparseable' }, reps, sets, loadList: null, setsAtAnchor: null };
+  }
+  const qual = quals[0];
+  if (qual === 'bodyweight') {
+    return { weight: { value: null, qualifier: 'bodyweight' }, reps, sets, loadList: null, setsAtAnchor: null };
+  }
+  const values = parsed.map(p => p.value).filter((v): v is number => v !== null);
+  if (values.length !== tokens.length) {
+    return { weight: { value: null, qualifier: 'unparseable' }, reps, sets, loadList: null, setsAtAnchor: null };
+  }
+
+  const anchor = Math.max(...values);
+  const atAnchor: number[] = [];
+  for (let i = 0; i < values.length; i++) if (values[i] === anchor) atAnchor.push(i);
+
+  // Reps are positionally aligned with loads when both lists are the same length.
+  // If they are not, fall back to every rep — never invent an alignment.
+  const repsAtAnchor = (reps.length === values.length)
+    ? atAnchor.map(i => reps[i]).filter(n => !isNaN(n))
+    : reps;
+
+  return {
+    weight: { value: anchor, qualifier: qual },
+    reps: repsAtAnchor,
+    sets: atAnchor.length,
+    loadList: values,
+    setsAtAnchor: atAnchor.length,
+  };
 }
 
 function _decideProgression(params: {
@@ -2294,13 +2431,18 @@ async function progressionCompute(body: any): Promise<Response> {
       ...(overrideExMap[exName.toLowerCase()] ?? {}),
       ...(coachRxMap[exName]     ?? {}),
     };
-    const actualWeight = _parseWeightNum(log.weight ?? '');
-    const actualSets   = _parseSets(log.sets_done ?? '');
-    const actualReps   = _parseActualReps(log.reps_done ?? '');
+    /* PROGRESSION-B1B2 */
+    const perf         = _resolveActualPerformance(log.weight ?? '', log.reps_done ?? '', log.sets_done ?? '');
+    const actualWeight = perf.weight;
+    const actualSets   = perf.sets;
+    const actualReps   = perf.reps;
     const actualRpe    = log.rpe ? parseFloat(log.rpe) : null;
     const repRange     = rx.repRange ? _parseRepRange(rx.repRange) ?? undefined : undefined;
     const prescribedSets = rx.sets ? _parseSets(rx.sets) : undefined;
-    const prescribedLoad = rx.load ? parseFloat(rx.load) : undefined;
+    // B1: only a plain kg prescription yields a numeric load. "2 RIR" / "Find load"
+    // must never become a number here.
+    const rxClass        = _classifyRx(rx.load);
+    const prescribedLoad = _rxReadableLoad(rxClass) ? parseFloat(String(rx.load).replace(/^[^\d.+-]*/, '')) : undefined;
 
     const result = _decideProgression({
       exerciseName: exName,
@@ -2321,6 +2463,9 @@ async function progressionCompute(body: any): Promise<Response> {
       actual:       { weight: log.weight, sets: log.sets_done, reps: log.reps_done, rpe: log.rpe },
       prescribed:   Object.keys(rx).length ? rx : null,
       rxSource:     coachRxMap[exName] ? 'coach' : overrideExMap[exName.toLowerCase()] ? 'override' : programRxMap[exName] ? 'program' : 'none',
+      rxClass,                                         /* PROGRESSION-B1B2 */
+      rxWritable:   _rxWritable(rxClass),              /* PROGRESSION-B1B2 */
+      actualLoadList: perf.loadList,                   /* PROGRESSION-B1B2 */
       ...result,
     };
   });
@@ -2381,8 +2526,21 @@ async function _applyDayDecisions(
     );
     if (idx === -1) { misses.push(`${d.exerciseName}: not found`); continue; }
 
+    /* PROGRESSION-B1B2 — B1 write guard.
+       The prescription currently in the day array decides whether a kilogram
+       string may replace it. An effort target ("2 RIR"), a discovery instruction
+       ("Find load - RIR 3"), a modality ("BW", "Assist -15") or anything
+       unclassified is preserved verbatim. Sets and reps are unaffected: only the
+       `weight` field is protected. */
+    const curRxClass = _classifyRx(String(exercises[idx].weight ?? ''));
+    const mayWriteLoad = _rxWritable(curRxClass);
+    if (!mayWriteLoad) {
+      misses.push(`${d.exerciseName}: load write refused — prescription is ${curRxClass}, not a kg load`);
+    }
+
     if (d.decision === 'HOLD_LOAD' || d.decision === 'REBASE_HOLD') {
       if (!d.nextLoadStr || d.nextLoad == null) continue;
+      if (!mayWriteLoad) continue;
       if (!d.loadRebased) {
         // Normal hold: only write if load needs carry-forward (not already at or above target).
         const cur = _parseWeightNum(String(exercises[idx].weight ?? ''));
@@ -2393,7 +2551,7 @@ async function _applyDayDecisions(
       changed = true;
     } else {
       // PROGRESS_LOAD
-      if (d.nextLoadStr) { exercises[idx] = { ...exercises[idx], weight: d.nextLoadStr }; changed = true; }
+      if (d.nextLoadStr && mayWriteLoad) { exercises[idx] = { ...exercises[idx], weight: d.nextLoadStr }; changed = true; }
       if (d.nextSets != null) { exercises[idx] = { ...exercises[idx], sets: String(d.nextSets) }; changed = true; }
       if (d.nextReps) { exercises[idx] = { ...exercises[idx], reps: d.nextReps }; changed = true; }
     }
@@ -2541,13 +2699,17 @@ async function _autoProgressAfterWorkout(key: string, clientId: string, body: an
   }
 
   // Run the decision engine
-  const actualWeight      = _parseWeightNum(weight);
-  const actualSets        = _parseSets(setsDone);
-  const actualReps        = _parseActualReps(repsDone);
+  /* PROGRESSION-B1B2 */
+  const perf              = _resolveActualPerformance(weight, repsDone, setsDone);
+  const actualWeight      = perf.weight;
+  const actualSets        = perf.sets;
+  const actualReps        = perf.reps;
   const rpeNum            = rpe ? parseFloat(rpe) : null;
   const repRange          = rx.repRange ? _parseRepRange(rx.repRange) ?? undefined : undefined;
   const prescribedSets    = rx.sets  ? _parseSets(rx.sets)  : undefined;
-  const prescribedLoadRaw = rx.load  ? parseFloat(rx.load)  : undefined;
+  // B1: classify before reading. parseFloat never decides what a prescription IS.
+  const rxClass           = _classifyRx(rx.load);
+  const prescribedLoadRaw = _rxReadableLoad(rxClass) ? parseFloat(String(rx.load).replace(/^[^\d.+-]*/, '')) : undefined;
   const prescribedLoad    = (prescribedLoadRaw != null && !isNaN(prescribedLoadRaw)) ? prescribedLoadRaw : undefined;
 
   const result = _decideProgression({
