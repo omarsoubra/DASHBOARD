@@ -37,7 +37,11 @@ const snippet = [
 ].join('\n');
 const js = ts.transpileModule(snippet, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 const mod = {};
-eval(js + '\n;Object.assign(mod,{stripUnsafe,projectProgram,validateProgramV3});');
+// Node 22 hoists a function declaration out of a bare eval() into the enclosing
+// variable environment, where it collides with the const destructure below
+// ("Identifier 'stripUnsafe' has already been declared"). Evaluating inside a
+// function scope keeps the declarations local. Harness only - no product change.
+(0, eval)('(function(mod){' + js + '\n;Object.assign(mod,{stripUnsafe,projectProgram,validateProgramV3});})')(mod);
 const { stripUnsafe, projectProgram, validateProgramV3 } = mod;
 
 let pass = 0, fail = 0;
