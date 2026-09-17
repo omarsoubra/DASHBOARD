@@ -2121,6 +2121,317 @@
   .tmeal-card:hover { transform: scale(1.01); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
   .tmeal-card:focus-within { transform: scale(1.01); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 </style>
+
+<style id="tv2-css">
+/* -- Training V2 / Concept D ------------------------------------------------
+   Light only. Warm off-white canvas, white cards, charcoal type, one orange
+   accent, green reserved for logged state. Containers only where something is
+   genuinely a distinct object; whitespace and hairlines elsewhere.        */
+#section-training{
+  --tv2-bg:#faf9f6; --tv2-surface:#ffffff; --tv2-surface2:#f1efe9;
+  --tv2-line:#e8e3db; --tv2-line2:#d9d2c7;
+  --tv2-text:#16181c; --tv2-muted:#63686f; --tv2-dim:#9a9ba0;
+  --tv2-accent:#ff5c33; --tv2-ink:#c2431b; --tv2-tint:#fff2ec; --tv2-edge:#ffd7c7;
+  --tv2-ok:#0f7a48; --tv2-ok-tint:#edf6f1; --tv2-ok-edge:#cfe6da;
+  --tv2-lift:0 1px 2px rgba(22,24,28,.05), 0 12px 26px -18px rgba(22,24,28,.28);
+  background:var(--tv2-bg); color:var(--tv2-text);
+  /* the shell sets .section{padding:...!important} in its mobile media
+     queries, so this has to be important to hold its own gutters. */
+  padding:0 1.25rem 7rem!important; min-height:100vh; overflow-x:hidden;
+  font-feature-settings:"tnum" 1;
+}
+#section-training *{box-sizing:border-box;}
+#section-training h1,#section-training h2,#section-training h3,#section-training h4{
+  color:var(--tv2-text)!important;font-family:inherit!important;
+  -webkit-text-fill-color:currentColor!important;}
+.tv2-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tv2-dim);}
+
+/* ---------------------------------------------------------------- HOME */
+.tv2-top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding-top:1.1rem;}
+.tv2-h1{font-size:34px!important;line-height:1;font-weight:800;letter-spacing:-.03em!important;
+  margin:0;text-transform:uppercase;color:var(--tv2-text)!important;font-family:inherit!important;}
+.tv2-wk{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  letter-spacing:.1em;color:var(--tv2-accent);font-weight:700;white-space:nowrap;}
+.tv2-phaseline{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-top:.85rem;}
+.tv2-phasename{font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+.tv2-pct{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  letter-spacing:.1em;color:var(--tv2-muted);font-weight:600;white-space:nowrap;}
+.tv2-bar{height:4px;background:#e6e1d8;border-radius:2px;overflow:hidden;margin-top:.5rem;}
+.tv2-bar>i{display:block;height:100%;background:var(--tv2-accent);border-radius:2px;
+  transition:width .6s cubic-bezier(.22,1,.36,1);}
+
+.tv2-next{background:var(--tv2-surface);border:1px solid var(--tv2-line);border-radius:20px;
+  padding:1.2rem 1.25rem 1.25rem;margin-top:1rem;box-shadow:var(--tv2-lift);}
+.tv2-eyebrow{display:flex;align-items:center;gap:.5rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tv2-accent);font-weight:700;}
+.tv2-eyebrow::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--tv2-accent);flex:0 0 3px;}
+.tv2-h2{font-size:26px!important;line-height:1.04;font-weight:800;letter-spacing:-.03em!important;
+  margin:.6rem 0 0;text-transform:uppercase;color:var(--tv2-text)!important;font-family:inherit!important;}
+.tv2-sub{font-size:14px;color:var(--tv2-muted);margin-top:.3rem;}
+.tv2-facts{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:.85rem;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--tv2-muted);}
+.tv2-cta{display:block;width:100%;margin-top:1.05rem;padding:1.05rem;border:0;border-radius:14px;
+  background:var(--tv2-accent);color:#fff;font-size:14px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;box-shadow:0 8px 18px -10px rgba(255,92,51,.85);
+  transition:transform .12s ease,filter .12s ease;}
+.tv2-cta:active{transform:scale(.985);filter:brightness(.95);}
+
+.tv2-sec{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--tv2-dim);
+  display:block;padding:1.8rem 0 .3rem;font-weight:700;}
+.tv2-row{display:flex;align-items:center;gap:.8rem;width:100%;text-align:left;background:transparent;
+  border:0;border-bottom:1px solid var(--tv2-line);padding:.9rem .5rem;color:var(--tv2-text);
+  cursor:pointer;border-radius:10px;}
+.tv2-row.is-next{background:var(--tv2-tint);border-bottom-color:transparent;}
+.tv2-row:active{background:var(--tv2-surface2);}
+.tv2-bullet{width:16px;height:16px;border-radius:50%;flex:0 0 16px;background:#e9e6e0;
+  display:flex;align-items:center;justify-content:center;}
+.tv2-bullet.done{background:var(--tv2-ok-tint);}
+.tv2-bullet.now{background:var(--tv2-accent);box-shadow:0 0 0 3px var(--tv2-edge);}
+.tv2-bullet.now::after{content:"";width:5px;height:5px;border-radius:50%;background:#fff;}
+.tv2-bullet.done::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--tv2-ok);}
+.tv2-rowname{font-size:15.5px;font-weight:700;display:block;letter-spacing:-.01em;}
+.tv2-rowsub{font-size:12px;color:var(--tv2-dim);margin-top:.1rem;display:block;}
+.tv2-state{margin-left:auto;font-size:12.5px;font-weight:700;flex:0 0 auto;color:var(--tv2-dim);}
+.tv2-state.done{color:var(--tv2-ok);}
+.tv2-state.now{color:var(--tv2-accent);}
+
+.tv2-link{display:flex;align-items:center;justify-content:space-between;width:100%;background:transparent;
+  border:0;border-bottom:1px solid var(--tv2-line);padding:1.05rem .15rem;color:var(--tv2-text);
+  font-size:14.5px;font-weight:650;cursor:pointer;text-align:left;}
+.tv2-link:first-of-type{border-top:1px solid var(--tv2-line);margin-top:1.7rem;}
+.tv2-link:active{background:var(--tv2-surface2);}
+.tv2-link span{color:#b9bbc0;font-size:16px;}
+.tv2-phases{display:flex;gap:.5rem;margin-top:1.8rem;padding-right:78px;}
+.tv2-btn{flex:1;padding:.8rem;border-radius:11px;border:1px solid var(--tv2-line2);
+  background:var(--tv2-surface);color:var(--tv2-muted);font-size:12px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer;}
+.tv2-btn:active{transform:scale(.985);background:var(--tv2-surface2);}
+.tv2-pchip{flex:1;}
+.tv2-pchip.is-active{background:var(--tv2-tint);border-color:var(--tv2-edge);color:var(--tv2-ink);}
+.tv2-pchip.is-locked{color:var(--tv2-dim);border-color:var(--tv2-line);}
+
+/* ------------------------------------------------------------- WORKOUT */
+.tv2-whead{position:sticky;top:0;z-index:40;background:var(--tv2-bg);
+  margin:0 -1.25rem;padding:.9rem 1.25rem .55rem;border-bottom:1px solid var(--tv2-line);}
+.tv2-whead-row{display:flex;align-items:center;gap:.75rem;}
+.tv2-back{background:transparent;border:0;color:var(--tv2-muted);font-family:ui-monospace,monospace;
+  font-size:16px;line-height:1;padding:.35rem .5rem .35rem 0;cursor:pointer;flex:0 0 auto;}
+.tv2-wtitle{font-size:19px!important;font-weight:800;letter-spacing:-.025em!important;margin:0;
+  text-transform:uppercase;flex:1;min-width:0;overflow-wrap:anywhere;
+  color:var(--tv2-text)!important;font-family:inherit!important;}
+.tv2-count{flex:0 0 auto;background:var(--tv2-tint);color:var(--tv2-accent);border-radius:9px;
+  padding:.4rem .6rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11.5px;font-weight:700;letter-spacing:.08em;}
+.tv2-whead .tv2-bar{margin-top:.55rem;height:3px;}
+
+.tv2-done-row{display:flex;align-items:center;gap:.8rem;width:100%;text-align:left;background:transparent;
+  border:0;border-bottom:1px solid var(--tv2-line);padding:.85rem .4rem;cursor:pointer;color:var(--tv2-muted);}
+.tv2-done-row .n{font-size:15px;font-weight:650;color:var(--tv2-muted);min-width:0;overflow-wrap:anywhere;}
+.tv2-done-row .v{margin-left:auto;flex:0 0 auto;color:var(--tv2-ok);font-family:ui-monospace,monospace;
+  font-size:12px;letter-spacing:.04em;}
+
+.tv2-ex{background:var(--tv2-surface);border:1.5px solid var(--tv2-accent);border-radius:18px;
+  padding:1.15rem 1.15rem 1rem;margin-top:.9rem;box-shadow:var(--tv2-lift);}
+.tv2-ex.editing{border-color:var(--tv2-accent);}
+.tv2-exname{font-size:20px!important;font-weight:800;line-height:1.15;letter-spacing:-.02em!important;
+  margin:.55rem 0 0;overflow-wrap:anywhere;color:var(--tv2-text)!important;font-family:inherit!important;}
+.tv2-pres{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;
+  color:var(--tv2-muted);margin-top:.4rem;overflow-wrap:anywhere;}
+.tv2-prev{background:var(--tv2-surface2);border-radius:11px;padding:.7rem .85rem;margin-top:.85rem;
+  font-size:13px;color:var(--tv2-muted);overflow-wrap:anywhere;}
+.tv2-prev b{color:var(--tv2-text);font-weight:650;}
+
+.tv2-slhead{display:grid;grid-template-columns:38px 1fr 1fr 74px;gap:.5rem;align-items:center;
+  margin-top:1rem;padding:0 .1rem;}
+.tv2-slhead span{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tv2-dim);font-weight:700;}
+.tv2-slhead span:nth-child(4){text-align:right;}
+.tv2-set{display:grid;grid-template-columns:38px 1fr 1fr 74px;gap:.5rem;align-items:center;
+  margin-top:.45rem;padding:.3rem .1rem;border-radius:11px;}
+.tv2-set.now{background:var(--tv2-tint);padding:.45rem .35rem;margin-left:-.25rem;margin-right:-.25rem;}
+.tv2-set.edit{background:var(--tv2-surface2);padding:.45rem .35rem;margin-left:-.25rem;margin-right:-.25rem;}
+.tv2-setn{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:700;
+  color:var(--tv2-dim);letter-spacing:.04em;}
+.tv2-set.now .tv2-setn{color:var(--tv2-accent);}
+.tv2-set.done .tv2-setn{color:var(--tv2-dim);}
+.tv2-in{width:100%;min-width:0;text-align:center;outline:none;-webkit-appearance:none;
+  border:1px solid var(--tv2-line2)!important;border-radius:11px!important;background:#fff!important;
+  padding:.72rem .4rem!important;font-size:15px!important;color:var(--tv2-text)!important;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;font-weight:700;}
+.tv2-in::placeholder{color:#b8babf;font-weight:600;}
+.tv2-in:focus{border-color:var(--tv2-accent)!important;box-shadow:0 0 0 3px var(--tv2-edge);}
+.tv2-set.now .tv2-in{border-color:var(--tv2-accent)!important;}
+.tv2-set.edit .tv2-in{border-color:var(--tv2-text)!important;}
+.tv2-set.done .tv2-in{background:var(--tv2-surface)!important;border-color:var(--tv2-line)!important;
+  color:var(--tv2-muted)!important;}
+.tv2-set.idle .tv2-in{background:var(--tv2-surface2)!important;border-color:var(--tv2-line)!important;
+  color:var(--tv2-dim)!important;}
+.tv2-log{letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  border:0!important;border-radius:11px!important;padding:.72rem .3rem!important;
+  font-size:12px!important;font-weight:800!important;
+  background:var(--tv2-accent)!important;color:#fff!important;}
+.tv2-log.idle{background:#eceae5!important;color:#b1b3b8!important;}
+.tv2-log.ok{background:var(--tv2-ok-tint)!important;color:var(--tv2-ok)!important;
+  border:1px solid var(--tv2-ok-edge)!important;}
+.tv2-log.save{background:var(--tv2-text)!important;color:#fff!important;}
+/* Per-set RIR: secondary to WEIGHT and REPS by size, weight and colour, and
+   only rendered on the row being logged or edited, so no completed row and no
+   upcoming row grows. Optional by construction - LOG never waits for it. */
+.tv2-rir{grid-column:2 / 5;display:flex;align-items:center;gap:.28rem;margin-top:.35rem;}
+.tv2-rir .l{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tv2-dim);font-weight:700;
+  flex:0 0 auto;margin-right:.1rem;}
+.tv2-rirb{flex:1 1 0;min-width:0;cursor:pointer;
+  border:1px solid var(--tv2-line2)!important;border-radius:9px!important;
+  background:#fff!important;color:var(--tv2-muted)!important;
+  padding:.52rem .15rem!important;font-size:12.5px!important;font-weight:700!important;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;letter-spacing:.02em;}
+.tv2-rirb.on{background:var(--tv2-tint)!important;border-color:var(--tv2-ink)!important;
+  color:var(--tv2-ink)!important;}
+.tv2-rirb:active{transform:scale(.97);}
+.tv2-log.ok i{font-style:normal;font-size:10px;margin-left:.2rem;opacity:.9;letter-spacing:0;}
+.tv2-howto{display:block;width:100%;background:transparent;border:0;border-top:1px solid var(--tv2-line);
+  margin-top:1rem;padding:.95rem 0 .1rem;color:var(--tv2-accent);font-size:12.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-align:left;}
+
+.tv2-up{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;background:transparent;
+  border:0;border-bottom:1px solid var(--tv2-line);padding:.85rem .4rem;cursor:pointer;}
+.tv2-up .i{font-family:ui-monospace,monospace;font-size:12px;color:var(--tv2-dim);flex:0 0 auto;font-weight:700;}
+.tv2-up .n{font-size:14.5px;font-weight:700;color:var(--tv2-text);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tv2-up .p{margin-left:auto;flex:0 0 auto;font-family:ui-monospace,monospace;font-size:10.5px;
+  color:var(--tv2-dim);text-align:right;white-space:nowrap;padding-left:.5rem;}
+.tv2-uphow{flex:0 0 auto;background:transparent;border:0;color:var(--tv2-accent);font-size:10.5px;
+  font-weight:800;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;padding:.4rem .1rem .4rem .5rem;}
+
+/* ---------------------------------------------------------- REST TIMER */
+#tv2-rest{position:fixed;left:0;right:0;z-index:260;display:none;
+  background:#16181c;color:#fff;border-top:2px solid var(--tv2-accent);
+  padding:.7rem 1rem;align-items:center;gap:.7rem;overflow:hidden;}
+#tv2-rest>*{min-width:0;}
+#tv2-rest.on{display:flex;}
+#tv2-rest.ready{background:var(--tv2-accent);border-top-color:var(--tv2-accent);}
+#tv2-rest .tag{background:var(--tv2-accent);color:#fff;border-radius:7px;padding:.3rem .5rem;
+  font-family:ui-monospace,monospace;font-size:10.5px;font-weight:800;letter-spacing:.1em;flex:0 0 auto;}
+#tv2-rest.ready .tag{background:#16181c;color:#fff;}
+#tv2-rest .clock{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:26px;font-weight:800;
+  letter-spacing:.02em;color:var(--tv2-accent);flex:0 0 auto;}
+#tv2-rest.ready .clock{color:#fff;font-size:19px;letter-spacing:.06em;}
+#tv2-rest .spacer{flex:1 1 auto;min-width:.25rem;overflow:hidden;}
+#tv2-rest button{background:transparent;border:0;color:#fff;font-size:12px;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;cursor:pointer;padding:.55rem .35rem;flex:0 0 auto;}
+#tv2-rest button.box{background:#fff;color:#16181c;border-radius:9px;padding:.55rem .6rem;}
+#tv2-rest button.skip{color:var(--tv2-accent);}
+#tv2-rest.ready button.skip{color:#fff;}
+#tv2-rest .sub{font-family:ui-monospace,monospace;font-size:9.5px;letter-spacing:.1em;
+  color:#8b9099;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* -------------------------------------------------------- SESSION DONE */
+.tv2-donewrap{text-align:center;padding:1.5rem 0 0;}
+.tv2-check{width:76px;height:76px;border-radius:50%;background:var(--tv2-ok-tint);
+  border:2px solid var(--tv2-ok-edge);display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1.2rem;color:var(--tv2-ok);font-size:32px;
+  animation:tv2pop .45s cubic-bezier(.22,1.4,.36,1);}
+@keyframes tv2pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.tv2-doneh{font-size:31px!important;font-weight:800;letter-spacing:-.03em!important;margin:0;
+  text-transform:uppercase;color:var(--tv2-text)!important;font-family:inherit!important;}
+.tv2-tiles{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:1.4rem;}
+.tv2-tile{flex:1 1 calc(50% - .3rem);background:var(--tv2-surface);border:1px solid var(--tv2-line);
+  border-radius:14px;padding:.85rem .9rem;text-align:left;}
+.tv2-tile b{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;
+  font-weight:800;margin-top:.3rem;letter-spacing:-.01em;}
+.tv2-sum{display:flex;align-items:center;gap:.8rem;border-bottom:1px solid var(--tv2-line);padding:.8rem .4rem;}
+.tv2-sum .n{font-size:14.5px;font-weight:650;color:var(--tv2-muted);min-width:0;overflow-wrap:anywhere;}
+.tv2-sum .v{margin-left:auto;flex:0 0 auto;color:var(--tv2-ok);font-family:ui-monospace,monospace;font-size:12px;}
+
+/* ------------------------------------------------- GUIDE / PROGRESSION */
+.tv2-gback{display:inline-flex;align-items:center;gap:.4rem;background:transparent;border:0;
+  color:var(--tv2-muted);font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;padding:1.5rem 0 .25rem;cursor:pointer;}
+.tv2-gh{font-size:30px!important;font-weight:800;letter-spacing:-.025em!important;margin:.35rem 0 0;
+  line-height:1.05;color:var(--tv2-text)!important;font-family:inherit!important;}
+.tv2-fact{background:var(--tv2-surface);border:1px solid var(--tv2-line);border-radius:16px;
+  padding:.35rem 1.15rem;margin-top:1.2rem;box-shadow:0 1px 2px rgba(22,24,28,.035);}
+.tv2-kv{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
+  padding:.62rem .15rem;border-bottom:1px solid var(--tv2-line);}
+.tv2-kv:last-of-type{border-bottom:0;}
+.tv2-kv b{font-size:14px;font-weight:650;text-align:right;overflow-wrap:anywhere;}
+.tv2-rule{background:var(--tv2-tint);border:0;border-radius:16px;padding:1.15rem 1.2rem;margin-top:1.1rem;
+  font-size:13.5px;line-height:1.6;color:var(--tv2-text);}
+.tv2-rule .tv2-mono{color:var(--tv2-ink);}
+.tv2-acc{background:transparent;border:0;border-bottom:1px solid var(--tv2-line);border-radius:0;}
+.tv2-acc:first-of-type{border-top:1px solid var(--tv2-line);margin-top:1.5rem;}
+.tv2-acc>button{display:flex;align-items:center;justify-content:space-between;width:100%;
+  background:transparent;border:0;color:var(--tv2-text);padding:1.15rem .15rem;cursor:pointer;text-align:left;}
+.tv2-acc-t{font-size:14.5px;font-weight:700;display:block;letter-spacing:-.005em;}
+.tv2-acc-s{font-size:11.5px;color:var(--tv2-dim);margin-top:.2rem;}
+.tv2-acc-body{padding:0 .15rem 1.3rem;font-size:13.5px;line-height:1.68;color:var(--tv2-muted);
+  white-space:pre-wrap;overflow-wrap:anywhere;}
+.tv2-prog-ex{margin-top:1.9rem;}
+.tv2-prog-ex .h{font-size:15px;font-weight:800;letter-spacing:-.01em;overflow-wrap:anywhere;}
+
+#section-training #lock-overlay{background:var(--tv2-surface)!important;border:1px solid var(--tv2-line)!important;
+  border-radius:20px!important;box-shadow:var(--tv2-lift)!important;color:var(--tv2-text)!important;
+  margin-top:1rem!important;}
+#section-training #lock-overlay #lock-title{color:var(--tv2-text)!important;}
+#section-training #lock-overlay #lock-desc{color:var(--tv2-muted)!important;}
+#section-training #lock-overlay input{background:var(--tv2-bg)!important;
+  border:1px solid var(--tv2-line2)!important;color:var(--tv2-text)!important;}
+
+/* --------------------------------------------------------- HOW-TO SHEET */
+#tv2-sheet{position:fixed;inset:0;z-index:9500;display:none;}
+#tv2-sheet.open{display:block;}
+#tv2-sheet .scrim{position:absolute;inset:0;background:rgba(22,24,28,.34);}
+#tv2-sheet .panel{position:absolute;left:0;right:0;bottom:0;max-height:82vh;overflow-y:auto;
+  background:#fff;color:#16181c;border-top-left-radius:20px;border-top-right-radius:20px;
+  border-top:1px solid #e8e3db;padding:1.35rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -18px 40px -24px rgba(22,24,28,.4);animation:tv2up .28s cubic-bezier(.22,1,.36,1);}
+@keyframes tv2up{from{transform:translateY(14%);opacity:.4}to{transform:translateY(0);opacity:1}}
+#tv2-sheet .grip{width:36px;height:4px;border-radius:2px;background:#ded8ce;margin:0 auto 1.1rem;}
+#tv2-sheet .tv2-mono{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:#9a9ba0;}
+#tv2-sheet h2{font-size:22px!important;font-weight:800;letter-spacing:-.018em!important;margin:.35rem 0 0;
+  color:#16181c!important;font-family:inherit!important;-webkit-text-fill-color:currentColor!important;}
+.tv2-sheet-body{font-size:14px;line-height:1.7;margin-top:1rem;white-space:pre-wrap;
+  overflow-wrap:anywhere;color:#63686f;}
+#tv2-sheet .tv2-btn{width:100%;margin-top:1.4rem;border:1px solid #d9d2c7;background:#fff;color:#63686f;}
+
+@media (prefers-reduced-motion:reduce){
+  #section-training *,#tv2-sheet *,#tv2-rest{animation:none!important;transition:none!important;}
+}
+/* The rest bar is pinned above the nav, so the row being logged must never be
+   allowed to sit under it. Two parts: the bar gives back height on short
+   screens, and the live row carries a scroll margin so any programmatic
+   scroll lands it clear of the bar rather than beneath it. */
+@media (max-height:720px){
+  #tv2-rest{padding:.5rem 1rem;}
+  #tv2-rest .clock{font-size:22px;}
+  #tv2-rest.ready .clock{font-size:17px;}
+  #tv2-rest button{padding:.45rem .3rem;}
+  #tv2-rest button.box{padding:.45rem .55rem;}
+}
+.tv2-set.now, .tv2-set.edit{scroll-margin-bottom:104px;scroll-margin-top:96px;}
+
+@media (max-width:360px){
+  .tv2-h1{font-size:29px!important;} .tv2-h2{font-size:23px!important;}
+  .tv2-slhead,.tv2-set{grid-template-columns:28px 1fr 1fr 60px;gap:.35rem;}
+  .tv2-rir{gap:.2rem;} .tv2-rirb{font-size:11.5px!important;padding:.5rem .1rem!important;}
+  .tv2-rir .l{font-size:8.5px;}
+  .tv2-in{font-size:14px!important;padding:.68rem .25rem!important;}
+  .tv2-log{font-size:11px!important;padding:.68rem .15rem!important;}
+  #tv2-rest{padding:.6rem .6rem;gap:.4rem;}
+  #tv2-rest .clock{font-size:21px;}
+  #tv2-rest.ready .clock{font-size:16px;}
+  #tv2-rest .tag{padding:.25rem .35rem;font-size:9.5px;}
+  #tv2-rest button{font-size:11px;padding:.5rem .2rem;}
+  #tv2-rest button.box{padding:.5rem .4rem;}
+}
+/* TRAINING-V2-FLEET: coach notes carried over verbatim from the legacy section; shown inside Program Guide only. */
+#tv2-carry{display:none;margin-top:1.6rem;}
+#tv2-guide:not([hidden]) ~ #tv2-carry{display:block;}
+</style>
 </head>
 
 <body>
@@ -2245,21 +2556,7 @@
 </nav>
 
 <!-- TRAINING -->
-<section class="section" id="section-training">
-  <div class="section-header">
-    <div class="section-tag">Weeks 1–12</div>
-    <h2 class="section-title">TRAINING PLAN</h2>
-    <p class="section-desc">3 phases, 4 weeks each. Progressive overload built in. Tap any exercise to see how to do it correctly.</p>
-  </div>
-
-  <div class="phase-tabs">
-    <button class="phase-tab active" id="tab-phase-1" onclick="setPhase(1)">Phase 1 — Foundation</button>
-    <button class="phase-tab" id="tab-phase-2" onclick="tryUnlock(2)">Phase 2 — Acceleration 🔒</button>
-    <button class="phase-tab" id="tab-phase-3" onclick="tryUnlock(3)">Phase 3 — Push 🔒</button>
-  </div>
-
-  <!-- LOCK OVERLAY -->
-  <div id="lock-overlay" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem;text-align:center;margin-bottom:2rem;">
+<section class="section" id="section-training"><div id="lock-overlay" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem;text-align:center;margin-bottom:2rem;">
     <div style="font-size:2.5rem;margin-bottom:1rem;">🔒</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:0.5rem;" id="lock-title">Phase 2 Locked</div>
     <div style="color:var(--muted);font-size:0.88rem;margin-bottom:1.5rem;line-height:1.6;" id="lock-desc"></div>
@@ -2274,14 +2571,27 @@
       <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;">until this phase becomes available</div>
     </div>
   </div>
-
-  <div class="phase-info" id="phase-info"></div>
-
-  <div class="day-tabs" id="day-tabs"></div>
-
-  <div id="workout-content"></div>
-
-  <div id="progression-content"></div>
+<div id="tab-phase-1" style="display:none!important"></div>
+<div id="tab-phase-2" style="display:none!important"></div>
+<div id="tab-phase-3" style="display:none!important"></div>
+<div id="phase-info" style="display:none!important"></div>
+<div id="day-tabs" style="display:none!important"></div>
+<div id="workout-content" style="display:none!important"></div>
+<div id="progression-content" style="display:none!important"></div>
+<div id="tv2-home"></div>
+<div id="tv2-workout" hidden></div>
+<div id="tv2-guide" hidden></div>
+<div id="tv2-prog" hidden></div>
+<div id="tv2-done" hidden></div>
+<div id="tv2-rest" role="status" aria-live="polite"></div>
+<div id="tv2-sheet"><div class="scrim" onclick="tv2CloseSheet()"></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-label="How to">
+    <div class="grip"></div>
+    <div class="tv2-mono">How to</div>
+    <h2 id="tv2-sheet-title"></h2>
+    <div id="tv2-sheet-body" class="tv2-sheet-body"></div>
+    <button class="tv2-btn" onclick="tv2CloseSheet()">Close</button>
+  </div></div>
 </section>
 
 <!-- CARDIO -->
@@ -7466,6 +7776,824 @@ function sw3Use(i) {
      event arrived). window.resize does, so listen to both. */
   window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', function () { setTimeout(fit, 250); });
+})();
+</script>
+
+<script id="tv2-js">
+/* Training V2 / Concept D - presentation + a per-set logger that writes
+   through the shell's own contract. No new storage key, no new identity,
+   no backend change. See the module docstring in tools/ for the audit. */
+(function () {
+  var V = { view: 'home', phase: null, day: 0, active: 0, edit: -1, rir: {}, started: null };
+
+  function P() { return phases[V.phase] || phases[Object.keys(phases)[0]]; }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function q(id) { return document.getElementById(id); }
+
+  // ================================================== LOG COMPATIBILITY
+  /* One entry per p<phase>.d<dayIdx>.<exerciseName>, exactly as today.
+     setLog is an additive local array; the three existing readers of an
+     entry address named scalars only and cannot see it. */
+  function entryFor(ph, di, name) {
+    try { return getWorkoutLogEntry(ph, di, name); } catch (e) { return null; }
+  }
+  function setsOf(e) { return (e && Object.prototype.toString.call(e.setLog) === '[object Array]') ? e.setLog : []; }
+  function presSets(ex) { var n = parseInt(ex.sets, 10); return (n > 0 && n < 50) ? n : 1; }
+
+  /* An exercise is complete when every prescribed set has been logged. An
+     entry with no setLog came from the old whole-exercise modal (or from a
+     cloud restore) and is taken as complete, as recorded. */
+  function exDone(ph, di, ex) {
+    var e = entryFor(ph, di, ex.name);
+    if (!e) return false;
+    var sl = setsOf(e);
+    if (!sl.length) return true;
+    return sl.length >= presSets(ex);
+  }
+  function dayProgress(ph, di) {
+    var d = (phases[ph] && phases[ph].days[di]) || null;
+    if (!d) return { done: 0, total: 0 };
+    var n = 0;
+    d.exercises.forEach(function (ex) { if (exDone(ph, di, ex)) n++; });
+    return { done: n, total: d.exercises.length };
+  }
+
+  /* The scalar summary is derived from what was actually logged. When every
+     set matched, it collapses to one value; when they differed, every value
+     is listed in set order. It is never the prescription echoed back. */
+  function summarise(sl) {
+    var w = [], r = [];
+    sl.forEach(function (s) { w.push(String(s.w == null ? '' : s.w).trim());
+                              r.push(String(s.r == null ? '' : s.r).trim()); });
+    function uniq(a) { var o = []; a.forEach(function (x) { if (x && o.indexOf(x) < 0) o.push(x); }); return o; }
+    var uw = uniq(w), ur = uniq(r);
+    return { sets: String(sl.length),
+             reps: ur.length === 1 ? ur[0] : r.join(', '),
+             weight: uw.length === 1 ? uw[0] : w.join(', ') };
+  }
+
+  /* Local write only. Same key, same id, same scalar fields. */
+  function writeLocal(ph, di, name, sl) {
+    var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), prev = logs[id] || {};
+    var s = summarise(sl);
+    logs[id] = { phase: ph, dayIdx: di, exName: name,
+      sets: s.sets, reps: s.reps, weight: s.weight,
+      /* The legacy scalar stays empty on purpose. It is rendered by the shell
+         as 'RPE <value>' and colour-banded on a 0-10 RPE scale, so a reported
+         RIR written here would read inverted (2 RIR is a hard set; "RPE 2" is
+         an easy one). Actual RIR lives per set in setLog instead. */
+      rpe: '',
+      notes: prev.notes || '',
+      ts: new Date().toISOString(),
+      setLog: sl, setLogSynced: (prev.setLogSynced === sl.length ? sl.length : -1) };
+    saveWorkoutLogsLocal(logs);
+  }
+
+  /* Cloud write, through the shell's own saveWorkoutLog, once per exercise.
+     openWorkoutLog sets the shell's own _workoutLogCtx and prefills from the
+     entry we just wrote; both calls happen in one task so the modal never
+     paints. PR burst, haptic and sync badge fire exactly as today. */
+  function flushCloud(ph, di, name) {
+    var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), e = logs[id];
+    if (!e || !setsOf(e).length) return false;
+    if (e.setLogSynced === e.setLog.length) return false;
+    if (typeof openWorkoutLog !== 'function' || typeof window.saveWorkoutLog !== 'function') return false;
+    if (!q('wl-sets') || !q('wl-notes')) return false;
+    try {
+      if (typeof _wlSet === 'function' && typeof _wlValidate === 'function') {
+        /* TRAINING-V2-FLEET: this shell carries B5-PREFILL-V1, whose openWorkoutLog
+           renders its 4th argument as the greyed prescription and whose save
+           refuses any value it did not see typed. The values below are the
+           client's own per-set entries (reps typed and checked per set, weight
+           typed or carried from the last LOGGED set, never the prescription),
+           so they are entered as typed. No prescription is passed: the
+           prescription-echo rules are already enforced per set above, and a
+           blank weight on an effort-prescribed exercise is a legitimate log. */
+        openWorkoutLog(ph, di, name, {});
+        _wlSet('wl-sets',   e.sets,   '', 'typed');
+        _wlSet('wl-reps',   e.reps,   '', 'typed');
+        _wlSet('wl-weight', e.weight, '', 'typed');
+        _wlSet('wl-rpe',    '',       '', 'typed');
+      } else {
+        openWorkoutLog(ph, di, name, { sets: e.sets, reps: e.reps, weight: e.weight, rpe: '' });
+      }
+      q('wl-notes').value = e.notes || '';
+      window.saveWorkoutLog();
+      /* saveWorkoutLog closes the modal only when it accepted the entry. If it
+         did not, nothing reached the cloud: close it ourselves so it never
+         paints, and leave the entry unsynced so the next flush retries. */
+      var ov = q('workout-log-overlay');
+      if (ov && ov.classList.contains('open')) { try { cancelWorkoutLog(); } catch (e3) {} return false; }
+      var l2 = loadWorkoutLogs();
+      if (l2[id]) { l2[id].setLog = e.setLog; l2[id].setLogSynced = e.setLog.length;
+                    saveWorkoutLogsLocal(l2); }
+      return true;
+    } catch (err) { try { cancelWorkoutLog(); } catch (e2) {} return false; }
+  }
+  function flushAll() {
+    var d = P().days[V.day]; if (!d) return;
+    d.exercises.forEach(function (ex) { flushCloud(V.phase, V.day, ex.name); });
+  }
+
+  // ======================================================= REST PARSING
+  /* Deterministic. Ranges use the LOWER bound: that is the first moment the
+     program permits the next set, so READY marks the earliest sanctioned
+     start and +30S reaches the upper bound. A value with no unit, an em
+     dash, or anything outside 5s-15min is NOT parsed and NOT invented. */
+  function parseRest(raw) {
+    var s = String(raw == null ? '' : raw).trim().toLowerCase();
+    if (!s || /^[-–—]+$/.test(s) || s === 'n/a' || s === 'na') {
+      return { sec: null, label: String(raw || ''), how: 'none' };
+    }
+    s = s.replace(/[–—]/g, '-');
+    var U = '(min|mins|minute|minutes|s|sec|secs|second|seconds)';
+    var m = s.match(new RegExp('^(\\d+(?:\\.\\d+)?)\\s*-\\s*(\\d+(?:\\.\\d+)?)\\s*' + U + '$'));
+    if (m) return mk(parseFloat(m[1]), m[3], raw, 'range-lower');
+    m = s.match(new RegExp('^(\\d+(?:\\.\\d+)?)\\s*' + U + '$'));
+    if (m) return mk(parseFloat(m[1]), m[2], raw, 'exact');
+    return { sec: null, label: String(raw), how: 'unparsed' };
+  }
+  function mk(n, u, raw, how) {
+    var sec = /^m/.test(u) ? Math.round(n * 60) : Math.round(n);
+    if (!(sec >= 5 && sec <= 900)) return { sec: null, label: String(raw), how: 'out-of-range' };
+    return { sec: sec, label: String(raw), how: how };
+  }
+
+  // ========================================================= REST TIMER
+  var T = { id: null, left: 0, total: 0, running: false, ready: false, setNo: 0, label: '' };
+  function navH() {
+    try { var n = document.querySelector('.bottom-nav');
+          return n ? Math.round(n.getBoundingClientRect().height) : 0; } catch (e) { return 0; }
+  }
+  function restPad() {
+    var bar = q('tv2-rest'), sec = q('section-training');
+    if (!sec) return;
+    var h = (bar && bar.classList.contains('on')) ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+    sec.style.setProperty('padding-bottom', (112 + h) + 'px', 'important');
+  }
+  function mmss(s) {
+    s = Math.max(0, Math.round(s));
+    var m = Math.floor(s / 60), r = s % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
+  }
+  function restRender() {
+    var bar = q('tv2-rest'); if (!bar) return;
+    if (!T.running && !T.ready) { bar.className = ''; bar.innerHTML = ''; restPad(); return; }
+    bar.style.bottom = navH() + 'px';
+    if (T.ready) {
+      bar.className = 'on ready';
+      bar.innerHTML =
+        '<span class="tag">Ready</span>' +
+        '<span class="clock">Start set ' + T.setNo + '</span>' +
+        '<span class="spacer"></span>' +
+        '<button class="skip" onclick="tv2RestStop()">Dismiss</button>';
+    } else {
+      bar.className = 'on';
+      bar.innerHTML =
+        '<span class="tag">Rest</span>' +
+        '<span class="clock">' + mmss(T.left) + '</span>' +
+        '<span class="spacer"></span>' +
+        '<button onclick="tv2RestToggle()">' + (T.paused ? 'Resume' : 'Pause') + '</button>' +
+        '<button class="box" onclick="tv2RestPlus()">+30s</button>' +
+        '<button class="skip" onclick="tv2RestStop()">Skip</button>';
+    }
+    restPad();
+  }
+  function restTick() {
+    if (T.paused) return;
+    T.left -= 1;
+    if (T.left <= 0) { T.left = 0; T.running = false; T.ready = true;
+      clearInterval(T.id); T.id = null; }
+    restRender();
+  }
+  function restStart(sec, label, setNo) {
+    if (T.id) { clearInterval(T.id); T.id = null; }
+    T.left = sec; T.total = sec; T.running = true; T.ready = false;
+    T.paused = false; T.setNo = setNo; T.label = label;
+    T.id = setInterval(restTick, 1000);
+    restRender();
+    setTimeout(clearLiveRow, 30);
+  }
+  /* The bar is a fixed overlay, so on a short screen the row being logged can
+     fall behind it. Move the page by the minimum needed to put that row fully
+     above the bar - the app does this, the client never has to. Never scrolls
+     the row up under the sticky workout header, and never runs when the row is
+     already clear. */
+  function clearLiveRow() {
+    var bar = q('tv2-rest');
+    if (!bar || !bar.classList.contains('on')) return;
+    var row = document.querySelector('#tv2-workout .tv2-set.edit')
+           || document.querySelector('#tv2-workout .tv2-set.now');
+    if (!row) return;
+    var r = row.getBoundingClientRect();
+    /* Two things can sit over this row: the rest bar, and the shell's own
+       fixed Quick-Log FAB, which owns the bottom-right corner. Park above
+       whichever is higher, so no part of the row - inputs, LOG, or the RIR
+       chips - ends up underneath either of them. */
+    var tops = [bar.getBoundingClientRect().top];
+    var fab = document.getElementById('fab-btn');
+    if (fab) {
+      try {
+        var cs = getComputedStyle(fab);
+        if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+          var f = fab.getBoundingClientRect();
+          if (f.width && f.left < r.right && f.right > r.left) tops.push(f.top);
+        }
+      } catch (e) {}
+    }
+    var limit = Math.min.apply(null, tops);
+    var GAP = 12;
+    var need = Math.round(r.bottom - (limit - GAP));
+    if (need <= 0) return;
+    var head = document.querySelector('#tv2-workout .tv2-whead');
+    var headBottom = head ? head.getBoundingClientRect().bottom : 0;
+    var room = Math.round(r.top - headBottom - 8);
+    var by = Math.max(0, Math.min(need, room));
+    if (by <= 0) return;
+    var smooth = true;
+    try { smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    try { window.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' }); }
+    catch (e) { window.scrollBy(0, by); }
+  }
+  window.tv2ClearLiveRow = clearLiveRow;
+
+  window.tv2RestToggle = function () { T.paused = !T.paused; restRender(); };
+  window.tv2RestPlus = function () { if (!T.running) return; T.left += 30; T.total += 30; restRender(); };
+  window.tv2RestStop = function () {
+    if (T.id) { clearInterval(T.id); T.id = null; }
+    T.running = false; T.ready = false; T.paused = false;
+    restRender();
+  };
+  window.addEventListener('resize', function () {
+    if (T.running || T.ready) { restRender(); setTimeout(clearLiveRow, 30); }
+  });
+
+  // ============================================================ HELPERS
+  function shortName(label) {
+    var m = String(label).match(/^Day\s*\d+\s*[-–]\s*(.+)$/i);
+    var s = m ? m[1] : label;
+    return String(s).replace(/\s*\(.*\)\s*$/, '').trim();
+  }
+  function subName(label) {
+    var m = String(label).match(/\(([^)]+)\)/);
+    if (m) return m[1];
+    var d = String(label).match(/^Day\s*(\d+)/i);
+    return d ? 'Day ' + d[1] : '';
+  }
+  function isOptional(d) { return /optional/i.test(d.label) || /optional/i.test(d.badge || ''); }
+  function weekNow() {
+    var total = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.durationWeeks) || 12;
+    var wk = 1;
+    try {
+      var s = (typeof START_DATE !== 'undefined' && START_DATE) ? new Date(START_DATE) : null;
+      if (s && !isNaN(s)) wk = Math.floor((Date.now() - s.getTime()) / 6048e5) + 1;
+    } catch (e) {}
+    return { week: Math.min(Math.max(wk, 1), total), total: total };
+  }
+  function phaseLocked(n) {
+    if (String(n) === '1') return false;
+    try {
+      var u = (typeof getUnlocked === 'function') ? getUnlocked() : [1];
+      if (u.indexOf(Number(n)) >= 0) return false;
+      if (typeof isTimerUnlocked === 'function' && isTimerUnlocked(Number(n))) return false;
+      return true;
+    } catch (e) { return false; }
+  }
+  function nextDayIdx(ph) {
+    var days = phases[ph].days;
+    for (var i = 0; i < days.length; i++) { var p = dayProgress(ph, i); if (p.done < p.total) return i; }
+    return 0;
+  }
+  /* Estimate only, and labelled as one: prescribed sets x (rest + ~45s work). */
+  function estMinutes(day) {
+    var s = 0, known = true;
+    day.exercises.forEach(function (ex) {
+      var n = presSets(ex), r = parseRest(ex.rest);
+      if (r.sec == null) known = false;
+      s += n * ((r.sec == null ? 90 : r.sec) + 45);
+    });
+    return { min: Math.max(10, Math.round(s / 60 / 5) * 5), known: known };
+  }
+  function dominantEffort(day) {
+    var c = {}, best = null;
+    day.exercises.forEach(function (ex) { var w = String(ex.weight || '').trim(); if (w) c[w] = (c[w] || 0) + 1; });
+    Object.keys(c).forEach(function (k) { if (!best || c[k] > c[best]) best = k; });
+    return best || '';
+  }
+  /* TRAINING-V2-FLEET: shells carrying FIND LOAD V1 resolve a 'find your load'
+     prescription against logged history (LAST xKG / SEE LOG). The same
+     interpreter is honoured here so the two views can never disagree. It is
+     display only; where the shell has no interpreter the authored text shows. */
+  function loadText(ex) {
+    if (typeof _resolveLoadBadge === 'function') {
+      try { return _resolveLoadBadge(ex, entryFor(V.phase, V.day, ex.name)); } catch (e) {}
+    }
+    return esc(ex.weight);
+  }
+  function presLine(ex) {
+    var bits = [presSets(ex) + ' sets × ' + esc(ex.reps) + ' reps'];
+    if (String(ex.weight || '').trim()) bits.push(loadText(ex));
+    if (String(ex.rest || '').trim()) bits.push('rest ' + esc(ex.rest));
+    return bits.join(' · ');
+  }
+  function fmtSets(sl) {
+    if (!sl.length) return '';
+    var w = summarise(sl);
+    var rirs = [];
+    sl.forEach(function (s) { var v = String(s.rir || ''); if (v && rirs.indexOf(v) < 0) rirs.push(v); });
+    /* Only stated RIR is shown, and only when every set carried the same one -
+       a mixed or partial set of answers is not summarised into one number. */
+    var allSaid = true;
+    sl.forEach(function (s) { if (!s.rir) allSaid = false; });
+    var tail = (rirs.length === 1 && allSaid) ? ' · ' + rirs[0] + ' RIR' : '';
+    return (w.weight ? w.weight + ' × ' : '') +
+      sl.map(function (s) { return s.r; }).join(', ') + tail;
+  }
+  /* Carried weight: the last weight this client actually logged for this
+     exercise. Never a prescription - Isaac's programs prescribe effort
+     (RIR), not load. */
+  function carried(ph, di, ex, sl) {
+    if (sl.length) return sl[sl.length - 1].w || '';
+    var snap = V.prev && V.prev[ex.name];
+    if (snap && snap.last) return snap.last;
+    return '';
+  }
+  function snapshot(ph, di, day) {
+    var o = {};
+    day.exercises.forEach(function (ex) {
+      var e = entryFor(ph, di, ex.name);
+      if (!e) return;
+      var sl = setsOf(e);
+      o[ex.name] = { text: sl.length ? fmtSets(sl)
+                       : ((e.weight ? e.weight + ' × ' : '') + (e.reps || '') + (e.sets ? '  (' + e.sets + ' sets)' : '')),
+                     last: sl.length ? (sl[sl.length - 1].w || '') : (e.weight || '') };
+    });
+    return o;
+  }
+
+  // =============================================================== HOME
+  function renderHome() {
+    var p = P(), w = weekNow(), ni = nextDayIdx(V.phase), nd = p.days[ni];
+    var pct = Math.round(w.week / w.total * 100);
+    var est = estMinutes(nd), eff = dominantEffort(nd);
+    var started = dayProgress(V.phase, ni).done > 0;
+
+    var rows = p.days.map(function (d, i) {
+      var pr = dayProgress(V.phase, i), done = pr.total && pr.done >= pr.total;
+      var now = (i === ni);
+      var state = done ? '<span class="tv2-state done">Completed</span>'
+                : now ? '<span class="tv2-state now">' + (started ? 'In progress' : 'Up next') + '</span>'
+                : '<span class="tv2-state">' + (isOptional(d) ? 'Optional' : 'Upcoming') + '</span>';
+      return '<button class="tv2-row' + (now && !done ? ' is-next' : '') + '" onclick="tv2Open(' + i + ')">' +
+        '<span class="tv2-bullet ' + (done ? 'done' : now ? 'now' : '') + '"></span>' +
+        '<span style="min-width:0;"><span class="tv2-rowname">' + esc(shortName(d.label)) + '</span>' +
+        '<span class="tv2-rowsub">' + esc(subName(d.label)) + ' · ' + d.exercises.length + ' exercises' +
+        (pr.done && !done ? ' · ' + pr.done + '/' + pr.total + ' logged' : '') + '</span></span>' +
+        state + '</button>';
+    }).join('');
+
+    var chips = Object.keys(phases).map(function (n) {
+      var lock = phaseLocked(n), act = String(n) === String(V.phase);
+      return '<button class="tv2-btn tv2-pchip' + (act ? ' is-active' : '') + (lock ? ' is-locked' : '') +
+        '" onclick="tv2Phase(' + n + ')">P' + n + (lock ? ' 🔒' : '') + '</button>';
+    }).join('');
+
+    q('tv2-home').innerHTML =
+      '<div class="tv2-top"><h1 class="tv2-h1">Training</h1>' +
+        '<span class="tv2-wk">W' + (w.week < 10 ? '0' : '') + w.week + ' of ' + w.total + '</span></div>' +
+      '<div class="tv2-phaseline"><span class="tv2-phasename">Phase ' + V.phase + ' · ' + esc(p.label) + '</span>' +
+        '<span class="tv2-pct">' + pct + '% through program</span></div>' +
+      '<div class="tv2-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="tv2-next">' +
+        '<div class="tv2-eyebrow">Next session</div>' +
+        '<h2 class="tv2-h2">' + esc(shortName(nd.label)) + '</h2>' +
+        '<div class="tv2-sub">' + esc(subName(nd.label) || esc(nd.badge || '')) + '</div>' +
+        '<div class="tv2-facts"><span>' + nd.exercises.length + ' exercises</span>' +
+          (est.known ? '<span>~' + est.min + ' min</span>' : '') +
+          (eff ? '<span>' + esc(eff) + '</span>' : '') + '</div>' +
+        '<button class="tv2-cta" onclick="tv2Open(' + ni + ')">' +
+          (started ? 'Continue workout' : 'Start workout') + '</button>' +
+      '</div>' +
+      '<span class="tv2-sec">This phase</span>' + rows +
+      '<button class="tv2-link" onclick="tv2Guide()">Program Guide<span>›</span></button>' +
+      '<button class="tv2-link" onclick="tv2Prog()">Progression<span>›</span></button>' +
+      '<div class="tv2-phases">' + chips + '</div>';
+  }
+
+  // ============================================================ WORKOUT
+  /* Actual RIR for the set being logged. Transient until the set is logged,
+     never seeded from the prescribed RIR/RPE, and never required. */
+  var RIR = ['0', '1', '2', '3+'];
+  function rirStrip(i) {
+    return '<div class="tv2-rir" data-set="' + i + '"><span class="l">RIR</span>' +
+      RIR.map(function (v) {
+        return '<button class="tv2-rirb' + (V.rir[i] === v ? ' on' : '') + '" data-v="' + v +
+          '" aria-pressed="' + (V.rir[i] === v ? 'true' : 'false') +
+          '" aria-label="Actual RIR ' + v + ' for set ' + (i + 1) +
+          '" onclick="tv2Rir(' + i + ',\'' + v + '\')">' + v + '</button>';
+      }).join('') + '</div>';
+  }
+
+  function setRow(i, ex, sl, nSets) {
+    var n = i + 1, nn = (n < 10 ? '0' : '') + n;
+    var editing = (V.edit === i);
+    var done = (i < sl.length) && !editing;
+    var now = (!editing && i === sl.length);
+    var cls = editing ? 'edit' : done ? 'done' : now ? 'now' : 'idle';
+    var wv = '', rv = '', wp = '', rp = '';
+    if (done || editing) { wv = sl[i].w || ''; rv = sl[i].r || ''; }
+    else if (now) { wv = carried(V.phase, V.day, ex, sl); rp = esc(ex.reps); wp = 'kg'; }
+    else { wp = carried(V.phase, V.day, ex, sl) || 'kg'; rp = '–'; }
+
+    var wIn = '<input class="tv2-in" id="tv2-w' + i + '" inputmode="decimal" enterkeyhint="next" ' +
+      'aria-label="Set ' + n + ' weight" ' + ((done && !editing) ? 'readonly ' : '') +
+      'value="' + esc(wv) + '" placeholder="' + esc(wp) + '">';
+    var rIn = '<input class="tv2-in" id="tv2-r' + i + '" inputmode="numeric" enterkeyhint="done" ' +
+      'aria-label="Set ' + n + ' reps achieved" ' + ((done && !editing) ? 'readonly ' : '') +
+      'value="' + esc(rv) + '" placeholder="' + (rp ? esc(rp) : '') + '">';
+    var rir = (done || editing) ? String((sl[i] && sl[i].rir) || '') : '';
+    var btn = editing
+      ? '<button class="tv2-log save" onclick="tv2SaveSet(' + i + ')">Save</button>'
+      : done
+        ? '<button class="tv2-log ok" onclick="tv2EditSet(' + i + ')" aria-label="Edit set ' + n +
+          (rir ? ', logged at ' + rir + ' RIR' : '') + '">✓' +
+          (rir ? '<i>' + esc(rir) + '</i>' : '') + '</button>'
+        : now
+          ? '<button class="tv2-log" onclick="tv2LogSet(' + i + ')">Log</button>'
+          : '<button class="tv2-log idle" disabled>Log</button>';
+    return '<div class="tv2-set ' + cls + '"><span class="tv2-setn">' + nn + '</span>' +
+      wIn + rIn + btn + ((now || editing) ? rirStrip(i) : '') + '</div>';
+  }
+
+  function activeCard(ex, idx) {
+    var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e), n = presSets(ex);
+    var snap = V.prev && V.prev[ex.name];
+    var rows = '';
+    for (var i = 0; i < Math.max(n, sl.length); i++) rows += setRow(i, ex, sl, n);
+    var has = false; try { has = !!(howTos && howTos[ex.name]); } catch (e2) {}
+    return '<div class="tv2-ex' + (V.edit >= 0 ? ' editing' : '') + '">' +
+      '<div class="tv2-eyebrow">' + (V.edit >= 0 ? 'Editing logged set' : 'Active exercise') + '</div>' +
+      '<h3 class="tv2-exname">' + esc(ex.name) + '</h3>' +
+      '<div class="tv2-pres">' + presLine(ex) + '</div>' +
+      (snap && snap.text ? '<div class="tv2-prev">Last logged · <b>' + esc(snap.text) + '</b></div>' : '') +
+      '<div class="tv2-slhead"><span>Set</span><span>Weight</span><span>Reps</span><span>Log</span></div>' +
+      rows +
+      (has ? '<button class="tv2-howto" onclick="tv2How(' + idx + ')">How to – ' + esc(ex.name) + ' →</button>' : '') +
+      '</div>';
+  }
+
+  function renderWorkout() {
+    var d = P().days[V.day], pr = dayProgress(V.phase, V.day);
+    if (pr.total && pr.done >= pr.total) { return renderDone(); }
+    if (V.active >= d.exercises.length || !d.exercises[V.active]) V.active = 0;
+
+    var doneRows = '', upRows = '', act = '';
+    d.exercises.forEach(function (ex, i) {
+      if (i === V.active) { act = activeCard(ex, i); return; }
+      var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e);
+      if (exDone(V.phase, V.day, ex)) {
+        var s = sl.length ? summarise(sl) : { sets: (e && e.sets) || '', weight: (e && e.weight) || '' };
+        doneRows += '<button class="tv2-done-row" onclick="tv2Go(' + i + ')">' +
+          '<span class="tv2-bullet done"></span><span class="n">' + esc(ex.name) + '</span>' +
+          '<span class="v">' + esc(s.sets) + ' sets' + (s.weight ? ' · ' + esc(s.weight) : '') + '</span></button>';
+      } else {
+        var h2 = false; try { h2 = !!(howTos && howTos[ex.name]); } catch (e3) {}
+        upRows += '<div class="tv2-up">' +
+          '<button class="tv2-up" style="border-bottom:0;padding:0;flex:1;min-width:0;background:transparent;" onclick="tv2Go(' + i + ')">' +
+          '<span class="i">' + (i + 1) + '.</span><span class="n">' + esc(ex.name) + '</span>' +
+          '<span class="p">' + presSets(ex) + ' × ' + esc(ex.reps) +
+          (String(ex.weight || '').trim() ? ' · ' + loadText(ex) : '') + '</span></button>' +
+          (h2 ? '<button class="tv2-uphow" onclick="tv2How(' + i + ')">How to</button>' : '') + '</div>';
+      }
+    });
+
+    q('tv2-workout').innerHTML =
+      '<div class="tv2-whead"><div class="tv2-whead-row">' +
+        '<button class="tv2-back" onclick="tv2Home()" aria-label="Back to Training">‹</button>' +
+        '<h2 class="tv2-wtitle">' + esc(shortName(d.label)) + '</h2>' +
+        '<span class="tv2-count">' + pr.done + ' / ' + pr.total + ' done</span></div>' +
+        '<div class="tv2-bar"><i style="width:' + (pr.total ? Math.round(pr.done / pr.total * 100) : 0) + '%"></i></div>' +
+      '</div>' +
+      doneRows + act +
+      (upRows ? '<span class="tv2-sec">Upcoming exercises</span>' + upRows : '');
+  }
+
+  // =============================================== SET LOGGING ACTIONS
+  function readRow(i) {
+    var w = (q('tv2-w' + i) || {}).value, r = (q('tv2-r' + i) || {}).value;
+    w = String(w == null ? '' : w).trim();
+    r = String(r == null ? '' : r).trim();
+    if (/^\d+(\.\d+)?$/.test(w)) w = w + 'kg';        /* unit annotation, not a value */
+    return { w: w, r: r, rir: V.rir[i] || '' };        /* '' when the client did not say */
+  }
+  /* Toggling is done in place rather than by re-rendering, so a half-typed
+     weight or rep count is never thrown away by tapping a chip. */
+  window.tv2Rir = function (i, v) {
+    if (V.rir[i] === v) delete V.rir[i]; else V.rir[i] = v;
+    var strip = document.querySelector('.tv2-rir[data-set="' + i + '"]');
+    if (!strip) return;
+    [].forEach.call(strip.querySelectorAll('.tv2-rirb'), function (b) {
+      var on = b.getAttribute('data-v') === V.rir[i];
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  };
+  function badReps(r) { return !/^\d{1,3}$/.test(r) || parseInt(r, 10) < 1; }
+  function nudge(i) {
+    var el = q('tv2-r' + i);
+    if (el) { el.focus(); el.style.borderColor = '#c2431b'; setTimeout(function () { el.style.borderColor = ''; }, 900); }
+  }
+  window.tv2LogSet = function (i) {
+    var d = P().days[V.day], ex = d.exercises[V.active];
+    var v = readRow(i);
+    if (badReps(v.r)) { nudge(i); return; }
+    var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e).slice();
+    sl[i] = { w: v.w, r: v.r, rir: v.rir, ts: new Date().toISOString() };
+    for (var k = 0; k < sl.length; k++) if (!sl[k]) sl[k] = { w: '', r: '', ts: '' };
+    delete V.rir[i];
+    writeLocal(V.phase, V.day, ex.name, sl);
+    var n = presSets(ex), complete = sl.length >= n;
+    if (complete) { flushCloud(V.phase, V.day, ex.name); tv2RestStop(); advance(); }
+    else {
+      var r = parseRest(ex.rest);
+      if (r.sec != null) restStart(r.sec, 'Prescribed ' + r.label, sl.length + 1);
+      else { tv2RestStop(); }
+    }
+    show(V.view === 'workout' ? 'workout' : V.view);
+  };
+  window.tv2EditSet = function (i) {
+    V.edit = i;
+    try {
+      var ex0 = P().days[V.day].exercises[V.active];
+      var sl0 = setsOf(entryFor(V.phase, V.day, ex0.name));
+      if (sl0[i] && sl0[i].rir) V.rir[i] = String(sl0[i].rir); else delete V.rir[i];
+    } catch (e) {}
+    show('workout');
+    setTimeout(function () { var el = q('tv2-r' + i); if (el) el.focus(); }, 30); };
+  window.tv2SaveSet = function (i) {
+    var d = P().days[V.day], ex = d.exercises[V.active], v = readRow(i);
+    if (badReps(v.r)) { nudge(i); return; }
+    var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e).slice();
+    if (!sl[i]) { V.edit = -1; show('workout'); return; }
+    sl[i] = { w: v.w, r: v.r, rir: v.rir, ts: sl[i].ts || new Date().toISOString(),
+              edited: new Date().toISOString() };
+    delete V.rir[i];
+    writeLocal(V.phase, V.day, ex.name, sl);
+    V.edit = -1;
+    if (sl.length >= presSets(ex)) flushCloud(V.phase, V.day, ex.name);
+    show('workout');
+  };
+  window.tv2Go = function (i) { V.active = i; V.edit = -1; V.rir = {}; show('workout'); };
+  function advance() {
+    var d = P().days[V.day];
+    for (var i = 0; i < d.exercises.length; i++) {
+      if (!exDone(V.phase, V.day, d.exercises[i])) { V.active = i; V.edit = -1; V.rir = {}; return; }
+    }
+    V.edit = -1; V.rir = {};
+  }
+
+  // ==================================================== SESSION SUMMARY
+  /* Every number here is read back out of the logs. The session window is
+     derived from the set timestamps themselves - the run of sets ending at
+     the most recent one with no gap longer than two hours - so it survives a
+     reload. Anything that cannot be derived is not shown. */
+  function sessionStats() {
+    var d = P().days[V.day], ts = [], sets = 0, vol = 0, volOk = true, per = [];
+    d.exercises.forEach(function (ex) {
+      var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e);
+      var count = sl.length ? sl.length : (e ? (parseInt(e.sets, 10) || 0) : 0);
+      sets += count;
+      per.push({ name: ex.name, sets: count, done: exDone(V.phase, V.day, ex) });
+      if (!sl.length) { if (e) volOk = false; return; }
+      sl.forEach(function (s) {
+        if (s.ts) ts.push(new Date(s.ts).getTime());
+        var wm = String(s.w || '').match(/^(\d+(?:\.\d+)?)\s*kg$/i);
+        var rn = parseInt(s.r, 10);
+        if (wm && rn > 0) vol += parseFloat(wm[1]) * rn; else volOk = false;
+      });
+    });
+    ts = ts.filter(function (x) { return !isNaN(x); }).sort(function (a, b) { return a - b; });
+    var run = [];
+    for (var i = ts.length - 1; i >= 0; i--) {
+      if (!run.length) { run.unshift(ts[i]); continue; }
+      if (run[0] - ts[i] <= 7200000) run.unshift(ts[i]); else break;
+    }
+    var mins = (run.length >= 2) ? Math.max(1, Math.round((run[run.length - 1] - run[0]) / 60000)) : null;
+    return { sets: sets, mins: mins, vol: volOk && vol > 0 ? Math.round(vol) : null, per: per };
+  }
+
+  function renderDone() {
+    var d = P().days[V.day], pr = dayProgress(V.phase, V.day), st = sessionStats();
+    var nextIdx = null, days = P().days;
+    for (var i = 0; i < days.length; i++) { var p2 = dayProgress(V.phase, i); if (p2.done < p2.total) { nextIdx = i; break; } }
+    var tiles = '';
+    if (st.mins != null) tiles += '<div class="tv2-tile"><span class="tv2-mono">Duration</span><b>' + st.mins + ' min</b></div>';
+    tiles += '<div class="tv2-tile"><span class="tv2-mono">Sets logged</span><b>' + st.sets + '</b></div>';
+    tiles += '<div class="tv2-tile"><span class="tv2-mono">Exercises</span><b>' + pr.done + ' / ' + pr.total + '</b></div>';
+    if (st.vol != null) tiles += '<div class="tv2-tile"><span class="tv2-mono">Volume</span><b>' + st.vol + ' kg</b></div>';
+
+    q('tv2-done').innerHTML =
+      '<div class="tv2-whead"><div class="tv2-whead-row">' +
+        '<button class="tv2-back" onclick="tv2Home()" aria-label="Back to Training">‹</button>' +
+        '<h2 class="tv2-wtitle">Session ended</h2>' +
+        '<span class="tv2-count">' + pr.done + ' / ' + pr.total + ' done</span></div></div>' +
+      '<div class="tv2-donewrap"><div class="tv2-check">✓</div>' +
+        '<h1 class="tv2-doneh">Workout complete</h1>' +
+        '<div class="tv2-sub" style="margin-top:.4rem;">' + esc(shortName(d.label)) + '</div></div>' +
+      '<div class="tv2-tiles">' + tiles + '</div>' +
+      '<span class="tv2-sec">This session</span>' +
+      st.per.map(function (x) {
+        return '<div class="tv2-sum"><span class="tv2-bullet' + (x.done ? ' done' : '') + '"></span>' +
+          '<span class="n">' + esc(x.name) + '</span>' +
+          '<span class="v">' + x.sets + ' set' + (x.sets === 1 ? '' : 's') + '</span></div>';
+      }).join('') +
+      (st.mins == null ? '<div class="tv2-pres" style="margin-top:1rem;">Duration is shown only when at least two sets carry timestamps from this session.</div>' : '') +
+      '<button class="tv2-cta" style="margin-top:1.6rem;" onclick="tv2Home()">Done</button>' +
+      (nextIdx != null ? '<button class="tv2-link" onclick="tv2Open(' + nextIdx + ')">Next: ' +
+        esc(shortName(days[nextIdx].label)) + '<span>›</span></button>' : '');
+  }
+
+  // ============================================================== GUIDE
+  var MARKERS = [
+    ['FIXED REQUIREMENT', 'Training order', 'What is fixed, and what is yours to arrange'],
+    ['RECOMMENDED LAYOUT', 'Suggested week', 'A shape to start from, not an instruction'],
+    ['PLACEMENT RULES', 'Placement rules', 'What matters more than the calendar'],
+    ['MUAY THAI MODE', 'Muay Thai mode', 'What changes if your frequency changes'],
+    ['AT A FULL GYM', 'Substitutions', 'What can change, and what never does'],
+    ['MINIMUM VIABLE', 'Minimum viable week', 'What matters when life gets busy'],
+    ['MISSED', 'Missed sessions', 'What to do when a session slips'],
+    ['RECOVERY', 'Recovery', 'What to do when you are cooked']
+  ];
+  function guideSections(desc) {
+    var hits = [];
+    MARKERS.forEach(function (m) { var i = desc.indexOf(m[0]); if (i >= 0) hits.push({ at: i, title: m[1], sub: m[2] }); });
+    hits.sort(function (a, b) { return a.at - b.at; });
+    var out = [], head = (hits.length ? desc.slice(0, hits[0].at) : desc).trim();
+    if (head) out.push({ title: 'How this phase works', sub: 'The intent behind these weeks', body: head });
+    hits.forEach(function (h, i) {
+      var end = (i + 1 < hits.length) ? hits[i + 1].at : desc.length;
+      var body = desc.slice(h.at, end).trim();
+      if (body) out.push({ title: h.title, sub: h.sub, body: body });
+    });
+    return out;
+  }
+  function renderGuide() {
+    var p = P(), secs = guideSections(String(p.desc || ''));
+    var chips = (p.info || []).map(function (i) {
+      return '<div class="tv2-kv"><span><b>' + esc(i.val) + '</b><div class="tv2-mono" style="margin-top:.2rem;">' +
+        esc(i.label) + '</div></span><span style="font-size:12px;color:var(--tv2-dim);max-width:58%;text-align:right;">' +
+        esc(i.desc) + '</span></div>';
+    }).join('');
+    var rule = '';
+    try {
+      var g = getProgression(V.phase) || [];
+      var r = g.filter(function (row) { return String(row[0]).toUpperCase() === 'RULE'; })[0];
+      if (r) rule = '<div class="tv2-rule"><div class="tv2-mono">Progression rule</div><div style="margin-top:.5rem;">' +
+        esc(r.slice(1).filter(Boolean).join(' ')) + '</div></div>';
+    } catch (e) {}
+    q('tv2-guide').innerHTML =
+      '<button class="tv2-gback" onclick="tv2Home()">‹ Training</button>' +
+      '<h1 class="tv2-gh">How to follow<br>your program</h1>' +
+      '<div class="tv2-sub">Phase ' + V.phase + ' · ' + esc(p.label) + ' · weeks ' + esc(p.weeks) + '</div>' +
+      (chips ? '<div class="tv2-fact">' + chips + '</div>' : '') + rule +
+      secs.map(function (s, i) {
+        return '<div class="tv2-acc"><button onclick="tv2Acc(' + i + ')" aria-expanded="false">' +
+          '<span style="min-width:0;"><span class="tv2-acc-t">' + esc(s.title) + '</span>' +
+          '<div class="tv2-acc-s">' + esc(s.sub) + '</div></span>' +
+          '<span id="tv2-acc-i' + i + '" style="color:var(--tv2-dim);font-size:18px;flex:0 0 auto;">+</span>' +
+          '</button><div class="tv2-acc-body" id="tv2-acc-' + i + '" hidden>' + esc(s.body) + '</div></div>';
+      }).join('');
+  }
+
+  // ======================================================== PROGRESSION
+  function renderProg() {
+    var p = P(), g = [];
+    try { g = getProgression(V.phase) || []; } catch (e) {}
+    var header = g[0] || [], weeks = header.slice(1);
+    var body = g.slice(1).filter(function (r) { return String(r[0]).toUpperCase() !== 'RULE'; });
+    var rule = g.slice(1).filter(function (r) { return String(r[0]).toUpperCase() === 'RULE'; })[0];
+    q('tv2-prog').innerHTML =
+      '<button class="tv2-gback" onclick="tv2Home()">‹ Training</button>' +
+      '<h1 class="tv2-gh">Progression</h1>' +
+      '<div class="tv2-sub">Phase ' + V.phase + ' · weeks ' + esc(p.weeks) + '</div>' +
+      (rule ? '<div class="tv2-rule"><div class="tv2-mono">Next move</div><div style="margin-top:.5rem;">' +
+        esc(rule.slice(1).filter(Boolean).join(' ')) + '</div></div>' : '') +
+      body.map(function (r) {
+        return '<div class="tv2-prog-ex"><div class="h">' + esc(r[0]) + '</div><div style="margin-top:.7rem;">' +
+          weeks.map(function (w, i) {
+            return '<div class="tv2-kv"><span class="tv2-mono">' + esc(w) + '</span><b>' +
+              esc(r[i + 1] || '—') + '</b></div>';
+          }).join('') + '</div></div>';
+      }).join('');
+  }
+
+  // ============================================================ ROUTING
+  function show(v) {
+    V.view = v;
+    ['home', 'workout', 'guide', 'prog', 'done'].forEach(function (k) {
+      var el = q('tv2-' + k); if (el) el.hidden = (k !== v);
+    });
+    if (v === 'home') renderHome();
+    if (v === 'workout') renderWorkout();
+    if (v === 'guide') renderGuide();
+    if (v === 'prog') renderProg();
+    if (v === 'done') renderDone();
+    restPad();
+    if (v === 'workout') { try { setTimeout(window.tv2ClearLiveRow, 20); } catch (e) {} }
+  }
+  function top() { try { window.scrollTo(0, 0); } catch (e) {} }
+
+  window.tv2Home = function () { flushAll(); V.edit = -1; V.rir = {}; show('home'); top(); };
+  window.tv2Open = function (i) {
+    V.day = i; V.edit = -1; V.rir = {};
+    var d = P().days[i];
+    V.prev = snapshot(V.phase, i, d);
+    V.active = 0;
+    for (var k = 0; k < d.exercises.length; k++) { if (!exDone(V.phase, i, d.exercises[k])) { V.active = k; break; } }
+    var pr = dayProgress(V.phase, i);
+    show(pr.total && pr.done >= pr.total ? 'done' : 'workout');
+    top();
+  };
+  window.tv2Guide = function () { show('guide'); top(); };
+  window.tv2Prog = function () { show('prog'); top(); };
+  window.tv2Phase = function (n) {
+    if (phaseLocked(n)) {
+      try { if (typeof tryUnlock === 'function') { tryUnlock(Number(n)); top(); return; } } catch (e) {}
+      return;
+    }
+    flushAll();
+    V.phase = String(n); V.day = 0; V.edit = -1; V.rir = {}; show('home'); top();
+  };
+  window.tv2Acc = function (i) {
+    var b = q('tv2-acc-' + i), ic = q('tv2-acc-i' + i);
+    if (!b) return;
+    b.hidden = !b.hidden;
+    if (ic) ic.textContent = b.hidden ? '+' : '–';
+  };
+  window.tv2How = function (i) {
+    var ex = P().days[V.day].exercises[i];
+    q('tv2-sheet-title').textContent = ex.name;
+    q('tv2-sheet-body').textContent = (howTos && howTos[ex.name]) || '';
+    q('tv2-sheet').classList.add('open');
+  };
+  window.tv2CloseSheet = function () { q('tv2-sheet').classList.remove('open'); };
+  window.tv2Refresh = function () { if (V.view) show(V.view); };
+
+  /* After the shell's own submitCode unlocks a phase, follow it. */
+  var _origCode = window.submitCode;
+  if (typeof _origCode === 'function') {
+    window.submitCode = function () {
+      var before = [];
+      try { before = (typeof getUnlocked === 'function') ? getUnlocked().slice() : []; } catch (e) {}
+      var r = _origCode.apply(this, arguments);
+      try {
+        var after = (typeof getUnlocked === 'function') ? getUnlocked() : [];
+        var gained = after.filter(function (x) { return before.indexOf(x) < 0; });
+        if (gained.length) {
+          q('lock-overlay').style.display = 'none';
+          V.phase = String(gained[gained.length - 1]); V.day = 0; V.edit = -1; show('home');
+        }
+      } catch (e) {}
+      return r;
+    };
+  }
+
+  /* The old whole-exercise modal still exists and still works. If it is used,
+     re-render and drop any stale per-set detail for that entry, because the
+     modal's scalars are now the authoritative record for it. */
+  var _origSave = window.saveWorkoutLog;
+  if (typeof _origSave === 'function') {
+    window.saveWorkoutLog = function () {
+      var r = _origSave.apply(this, arguments);
+      try { tv2Refresh(); } catch (e) {}
+      return r;
+    };
+  }
+
+  function boot() {
+    if (typeof phases === 'undefined') return;
+    V.phase = String((typeof currentPhase !== 'undefined' && phases[currentPhase])
+      ? currentPhase : Object.keys(phases)[0]);
+    V.day = nextDayIdx(V.phase);
+    show('home');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 60); });
+  } else { setTimeout(boot, 60); }
+
+  var _origShow = window.showSection;
+  if (typeof _origShow === 'function') {
+    window.showSection = function (id) {
+      var r = _origShow.apply(this, arguments);
+      if (id === 'training') { try { if (!V.phase) boot(); else show(V.view === 'home' ? 'home' : V.view); } catch (e) {} }
+      else { try { flushAll(); } catch (e) {} }
+      return r;
+    };
+  }
 })();
 </script>
 </body>
