@@ -2,7 +2,7 @@
 // supabase/functions/api/index.ts against an in-memory Supabase stand-in.
 // Central invariant under test: a missing entitlement must NEVER grant premium
 // to a client created after the entitlement cutover.
-const ts = require('/home/claude/.npm-global/lib/node_modules/typescript');
+const ts = require('typescript');
 const fs = require('fs');
 const SRC = fs.readFileSync('supabase/functions/api/index.ts', 'utf8');
 

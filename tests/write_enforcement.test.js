@@ -9,7 +9,7 @@
 //   PART B  structural — parses the dispatch table and proves that EVERY
 //           client-callable action is either gated or on the documented
 //           ungated allow-list. A new ungated client action fails this test.
-const ts = require('/home/claude/.npm-global/lib/node_modules/typescript');
+const ts = require('typescript');
 const fs = require('fs');
 const SRC = fs.readFileSync('supabase/functions/api/index.ts', 'utf8');
 

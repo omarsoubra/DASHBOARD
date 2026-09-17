@@ -1,6 +1,6 @@
 // Extracts the pure entitlement/capability logic from the SHIPPED Edge Function
 // source and exercises it. No copy of the rules lives in this file.
-const ts = require('/home/claude/.npm-global/lib/node_modules/typescript');
+const ts = require('typescript');
 const fs = require('fs');
 
 const SRC = fs.readFileSync('supabase/functions/api/index.ts', 'utf8');
