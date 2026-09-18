@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="StrengthByO"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Faith's 12-Week Glute-Priority Lean Bulk</title>
+<title>Faith's 12-Week Lean Bulk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -2537,8 +2537,8 @@
   <div class="hero-grid"></div>
   <div class="hero-content">
     <p class="hero-label">12-Week Transformation Program</p>
-    <h1 class="hero-title">FAITH'S<span class="line2">GLUTE-PRIORITY LEAN BULK</span></h1>
-    <p class="hero-sub">12-Week Lean Bulk - 47kg -> 52kg WITH MUSCLE - Masc build + glute shelf + shoulder cap</p>
+    <h1 class="hero-title">FAITH'S<span class="line2">LEAN BULK</span></h1>
+    <p class="hero-sub">12-Week Lean Bulk - 47kg -> 52kg WITH MUSCLE - Quads + hamstrings + shoulder cap</p>
     <div class="stats-grid">
       <div class="stat-box"><span class="stat-val"><span data-cfg="startWeight">47</span><span style="font-size:1.2rem">kg</span></span><span class="stat-label">Start Weight</span></div>
       <div class="stat-box"><span class="stat-val">5'2"</span><span class="stat-label">Height</span></div>
@@ -3104,6 +3104,7 @@ const howTos = {
   "Cable Chest Fly (Low)": "Set the cables low to the ground. Stand in the middle and grab the handles. Lean slightly forward and arc your arms up and together as if hugging a barrel. Squeeze your chest hard at the top. Keep a slight bend in your elbows throughout.",
   "Tricep Pushdown (Rope)": "Set the cable at the top with a rope attachment. Keep elbows locked tight at your sides — they don't move. Push the rope down and split the ends apart at the bottom. Squeeze your triceps. Slowly return.",
   "DB Hammer Curl": "Stand with dumbbells at your sides, palms facing each other (neutral grip). Curl up keeping palms neutral the whole time — don't rotate. Lower slowly. Keep elbows at your sides.",
+  "Hack Squat": "Set your back and shoulders flat against the pad, feet about shoulder-width and slightly forward on the platform so your shins stay near vertical. Release the safeties, brace, and lower under control until your thighs are at or just below parallel — knees track over your toes, heels stay down. Drive through mid-foot back to the start without locking your knees out. Week 5 is a find-load week: pick a weight where the last rep of each set is 1–2 reps from failure, then add weight when every set hits the top of the range.",
   "Hanging Knee Raises": "Hang from a pull-up bar. Brace your core and raise your knees to your chest. Lower slowly — don't swing. If swinging happens, let yourself settle before the next rep.",
   "Pull-Up Assisted (Machine)": "Select the assistance weight (higher number = easier). Kneel on the pad and grip the handles wider than shoulder width. Pull yourself up until your chin clears the bar. Lower slowly and fully extend at the bottom before each rep.",
   "Single Arm DB Row": "Place one knee and one hand on the bench for support. With your free hand holding the dumbbell, row it up to your hip with your elbow close to your body. Squeeze your back hard at the top. Lower slowly and let your shoulder drop slightly for a full stretch.",
@@ -3259,86 +3260,83 @@ const phases = {
   },
   2: {
     label: "Build", weeks: "5–8",
-    desc: "Calories close to maintenance — fuel for heavy glute training. Hip Thrust and RDL get heavier; 2×8–10 dominant on accessories. This is the glute hypertrophy window — eat enough, lift hard, the shelf starts forming.",
+    desc: "Calories at 2200 — fuel for heavy quad and hamstring training. Hack squat, leg press and seated leg curl are the anchors: find your loads in week 5, then add weight whenever every set hits the top of the rep range. Glutes still work as the co-mover on every squat and hinge — there are no glute-isolation slots in this phase. Upper body stays balanced: shoulders lead the push day.",
     info: [
       { label: "Weeks", val: "5–8", desc: "Build phase" },
       { label: "Intensity", val: "RPE 7–8", desc: "Hard — 1–2 reps in reserve" },
-      { label: "Focus", val: "Glutes", desc: "Hypertrophy push, heavier compounds" },
+      { label: "Focus", val: "Quads + Hams", desc: "Machine-led leg hypertrophy, balanced upper" },
     ],
     days: [
       {
-        label: "Day 1 — Glute & Quad (Heavy)",
-        badge: "GLUTE PRIORITY",
+        label: "Day 1 — Quads + Calves",
+        badge: "QUAD PRIORITY",
         exercises: [
-          { name: "Barbell Hip Thrust", sets: "4", reps: "8", weight: "55kg", rest: "2 min", rpe: "8" },
-          { name: "DB Goblet Squat", sets: "3", reps: "8–10", weight: "16kg", rest: "90s", rpe: "8" },
-          { name: "DB Romanian Deadlift", sets: "2", reps: "10 each", weight: "14kg ea", rest: "90s", rpe: "8" },
-          { name: "Leg Extension", sets: "2", reps: "10–12", weight: "30kg", rest: "60s", rpe: "8" },
-          { name: "Standing Calf Raise", sets: "3", reps: "12", weight: "35kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "20kg", rest: "60s", rpe: "7" },
+          { name: "Hack Squat", sets: "4", reps: "8–10", weight: "Find load", rest: "2–3 min", rpe: "8" },
+          { name: "Leg Press", sets: "3", reps: "10–12", weight: "Find load", rest: "2 min", rpe: "8" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", weight: "20kg", rest: "60–90s", rpe: "8" },
+          { name: "Standing Calf Raise", sets: "4", reps: "10–12", weight: "35kg", rest: "60s", rpe: "8" },
+          { name: "Cable Crunch", sets: "3", reps: "15", weight: "35kg", rest: "60s", rpe: "7" },
         ]
       },
       {
         label: "Day 2 — Upper Push",
         badge: "PUSH",
         exercises: [
-          { name: "Incline DB Chest Press", sets: "3", reps: "8", weight: "10kg ea", rest: "90s", rpe: "8" },
-          { name: "Dumbbell Shoulder Press", sets: "2", reps: "8–10", weight: "10kg ea", rest: "90s", rpe: "8" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12", weight: "5kg", rest: "60s", rpe: "8" },
-          { name: "Tricep Pushdown (Rope)", sets: "2", reps: "10", weight: "15kg", rest: "60s", rpe: "8" },
-          { name: "Cable Tricep Overhead Ext", sets: "2", reps: "10", weight: "10kg", rest: "60s", rpe: "8" },
-          { name: "Hanging Knee Raises", sets: "3", reps: "10", weight: "BW", rest: "60s", rpe: "7" },
+          { name: "Dumbbell Shoulder Press", sets: "3", reps: "8–10", weight: "10kg ea", rest: "90s", rpe: "8" },
+          { name: "Incline DB Chest Press", sets: "3", reps: "8–10", weight: "10kg ea", rest: "90s", rpe: "8" },
+          { name: "Cable Chest Fly (Low)", sets: "2", reps: "12–15", weight: "Find load", rest: "60s", rpe: "8" },
+          { name: "Cable Lateral Raise", sets: "4", reps: "12–15", weight: "5kg", rest: "60s", rpe: "8" },
+          { name: "Tricep Pushdown (Rope)", sets: "3", reps: "10–12", weight: "15kg", rest: "60s", rpe: "8" },
+          { name: "Cable Tricep Overhead Ext", sets: "2", reps: "10–12", weight: "10kg", rest: "60s", rpe: "8" },
         ]
       },
       {
-        label: "Day 3 — Glute Volume + Hamstring",
-        badge: "POSTERIOR CHAIN",
+        label: "Day 3 — Hamstrings + Calves",
+        badge: "HAMSTRING PRIORITY",
         exercises: [
-          { name: "Romanian Deadlift (DB)", sets: "4", reps: "8", weight: "20kg ea", rest: "2 min", rpe: "8" },
-          { name: "Single-Leg Hip Thrust", sets: "3", reps: "10–12", weight: "47.5kg", rest: "90s", rpe: "8" },
-          { name: "Bulgarian Split Squat", sets: "2", reps: "10 each", weight: "10kg ea", rest: "90s", rpe: "8" },
-          { name: "Lying Leg Curl", sets: "2", reps: "10", weight: "27.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Glute Kickback", sets: "3", reps: "12 each", weight: "12.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "20kg", rest: "60s", rpe: "7" },
+          { name: "Leg Curl (Seated)", sets: "4", reps: "10–12", weight: "Find load", rest: "90s", rpe: "8" },
+          { name: "Romanian Deadlift (DB)", sets: "3", reps: "8–10", weight: "20kg ea", rest: "2 min", rpe: "8" },
+          { name: "Lying Leg Curl", sets: "3", reps: "12–15", weight: "27.5kg", rest: "60s", rpe: "8" },
+          { name: "Seated Calf Raise", sets: "4", reps: "12–15", weight: "Find load", rest: "60s", rpe: "8" },
+          { name: "Hanging Knee Raises", sets: "3", reps: "10–12", weight: "BW", rest: "60s", rpe: "7" },
         ]
       },
       {
         label: "Day 4 — Upper Pull",
         badge: "PULL",
         exercises: [
-          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "8", weight: "32.5kg", rest: "90s", rpe: "8" },
-          { name: "Seated Cable Row", sets: "2", reps: "8–10", weight: "32.5kg", rest: "90s", rpe: "8" },
-          { name: "Single Arm DB Row", sets: "2", reps: "10 each", weight: "12.5kg ea", rest: "90s", rpe: "8" },
-          { name: "Reverse Pec Deck", sets: "2", reps: "12", weight: "22.5kg", rest: "60s", rpe: "7" },
-          { name: "Cable Bicep Curl", sets: "2", reps: "10", weight: "12.5kg", rest: "60s", rpe: "8" },
-          { name: "DB Hammer Curl", sets: "2", reps: "10", weight: "7.5kg ea", rest: "60s", rpe: "8" },
+          { name: "Lat Pulldown (Wide Grip)", sets: "3", reps: "8–10", weight: "35kg", rest: "90s", rpe: "8" },
+          { name: "Seated Cable Row", sets: "3", reps: "10–12", weight: "35kg", rest: "90s", rpe: "8" },
+          { name: "Single Arm DB Row", sets: "2", reps: "10–12", weight: "20kg ea", rest: "90s", rpe: "8" },
+          { name: "Reverse Pec Deck", sets: "3", reps: "12–15", weight: "22.5kg", rest: "60s", rpe: "8" },
+          { name: "Cable Bicep Curl", sets: "3", reps: "10–12", weight: "12.5kg", rest: "60s", rpe: "8" },
+          { name: "DB Hammer Curl", sets: "2", reps: "10–12", weight: "11kg ea", rest: "60s", rpe: "8" },
         ]
       },
       {
-        label: "Day 5 — Light Upper + Glute Pump",
-        badge: "PUMP DAY",
+        label: "Day 5 — Upper + Leg Top-Up",
+        badge: "TOP-UP",
         exercises: [
-          { name: "Flat DB Chest Press", sets: "3", reps: "10", weight: "10kg ea", rest: "60s", rpe: "7" },
-          { name: "Chest-Supported Row", sets: "3", reps: "10", weight: "10kg ea", rest: "60s", rpe: "7" },
-          { name: "Dumbbell Lateral Raise", sets: "3", reps: "12", weight: "5kg ea", rest: "60s", rpe: "8" },
-          { name: "Cable Glute Kickback", sets: "3", reps: "12 each", weight: "10kg", rest: "60s", rpe: "8" },
-          { name: "Hip Abduction Machine", sets: "3", reps: "15", weight: "27.5kg", rest: "60s", rpe: "8" },
-          { name: "Cable Crunch", sets: "3", reps: "15", weight: "22.5kg", rest: "60s", rpe: "8" },
-          { name: "Plank Hold", sets: "3", reps: "45 sec", weight: "BW", rest: "60s", rpe: "7" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", weight: "20kg", rest: "60s", rpe: "8" },
+          { name: "Leg Curl (Seated)", sets: "3", reps: "12–15", weight: "Find load", rest: "60s", rpe: "8" },
+          { name: "Flat DB Chest Press", sets: "3", reps: "10–12", weight: "11kg ea", rest: "90s", rpe: "8" },
+          { name: "Chest-Supported Row", sets: "3", reps: "10–12", weight: "17kg ea", rest: "90s", rpe: "8" },
+          { name: "Dumbbell Lateral Raise", sets: "3", reps: "12–15", weight: "5kg ea", rest: "60s", rpe: "8" },
+          { name: "Cable Crunch", sets: "3", reps: "15", weight: "37.5kg", rest: "60s", rpe: "8" },
         ]
       },
     ],
     progression: [
       ["Exercise", "Week 5", "Week 6", "Week 7", "Week 8"],
-      ["Hip Thrust", "55kg", "60kg", "62.5kg", "67.5kg"],
-      ["Single-Leg Hip Thrust", "47.5kg", "50kg", "50kg", "52.5kg"],
-      ["DB Goblet Squat", "12kg", "16kg", "20kg", "20kg"],
-      ["Romanian DL (DB)", "20kg ea", "22.5kg ea", "22.5kg ea", "25kg ea"],
-      ["Bulgarian Split Squat", "10kg ea", "12.5kg ea", "12.5kg ea", "15kg ea"],
-      ["Lat Pulldown", "32.5kg", "35kg", "37.5kg", "40kg"],
-      ["Seated Cable Row", "32.5kg", "32.5kg", "35kg", "37.5kg"],
-      ["Incline DB Press", "10kg ea", "12.5kg ea", "12.5kg ea", "12.5kg ea"],
-      ["DB Shoulder Press", "10kg ea", "10kg ea", "10kg ea", "10kg ea"],
+      ["Hack Squat", "Find load", "+2.5–5kg", "+2.5kg", "hold or +2.5kg"],
+      ["Leg Press", "Find load", "+5kg", "+5kg", "hold or +5kg"],
+      ["Leg Extension", "20kg", "22.5kg", "22.5kg", "25kg"],
+      ["Seated Leg Curl", "Find load", "+2.5kg", "+2.5kg", "hold or +2.5kg"],
+      ["Romanian DL (DB)", "20kg ea", "20kg ea", "22.5kg ea", "22.5kg ea"],
+      ["Lat Pulldown", "35kg", "37.5kg", "37.5kg", "40kg"],
+      ["Seated Cable Row", "35kg", "35kg", "37.5kg", "40kg"],
+      ["Incline DB Press", "10kg ea", "10kg ea", "12.5kg ea", "12.5kg ea"],
+      ["DB Shoulder Press", "10kg ea", "10kg ea", "12.5kg ea", "12.5kg ea"],
     ]
   },
   3: {
@@ -5028,10 +5026,10 @@ function closeModalBtn() {
 const CLIENT_CONFIG = {
   client: {
     firstName:   'Faith',
-    fullTitle:   "Faith's 12-Week GLUTE-PRIORITY LEAN BULK",
+    fullTitle:   "Faith's 12-Week LEAN BULK",
     heroLine1:   "FAITH'S",
-    heroLine2:   'GLUTE-PRIORITY LEAN BULK',
-    heroSub:     '12-Week Lean Bulk - 47kg -> 52kg WITH MUSCLE - Masc build + glute shelf + shoulder cap',
+    heroLine2:   'LEAN BULK',
+    heroSub:     '12-Week Lean Bulk - 47kg -> 52kg WITH MUSCLE - Quads + hamstrings + shoulder cap',
     startWeight: 47,
     goalWeight:  50,
     storageKey:  'faith_kainuku',
