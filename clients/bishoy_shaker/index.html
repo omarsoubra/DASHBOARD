@@ -2387,6 +2387,12 @@
 /* TRAINING-V2-FLEET: coach notes carried over verbatim from the legacy section; shown inside Program Guide only. */
 #tv2-carry{display:none;margin-top:1.6rem;}
 #tv2-guide:not([hidden]) ~ #tv2-carry{display:block;}
+/* TV2-LIFECYCLE-V1 */
+.tv2-adj{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:.02em;color:var(--tv2-ink);background:var(--tv2-tint);border:1px solid var(--tv2-edge);border-radius:8px;padding:.35rem .55rem;margin-top:.45rem;}
+.tv2-again{font-size:12px;color:var(--tv2-muted);margin:.6rem 0 .2rem;}
+.tv2-restart{display:block;width:100%;margin-top:1.2rem;background:transparent;border:1px solid var(--tv2-line2);border-radius:12px;padding:.8rem;color:var(--tv2-muted);font-size:12.5px;cursor:pointer;}
+.tv2-when{color:var(--tv2-dim);font-weight:400;}
+.tv2-sumrx{font-size:11px;color:var(--tv2-muted);margin-top:.15rem;font-weight:400;}
 </style>
 </head>
 
@@ -7809,10 +7815,16 @@ function sw3Use(i) {
 
 <script id="tv2-js">
 /* Training V2 / Concept D - presentation + a per-set logger that writes
-   through the shell's own contract. No new storage key, no new identity,
-   no backend change. See the module docstring in tools/ for the audit. */
+   through the shell's own contract. Fleet lifecycle build (TV2-LIFECYCLE-V1):
+   an additive, V2-only SESSION LEDGER (<key>_workout_sessions) gives each
+   programmed day a sequence of occurrences, and every prescription surface
+   resolves through the shell's own getDayExercises(). The latest-record store,
+   the workout POST, server rows, _pg_* metadata and day overrides are unchanged. */
 (function () {
-  var V = { view: 'home', phase: null, day: 0, active: 0, edit: -1, rir: {}, started: null };
+  var V = { view: 'home', phase: null, day: 0, active: 0, edit: -1, rir: {}, started: null,
+            sid: null,            /* session being viewed; null = fresh sheet (no occurrence yet) */
+            fresh: false,         /* true when the client explicitly chose to start this day again */
+            dirty: false };       /* an override arrived while a row was being typed; repaint later */
 
   function P() { return phases[V.phase] || phases[Object.keys(phases)[0]]; }
   function esc(s) {
@@ -7821,33 +7833,166 @@ function sw3Use(i) {
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function q(id) { return document.getElementById(id); }
+  function nowIso() { return new Date().toISOString(); }
+  function dayOf(ts) { var d = new Date(ts); return isNaN(d) ? '' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); }
+  function fmtDate(ts) { try { var d = new Date(ts); if (isNaN(d)) return ''; return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch (e) { return ''; } }
+
+  // ============================================ EFFECTIVE PRESCRIPTION
+  /* TV2-LIFECYCLE-V1: the ONE prescription read path. getDayExercises() is the
+     shell's own resolver (active day override wholesale, else authored), so a
+     coach edit or an engine progression is what the client is asked to do.
+     The authored array is kept alongside for the disclosure line only. */
+  function tv2Day(ph, di) {
+    var d = (phases[ph] && phases[ph].days[di]) || null;
+    if (!d) return null;
+    var eff = null;
+    try { if (typeof getDayExercises === 'function') eff = getDayExercises(ph, di); } catch (e) { eff = null; }
+    if (!eff || Object.prototype.toString.call(eff) !== '[object Array]' || !eff.length) eff = d.exercises;
+    var o = {}; for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k)) o[k] = d[k];
+    o.exercises = eff; o.authored = d.exercises;
+    return o;
+  }
+  function rxOf(ex) { return { name: String(ex.name), sets: String(ex.sets == null ? '' : ex.sets), reps: String(ex.reps == null ? '' : ex.reps), weight: String(ex.weight == null ? '' : ex.weight), rest: String(ex.rest == null ? '' : ex.rest), rpe: String(ex.rpe == null ? '' : ex.rpe) }; }
+  function authoredOf(ph, di, name) {
+    var d = (phases[ph] && phases[ph].days[di]) || null; if (!d) return null;
+    for (var i = 0; i < d.exercises.length; i++) if (String(d.exercises[i].name) === String(name)) return d.exercises[i];
+    return null;
+  }
+
+  // ================================================== SESSION LEDGER
+  /* TV2-LIFECYCLE-V1. <key>_workout_sessions = { "p<ph>.d<di>": [session, ...] }.
+     session = { sid, startedAt, completedAt, status: 'open'|'complete'|'abandoned'|'partial',
+                 restored, exs: [rx snapshot, frozen when the occurrence is created],
+                 entries: { name: { setLog, sets, reps, weight, flushed, ts } } }
+     - sid is an ordinal per programmed day, monotonic, never reused, never sent anywhere.
+     - an occurrence is created ONLY by logging a set (tv2LogSet) with no open session
+       for that day - never by viewing, reloading, or the clock.
+     - restored sessions are derived from server-merged records and are never 'open'.
+     - a completed / abandoned / partial session is never written again. */
+  function ledgerKey() { return CLIENT_CONFIG.client.storageKey + '_workout_sessions'; }
+  function ledgerLoad() { try { var o = JSON.parse(localStorage.getItem(ledgerKey()) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+  function ledgerSave(o) { try { localStorage.setItem(ledgerKey(), JSON.stringify(o)); } catch (e) {} }
+  function dayKey(ph, di) { return 'p' + ph + '.d' + di; }
+  function sessionsOf(ph, di) { var L = ledgerLoad(); return L[dayKey(ph, di)] || []; }
+  function findSession(ph, di, sid) { var ss = sessionsOf(ph, di); for (var i = 0; i < ss.length; i++) if (ss[i].sid === sid) return ss[i]; return null; }
+  function openSession(ph, di) { var ss = sessionsOf(ph, di); for (var i = ss.length - 1; i >= 0; i--) if (ss[i].status === 'open') return ss[i]; return null; }
+  function lastSession(ph, di) { var ss = sessionsOf(ph, di); return ss.length ? ss[ss.length - 1] : null; }
+  function lastClosed(ph, di, beforeSid) {
+    var ss = sessionsOf(ph, di), best = null;
+    for (var i = 0; i < ss.length; i++) { var s = ss[i]; if (s.status === 'open') continue; if (beforeSid != null && s.sid >= beforeSid) continue; if (!best || s.sid > best.sid) best = s; }
+    return best;
+  }
+  function nextSid(ph, di) { var ss = sessionsOf(ph, di), m = 0; ss.forEach(function (s) { if (typeof s.sid === 'number' && s.sid > m) m = s.sid; }); return m + 1; }
+  function putSession(ph, di, s) {
+    var L = ledgerLoad(), k = dayKey(ph, di), ss = L[k] || [], hit = false;
+    for (var i = 0; i < ss.length; i++) if (ss[i].sid === s.sid) { ss[i] = s; hit = true; }
+    if (!hit) ss.push(s);
+    ss.sort(function (a, b) { return a.sid - b.sid; });
+    L[k] = ss; ledgerSave(L);
+  }
+  /* Creates occurrence N+1 for a programmed day. Called ONLY from tv2LogSet. The
+     effective prescription is frozen here so a later override never rewrites
+     what this occurrence was asked to do. An open session is never mutated by this;
+     tv2StartAgain closes it explicitly first. */
+  function createSession(ph, di) {
+    var day = tv2Day(ph, di); if (!day) return null;
+    var s = { sid: nextSid(ph, di), startedAt: nowIso(), completedAt: null, status: 'open', restored: false,
+              exs: day.exercises.map(rxOf), entries: {} };
+    putSession(ph, di, s);
+    return s;
+  }
+  function sessionComplete(s) {
+    if (!s || !s.exs || !s.exs.length) return false;
+    for (var i = 0; i < s.exs.length; i++) {
+      var en = s.entries[s.exs[i].name];
+      if (!en) return false;
+      var sl = (en.setLog && en.setLog.length) ? en.setLog : [];
+      if (sl.length ? sl.length < presSets(s.exs[i]) : !en.sets) return false;
+    }
+    return true;
+  }
+  /* Idempotent derivation. Records in the latest-record store that no session
+     accounts for are grouped into RESTORED sessions by programmed day and calendar
+     day. Server-merged records (no setLog) and pre-lifecycle records are handled
+     the same way. Restored sessions are read-only; only a native record (setLog,
+     written by this device) dated TODAY may resume as an open session. Running this
+     twice yields byte-identical state. A truncated restore window can only make
+     history shorter - it never invents, reopens, re-sends or renumbers anything. */
+  function ledgerSync() {
+    var logs; try { logs = loadWorkoutLogs(); } catch (e) { return; }
+    var L = ledgerLoad(), changed = false, today = dayOf(nowIso());
+    var groups = {};
+    Object.keys(logs).sort().forEach(function (id) {
+      var m = id.match(/^p([^.]+)\.d(\d+)\.(.+)$/); if (!m) return;
+      var ph = m[1], di = Number(m[2]), name = m[3], rec = logs[id];
+      var ts = rec && rec.ts ? String(rec.ts) : ''; if (!ts || isNaN(Date.parse(ts))) return;
+      var k = dayKey(ph, di), ss = L[k] || [];
+      var seen = false;
+      for (var i = 0; i < ss.length && !seen; i++) {
+        var en = ss[i].entries && ss[i].entries[name];
+        if (en && en.ts && Math.abs(Date.parse(en.ts) - Date.parse(ts)) < 6 * 3600e3) seen = true;
+      }
+      if (seen) return;
+      var g = k + '|' + dayOf(ts); (groups[g] = groups[g] || { ph: ph, di: di, date: dayOf(ts), recs: [] }).recs.push({ name: name, rec: rec, ts: ts });
+    });
+    Object.keys(groups).sort().forEach(function (g) {
+      var G = groups[g], k = dayKey(G.ph, G.di), ss = L[k] || [];
+      var day = tv2Day(G.ph, G.di); if (!day) return;
+      var native = G.recs.every(function (r) { return r.rec.setLog && r.rec.setLog.length && r.rec.synced !== true; });
+      var ex = day.exercises.map(rxOf);
+      var s = { sid: nextSidIn(ss), startedAt: G.recs.map(function (r) { return r.ts; }).sort()[0], completedAt: null, status: 'partial', restored: !native,
+                exs: ex, entries: {} };
+      G.recs.forEach(function (r) {
+        var rec = r.rec, sl = (rec.setLog && rec.setLog.length) ? rec.setLog : [];
+        s.entries[r.name] = { setLog: sl, sets: String(rec.sets != null ? rec.sets : (rec.setsActual || '')), reps: String(rec.reps != null ? rec.reps : (rec.repsActual || '')),
+                              weight: String(rec.weight != null ? rec.weight : (rec.weightActual || '')), flushed: true, ts: r.ts };
+      });
+      /* completion is judged against the exercises of this day; a session that
+         covers every one of them is complete, dated by its last record */
+      if (sessionComplete(s)) { s.status = 'complete'; s.completedAt = G.recs.map(function (r) { return r.ts; }).sort().slice(-1)[0]; }
+      else if (native && G.date === today && !ss.some(function (x) { return x.status === 'open'; })) { s.status = 'open'; }
+      ss.push(s); ss.sort(function (a, b) { return a.sid - b.sid; }); L[k] = ss; changed = true;
+    });
+    if (changed) ledgerSave(L);
+    function nextSidIn(ss) { var m = 0; ss.forEach(function (x) { if (typeof x.sid === 'number' && x.sid > m) m = x.sid; }); return m + 1; }
+  }
 
   // ================================================== LOG COMPATIBILITY
-  /* One entry per p<phase>.d<dayIdx>.<exerciseName>, exactly as today.
-     setLog is an additive local array; the three existing readers of an
-     entry address named scalars only and cannot see it. */
+  /* The latest-record store keeps its meaning: one record per
+     p<phase>.d<dayIdx>.<exerciseName> = the most recent performance. Every
+     existing reader (legacy history line, FIND LOAD, B5 "Use last", heatmap,
+     cloud restore) still reads it; V2 writes through to it unchanged. */
   function entryFor(ph, di, name) {
     try { return getWorkoutLogEntry(ph, di, name); } catch (e) { return null; }
   }
-  function setsOf(e) { return (e && Object.prototype.toString.call(e.setLog) === '[object Array]') ? e.setLog : []; }
   function presSets(ex) { var n = parseInt(ex.sets, 10); return (n > 0 && n < 50) ? n : 1; }
 
-  /* An exercise is complete when every prescribed set has been logged. An
-     entry with no setLog came from the old whole-exercise modal (or from a
-     cloud restore) and is taken as complete, as recorded. */
-  function exDone(ph, di, ex) {
-    var e = entryFor(ph, di, ex.name);
-    if (!e) return false;
-    var sl = setsOf(e);
-    if (!sl.length) return true;
+  /* The session the workout screen is showing: the open occurrence, the one
+     explicitly selected (history), or nothing (fresh sheet). */
+  function curSession() {
+    if (V.sid != null) return findSession(V.phase, V.day, V.sid);
+    return openSession(V.phase, V.day);
+  }
+  function dayExs() { var s = curSession(); if (s && s.exs && s.exs.length) return s.exs; var d = tv2Day(V.phase, V.day); return d ? d.exercises : []; }
+  function liveMode() { var s = curSession(); return !s || s.status === 'open'; }
+  function slFor(s, name) { var en = s && s.entries && s.entries[name]; return (en && en.setLog && en.setLog.length) ? en.setLog : []; }
+  function exDoneIn(s, ex) {
+    var en = s && s.entries && s.entries[ex.name]; if (!en) return false;
+    var sl = (en.setLog && en.setLog.length) ? en.setLog : [];
+    if (!sl.length) return !!en.sets;                 /* restored record: complete as recorded */
     return sl.length >= presSets(ex);
   }
-  function dayProgress(ph, di) {
-    var d = (phases[ph] && phases[ph].days[di]) || null;
-    if (!d) return { done: 0, total: 0 };
-    var n = 0;
-    d.exercises.forEach(function (ex) { if (exDone(ph, di, ex)) n++; });
-    return { done: n, total: d.exercises.length };
+  function progressIn(s) {
+    if (!s) return { done: 0, total: 0 };
+    var n = 0; s.exs.forEach(function (ex) { if (exDoneIn(s, ex)) n++; });
+    return { done: n, total: s.exs.length };
+  }
+  /* Home / navigation state of a programmed day, derived from its sessions. */
+  function dayState(ph, di) {
+    var o = openSession(ph, di); if (o) { var p = progressIn(o); return { kind: 'open', done: p.done, total: p.total, sid: o.sid }; }
+    var l = lastSession(ph, di); if (!l) return { kind: 'never' };
+    if (l.status === 'complete') return { kind: 'complete', at: l.completedAt || l.startedAt, sid: l.sid, restored: !!l.restored };
+    return { kind: 'partial', at: l.startedAt, sid: l.sid, restored: !!l.restored };
   }
 
   /* The scalar summary is derived from what was actually logged. When every
@@ -7864,8 +8009,14 @@ function sw3Use(i) {
              weight: uw.length === 1 ? uw[0] : w.join(', ') };
   }
 
-  /* Local write only. Same key, same id, same scalar fields. */
-  function writeLocal(ph, di, name, sl) {
+  /* Local write only. Same key, same id, same scalar fields.
+     TV2-LIFECYCLE-V1: the record's synced mark is kept ONLY for an edit of an
+     exercise already flushed in the OPEN occurrence (Isaac parity: an edited
+     synced set is not re-sent). A newly logged set is never synced, whatever
+     the previous occurrence left on the record: a 1-set exercise logged again
+     next week has the same set count as last week's synced record, and must
+     still reach the engine. */
+  function writeLocal(ph, di, name, sl, keepSynced) {
     var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), prev = logs[id] || {};
     var s = summarise(sl);
     logs[id] = { phase: ph, dayIdx: di, exName: name,
@@ -7877,17 +8028,24 @@ function sw3Use(i) {
       rpe: '',
       notes: prev.notes || '',
       ts: new Date().toISOString(),
-      setLog: sl, setLogSynced: (prev.setLogSynced === sl.length ? sl.length : -1) };
+      setLog: sl, setLogSynced: (keepSynced && prev.setLogSynced === sl.length ? sl.length : -1) };
     saveWorkoutLogsLocal(logs);
   }
+  /* Session write: the occurrence keeps its own copy of the sets, so a cloud
+     restore that rewrites the latest record cannot erase the session in play. */
+  function writeSession(s, name, sl, flushed) {
+    var sum = summarise(sl);
+    s.entries[name] = { setLog: sl, sets: sum.sets, reps: sum.reps, weight: sum.weight, flushed: !!flushed, ts: nowIso() };
+    putSession(V.phase, V.day, s);
+  }
 
-  /* Cloud write, through the shell's own saveWorkoutLog, once per exercise.
-     openWorkoutLog sets the shell's own _workoutLogCtx and prefills from the
-     entry we just wrote; both calls happen in one task so the modal never
-     paints. PR burst, haptic and sync badge fire exactly as today. */
+  /* Cloud write, through the shell's own saveWorkoutLog, once per exercise per
+     occurrence. openWorkoutLog sets the shell's own _workoutLogCtx; both calls
+     happen in one task so the modal never paints. PR burst, haptic and sync
+     badge fire exactly as today. */
   function flushCloud(ph, di, name) {
     var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), e = logs[id];
-    if (!e || !setsOf(e).length) return false;
+    if (!e || !setsOfRec(e).length) return false;
     if (e.setLogSynced === e.setLog.length) return false;
     if (typeof openWorkoutLog !== 'function' || typeof window.saveWorkoutLog !== 'function') return false;
     if (!q('wl-sets') || !q('wl-notes')) return false;
@@ -7919,12 +8077,23 @@ function sw3Use(i) {
       var l2 = loadWorkoutLogs();
       if (l2[id]) { l2[id].setLog = e.setLog; l2[id].setLogSynced = e.setLog.length;
                     saveWorkoutLogsLocal(l2); }
+      /* TV2-LIFECYCLE-V1: the engine answers a flushed exercise with a day
+         override within about a second. Pull it once now so the next occurrence
+         (and Home) show the progressed prescription without waiting for the poll. */
+      try { setTimeout(function () { try { if (typeof pullOverrides === 'function') pullOverrides(); } catch (e4) {} }, 1200); } catch (e5) {}
       return true;
     } catch (err) { try { cancelWorkoutLog(); } catch (e2) {} return false; }
   }
+  function setsOfRec(e) { return (e && Object.prototype.toString.call(e.setLog) === '[object Array]') ? e.setLog : []; }
+  /* Flush every complete, unflushed exercise of the OPEN occurrence only. */
   function flushAll() {
-    var d = P().days[V.day]; if (!d) return;
-    d.exercises.forEach(function (ex) { flushCloud(V.phase, V.day, ex.name); });
+    var s = openSession(V.phase, V.day); if (!s) return;
+    var any = false;
+    s.exs.forEach(function (ex) {
+      var en = s.entries[ex.name]; if (!en || en.flushed || !exDoneIn(s, ex)) return;
+      if (flushCloud(V.phase, V.day, ex.name)) { en.flushed = true; any = true; }
+    });
+    if (any) putSession(V.phase, V.day, s);
   }
 
   // ======================================================= REST PARSING
@@ -8060,6 +8229,7 @@ function sw3Use(i) {
     if (T.running || T.ready) { restRender(); setTimeout(clearLiveRow, 30); }
   });
 
+
   // ============================================================ HELPERS
   function shortName(label) {
     var m = String(label).match(/^Day\s*\d+\s*[-–]\s*(.+)$/i);
@@ -8073,6 +8243,8 @@ function sw3Use(i) {
     return d ? 'Day ' + d[1] : '';
   }
   function isOptional(d) { return /optional/i.test(d.label) || /optional/i.test(d.badge || ''); }
+  /* Calendar label only. It is NEVER an identity: on this fleet START_DATE is
+     the device's first-open date unless the config carries startDate. */
   function weekNow() {
     var total = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.durationWeeks) || 12;
     var wk = 1;
@@ -8091,10 +8263,17 @@ function sw3Use(i) {
       return true;
     } catch (e) { return false; }
   }
+  /* The next appropriate programmed day: an open occurrence first, then the
+     first day never completed, then - when every day has been done at least
+     once - the day whose last completion is oldest. Program order breaks ties.
+     Nothing here creates a session. */
   function nextDayIdx(ph) {
-    var days = phases[ph].days;
-    for (var i = 0; i < days.length; i++) { var p = dayProgress(ph, i); if (p.done < p.total) return i; }
-    return 0;
+    var days = phases[ph].days, i, st;
+    for (i = 0; i < days.length; i++) { st = dayState(ph, i); if (st.kind === 'open') return i; }
+    for (i = 0; i < days.length; i++) { st = dayState(ph, i); if (st.kind === 'never' || st.kind === 'partial') return i; }
+    var best = 0, bestAt = null;
+    for (i = 0; i < days.length; i++) { st = dayState(ph, i); var at = Date.parse(st.at || '') || 0; if (bestAt === null || at < bestAt) { bestAt = at; best = i; } }
+    return best;
   }
   /* Estimate only, and labelled as one: prescribed sets x (rest + ~45s work). */
   function estMinutes(day) {
@@ -8121,12 +8300,23 @@ function sw3Use(i) {
       try { return _resolveLoadBadge(ex, entryFor(V.phase, V.day, ex.name)); } catch (e) {}
     }
     return esc(ex.weight);
-  }
-  function presLine(ex) {
+  }  function presLine(ex) {
     var bits = [presSets(ex) + ' sets × ' + esc(ex.reps) + ' reps'];
     if (String(ex.weight || '').trim()) bits.push(loadText(ex));
     if (String(ex.rest || '').trim()) bits.push('rest ' + esc(ex.rest));
     return bits.join(' · ');
+  }
+  /* One muted line when what the client is asked to do differs from the
+     printed program (a coach edit or an engine progression). Nothing shown
+     when they agree. */
+  function disclosure(ex) {
+    var a = authoredOf(V.phase, V.day, ex.name); if (!a) return '';
+    var aw = String(a.weight || '').trim(), ew = String(ex.weight || '').trim();
+    var ar = String(a.reps || '').trim(), er = String(ex.reps || '').trim();
+    var as_ = String(a.sets || '').trim(), es = String(ex.sets || '').trim();
+    if (aw === ew && ar === er && as_ === es) return '';
+    return '<div class="tv2-adj">Program: ' + esc(as_ || '?') + ' × ' + esc(ar) + (aw ? ' · ' + esc(aw) : '') +
+           ' · adjusted to ' + esc(es || '?') + ' × ' + esc(er) + (ew ? ' · ' + esc(ew) : '') + '</div>';
   }
   function fmtSets(sl) {
     if (!sl.length) return '';
@@ -8141,46 +8331,56 @@ function sw3Use(i) {
     return (w.weight ? w.weight + ' × ' : '') +
       sl.map(function (s) { return s.r; }).join(', ') + tail;
   }
+  /* Previous performance of an exercise: the last CLOSED occurrence before the
+     one on screen (so a reload mid-session still shows last time, not this
+     time); with no ledger history, the latest record if it is not this
+     occurrence's own. Never a prescription. */
+  function prevActual(ph, di, name) {
+    var cur = curSession(), before = cur ? cur.sid : null;
+    var lc = lastClosed(ph, di, before);
+    if (lc && lc.entries && lc.entries[name]) {
+      var en = lc.entries[name], sl = (en.setLog && en.setLog.length) ? en.setLog : [];
+      return { text: sl.length ? fmtSets(sl) : ((en.weight ? en.weight + ' × ' : '') + (en.reps || '') + (en.sets ? '  (' + en.sets + ' sets)' : '')),
+               last: sl.length ? (sl[sl.length - 1].w || '') : (en.weight || ''), when: lc.completedAt || lc.startedAt };
+    }
+    if (!cur) {
+      var e = entryFor(ph, di, name); if (!e) return null;
+      var sl2 = setsOfRec(e);
+      var w = String(e.weight != null ? e.weight : (e.weightActual || '')), r = String(e.reps != null ? e.reps : (e.repsActual || '')), s = String(e.sets != null ? e.sets : (e.setsActual || ''));
+      return { text: sl2.length ? fmtSets(sl2) : ((w ? w + ' × ' : '') + r + (s ? '  (' + s + ' sets)' : '')), last: sl2.length ? (sl2[sl2.length - 1].w || '') : w, when: e.ts };
+    }
+    return null;
+  }
   /* Carried weight: the last weight this client actually logged for this
-     exercise. Never a prescription - Isaac's programs prescribe effort
-     (RIR), not load. */
+     exercise - the set before in this occurrence, else the previous occurrence.
+     Never a prescription. */
   function carried(ph, di, ex, sl) {
     if (sl.length) return sl[sl.length - 1].w || '';
-    var snap = V.prev && V.prev[ex.name];
-    if (snap && snap.last) return snap.last;
-    return '';
-  }
-  function snapshot(ph, di, day) {
-    var o = {};
-    day.exercises.forEach(function (ex) {
-      var e = entryFor(ph, di, ex.name);
-      if (!e) return;
-      var sl = setsOf(e);
-      o[ex.name] = { text: sl.length ? fmtSets(sl)
-                       : ((e.weight ? e.weight + ' × ' : '') + (e.reps || '') + (e.sets ? '  (' + e.sets + ' sets)' : '')),
-                     last: sl.length ? (sl[sl.length - 1].w || '') : (e.weight || '') };
-    });
-    return o;
+    var p = prevActual(ph, di, ex.name);
+    return (p && p.last) || '';
   }
 
   // =============================================================== HOME
   function renderHome() {
-    var p = P(), w = weekNow(), ni = nextDayIdx(V.phase), nd = p.days[ni];
+    var p = P(), w = weekNow(), ni = nextDayIdx(V.phase), nd = tv2Day(V.phase, ni);
     var pct = Math.round(w.week / w.total * 100);
     var est = estMinutes(nd), eff = dominantEffort(nd);
-    var started = dayProgress(V.phase, ni).done > 0;
+    var nst = dayState(V.phase, ni);
 
     var rows = p.days.map(function (d, i) {
-      var pr = dayProgress(V.phase, i), done = pr.total && pr.done >= pr.total;
-      var now = (i === ni);
-      var state = done ? '<span class="tv2-state done">Completed</span>'
-                : now ? '<span class="tv2-state now">' + (started ? 'In progress' : 'Up next') + '</span>'
-                : '<span class="tv2-state">' + (isOptional(d) ? 'Optional' : 'Upcoming') + '</span>';
-      return '<button class="tv2-row' + (now && !done ? ' is-next' : '') + '" onclick="tv2Open(' + i + ')">' +
-        '<span class="tv2-bullet ' + (done ? 'done' : now ? 'now' : '') + '"></span>' +
+      var st = dayState(V.phase, i), now = (i === ni);
+      var state, bullet = '';
+      if (st.kind === 'open') { state = '<span class="tv2-state now">In progress</span>'; bullet = 'now'; }
+      else if (st.kind === 'complete') { state = '<span class="tv2-state done">Completed · ' + esc(fmtDate(st.at)) + '</span>'; bullet = 'done'; }
+      else if (st.kind === 'partial') { state = '<span class="tv2-state">Not finished · ' + esc(fmtDate(st.at)) + '</span>'; bullet = now ? 'now' : ''; }
+      else state = now ? '<span class="tv2-state now">Up next</span>' : '<span class="tv2-state">' + (isOptional(d) ? 'Optional' : 'Upcoming') + '</span>';
+      if (now && st.kind === 'never') bullet = 'now';
+      return '<button class="tv2-row' + (now && st.kind !== 'complete' ? ' is-next' : '') + '" onclick="tv2Open(' + i + ')">' +
+        '<span class="tv2-bullet ' + bullet + '"></span>' +
         '<span style="min-width:0;"><span class="tv2-rowname">' + esc(shortName(d.label)) + '</span>' +
-        '<span class="tv2-rowsub">' + esc(subName(d.label)) + ' · ' + d.exercises.length + ' exercises' +
-        (pr.done && !done ? ' · ' + pr.done + '/' + pr.total + ' logged' : '') + '</span></span>' +
+        '<span class="tv2-rowsub">' + esc(subName(d.label)) + ' · ' + tv2Day(V.phase, i).exercises.length + ' exercises' +
+        (st.kind === 'open' && st.done ? ' · ' + st.done + '/' + st.total + ' logged' : '') +
+        (st.kind === 'complete' && st.sid > 1 && !st.restored ? ' · session ' + st.sid : '') + '</span></span>' +
         state + '</button>';
     }).join('');
 
@@ -8190,6 +8390,8 @@ function sw3Use(i) {
         '" onclick="tv2Phase(' + n + ')">P' + n + (lock ? ' 🔒' : '') + '</button>';
     }).join('');
 
+    var cta = nst.kind === 'open' ? 'Continue workout' : (nst.kind === 'complete' ? 'Start this workout again' : 'Start workout');
+    var ctaFn = nst.kind === 'complete' ? 'tv2StartAgain(' + ni + ')' : 'tv2Open(' + ni + ')';
     q('tv2-home').innerHTML =
       '<div class="tv2-top"><h1 class="tv2-h1">Training</h1>' +
         '<span class="tv2-wk">W' + (w.week < 10 ? '0' : '') + w.week + ' of ' + w.total + '</span></div>' +
@@ -8199,12 +8401,12 @@ function sw3Use(i) {
       '<div class="tv2-next">' +
         '<div class="tv2-eyebrow">Next session</div>' +
         '<h2 class="tv2-h2">' + esc(shortName(nd.label)) + '</h2>' +
-        '<div class="tv2-sub">' + esc(subName(nd.label) || esc(nd.badge || '')) + '</div>' +
+        '<div class="tv2-sub">' + esc(subName(nd.label) || esc(nd.badge || '')) +
+          (nst.kind === 'complete' ? ' · last done ' + esc(fmtDate(nst.at)) : '') + '</div>' +
         '<div class="tv2-facts"><span>' + nd.exercises.length + ' exercises</span>' +
           (est.known ? '<span>~' + est.min + ' min</span>' : '') +
           (eff ? '<span>' + esc(eff) + '</span>' : '') + '</div>' +
-        '<button class="tv2-cta" onclick="tv2Open(' + ni + ')">' +
-          (started ? 'Continue workout' : 'Start workout') + '</button>' +
+        '<button class="tv2-cta" onclick="' + ctaFn + '">' + cta + '</button>' +
       '</div>' +
       '<span class="tv2-sec">This phase</span>' + rows +
       '<button class="tv2-link" onclick="tv2Guide()">Program Guide<span>›</span></button>' +
@@ -8258,16 +8460,16 @@ function sw3Use(i) {
   }
 
   function activeCard(ex, idx) {
-    var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e), n = presSets(ex);
-    var snap = V.prev && V.prev[ex.name];
+    var s = curSession(), sl = slFor(s, ex.name), n = presSets(ex);
+    var prev = prevActual(V.phase, V.day, ex.name);
     var rows = '';
     for (var i = 0; i < Math.max(n, sl.length); i++) rows += setRow(i, ex, sl, n);
     var has = false; try { has = !!(howTos && howTos[ex.name]); } catch (e2) {}
     return '<div class="tv2-ex' + (V.edit >= 0 ? ' editing' : '') + '">' +
       '<div class="tv2-eyebrow">' + (V.edit >= 0 ? 'Editing logged set' : 'Active exercise') + '</div>' +
       '<h3 class="tv2-exname">' + esc(ex.name) + '</h3>' +
-      '<div class="tv2-pres">' + presLine(ex) + '</div>' +
-      (snap && snap.text ? '<div class="tv2-prev">Last logged · <b>' + esc(snap.text) + '</b></div>' : '') +
+      '<div class="tv2-pres">' + presLine(ex) + '</div>' + disclosure(ex) +
+      (prev && prev.text ? '<div class="tv2-prev">Last logged · <b>' + esc(prev.text) + '</b>' + (prev.when ? ' <span class="tv2-when">' + esc(fmtDate(prev.when)) + '</span>' : '') + '</div>' : '') +
       '<div class="tv2-slhead"><span>Set</span><span>Weight</span><span>Reps</span><span>Log</span></div>' +
       rows +
       (has ? '<button class="tv2-howto" onclick="tv2How(' + idx + ')">How to – ' + esc(ex.name) + ' →</button>' : '') +
@@ -8275,19 +8477,22 @@ function sw3Use(i) {
   }
 
   function renderWorkout() {
-    var d = P().days[V.day], pr = dayProgress(V.phase, V.day);
-    if (pr.total && pr.done >= pr.total) { return renderDone(); }
-    if (V.active >= d.exercises.length || !d.exercises[V.active]) V.active = 0;
+    var s = curSession();
+    if (s && s.status !== 'open') { return renderDone(s); }          /* history is read-only */
+    var d = tv2Day(V.phase, V.day), exs = dayExs(), pr = s ? progressIn(s) : { done: 0, total: exs.length };
+    if (s && pr.total && pr.done >= pr.total) { return renderDone(s); }
+    if (V.active >= exs.length || !exs[V.active]) V.active = 0;
 
     var doneRows = '', upRows = '', act = '';
-    d.exercises.forEach(function (ex, i) {
+    exs.forEach(function (ex, i) {
       if (i === V.active) { act = activeCard(ex, i); return; }
-      var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e);
-      if (exDone(V.phase, V.day, ex)) {
-        var s = sl.length ? summarise(sl) : { sets: (e && e.sets) || '', weight: (e && e.weight) || '' };
+      var sl = slFor(s, ex.name);
+      if (s && exDoneIn(s, ex)) {
+        var en = s.entries[ex.name];
+        var sm = sl.length ? summarise(sl) : { sets: (en && en.sets) || '', weight: (en && en.weight) || '' };
         doneRows += '<button class="tv2-done-row" onclick="tv2Go(' + i + ')">' +
           '<span class="tv2-bullet done"></span><span class="n">' + esc(ex.name) + '</span>' +
-          '<span class="v">' + esc(s.sets) + ' sets' + (s.weight ? ' · ' + esc(s.weight) : '') + '</span></button>';
+          '<span class="v">' + esc(sm.sets) + ' sets' + (sm.weight ? ' · ' + esc(sm.weight) : '') + '</span></button>';
       } else {
         var h2 = false; try { h2 = !!(howTos && howTos[ex.name]); } catch (e3) {}
         upRows += '<div class="tv2-up">' +
@@ -8298,6 +8503,9 @@ function sw3Use(i) {
           (h2 ? '<button class="tv2-uphow" onclick="tv2How(' + i + ')">How to</button>' : '') + '</div>';
       }
     });
+    var lastDone = !s ? lastSession(V.phase, V.day) : null;
+    var note = (!s && lastDone) ? '<div class="tv2-again">Session ' + nextSid(V.phase, V.day) + ' · last done ' + esc(fmtDate(lastDone.completedAt || lastDone.startedAt)) + ' · nothing is recorded until you log a set</div>' : '';
+    var abandon = (s && pr.done > 0) ? '<button class="tv2-restart" onclick="tv2StartAgain(' + V.day + ')">Start this workout again</button>' : '';
 
     q('tv2-workout').innerHTML =
       '<div class="tv2-whead"><div class="tv2-whead-row">' +
@@ -8305,9 +8513,9 @@ function sw3Use(i) {
         '<h2 class="tv2-wtitle">' + esc(shortName(d.label)) + '</h2>' +
         '<span class="tv2-count">' + pr.done + ' / ' + pr.total + ' done</span></div>' +
         '<div class="tv2-bar"><i style="width:' + (pr.total ? Math.round(pr.done / pr.total * 100) : 0) + '%"></i></div>' +
-      '</div>' +
+      '</div>' + note +
       doneRows + act +
-      (upRows ? '<span class="tv2-sec">Upcoming exercises</span>' + upRows : '');
+      (upRows ? '<span class="tv2-sec">Upcoming exercises</span>' + upRows : '') + abandon;
   }
 
   // =============================================== SET LOGGING ACTIONS
@@ -8335,18 +8543,28 @@ function sw3Use(i) {
     var el = q('tv2-r' + i);
     if (el) { el.focus(); el.style.borderColor = '#c2431b'; setTimeout(function () { el.style.borderColor = ''; }, 900); }
   }
+  /* Logging a set is the ONLY action that creates an occurrence. A completed
+     or historical session is never written. */
   window.tv2LogSet = function (i) {
-    var d = P().days[V.day], ex = d.exercises[V.active];
+    if (!liveMode()) return;
+    var exs = dayExs(), ex = exs[V.active]; if (!ex) return;
     var v = readRow(i);
     if (badReps(v.r)) { nudge(i); return; }
-    var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e).slice();
+    var s = openSession(V.phase, V.day);
+    if (!s) { s = createSession(V.phase, V.day); if (!s) return; V.sid = s.sid; V.fresh = false; exs = s.exs; ex = exs[V.active] || ex; }
+    var sl = slFor(s, ex.name).slice();
     sl[i] = { w: v.w, r: v.r, rir: v.rir, ts: new Date().toISOString() };
     for (var k = 0; k < sl.length; k++) if (!sl[k]) sl[k] = { w: '', r: '', ts: '' };
     delete V.rir[i];
-    writeLocal(V.phase, V.day, ex.name, sl);
+    writeLocal(V.phase, V.day, ex.name, sl, false);
+    writeSession(s, ex.name, sl, false);
     var n = presSets(ex), complete = sl.length >= n;
-    if (complete) { flushCloud(V.phase, V.day, ex.name); tv2RestStop(); advance(); }
-    else {
+    if (complete) {
+      if (flushCloud(V.phase, V.day, ex.name)) { s.entries[ex.name].flushed = true; }
+      if (sessionComplete(s)) { s.status = 'complete'; s.completedAt = nowIso(); }
+      putSession(V.phase, V.day, s);
+      tv2RestStop(); advance();
+    } else {
       var r = parseRest(ex.rest);
       if (r.sec != null) restStart(r.sec, 'Prescribed ' + r.label, sl.length + 1);
       else { tv2RestStop(); }
@@ -8354,53 +8572,58 @@ function sw3Use(i) {
     show(V.view === 'workout' ? 'workout' : V.view);
   };
   window.tv2EditSet = function (i) {
+    if (!liveMode()) return;
     V.edit = i;
     try {
-      var ex0 = P().days[V.day].exercises[V.active];
-      var sl0 = setsOf(entryFor(V.phase, V.day, ex0.name));
+      var ex0 = dayExs()[V.active];
+      var sl0 = slFor(curSession(), ex0.name);
       if (sl0[i] && sl0[i].rir) V.rir[i] = String(sl0[i].rir); else delete V.rir[i];
     } catch (e) {}
     show('workout');
     setTimeout(function () { var el = q('tv2-r' + i); if (el) el.focus(); }, 30); };
   window.tv2SaveSet = function (i) {
-    var d = P().days[V.day], ex = d.exercises[V.active], v = readRow(i);
+    if (!liveMode()) return;
+    var s = openSession(V.phase, V.day); if (!s) { V.edit = -1; show('workout'); return; }
+    var ex = s.exs[V.active], v = readRow(i);
     if (badReps(v.r)) { nudge(i); return; }
-    var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e).slice();
+    var sl = slFor(s, ex.name).slice();
     if (!sl[i]) { V.edit = -1; show('workout'); return; }
     sl[i] = { w: v.w, r: v.r, rir: v.rir, ts: sl[i].ts || new Date().toISOString(),
               edited: new Date().toISOString() };
     delete V.rir[i];
-    writeLocal(V.phase, V.day, ex.name, sl);
+    var wasFlushed = !!(s.entries[ex.name] && s.entries[ex.name].flushed);
+    writeLocal(V.phase, V.day, ex.name, sl, wasFlushed);
+    writeSession(s, ex.name, sl, wasFlushed);
     V.edit = -1;
-    if (sl.length >= presSets(ex)) flushCloud(V.phase, V.day, ex.name);
+    if (sl.length >= presSets(ex) && flushCloud(V.phase, V.day, ex.name)) { s.entries[ex.name].flushed = true; putSession(V.phase, V.day, s); }
     show('workout');
   };
-  window.tv2Go = function (i) { V.active = i; V.edit = -1; V.rir = {}; show('workout'); };
+  window.tv2Go = function (i) { if (!liveMode()) return; V.active = i; V.edit = -1; V.rir = {}; show('workout'); };
   function advance() {
-    var d = P().days[V.day];
-    for (var i = 0; i < d.exercises.length; i++) {
-      if (!exDone(V.phase, V.day, d.exercises[i])) { V.active = i; V.edit = -1; V.rir = {}; return; }
+    var s = openSession(V.phase, V.day), exs = dayExs();
+    for (var i = 0; i < exs.length; i++) {
+      if (!(s && exDoneIn(s, exs[i]))) { V.active = i; V.edit = -1; V.rir = {}; return; }
     }
     V.edit = -1; V.rir = {};
   }
 
   // ==================================================== SESSION SUMMARY
-  /* Every number here is read back out of the logs. The session window is
-     derived from the set timestamps themselves - the run of sets ending at
-     the most recent one with no gap longer than two hours - so it survives a
-     reload. Anything that cannot be derived is not shown. */
-  function sessionStats() {
-    var d = P().days[V.day], ts = [], sets = 0, vol = 0, volOk = true, per = [];
-    d.exercises.forEach(function (ex) {
-      var e = entryFor(V.phase, V.day, ex.name), sl = setsOf(e);
-      var count = sl.length ? sl.length : (e ? (parseInt(e.sets, 10) || 0) : 0);
+  /* Every number here is read back out of the occurrence's own record. The
+     session window is derived from the set timestamps themselves - the run of
+     sets ending at the most recent one with no gap longer than two hours - so
+     it survives a reload. Anything that cannot be derived is not shown. */
+  function sessionStats(s) {
+    var ts = [], sets = 0, vol = 0, volOk = true, per = [];
+    s.exs.forEach(function (ex) {
+      var en = s.entries[ex.name], sl = slFor(s, ex.name);
+      var count = sl.length ? sl.length : (en ? (parseInt(en.sets, 10) || 0) : 0);
       sets += count;
-      per.push({ name: ex.name, sets: count, done: exDone(V.phase, V.day, ex) });
-      if (!sl.length) { if (e) volOk = false; return; }
-      sl.forEach(function (s) {
-        if (s.ts) ts.push(new Date(s.ts).getTime());
-        var wm = String(s.w || '').match(/^(\d+(?:\.\d+)?)\s*kg$/i);
-        var rn = parseInt(s.r, 10);
+      per.push({ name: ex.name, rx: ex, sets: count, done: exDoneIn(s, ex), actual: sl.length ? fmtSets(sl) : (en ? ((en.weight ? en.weight + ' × ' : '') + (en.reps || '')) : '') });
+      if (!sl.length) { if (en) volOk = false; return; }
+      sl.forEach(function (x) {
+        if (x.ts) ts.push(new Date(x.ts).getTime());
+        var wm = String(x.w || '').match(/^(\d+(?:\.\d+)?)\s*kg$/i);
+        var rn = parseInt(x.r, 10);
         if (wm && rn > 0) vol += parseFloat(wm[1]) * rn; else volOk = false;
       });
     });
@@ -8414,35 +8637,48 @@ function sw3Use(i) {
     return { sets: sets, mins: mins, vol: volOk && vol > 0 ? Math.round(vol) : null, per: per };
   }
 
-  function renderDone() {
-    var d = P().days[V.day], pr = dayProgress(V.phase, V.day), st = sessionStats();
+  /* Read-only view of one occurrence. Its prescription is the one frozen when
+     it was created - a later progression never rewrites it. */
+  function renderDone(s) {
+    var d = tv2Day(V.phase, V.day), pr = progressIn(s), st = sessionStats(s);
     var nextIdx = null, days = P().days;
-    for (var i = 0; i < days.length; i++) { var p2 = dayProgress(V.phase, i); if (p2.done < p2.total) { nextIdx = i; break; } }
+    for (var i = 0; i < days.length; i++) { var k = dayState(V.phase, i); if (i !== V.day && (k.kind === 'open' || k.kind === 'never' || k.kind === 'partial')) { nextIdx = i; break; } }
+    var complete = s.status === 'complete';
     var tiles = '';
     if (st.mins != null) tiles += '<div class="tv2-tile"><span class="tv2-mono">Duration</span><b>' + st.mins + ' min</b></div>';
     tiles += '<div class="tv2-tile"><span class="tv2-mono">Sets logged</span><b>' + st.sets + '</b></div>';
     tiles += '<div class="tv2-tile"><span class="tv2-mono">Exercises</span><b>' + pr.done + ' / ' + pr.total + '</b></div>';
     if (st.vol != null) tiles += '<div class="tv2-tile"><span class="tv2-mono">Volume</span><b>' + st.vol + ' kg</b></div>';
+    var when = s.completedAt || s.startedAt;
+    var others = sessionsOf(V.phase, V.day).filter(function (x) { return x.sid !== s.sid; });
+    var hist = others.length ? '<span class="tv2-sec">Other sessions</span>' + others.slice().reverse().map(function (x) {
+        return '<button class="tv2-link" onclick="tv2OpenSession(' + V.day + ',' + x.sid + ')">' + (x.restored ? 'Session · ' + esc(fmtDate(x.completedAt || x.startedAt)) + ' (restored)' : 'Session ' + x.sid + ' · ' + esc(fmtDate(x.completedAt || x.startedAt))) +
+          '<span>' + (x.status === 'complete' ? '✓' : x.status === 'open' ? '…' : '–') + '</span></button>';
+      }).join('') : '';
+    var restoredNote = sessionsOf(V.phase, V.day).some(function (x) { return x.restored; }) ? '<div class="tv2-pres" style="margin-top:.6rem;">Sessions marked restored were rebuilt from the cloud on this device; earlier sessions may not be shown.</div>' : '';
 
     q('tv2-done').innerHTML =
       '<div class="tv2-whead"><div class="tv2-whead-row">' +
         '<button class="tv2-back" onclick="tv2Home()" aria-label="Back to Training">‹</button>' +
-        '<h2 class="tv2-wtitle">Session ended</h2>' +
+        '<h2 class="tv2-wtitle">' + (complete ? 'Session ended' : s.status === 'open' ? 'In progress' : 'Not finished') + '</h2>' +
         '<span class="tv2-count">' + pr.done + ' / ' + pr.total + ' done</span></div></div>' +
-      '<div class="tv2-donewrap"><div class="tv2-check">✓</div>' +
-        '<h1 class="tv2-doneh">Workout complete</h1>' +
-        '<div class="tv2-sub" style="margin-top:.4rem;">' + esc(shortName(d.label)) + '</div></div>' +
+      '<div class="tv2-donewrap"><div class="tv2-check">' + (complete ? '✓' : '–') + '</div>' +
+        '<h1 class="tv2-doneh">' + (complete ? 'Workout complete' : 'Workout not finished') + '</h1>' +
+        '<div class="tv2-sub" style="margin-top:.4rem;">' + esc(shortName(d.label)) + ' · ' + (s.restored ? 'restored' : 'session ' + s.sid) + (when ? ' · ' + esc(fmtDate(when)) : '') + '</div></div>' +
       '<div class="tv2-tiles">' + tiles + '</div>' +
       '<span class="tv2-sec">This session</span>' +
       st.per.map(function (x) {
         return '<div class="tv2-sum"><span class="tv2-bullet' + (x.done ? ' done' : '') + '"></span>' +
-          '<span class="n">' + esc(x.name) + '</span>' +
+          '<span class="n">' + esc(x.name) + '<div class="tv2-sumrx">Rx ' + presSets(x.rx) + ' × ' + esc(x.rx.reps) + (String(x.rx.weight || '').trim() ? ' · ' + esc(x.rx.weight) : '') + (x.actual ? ' · did ' + esc(x.actual) : '') + '</div></span>' +
           '<span class="v">' + x.sets + ' set' + (x.sets === 1 ? '' : 's') + '</span></div>';
       }).join('') +
       (st.mins == null ? '<div class="tv2-pres" style="margin-top:1rem;">Duration is shown only when at least two sets carry timestamps from this session.</div>' : '') +
+      restoredNote +
       '<button class="tv2-cta" style="margin-top:1.6rem;" onclick="tv2Home()">Done</button>' +
       (nextIdx != null ? '<button class="tv2-link" onclick="tv2Open(' + nextIdx + ')">Next: ' +
-        esc(shortName(days[nextIdx].label)) + '<span>›</span></button>' : '');
+        esc(shortName(days[nextIdx].label)) + '<span>›</span></button>' : '') +
+      (s.status !== 'open' ? '<button class="tv2-link" onclick="tv2StartAgain(' + V.day + ')">Start this workout again<span>›</span></button>' : '') +
+      hist;
   }
 
   // ============================================================== GUIDE
@@ -8518,33 +8754,71 @@ function sw3Use(i) {
           }).join('') + '</div></div>';
       }).join('');
   }
-
   // ============================================================ ROUTING
+  function trainingActive() { try { return !!(document.getElementById('section-training') && document.getElementById('section-training').classList.contains('active')); } catch (e) { return false; } }
+  function typingNow() {
+    if (V.edit >= 0) return true;
+    try {
+      var a = document.activeElement;
+      if (a && a.classList && a.classList.contains('tv2-in')) return true;
+      var row = document.querySelector('#tv2-workout .tv2-set.now');
+      if (row) { var ins = row.querySelectorAll('.tv2-in'); for (var i = 0; i < ins.length; i++) if (String(ins[i].value || '').trim() && !ins[i].readOnly) return true; }
+    } catch (e) {}
+    return false;
+  }
   function show(v) {
-    V.view = v;
+    V.view = v; V.dirty = false;
     ['home', 'workout', 'guide', 'prog', 'done'].forEach(function (k) {
       var el = q('tv2-' + k); if (el) el.hidden = (k !== v);
     });
     if (v === 'home') renderHome();
-    if (v === 'workout') renderWorkout();
+    if (v === 'workout') {
+      var s = curSession();
+      if (s && (s.status !== 'open' || progressIn(s).done >= progressIn(s).total)) {
+        /* a finished occurrence is shown as its summary, never as an empty sheet */
+        q('tv2-workout').hidden = true; q('tv2-done').hidden = false; V.view = 'done'; renderDone(s);
+      } else renderWorkout();
+    }
     if (v === 'guide') renderGuide();
     if (v === 'prog') renderProg();
-    if (v === 'done') renderDone();
+    if (v === 'done') { var s2 = curSession(); if (s2) renderDone(s2); else { V.view = 'workout'; q('tv2-done').hidden = true; q('tv2-workout').hidden = false; renderWorkout(); } }
     restPad();
-    if (v === 'workout') { try { setTimeout(window.tv2ClearLiveRow, 20); } catch (e) {} }
+    if (V.view === 'workout') { try { setTimeout(window.tv2ClearLiveRow, 20); } catch (e) {} }
   }
   function top() { try { window.scrollTo(0, 0); } catch (e) {} }
 
-  window.tv2Home = function () { flushAll(); V.edit = -1; V.rir = {}; show('home'); top(); };
+  window.tv2Home = function () { flushAll(); V.edit = -1; V.rir = {}; V.sid = null; V.fresh = false; show('home'); top(); };
+  /* Opening a day never creates an occurrence: an open one resumes, a finished
+     one shows its summary, a day never done shows the fresh sheet. */
   window.tv2Open = function (i) {
-    V.day = i; V.edit = -1; V.rir = {};
-    var d = P().days[i];
-    V.prev = snapshot(V.phase, i, d);
+    V.day = i; V.edit = -1; V.rir = {}; V.fresh = false;
+    var o = openSession(V.phase, i), l = lastSession(V.phase, i);
+    V.sid = o ? o.sid : (l ? l.sid : null);
     V.active = 0;
-    for (var k = 0; k < d.exercises.length; k++) { if (!exDone(V.phase, i, d.exercises[k])) { V.active = k; break; } }
-    var pr = dayProgress(V.phase, i);
-    show(pr.total && pr.done >= pr.total ? 'done' : 'workout');
+    if (o) { for (var k = 0; k < o.exs.length; k++) { if (!exDoneIn(o, o.exs[k])) { V.active = k; break; } } }
+    show(o ? 'workout' : (l ? 'done' : 'workout'));
     top();
+  };
+  /* View one specific occurrence (read-only unless it is the open one). */
+  window.tv2OpenSession = function (i, sid) {
+    V.day = i; V.edit = -1; V.rir = {}; V.fresh = false; V.sid = sid; V.active = 0;
+    var s = findSession(V.phase, i, sid); if (!s) { tv2Open(i); return; }
+    show(s.status === 'open' ? 'workout' : 'done'); top();
+  };
+  /* The explicit action that makes the next occurrence available. It creates
+     nothing: the fresh sheet becomes session N+1 only when a set is logged.
+     An open occurrence with logged work is closed as 'abandoned' first (never
+     deleted, never re-sent); a completed one is untouched. */
+  window.tv2StartAgain = function (i) {
+    V.day = i;
+    var o = openSession(V.phase, i);
+    if (o) {
+      if (progressIn(o).done === 0 && !Object.keys(o.entries).length) { /* nothing logged: just keep using it */ }
+      else { if (!window.confirm('Start this workout again? The ' + progressIn(o).done + ' exercise(s) already logged stay on record as an unfinished session.')) return;
+             flushAll(); o.status = 'abandoned'; putSession(V.phase, i, o); }
+    }
+    V.sid = null; V.fresh = true; V.edit = -1; V.rir = {}; V.active = 0;
+    show('workout'); top();
   };
   window.tv2Guide = function () { show('guide'); top(); };
   window.tv2Prog = function () { show('prog'); top(); };
@@ -8554,7 +8828,7 @@ function sw3Use(i) {
       return;
     }
     flushAll();
-    V.phase = String(n); V.day = 0; V.edit = -1; V.rir = {}; show('home'); top();
+    V.phase = String(n); V.day = 0; V.edit = -1; V.rir = {}; V.sid = null; V.fresh = false; show('home'); top();
   };
   window.tv2Acc = function (i) {
     var b = q('tv2-acc-' + i), ic = q('tv2-acc-i' + i);
@@ -8563,13 +8837,36 @@ function sw3Use(i) {
     if (ic) ic.textContent = b.hidden ? '+' : '–';
   };
   window.tv2How = function (i) {
-    var ex = P().days[V.day].exercises[i];
+    var ex = dayExs()[i]; if (!ex) return;
     q('tv2-sheet-title').textContent = ex.name;
     q('tv2-sheet-body').textContent = (howTos && howTos[ex.name]) || '';
     q('tv2-sheet').classList.add('open');
   };
   window.tv2CloseSheet = function () { q('tv2-sheet').classList.remove('open'); };
   window.tv2Refresh = function () { if (V.view) show(V.view); };
+
+  /* TV2-LIFECYCLE-V1: repaint when an override arrives - but never over a row
+     the client is typing into. A change that lands mid-typing is applied at
+     the next navigation. The open occurrence keeps its frozen prescription
+     regardless; this only affects Home and fresh sheets. */
+  var _origPull = window.pullOverrides;
+  if (typeof _origPull === 'function') {
+    window.pullOverrides = function () {
+      var before = ''; try { before = JSON.stringify(loadOverrides()); } catch (e) {}
+      var r = _origPull.apply(this, arguments);
+      var after = function () {
+        try {
+          var now = JSON.stringify(loadOverrides());
+          if (now === before) return;
+          if (!V.phase || !trainingActive()) { V.dirty = true; return; }
+          if (typingNow()) { V.dirty = true; return; }
+          show(V.view);
+        } catch (e2) {}
+      };
+      if (r && typeof r.then === 'function') r.then(after, after); else after();
+      return r;
+    };
+  }
 
   /* After the shell's own submitCode unlocks a phase, follow it. */
   var _origCode = window.submitCode;
@@ -8604,6 +8901,7 @@ function sw3Use(i) {
 
   function boot() {
     if (typeof phases === 'undefined') return;
+    try { ledgerSync(); } catch (e) {}
     V.phase = String((typeof currentPhase !== 'undefined' && phases[currentPhase])
       ? currentPhase : Object.keys(phases)[0]);
     V.day = nextDayIdx(V.phase);
@@ -8613,11 +8911,22 @@ function sw3Use(i) {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 60); });
   } else { setTimeout(boot, 60); }
 
+  /* TV2-LIFECYCLE-V1: the shell's cloud restore repaints the legacy renderer
+     after merging server records; derive their sessions and repaint V2 too. */
+  var _origRT = window.renderTraining;
+  if (typeof _origRT === 'function') {
+    window.renderTraining = function () {
+      var r = _origRT.apply(this, arguments);
+      try { ledgerSync(); if (V.phase && trainingActive() && !typingNow()) show(V.view); else V.dirty = true; } catch (e) {}
+      return r;
+    };
+  }
+
   var _origShow = window.showSection;
   if (typeof _origShow === 'function') {
     window.showSection = function (id) {
       var r = _origShow.apply(this, arguments);
-      if (id === 'training') { try { if (!V.phase) boot(); else show(V.view === 'home' ? 'home' : V.view); } catch (e) {} }
+      if (id === 'training') { try { ledgerSync(); } catch (e0) {} try { if (!V.phase) boot(); else show(V.view === 'home' ? 'home' : V.view); } catch (e) {} }
       else { try { flushAll(); } catch (e) {} }
       return r;
     };
