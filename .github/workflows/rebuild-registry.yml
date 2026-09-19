@@ -6,6 +6,7 @@ on:
     paths:
       - 'clients/**'
       - 'scripts/rebuild_registry.py'
+      - 'scripts/check_client_db_rows.py'
       - '.github/workflows/rebuild-registry.yml'
 
 permissions:
@@ -74,3 +75,14 @@ jobs:
           git add clients_registry.json
           git commit -m "chore(registry): auto-rebuild clients_registry.json [skip ci]"
           git push
+
+      # Deliberately last: a missing DB row must never block the registry
+      # itself from staying current for every other client. This step only
+      # makes THIS run show failed, as a loud, immediate signal at push time
+      # instead of a bare "unknown_client" the next time someone tries to
+      # generate that client's access link.
+      - name: Every live client shell has a database row
+        env:
+          SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scripts/check_client_db_rows.py
