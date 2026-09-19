@@ -2458,6 +2458,11 @@
 .tv2-restart{display:block;width:100%;margin-top:1.2rem;background:transparent;border:1px solid var(--tv2-line2);border-radius:12px;padding:.8rem;color:var(--tv2-muted);font-size:12.5px;cursor:pointer;}
 .tv2-when{color:var(--tv2-dim);font-weight:400;}
 .tv2-sumrx{font-size:11px;color:var(--tv2-muted);margin-top:.15rem;font-weight:400;}
+/* TV2-NAV-V1 */
+.tv2-hist{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--tv2-surface2);border:1px solid var(--tv2-line2);border-radius:12px;padding:.75rem .85rem;margin:.5rem 0 .9rem;color:var(--tv2-text);font-size:12.5px;cursor:pointer;text-align:left;}
+.tv2-hist span{color:var(--tv2-accent);font-weight:700;font-size:12px;white-space:nowrap;margin-left:.6rem;}
+.tv2-cta-top{margin-top:.9rem;margin-bottom:.4rem;}
+.tv2-phases-top{margin-top:.9rem;padding-right:0;}
 </style>
 </head>
 
@@ -7859,7 +7864,7 @@ function sw3Use(i) {
 
 <script id="tv2-js">
 /* Training V2 / Concept D - presentation + a per-set logger that writes
-   through the shell's own contract. Fleet lifecycle build (TV2-LIFECYCLE-V1):
+   through the shell's own contract. Fleet lifecycle build (TV2-LIFECYCLE-V1 + TV2-NAV-V1):
    an additive, V2-only SESSION LEDGER (<key>_workout_sessions) gives each
    programmed day a sequence of occurrences, and every prescription surface
    resolves through the shell's own getDayExercises(). The latest-record store,
@@ -8416,7 +8421,7 @@ function sw3Use(i) {
       var state, bullet = '';
       if (st.kind === 'open') { state = '<span class="tv2-state now">In progress</span>'; bullet = 'now'; }
       else if (st.kind === 'complete') { state = '<span class="tv2-state done">Completed · ' + esc(fmtDate(st.at)) + '</span>'; bullet = 'done'; }
-      else if (st.kind === 'partial') { state = '<span class="tv2-state">Not finished · ' + esc(fmtDate(st.at)) + '</span>'; bullet = now ? 'now' : ''; }
+      else if (st.kind === 'partial') { state = '<span class="tv2-state">Not finished · ' + esc(fmtDate(st.at)) + ' · tap to start</span>'; bullet = now ? 'now' : ''; }
       else state = now ? '<span class="tv2-state now">Up next</span>' : '<span class="tv2-state">' + (isOptional(d) ? 'Optional' : 'Upcoming') + '</span>';
       if (now && st.kind === 'never') bullet = 'now';
       return '<button class="tv2-row' + (now && st.kind !== 'complete' ? ' is-next' : '') + '" onclick="tv2Open(' + i + ')">' +
@@ -8434,14 +8439,18 @@ function sw3Use(i) {
         '" onclick="tv2Phase(' + n + ')">P' + n + (lock ? ' 🔒' : '') + '</button>';
     }).join('');
 
-    var cta = nst.kind === 'open' ? 'Continue workout' : (nst.kind === 'complete' ? 'Start this workout again' : 'Start workout');
-    var ctaFn = nst.kind === 'complete' ? 'tv2StartAgain(' + ni + ')' : 'tv2Open(' + ni + ')';
+    /* TV2-NAV-V1: the button says what tv2Open will do - resume the open
+       occurrence, or open the fresh sheet for the next one. */
+    var cta = nst.kind === 'open' ? 'Continue workout' : 'Start workout';
+    var ctaFn = 'tv2Open(' + ni + ')';
+    var anyOpen = p.days.some(function (d, i) { return dayState(V.phase, i).kind === 'open'; });
     q('tv2-home').innerHTML =
       '<div class="tv2-top"><h1 class="tv2-h1">Training</h1>' +
         '<span class="tv2-wk">W' + (w.week < 10 ? '0' : '') + w.week + ' of ' + w.total + '</span></div>' +
       '<div class="tv2-phaseline"><span class="tv2-phasename">Phase ' + V.phase + ' · ' + esc(p.label) + '</span>' +
         '<span class="tv2-pct">' + pct + '% through program</span></div>' +
       '<div class="tv2-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="tv2-phases tv2-phases-top">' + chips + '</div>' +
       '<div class="tv2-next">' +
         '<div class="tv2-eyebrow">Next session</div>' +
         '<h2 class="tv2-h2">' + esc(shortName(nd.label)) + '</h2>' +
@@ -8451,6 +8460,7 @@ function sw3Use(i) {
           (est.known ? '<span>~' + est.min + ' min</span>' : '') +
           (eff ? '<span>' + esc(eff) + '</span>' : '') + '</div>' +
         '<button class="tv2-cta" onclick="' + ctaFn + '">' + cta + '</button>' +
+        (anyOpen ? '<div class="tv2-again" style="margin:.6rem 0 0;">Want a different day? Tap it below.</div>' : '') +
       '</div>' +
       '<span class="tv2-sec">This phase</span>' + rows +
       '<button class="tv2-link" onclick="tv2Guide()">Program Guide<span>›</span></button>' +
@@ -8548,7 +8558,9 @@ function sw3Use(i) {
       }
     });
     var lastDone = !s ? lastSession(V.phase, V.day) : null;
-    var note = (!s && lastDone) ? '<div class="tv2-again">Session ' + nextSid(V.phase, V.day) + ' · last done ' + esc(fmtDate(lastDone.completedAt || lastDone.startedAt)) + ' · nothing is recorded until you log a set</div>' : '';
+    var note = (!s && lastDone) ? '<div class="tv2-again">New session · nothing is recorded until you log a set</div>' +
+      '<button class="tv2-hist" onclick="tv2OpenSession(' + V.day + ',' + lastDone.sid + ')">Last session · ' + esc(fmtDate(lastDone.completedAt || lastDone.startedAt)) + ' · ' +
+        (lastDone.status === 'complete' ? 'completed' : 'not finished') + '<span>View ›</span></button>' : '';
     var abandon = (s && pr.done > 0) ? '<button class="tv2-restart" onclick="tv2StartAgain(' + V.day + ')">Start this workout again</button>' : '';
 
     q('tv2-workout').innerHTML =
@@ -8706,6 +8718,7 @@ function sw3Use(i) {
         '<button class="tv2-back" onclick="tv2Home()" aria-label="Back to Training">‹</button>' +
         '<h2 class="tv2-wtitle">' + (complete ? 'Session ended' : s.status === 'open' ? 'In progress' : 'Not finished') + '</h2>' +
         '<span class="tv2-count">' + pr.done + ' / ' + pr.total + ' done</span></div></div>' +
+      (s.status !== 'open' ? '<button class="tv2-cta tv2-cta-top" onclick="tv2StartAgain(' + V.day + ')">Start this workout again</button>' : '') +
       '<div class="tv2-donewrap"><div class="tv2-check">' + (complete ? '✓' : '–') + '</div>' +
         '<h1 class="tv2-doneh">' + (complete ? 'Workout complete' : 'Workout not finished') + '</h1>' +
         '<div class="tv2-sub" style="margin-top:.4rem;">' + esc(shortName(d.label)) + ' · ' + (s.restored ? 'restored' : 'session ' + s.sid) + (when ? ' · ' + esc(fmtDate(when)) : '') + '</div></div>' +
@@ -8714,14 +8727,15 @@ function sw3Use(i) {
       st.per.map(function (x) {
         return '<div class="tv2-sum"><span class="tv2-bullet' + (x.done ? ' done' : '') + '"></span>' +
           '<span class="n">' + esc(x.name) + '<div class="tv2-sumrx">Rx ' + presSets(x.rx) + ' × ' + esc(x.rx.reps) + (String(x.rx.weight || '').trim() ? ' · ' + esc(x.rx.weight) : '') + (x.actual ? ' · did ' + esc(x.actual) : '') + '</div></span>' +
-          '<span class="v">' + x.sets + ' set' + (x.sets === 1 ? '' : 's') + '</span></div>';
+          '<span class="v">' + (x.sets ? x.sets + ' set' + (x.sets === 1 ? '' : 's') : 'not logged') + '</span></div>';
       }).join('') +
       (st.mins == null ? '<div class="tv2-pres" style="margin-top:1rem;">Duration is shown only when at least two sets carry timestamps from this session.</div>' : '') +
       restoredNote +
-      '<button class="tv2-cta" style="margin-top:1.6rem;" onclick="tv2Home()">Done</button>' +
+      (s.status !== 'open' ? '<button class="tv2-cta" style="margin-top:1.6rem;" onclick="tv2StartAgain(' + V.day + ')">Start this workout again</button>' +
+        '<button class="tv2-link" onclick="tv2Home()">Back to Training<span>›</span></button>' :
+        '<button class="tv2-cta" style="margin-top:1.6rem;" onclick="tv2Home()">Back to Training</button>') +
       (nextIdx != null ? '<button class="tv2-link" onclick="tv2Open(' + nextIdx + ')">Next: ' +
         esc(shortName(days[nextIdx].label)) + '<span>›</span></button>' : '') +
-      (s.status !== 'open' ? '<button class="tv2-link" onclick="tv2StartAgain(' + V.day + ')">Start this workout again<span>›</span></button>' : '') +
       hist;
   }
 
@@ -8834,13 +8848,17 @@ function sw3Use(i) {
   window.tv2Home = function () { flushAll(); V.edit = -1; V.rir = {}; V.sid = null; V.fresh = false; show('home'); top(); };
   /* Opening a day never creates an occurrence: an open one resumes, a finished
      one shows its summary, a day never done shows the fresh sheet. */
+  /* TV2-NAV-V1: HISTORY != ACTIVE SESSION. Tapping a day resumes its open
+     occurrence if there is one; otherwise it opens the FRESH sheet for the next
+     occurrence (created only when a set is logged) - never the historical
+     summary, which stays one tap away via "View last session". */
   window.tv2Open = function (i) {
-    V.day = i; V.edit = -1; V.rir = {}; V.fresh = false;
-    var o = openSession(V.phase, i), l = lastSession(V.phase, i);
-    V.sid = o ? o.sid : (l ? l.sid : null);
+    V.day = i; V.edit = -1; V.rir = {};
+    var o = openSession(V.phase, i);
+    V.sid = o ? o.sid : null; V.fresh = !o;
     V.active = 0;
     if (o) { for (var k = 0; k < o.exs.length; k++) { if (!exDoneIn(o, o.exs[k])) { V.active = k; break; } } }
-    show(o ? 'workout' : (l ? 'done' : 'workout'));
+    show('workout');
     top();
   };
   /* View one specific occurrence (read-only unless it is the open one). */
@@ -8943,11 +8961,55 @@ function sw3Use(i) {
     };
   }
 
+  /* TV2-NAV-V1 phase resolver. Deterministic, local evidence only, never a
+     locked phase:
+       1. the highest unlocked phase with any session in the ledger (native or
+          restored from the cloud) is the client's established phase;
+       2. the most recently started OPEN occurrence decides the boot phase only
+          if its phase is unlocked and not lower than the established phase
+          (a mistaken lower-phase open occurrence is preserved, never booted
+          into by default);
+       3. otherwise the established phase;
+       4. the highest phase the client's canonical unlock state says they are
+          in: a code they entered, or a positive unlockAfterDays timer that has
+          elapsed (a 0-day timer is no schedule and is ignored here);
+       5. Phase 1. */
+  function resolvePhase() {
+    var keys = Object.keys(phases);
+    function ok(n) { return keys.indexOf(String(n)) >= 0 && !phaseLocked(n); }
+    var L; try { L = ledgerLoad(); } catch (e) { L = {}; }
+    var bestOpen = null, histPh = null;
+    Object.keys(L).forEach(function (k) {
+      var m = k.match(/^p([^.]+)\.d(\d+)$/); if (!m) return;
+      (L[k] || []).forEach(function (s) {
+        var at = Date.parse(s.completedAt || s.startedAt || '') || 0;
+        if (s.status === 'open' && (!bestOpen || at > bestOpen.at)) bestOpen = { ph: m[1], at: at };
+        if (ok(m[1]) && (histPh === null || Number(m[1]) > Number(histPh))) histPh = m[1];
+      });
+    });
+    /* An open occurrence decides the boot phase only when it is not BEHIND
+       the client's established phase: a mistaken lower-phase occurrence stays
+       untouched (resume it by selecting that phase) but never pulls the
+       default boot backwards. */
+    if (bestOpen && ok(bestOpen.ph) && (histPh === null || Number(bestOpen.ph) >= Number(histPh))) return String(bestOpen.ph);
+    if (histPh !== null) return String(histPh);
+    var codes = []; try { codes = (typeof getUnlocked === 'function') ? getUnlocked() : [1]; } catch (e) {}
+    var best = '1';
+    keys.forEach(function (n) {
+      if (String(n) === '1' || !ok(n)) return;
+      var byCode = codes.indexOf(Number(n)) >= 0, days = null;
+      try { days = (typeof TIMER_DAYS !== 'undefined' && TIMER_DAYS[n] != null) ? Number(TIMER_DAYS[n]) : null; } catch (e) {}
+      var byTimer = false; try { byTimer = days > 0 && typeof isTimerUnlocked === 'function' && isTimerUnlocked(Number(n)); } catch (e) {}
+      if ((byCode || byTimer) && Number(n) > Number(best)) best = String(n);
+    });
+    return best;
+  }
   function boot() {
     if (typeof phases === 'undefined') return;
     try { ledgerSync(); } catch (e) {}
-    V.phase = String((typeof currentPhase !== 'undefined' && phases[currentPhase])
-      ? currentPhase : Object.keys(phases)[0]);
+    var rp = null; try { rp = resolvePhase(); } catch (e) {}
+    V.phase = String((rp && phases[rp]) ? rp : ((typeof currentPhase !== 'undefined' && phases[currentPhase])
+      ? currentPhase : Object.keys(phases)[0]));
     V.day = nextDayIdx(V.phase);
     show('home');
   }
