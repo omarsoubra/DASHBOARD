@@ -4362,10 +4362,14 @@ function _lookupFood(name) {
   for (const f of FOOD_DB) {
     if (f.aliases.includes(n)) return f;
   }
-  // Substring match
+  // Substring match - QL-FIX-B: only for inputs long enough to be meaningful, and
+  // only "input contains alias".  The reverse direction (alias contains input) let a
+  // single letter resolve to an arbitrary row - every letter of 'chicken' matched
+  // FOOD_DB[0], so a one-character prefix scored 165 kcal / 31 g P.
+  if (n.length < 3) return null;
   for (const f of FOOD_DB) {
     for (const a of f.aliases) {
-      if (n.includes(a) || a.includes(n)) return f;
+      if (n.includes(a)) return f;
     }
   }
   return null;
@@ -7352,11 +7356,18 @@ function sw2Input() {
     try {
       var parsed = parseFoodEntry(desc);
       if (parsed && parsed.items && parsed.items.length && parsed.totals.kcal) {
-        if (!document.getElementById('sw-cal').value) document.getElementById('sw-cal').value = parsed.totals.kcal;
-        if (!document.getElementById('sw-p').value)   document.getElementById('sw-p').value   = parsed.totals.p;
+        /* QL-FIX-A: the parser may correct a value it wrote itself, but must never
+           overwrite one the client typed.  _sw2.auto remembers what we last wrote. */
+        var auto = _sw2.auto || (_sw2.auto = {});
+        var _sw2Put = function (id, v) {
+          var el = document.getElementById(id), s = String(v);
+          if (el.value === '' || el.value === auto[id]) { el.value = s; auto[id] = s; }
+        };
+        _sw2Put('sw-cal', parsed.totals.kcal);
+        _sw2Put('sw-p',   parsed.totals.p);
         if (_sw2.mode === 'full') {
-          if (!document.getElementById('sw-c').value) document.getElementById('sw-c').value = parsed.totals.c;
-          if (!document.getElementById('sw-f').value) document.getElementById('sw-f').value = parsed.totals.f;
+          _sw2Put('sw-c', parsed.totals.c);
+          _sw2Put('sw-f', parsed.totals.f);
         }
       }
     } catch (e) {}
@@ -7457,7 +7468,7 @@ function openSwapModal(week, dayIdx, mealIdx) {
   _swapCtx = { week: week, dayIdx: dayIdx, mealIdx: mealIdx };
   var meal = getMealDay(week, dayIdx)[mealIdx] || {};
   _sw2.target = { cal: meal.cal || 0, p: meal.p || 0, c: meal.c || 0, f: meal.f || 0 };
-  _sw2.pending = false; _sw2.last = null; _sw2.touched = false;
+  _sw2.pending = false; _sw2.last = null; _sw2.touched = false; _sw2.auto = {};
 
   document.getElementById('swap-modal-title').textContent = 'Swap meal';
   document.getElementById('sw2-orig').textContent = meal.name || 'this meal';
