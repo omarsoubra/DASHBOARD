@@ -3647,7 +3647,7 @@ const DASHBOARD_OWNED_FIELDS = Object.freeze([
   // access model — backend-enforced from Sprint 5 onwards
   'accessStatus', 'accessRevokedAt', 'accessRevokedReason', 'accessRestoredAt',
   // coach review state
-  'coachReviewHistory', 'lastMeaningfulCoachReview', 'checkInReviews',
+  'coachReviewHistory', 'lastMeaningfulCoachReview', 'checkInReviews', 'resolvedEpisodes',
   // coach actions / notes
   'nextCoachAction', 'nextCoachActionDue', 'coachNotes',
   // operational overrides — coach may edit these locally per-client
@@ -5121,6 +5121,12 @@ const CC = {
   ENGAGED_MIN_ACTIVITY_DAYS: 3, // ≥N logged days in last 7 = "engaged"
   DISENGAGED_MAX_ACTIVITY_DAYS: 1, // ≤N logged days in last 7 = "disengaged"
   REVIEW_HISTORY_CAP: 100,
+  RESOLVED_EPISODE_CAP: 200, // cap for client.resolvedEpisodes — same evict-oldest-by-ackedAt pattern as CHECKIN_REVIEW_CAP
+  // ATTN-EPISODE-V1: storageKey -> last-computed computeAttention() result,
+  // repopulated by every attention-aware render (renderCcAttention,
+  // renderCcWatch, renderCompactRoster). Lets openReviewModal freeze exactly
+  // what was on screen at open-time without a redundant recompute.
+  _attnByKey: {},
   REVIEW_OUTCOMES: [
     'no_change',
     'nutrition_adjusted',
@@ -5253,6 +5259,83 @@ function setNextAction(storageKey, action, dueIso) {
   renderCommandCentre();
 }
 
+// ── Resolved-episode acknowledgement (ATTN-EPISODE-V1) ──────────────────
+// Lets a coach clear a SPECIFIC attention episode from the Needs Attention /
+// Watch checklist without permanently silencing the underlying rule. Mirrors
+// the already-proven _ciReviewMeta / checkInReviews pattern exactly, just for
+// the rules that previously had no acknowledgeable state at all (disengaged,
+// check-in/weigh-in overdue, weight-trend, low-adherence, coach-task-overdue).
+//
+// Episode identity is built from STABLE signal identity (timestamps of the
+// client's own last check-in/weigh-in/activity, or the coach-task's own text
+// + due date) — never from elapsed-day counts. This is deliberate: "22 days
+// stale" becoming "23 days stale" must never look like a new episode, but a
+// genuinely new check-in/weigh-in/task arriving must.
+// Structure: client.resolvedEpisodes = { "<RULE>::<anchor>": { ackedAt, category, reviewTs } }
+// Capped at CC.RESOLVED_EPISODE_CAP, evicting oldest by ackedAt — same
+// convention as _writeCiReviewMetaInPlace's CHECKIN_REVIEW_CAP handling.
+function _episodeKey(ruleId, anchorParts) {
+  return ruleId + '::' + anchorParts.map(p => (p === null || p === undefined) ? '∅' : String(p)).join('|');
+}
+function _isEpisodeResolved(client, key) {
+  const map = client.resolvedEpisodes || {};
+  return !!map[key];
+}
+function _writeResolvedEpisodeInPlace(client, key, meta) {
+  client.resolvedEpisodes = client.resolvedEpisodes || {};
+  client.resolvedEpisodes[key] = meta;
+  const entries = Object.entries(client.resolvedEpisodes);
+  if (entries.length > CC.RESOLVED_EPISODE_CAP) {
+    entries.sort((a, b) => new Date(b[1].ackedAt) - new Date(a[1].ackedAt));
+    const kept = entries.slice(0, CC.RESOLVED_EPISODE_CAP);
+    client.resolvedEpisodes = Object.fromEntries(kept);
+    if (!(key in client.resolvedEpisodes)) client.resolvedEpisodes[key] = meta; // guarantee survival of the just-written entry
+  }
+}
+// Stable "last activity" anchor for the adherence rule — same derivation
+// style as the existing lastCheckInIso/lastWeighIso helpers below, just over
+// recentMeals/recentWorkouts instead of check-ins/weigh-ins.
+function _lastActivityIso(sum) {
+  const meals = (sum && sum.recentMeals) || [];
+  const workouts = (sum && sum.recentWorkouts) || [];
+  const all = meals.concat(workouts).map(x => x && x.timestamp).filter(Boolean);
+  if (!all.length) return null;
+  return all.reduce((max, t) => (new Date(t) > new Date(max) ? t : max), all[0]);
+}
+// Resolves EXACTLY the reasons captured when the Review modal was opened
+// (never a fresh computeAttention() call — see openReviewModal/submitReview
+// below). Reuses markReviewComplete untouched for the coachReviewHistory /
+// lastMeaningfulCoachReview side, which is preserved exactly as-is.
+function resolveDisplayedAttention(storageKey, capturedReasons, opts) {
+  opts = opts || {};
+  const ok = markReviewComplete(storageKey, opts);
+  if (!ok) return false;
+  const list = loadClients();
+  const idx = list.findIndex(c => c.storageKey === storageKey);
+  if (idx < 0) return true; // markReviewComplete already succeeded; nothing more to do
+  const client = list[idx];
+  const now = new Date().toISOString();
+  (capturedReasons || []).forEach(r => {
+    if (!r) return;
+    if (r.clearKind === 'episode' && r.episodeKey) {
+      _writeResolvedEpisodeInPlace(client, r.episodeKey, { ackedAt: now, category: r.cat, reviewTs: now });
+    } else if (r.clearKind === 'checkin' && Array.isArray(r.ciTimestamps)) {
+      r.ciTimestamps.forEach(ts => _writeCiReviewMetaInPlace(client, ts, { reviewedTs: now, outcome: opts.outcome, note: opts.note || '' }));
+    }
+    // No clearKind (e.g. the review-staleness reason) needs nothing extra —
+    // markReviewComplete's lastMeaningfulCoachReview bump already covers it.
+  });
+  saveClients(list);
+  COACH.clients = list;
+  pushRoster();
+  // markReviewComplete() already rendered once (on the pre-episode-write
+  // state); render again now that resolvedEpisodes/checkInReviews are
+  // actually persisted, so the resolved item disappears from the checklist
+  // immediately rather than waiting for some unrelated future re-render.
+  renderCommandCentre();
+  return true;
+}
+
 // ── Attention engine — transparent rules, missing-data-safe ────────────
 function _daysSinceIso(iso) {
   if (!iso) return null;
@@ -5328,7 +5411,12 @@ function computeAttention(client, sum) {
     if (_tierRank(thisTier) > _tierRank(tier)) tier = thisTier;
     if (!primaryCat && thisTier !== CC_TIER.INFO) primaryCat = cat;
   };
-  const add = (cat, level, thisTier, text, signal, overdueDays) => reasons.push({ cat, level, tier: thisTier, text, signal, overdueDays: overdueDays || 0 });
+  // extra (optional): {clearKind:'episode', episodeKey} or {clearKind:'checkin', ciTimestamps}
+  // — carried on the reason object so a captured-at-open-time snapshot of
+  // `reasons` is enough for resolveDisplayedAttention to know exactly what to
+  // acknowledge, without re-deriving anything at save-time. See ATTN-EPISODE-V1.
+  const add = (cat, level, thisTier, text, signal, overdueDays, extra) =>
+    reasons.push(Object.assign({ cat, level, tier: thisTier, text, signal, overdueDays: overdueDays || 0 }, extra || {}));
 
   // Lifecycle short-circuit — anything not currently active (onboarding,
   // paused, archived, completed) produces no attention output.
@@ -5424,17 +5512,28 @@ function computeAttention(client, sum) {
 
   // ── CATEGORY 1: COACH ATTENTION
   // Rule 1a: Coach next-action overdue → ACTION_NOW (strong evidence, coach owes it)
+  // ATTN-EPISODE-V1: episode-keyed on (action text, due date) so acknowledging
+  // this specific overdue task doesn't wipe nextCoachAction/Due (that stays
+  // exactly clearNextAction's job) — it just stops this instance from nagging.
+  // A genuinely different task (new text or new due date) fires independently.
   if (client.nextCoachAction && client.nextCoachActionDue) {
     const overdueDays = _daysSinceIso(client.nextCoachActionDue);
     if (overdueDays !== null && overdueDays > 0) {
-      add('COACH_ATTENTION', 'red', CC_TIER.ACTION,
-        'Coach task overdue',
-        '"' + client.nextCoachAction + '" — ' + overdueDays + 'd overdue',
-        overdueDays);
-      bump('red', 'COACH_ATTENTION', CC_TIER.ACTION);
+      const _coachTaskKey = _episodeKey('COACH_TASK', [client.nextCoachAction, client.nextCoachActionDue]);
+      if (!_isEpisodeResolved(client, _coachTaskKey)) {
+        add('COACH_ATTENTION', 'red', CC_TIER.ACTION,
+          'Coach task overdue',
+          '"' + client.nextCoachAction + '" — ' + overdueDays + 'd overdue',
+          overdueDays, { clearKind: 'episode', episodeKey: _coachTaskKey });
+        bump('red', 'COACH_ATTENTION', CC_TIER.ACTION);
+      }
     }
   }
   // Rule 1c: NEW check-in waiting on the coach → ACTION_NOW.
+  // UNCHANGED trigger logic — this already self-clears correctly via the
+  // existing checkInReviews map. Only change: carry ciTimestamps so the
+  // generic Review modal can resolve via the EXISTING _writeCiReviewMetaInPlace
+  // mechanism instead of a new one.
   const newCis = typeof _newCheckInsForCoach === 'function' ? _newCheckInsForCoach(client, sum || {}) : [];
   if (newCis.length > 0) {
     const latest = newCis[0];
@@ -5443,7 +5542,7 @@ function computeAttention(client, sum) {
     add('COACH_ATTENTION', newCis.length >= 2 ? 'red' : 'amber', CC_TIER.ACTION,
       newCis.length === 1 ? 'New check-in awaiting review' : (newCis.length + ' check-ins awaiting review'),
       'Newest submitted ' + ageStr,
-      daysOld);
+      daysOld, { clearKind: 'checkin', ciTimestamps: newCis.map(ci => ci.timestamp) });
     bump(newCis.length >= 2 ? 'red' : 'amber', 'COACH_ATTENTION', CC_TIER.ACTION);
   }
   // Rule 1b: Meaningful review status — tiered by materiality.
@@ -5481,27 +5580,43 @@ function computeAttention(client, sum) {
   // Fires only when 2+ concrete stale signals exist (see isDisengaged above).
   // Mere absence of data cannot fire this. Legacy-protection window uses a
   // longer stale threshold so a rollout-adjacent quiet week is not urgent.
+  // ATTN-EPISODE-V1: episode-keyed on (lastCheckInIso, lastWeighIso).
+  // engagementFired is set REGARDLESS of whether the episode is already
+  // acknowledged, so a resolved disengagement can never leak out as a "new"
+  // check-in/weigh-in-overdue reason for the exact same non-activity (2b/2c
+  // below only get a turn when this category hasn't already claimed the slot).
   if (!engagementFired && isDisengaged && !legacyLikely) {
-    const bits = [];
-    if (_staleCheckIn) bits.push('check-in ' + daysSinceCheckIn + 'd');
-    if (_staleWeigh)   bits.push('weigh-in ' + daysSinceWeigh + 'd');
-    if (_noRecentLogs) bits.push('0 logs / 14 slots last wk');
-    add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
-      'Client disengaged',
-      bits.join(' · ') + ' · threshold ' + _disStale + 'd' + (_inProtectionWindowEarly ? ' (protected)' : ''),
-      Math.max(daysSinceCheckIn || 0, daysSinceWeigh || 0));
-    bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
     engagementFired = true;
+    const _disengagedKey = _episodeKey('DISENGAGED', [lastCheckInIso, lastWeighIso]);
+    if (!_isEpisodeResolved(client, _disengagedKey)) {
+      const bits = [];
+      if (_staleCheckIn) bits.push('check-in ' + daysSinceCheckIn + 'd');
+      if (_staleWeigh)   bits.push('weigh-in ' + daysSinceWeigh + 'd');
+      if (_noRecentLogs) bits.push('0 logs / 14 slots last wk');
+      add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
+        'Client disengaged',
+        bits.join(' · ') + ' · threshold ' + _disStale + 'd' + (_inProtectionWindowEarly ? ' (protected)' : ''),
+        Math.max(daysSinceCheckIn || 0, daysSinceWeigh || 0),
+        { clearKind: 'episode', episodeKey: _disengagedKey });
+      bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+    }
   }
   // Rule 2b: check-in overdue — tiered.
   //   INFO  — legacyLikely (no historical data flowing yet)
   //   WATCH — 1 ≤ dueAge ≤ 14 days
   //   ACTION — dueAge > 14 (well beyond the expected window)
+  // ATTN-EPISODE-V1: episode-keyed on lastCheckInIso (or startDate when the
+  // client has never checked in). INFO-tier branches are deliberately left
+  // unsuppressed — INFO never counts toward Needs Attention/Watch and isn't
+  // part of the actionable checklist.
   if (!engagementFired) {
     const dueAgeDays = typeof _checkInOverdueDays === 'function' ? _checkInOverdueDays(client, sum || {}) : 0;
     const list = typeof _checkInsForClient === 'function' ? _checkInsForClient(sum || {}) : [];
     const payloadGap = hasCheckInPayloadGap(sum || {});
     if (dueAgeDays > 0) {
+      engagementFired = true;
+      const _checkinOverdueKey = _episodeKey('CHECKIN_OVERDUE', [lastCheckInIso || ('start:' + (client.startDate || ''))]);
+      const _checkinOverdueResolved = _isEpisodeResolved(client, _checkinOverdueKey);
       // With the payload-gap guard, list is empty ONLY when the client genuinely
       // has no check-ins on the server. If latestCheckinTs proves they DID check
       // in, dueAgeDays is derived from that timestamp via _checkInOverdueDays,
@@ -5510,11 +5625,13 @@ function computeAttention(client, sum) {
       if (!list.length && payloadGap) {
         // Should be unreachable — _checkInOverdueDays only returns > 0 in this
         // branch when latestCheckinTs itself is old. Treat as "Check-in due X".
-        add('CLIENT_ENGAGEMENT', dueAgeDays > 14 ? 'red' : 'amber', dueAgeDays > 14 ? CC_TIER.ACTION : CC_TIER.WATCH,
-          'Check-in due ' + dueAgeDays + ' days ago',
-          'Detail rows unavailable (backend payload gap) · derived from latestCheckinTs',
-          dueAgeDays);
-        bump(dueAgeDays > 14 ? 'red' : 'amber', 'CLIENT_ENGAGEMENT', dueAgeDays > 14 ? CC_TIER.ACTION : CC_TIER.WATCH);
+        if (!_checkinOverdueResolved) {
+          add('CLIENT_ENGAGEMENT', dueAgeDays > 14 ? 'red' : 'amber', dueAgeDays > 14 ? CC_TIER.ACTION : CC_TIER.WATCH,
+            'Check-in due ' + dueAgeDays + ' days ago',
+            'Detail rows unavailable (backend payload gap) · derived from latestCheckinTs',
+            dueAgeDays, { clearKind: 'episode', episodeKey: _checkinOverdueKey });
+          bump(dueAgeDays > 14 ? 'red' : 'amber', 'CLIENT_ENGAGEMENT', dueAgeDays > 14 ? CC_TIER.ACTION : CC_TIER.WATCH);
+        }
       } else if (!list.length && legacyLikely) {
         add('CLIENT_ENGAGEMENT', 'blue', CC_TIER.INFO,
           'Historical check-in data unavailable',
@@ -5522,23 +5639,30 @@ function computeAttention(client, sum) {
         bump('blue', 'CLIENT_ENGAGEMENT', CC_TIER.INFO);
       } else if (!list.length) {
         // Truly new client whose program has run past the window with no submissions.
-        add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
-          'No check-ins yet',
-          'Program started ' + (_daysSinceIso(client.startDate) || 0) + 'd ago · never checked in');
-        bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+        if (!_checkinOverdueResolved) {
+          add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+            'No check-ins yet',
+            'Program started ' + (_daysSinceIso(client.startDate) || 0) + 'd ago · never checked in', 0,
+            { clearKind: 'episode', episodeKey: _checkinOverdueKey });
+          bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+        }
       } else if (dueAgeDays > 14) {
-        add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
-          'Check-in due ' + dueAgeDays + ' days ago',
-          'Well beyond expected window (>2 weeks past 7-day due date)',
-          dueAgeDays);
-        bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+        if (!_checkinOverdueResolved) {
+          add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
+            'Check-in due ' + dueAgeDays + ' days ago',
+            'Well beyond expected window (>2 weeks past 7-day due date)',
+            dueAgeDays, { clearKind: 'episode', episodeKey: _checkinOverdueKey });
+          bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+        }
       } else {
-        add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
-          'Check-in due ' + dueAgeDays + ' days ago',
-          'Original 7-day due date was ' + dueAgeDays + ' days ago');
-        bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+        if (!_checkinOverdueResolved) {
+          add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+            'Check-in due ' + dueAgeDays + ' days ago',
+            'Original 7-day due date was ' + dueAgeDays + ' days ago', 0,
+            { clearKind: 'episode', episodeKey: _checkinOverdueKey });
+          bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+        }
       }
-      engagementFired = true;
     }
     // Regardless of whether an engagement rule fired, if the backend payload
     // gap is present we surface it as an INFO / Data Quality note (never a
@@ -5556,58 +5680,75 @@ function computeAttention(client, sum) {
   // history to know weigh-ins are expected (client has logged ≥ 3 weigh-ins).
   //   WATCH  — 8-14 days without weigh-in
   //   ACTION — > 14 days without weigh-in AND ≥ 3 historical weigh-ins on file
+  // ATTN-EPISODE-V1: episode-keyed on lastWeighIso.
   if (!engagementFired && daysSinceWeigh !== null && daysSinceWeigh > CC.WEIGHIN_STALE_DAYS) {
+    engagementFired = true;
     const weighHistory = (sum && (sum.weightHistory || sum.weightLog)) || [];
     const hasEnoughWeighHistory = weighHistory.length >= 3;
-    if (daysSinceWeigh > 14 && hasEnoughWeighHistory) {
-      add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
-        'No weigh-in for ' + daysSinceWeigh + ' days',
-        'Weigh-ins expected (≥ 3 on file) · last one ' + daysSinceWeigh + 'd ago',
-        daysSinceWeigh);
-      bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
-    } else {
-      add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
-        'No weigh-in for ' + daysSinceWeigh + ' days',
-        'Last weigh-in ' + daysSinceWeigh + 'd ago' + (hasEnoughWeighHistory ? '' : ' · limited weigh-in history'));
-      bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+    const _weighinOverdueKey = _episodeKey('WEIGHIN_OVERDUE', [lastWeighIso]);
+    if (!_isEpisodeResolved(client, _weighinOverdueKey)) {
+      if (daysSinceWeigh > 14 && hasEnoughWeighHistory) {
+        add('CLIENT_ENGAGEMENT', 'red', CC_TIER.ACTION,
+          'No weigh-in for ' + daysSinceWeigh + ' days',
+          'Weigh-ins expected (≥ 3 on file) · last one ' + daysSinceWeigh + 'd ago',
+          daysSinceWeigh, { clearKind: 'episode', episodeKey: _weighinOverdueKey });
+        bump('red', 'CLIENT_ENGAGEMENT', CC_TIER.ACTION);
+      } else {
+        add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+          'No weigh-in for ' + daysSinceWeigh + ' days',
+          'Last weigh-in ' + daysSinceWeigh + 'd ago' + (hasEnoughWeighHistory ? '' : ' · limited weigh-in history'), 0,
+          { clearKind: 'episode', episodeKey: _weighinOverdueKey });
+        bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+      }
     }
-    engagementFired = true;
   }
 
   // ── CATEGORY 3: PROGRESS
   //   WATCH  — modest stall (|trend14| < 0.3kg) for non-bulk goals
   //   ACTION — trend materially wrong-way: >0.6kg gain on a cut, or >0.6kg loss on a bulk
+  // ATTN-EPISODE-V1: episode-keyed on lastWeighIso — a materially new episode
+  // requires a NEW weigh-in entering the 14-day window, not the window merely
+  // sliding forward a day with the same underlying data.
   const trend14 = _weightTrendKgLast14(sum);
   if (trend14 !== null) {
-    const goal = client.programGoal || '';
-    const isCut  = /fat_loss|cut/.test(goal);
-    const isBulk = /bulk|underweight/.test(goal);
-    if (isCut && trend14 > 0.6) {
-      add('PROGRESS', 'red', CC_TIER.ACTION,
-        'Weight trending wrong direction on a cut',
-        'Up ' + trend14.toFixed(2) + 'kg over 14 days');
-      bump('red', 'PROGRESS', CC_TIER.ACTION);
-    } else if (isBulk && trend14 < -0.6) {
-      add('PROGRESS', 'red', CC_TIER.ACTION,
-        'Weight dropping on a bulk',
-        'Down ' + Math.abs(trend14).toFixed(2) + 'kg over 14 days');
-      bump('red', 'PROGRESS', CC_TIER.ACTION);
-    } else if (Math.abs(trend14) < 0.3 && !isBulk) {
-      add('PROGRESS', 'amber', CC_TIER.WATCH,
-        'Weight trend stalled 14 days',
-        trend14.toFixed(2) + 'kg change over 14 days');
-      bump('amber', 'PROGRESS', CC_TIER.WATCH);
+    const _trendKey = _episodeKey('PROGRESS_TREND', [lastWeighIso]);
+    if (!_isEpisodeResolved(client, _trendKey)) {
+      const goal = client.programGoal || '';
+      const isCut  = /fat_loss|cut/.test(goal);
+      const isBulk = /bulk|underweight/.test(goal);
+      if (isCut && trend14 > 0.6) {
+        add('PROGRESS', 'red', CC_TIER.ACTION,
+          'Weight trending wrong direction on a cut',
+          'Up ' + trend14.toFixed(2) + 'kg over 14 days', 0, { clearKind: 'episode', episodeKey: _trendKey });
+        bump('red', 'PROGRESS', CC_TIER.ACTION);
+      } else if (isBulk && trend14 < -0.6) {
+        add('PROGRESS', 'red', CC_TIER.ACTION,
+          'Weight dropping on a bulk',
+          'Down ' + Math.abs(trend14).toFixed(2) + 'kg over 14 days', 0, { clearKind: 'episode', episodeKey: _trendKey });
+        bump('red', 'PROGRESS', CC_TIER.ACTION);
+      } else if (Math.abs(trend14) < 0.3 && !isBulk) {
+        add('PROGRESS', 'amber', CC_TIER.WATCH,
+          'Weight trend stalled 14 days',
+          trend14.toFixed(2) + 'kg change over 14 days', 0, { clearKind: 'episode', episodeKey: _trendKey });
+        bump('amber', 'PROGRESS', CC_TIER.WATCH);
+      }
     }
   }
 
   // Adherence — only when the client has enough logged days to judge fairly.
   // Missing data never trips this rule. Now a WATCH item, not urgent.
+  // ATTN-EPISODE-V1: episode-keyed on the derived last-activity timestamp
+  // (most recent recentMeals/recentWorkouts entry).
   const adh = _adherencePctSafe(metrics);
   if (adh !== null && adh < 50 && !isDisengaged) {
-    add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
-      'Low logged adherence',
-      'Adherence ' + adh + '% (based on ' + activityDaysLast7 + '/14 last-week slots)');
-    bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+    const _adherenceKey = _episodeKey('LOW_ADHERENCE', [_lastActivityIso(sum)]);
+    if (!_isEpisodeResolved(client, _adherenceKey)) {
+      add('CLIENT_ENGAGEMENT', 'amber', CC_TIER.WATCH,
+        'Low logged adherence',
+        'Adherence ' + adh + '% (based on ' + activityDaysLast7 + '/14 last-week slots)', 0,
+        { clearKind: 'episode', episodeKey: _adherenceKey });
+      bump('amber', 'CLIENT_ENGAGEMENT', CC_TIER.WATCH);
+    }
   }
 
   // Data-quality note: pre-rollout client whose historical check-in payload
@@ -5804,7 +5945,11 @@ function toggleAttentionShowAll() { CC.attnShowAll = !CC.attnShowAll; renderCcAt
 function renderCcAttention() {
   const allEntries = COACH.clients
     .filter(_isActiveClient)
-    .map(c => ({ c, a: computeAttention(c, _dashboardData[c.storageKey] || {}) }));
+    .map(c => {
+      const a = computeAttention(c, _dashboardData[c.storageKey] || {});
+      CC._attnByKey[c.storageKey] = a; // ATTN-EPISODE-V1: snapshot for openReviewModal
+      return { c, a };
+    });
   const actionList = allEntries.filter(x => x.a.tier === CC_TIER.ACTION);
   const watchCount = allEntries.filter(x => x.a.tier === CC_TIER.WATCH).length;
   const infoCount  = allEntries.filter(x => x.a.tier === CC_TIER.INFO).length;
@@ -5858,7 +6003,7 @@ function renderCcAttention() {
           ${catBadge}
         </div>
         <div class="cc-actions">
-          <button class="cc-btn primary sm" onclick="openReviewModal('${nameKey}')">Review</button>
+          <button class="cc-btn primary sm" onclick="openAttentionReview('${nameKey}')">Review</button>
           <button class="cc-btn sm ghost" onclick="openDetail('${nameKey}')">Open</button>
           <button class="cc-btn sm ghost" onclick="openClientForm('${nameKey}')" title="Edit client — Lifecycle &amp; Access controls live here">Edit</button>
         </div>
@@ -5906,6 +6051,7 @@ function renderCompactRoster() {
   const rows = COACH.clients.map(c => {
     const sum = _dashboardData[c.storageKey] || {};
     const a = computeAttention(c, sum);
+    CC._attnByKey[c.storageKey] = a; // ATTN-EPISODE-V1: snapshot for openReviewModal
     return { c, sum, a };
   });
   // Counts per filter for chip badges
@@ -6022,7 +6168,7 @@ function renderCompactRoster() {
         <td class="num">${revCell}</td>
         <td>${nextTxt}${nextDueTxt}</td>
         <td style="text-align:right;white-space:nowrap;">
-          <button class="cc-btn sm" onclick="openReviewModal('${esc(c.storageKey)}')">Review</button>
+          <button class="cc-btn sm" onclick="openAttentionReview('${esc(c.storageKey)}')">Review</button>
           <button class="cc-btn sm ghost" onclick="openDetail('${esc(c.storageKey)}')">Open</button>
           <button class="cc-btn sm ghost" onclick="openClientForm('${esc(c.storageKey)}')" title="Edit client — Lifecycle &amp; Access controls live here">Edit</button>
         </td>
@@ -6033,8 +6179,21 @@ function renderCompactRoster() {
 
 // ── Review modal wiring ────────────────────────────────────────────────
 let _cc_activeReviewKey = null;
-function openReviewModal(storageKey) {
+// ATTN-EPISODE-V1: frozen snapshot of the reasons that were actually on
+// screen when the modal opened. EXPLICIT ONLY — openReviewModal takes this as
+// a parameter and does no lookup of its own. A reason that appears AFTER the
+// modal opened must not be silently cleared (see resolveDisplayedAttention).
+let _cc_activeReviewReasons = null;
+// storageKey, reasons=[] — reasons is OPTIONAL and defaults to none. Callers
+// that don't pass it (the 3 non-attention entry points: both "Review decision"
+// buttons and "Log review") get exactly production's pre-existing behaviour —
+// markReviewComplete only, zero attention episodes resolved. There is
+// deliberately NO fallback here that reads CC._attnByKey by storageKey; only
+// an explicit attention-driven caller may supply reasons. See
+// openAttentionReview below, which is that one explicit caller.
+function openReviewModal(storageKey, reasons) {
   _cc_activeReviewKey = storageKey;
+  _cc_activeReviewReasons = reasons || [];
   const c = COACH.clients.find(x => x.storageKey === storageKey);
   if (!c) return;
   document.getElementById('cc-review-title').textContent = 'Mark review complete — ' + c.displayName;
@@ -6044,9 +6203,18 @@ function openReviewModal(storageKey) {
   document.getElementById('cc-review-next-due').value = c.nextCoachActionDue || '';
   document.getElementById('cc-review-modal').classList.add('open');
 }
+// The ONLY caller allowed to hand openReviewModal a non-empty reasons array.
+// Used exclusively by the 3 attention-driven buttons (Needs Attention,
+// Watchlist, roster table "Review"). Looks up CC._attnByKey explicitly at
+// this call boundary — openReviewModal itself never reaches for this map.
+function openAttentionReview(storageKey) {
+  const a = CC._attnByKey && CC._attnByKey[storageKey];
+  openReviewModal(storageKey, (a && a.reasons) || []);
+}
 function closeReviewModal() {
   document.getElementById('cc-review-modal').classList.remove('open');
   _cc_activeReviewKey = null;
+  _cc_activeReviewReasons = null;
 }
 function submitReview() {
   if (!_cc_activeReviewKey) return;
@@ -6058,7 +6226,7 @@ function submitReview() {
   const note = document.getElementById('cc-review-note').value.trim();
   const nextAction = document.getElementById('cc-review-next-action').value.trim();
   const nextDue = document.getElementById('cc-review-next-due').value;
-  const ok = markReviewComplete(_cc_activeReviewKey, { outcome, note, nextAction, nextActionDue: nextDue });
+  const ok = resolveDisplayedAttention(_cc_activeReviewKey, _cc_activeReviewReasons, { outcome, note, nextAction, nextActionDue: nextDue });
   if (ok) closeReviewModal();
 }
 
@@ -6758,7 +6926,11 @@ function renderCcWatch() {
   if (!el || !sub) return;
   const list = COACH.clients
     .filter(_isActiveClient)
-    .map(c => ({ c, a: computeAttention(c, _dashboardData[c.storageKey] || {}) }))
+    .map(c => {
+      const a = computeAttention(c, _dashboardData[c.storageKey] || {});
+      CC._attnByKey[c.storageKey] = a; // ATTN-EPISODE-V1: snapshot for openReviewModal
+      return { c, a };
+    })
     .filter(x => x.a.tier === CC_TIER.WATCH);
   list.forEach(e => { e._proximity = _watchProximity(e); });
   list.sort((x, y) => {
@@ -6783,7 +6955,7 @@ function renderCcWatch() {
         <div class="w-name">${esc(c.displayName)}<span class="w-sub">${esc(c.programType || '')}</span></div>
         <div class="w-reason">${esc(primary.text)}<span class="w-signal">${esc(primary.signal || '')}</span></div>
         <div class="w-actions">
-          <button class="cc-btn sm" onclick="openReviewModal('${key}')">Review</button>
+          <button class="cc-btn sm" onclick="openAttentionReview('${key}')">Review</button>
           <button class="cc-btn sm ghost" onclick="openDetail('${key}')">Open</button>
           <button class="cc-btn sm ghost" onclick="openClientForm('${key}')" title="Edit client — Lifecycle &amp; Access controls live here">Edit</button>
         </div>
