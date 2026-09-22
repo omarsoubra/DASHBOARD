@@ -8438,29 +8438,61 @@ document.addEventListener('click', (e) => {
 });
 
 // ── Tab switch, open, close (V3 wrappers) ─────────────────────────────────
+// ── Detail-panel lifecycle authority (DETAIL-OWNER-V1) ─────────────────────
+// Single source of truth for "what does the detail panel currently belong
+// to" — replaces relying on CC.detailTab[key] as proof of "currently open".
+// That map is per-key and never expires (nothing ever deletes an entry), so
+// it can't distinguish "still open" from "was open once, a while ago" — a
+// slow Progression fetch for a client the coach closed minutes ago could
+// still pass that check and silently repaint over whoever is open now.
+//
+// storageKey alone is also insufficient: closing and reopening the SAME
+// client must reject a callback from the first opening. _cdGen is bumped on
+// every open/close specifically to catch that case.
+let _cdGen = 0;
+let _cdOwnerKey = null;
+function _cdBeginAsync(storageKey) {
+  return { key: storageKey, gen: _cdGen };
+}
+function _cdStillOwns(token, expectedTab) {
+  if (!token) return false;
+  if (_cdOwnerKey !== token.key) return false;   // a different client (or none) owns the panel now
+  if (_cdGen !== token.gen) return false;        // same client, but a newer open/close happened since
+  if (expectedTab && (!CC.detailTab || CC.detailTab[token.key] !== expectedTab)) return false; // same open, different tab active now
+  return true;
+}
+
 function switchDetailTab(storageKey, tabKey) {
   CC.detailTab = CC.detailTab || {};
   CC.detailTab[storageKey] = tabKey;
   const panel = document.getElementById('detail-panel');
   if (!panel) return;
   panel.innerHTML = renderClientDetailV2(storageKey);
+  // Tab switches deliberately do NOT bump _cdGen — this is still the same
+  // open session for the same client. The expected-tab check inside
+  // _cdStillOwns is what correctly rejects a stale Progression-tab callback
+  // if the coach has since switched to a different tab (see buildWeightChart).
   if (tabKey === 'progress') {
     const c = COACH.clients.find(x => x.storageKey === storageKey);
     const sum = _dashboardData[storageKey] || {};
-    setTimeout(() => buildWeightChart(c, sum), 0);
+    const _cdTok = _cdBeginAsync(storageKey);
+    setTimeout(() => buildWeightChart(c, sum, _cdTok), 0);
   }
 }
 
 function openDetail(storageKey) {
   const c = COACH.clients.find(c => c.storageKey === storageKey);
   if (!c) return;
+  _cdGen++;               // invalidates every in-flight async token, including ones for this same key
+  _cdOwnerKey = storageKey;
   document.getElementById('detail-panel').innerHTML = renderClientDetailV2(storageKey);
   document.getElementById('detail-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   const activeTab = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
   if (activeTab === 'progress') {
     const sum = _dashboardData[storageKey] || {};
-    setTimeout(() => buildWeightChart(c, sum), 0);
+    const _cdTok = _cdBeginAsync(storageKey);
+    setTimeout(() => buildWeightChart(c, sum, _cdTok), 0);
   }
 }
 
@@ -8468,6 +8500,8 @@ function closeDetail() {
   document.getElementById('detail-overlay').classList.remove('open');
   document.body.style.overflow = '';
   if (_detailChart) { _detailChart.destroy(); _detailChart = null; }
+  _cdGen++;                // invalidates every in-flight async token
+  _cdOwnerKey = null;      // no owner while closed
 }
 // ─── CLIENT_DETAIL_V3_END ────────────────────────────────────────────────
 
@@ -8505,10 +8539,13 @@ async function _pgLoadHistory(storageKey) {
 }
 
 async function _pgRefreshHistory(storageKey) {
+  const _cdTok = _cdBeginAsync(storageKey);
   const s = window._pgState[storageKey] = window._pgState[storageKey] || {};
   s.pgHistory = null;
   s._pgHistLoading = false;
   await _pgLoadHistory(storageKey);
+  // DETAIL-OWNER-V1 guard: this function previously had no check at all.
+  if (!_cdStillOwns(_cdTok, 'program')) return;
   const panel = document.getElementById('detail-panel');
   if (panel) {
     const c = COACH.clients.find(x => x.storageKey === storageKey);
@@ -8590,20 +8627,26 @@ function _cdPanelProgression(c, sum) {
     : '';
 
   // Kick off background loads on first render
+  // DETAIL-OWNER-V1: token captured at kickoff, checked at resolve-time —
+  // CC.detailTab[key]==='program' alone was not sufficient (see _cdStillOwns).
   if (!state.program && !state._pgProgramLoading) {
     state._pgProgramLoading = true;
+    const _cdTok = _cdBeginAsync(key);
     _pgLoadProgram(key).then(() => {
       state._pgProgramLoading = false;
+      if (!_cdStillOwns(_cdTok, 'program')) return;
       const panel = document.getElementById('detail-panel');
-      if (panel && CC.detailTab && CC.detailTab[key] === 'program') panel.innerHTML = renderClientDetailV2(key);
+      if (panel) panel.innerHTML = renderClientDetailV2(key);
     });
   }
   if (!state.pgHistory && !state._pgHistLoading) {
     state._pgHistLoading = true;
+    const _cdTok = _cdBeginAsync(key);
     _pgLoadHistory(key).then(() => {
       state._pgHistLoading = false;
+      if (!_cdStillOwns(_cdTok, 'program')) return;
       const panel = document.getElementById('detail-panel');
-      if (panel && CC.detailTab && CC.detailTab[key] === 'program') panel.innerHTML = renderClientDetailV2(key);
+      if (panel) panel.innerHTML = renderClientDetailV2(key);
     });
   }
 
@@ -8703,6 +8746,11 @@ function _pgDecisionHtml(d) {
 }
 
 async function _pgCompute(storageKey) {
+  // DETAIL-OWNER-V1: token captured up front. Deliberately NOT used to guard
+  // anything above the final repaint — the coachFetch('progressionCompute')
+  // write below must fire exactly as before, every time this is called; the
+  // coach explicitly clicked Compute for this storageKey.
+  const _cdTok = _cdBeginAsync(storageKey);
   const btn = document.getElementById('pg-compute-btn-' + storageKey);
   const status = document.getElementById('pg-status-' + storageKey);
   if (btn) btn.disabled = true;
@@ -8732,11 +8780,16 @@ async function _pgCompute(storageKey) {
     if (status) status.textContent = 'Compute failed: ' + String(e);
   }
 
-  // Re-render the progression panel to show decisions
-  const panel = document.getElementById('detail-panel');
-  if (panel) {
-    const c = COACH.clients.find(x => x.storageKey === storageKey);
-    if (c) panel.innerHTML = renderClientDetailV2(storageKey);
+  // Re-render the progression panel to show decisions.
+  // DETAIL-OWNER-V1 guard: the write above already happened unconditionally;
+  // only this repaint is conditional on the panel still belonging to this
+  // client/tab. Previously had no check at all.
+  if (_cdStillOwns(_cdTok, 'program')) {
+    const panel = document.getElementById('detail-panel');
+    if (panel) {
+      const c = COACH.clients.find(x => x.storageKey === storageKey);
+      if (c) panel.innerHTML = renderClientDetailV2(storageKey);
+    }
   }
   if (btn) btn.disabled = false;
 }
@@ -8764,11 +8817,17 @@ async function _pgApplyAll(storageKey) {
 
 // ─── OLD V2 FUNCTIONS REMOVED — replaced by CLIENT_DETAIL_V3 above ──────
 
-async function buildWeightChart(c, sum) {
+async function buildWeightChart(c, sum, _cdTok) {
   // Fetch full weight history for this client
   try {
     // Sprint 5: coach-authed via coachFetch. Backend returns log for storageKey.
     const log = await coachFetch('weightLog', { client: c.storageKey, storageKey: c.storageKey });
+    // DETAIL-OWNER-V1 guard: the panel may now belong to a different client
+    // (or a different tab, or be closed) than when this fetch was kicked off.
+    // #detail-chart is a child of #detail-panel — painting into it here would
+    // silently show this client's weight trend inside a different client's
+    // open panel. No-op instead of repainting.
+    if (_cdTok && !_cdStillOwns(_cdTok, 'progress')) return;
     const data = log
       .filter(r => r.weightKg)
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
