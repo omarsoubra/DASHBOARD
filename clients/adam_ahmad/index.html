@@ -5928,6 +5928,22 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
     const titleEl = document.getElementById('mission-title');
     const detailEl = document.getElementById('mission-detail');
     if (!titleEl || !detailEl) return;
+    /* TV2-HOMESYNC-V1: show the Training tab's own next session - never a weekday
+       guess - and remember exactly which session this card is showing. */
+    const btnEl = document.getElementById('mission-btn');
+    const tagEl = document.querySelector('.mission-card .mission-tag');
+    try {
+      const n = (typeof window.tv2NextSession === 'function') ? window.tv2NextSession() : null;
+      if (n) {
+        if (tagEl) tagEl.textContent = 'NEXT SESSION';
+        titleEl.textContent = String(n.label).replace(/^Day\s+\d+\s*[-—–]\s*/i, '').trim() || 'Next Session';
+        detailEl.textContent = n.exercises + ' exercises' + (n.est && n.est.known ? ' · ~' + n.est.min + ' min' : '');
+        if (btnEl) { btnEl.dataset.phase = n.phase; btnEl.dataset.day = String(n.day);
+                     btnEl.textContent = n.open ? 'CONTINUE WORKOUT' : 'START WORKOUT'; }
+        return;
+      }
+    } catch(e){}
+    if (btnEl) { delete btnEl.dataset.phase; delete btnEl.dataset.day; }
     try {
       const dow = new Date().getDay(); // 0 Sun -> 6 Sat
       const idx = dow === 0 ? 6 : dow - 1;
@@ -5952,6 +5968,12 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
   window.onMissionStart = function(){
     _haptic([12]);
     try { if (typeof showSection === 'function') showSection('training'); if (typeof updateBottomNav === 'function') updateBottomNav('training'); } catch(e){}
+    /* TV2-HOMESYNC-V1: open exactly the session the card displayed. */
+    try {
+      const b = document.getElementById('mission-btn');
+      if (b && b.dataset.day != null && b.dataset.day !== '' && typeof window.tv2StartFrom === 'function')
+        window.tv2StartFrom(b.dataset.phase, Number(b.dataset.day));
+    } catch(e){}
   };
 
   // ---- weight trend mini chart ----
@@ -7423,7 +7445,7 @@ function updateBottomNav(id) {
           (est.known ? '<span>~' + est.min + ' min</span>' : '') +
           (eff ? '<span>' + esc(eff) + '</span>' : '') + '</div>' +
         '<button class="tv2-cta" onclick="' + ctaFn + '">' + cta + '</button>' +
-        (anyOpen ? '<div class="tv2-again" style="margin:.6rem 0 0;">Want a different day? Tap it below.</div>' : '') +
+        '<div class="tv2-again" style="margin:.6rem 0 0;">Doing a different session today? Choose one below.</div>' +
       '</div>' +
       '<span class="tv2-sec">This phase</span>' + rows +
       '<button class="tv2-link" onclick="tv2Guide()">Program Guide<span>›</span></button>' +
@@ -7967,6 +7989,29 @@ function updateBottomNav(id) {
     });
     return best;
   }
+  /* TV2-HOMESYNC-V1: the home card reads the SAME recommendation this tab shows
+     (same phase resolution as boot, same nextDayIdx) and opens exactly what it
+     showed. Read-only: nothing here creates a session or logs anything. */
+  window.tv2NextSession = function () {
+    if (typeof phases === 'undefined') return null;
+    try { ledgerSync(); } catch (e) {}
+    var ph = V.phase;
+    if (!ph) {
+      var rp = null; try { rp = resolvePhase(); } catch (e) {}
+      ph = String((rp && phases[rp]) ? rp : ((typeof currentPhase !== 'undefined' && phases[currentPhase])
+        ? currentPhase : Object.keys(phases)[0]));
+    }
+    var i = nextDayIdx(ph), d = tv2Day(ph, i); if (!d) return null;
+    return { phase: ph, day: i, label: d.label, exercises: d.exercises.length,
+             est: estMinutes(d), open: dayState(ph, i).kind === 'open' };
+  };
+  window.tv2StartFrom = function (ph, i) {
+    ph = String(ph);
+    if (!phases[ph] || !phases[ph].days[i] || phaseLocked(ph)) return false;
+    if (ph !== String(V.phase)) { flushAll(); V.phase = ph; }
+    tv2Open(i);
+    return true;
+  };
   function boot() {
     if (typeof phases === 'undefined') return;
     try { ledgerSync(); } catch (e) {}
