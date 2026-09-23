@@ -265,6 +265,11 @@ const CLIENT_WRITE_CAPABILITY: Record<string, Capability> = {
   checkin:     'submit_self_checkin',
   meal:        'log_meal',
   workout:     'log_workout',
+  // SET-CORRECTION-V1. Correcting a set the client already logged is the same
+  // act as logging it, on the same data they own, so it carries the same
+  // capability. It UPDATES one existing row and never inserts, so a correction
+  // can never become a second history entry for one performance.
+  workoutCorrect: 'log_workout',
   photoUpload: 'upload_photo',
 };
 
@@ -587,6 +592,7 @@ Deno.serve(async (req) => {
       case 'checkin':            return clientWrite('checkin', body);
       case 'meal':               return clientWrite('meal', body);
       case 'workout':            return clientWrite('workout', body);
+      case 'workoutCorrect':     return clientWrite('workoutCorrect', body);
       case 'photoUpload':        return clientWrite('photoUpload', body);
       case 'intake':             return intakeSubmit(body);   // legacy alias — same safe handler
       case 'intakeSubmit':       return intakeSubmit(body);
@@ -1380,7 +1386,20 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
     return ok({ tab: 'meal_logs', id: data?.id });
   }
   if (kind === 'workout') {
+    // SET-CORRECTION-V1 — idempotency. The shell mints one reference per
+    // performance (one exercise in one session occurrence) BEFORE the row
+    // exists and re-sends the same reference on a retry. A write whose
+    // reference is already on a row for this client is that same performance
+    // arriving twice (lost response, retry, double tap): the existing row is
+    // returned and nothing is inserted, so history can never gain a twin.
+    const clientRef = String(body.clientRef ?? '').trim() || null;
+    if (clientRef) {
+      const { data: dupe } = await admin.from('workout_log_entries')
+        .select('id').eq('client_id', clientId).eq('client_ref', clientRef).maybeSingle();
+      if (dupe?.id) return ok({ tab: 'workout_log_entries', id: dupe.id, deduped: true });
+    }
     const { data, error: wkErr } = await admin.from('workout_log_entries').insert({
+      client_ref: clientRef,
       client_id: clientId, client_key: key,
       exercise_name: body.exerciseName ?? body.exercise ?? '',
       phase_key:  body.phase  != null ? String(body.phase)  : null,
@@ -1398,6 +1417,65 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
       catch (autoErr) { logEfError('autoProgress', key, 'auto_progression_failed', String(autoErr)); }
     }
     return ok({ tab: 'workout_log_entries', id: data?.id });
+  }
+  if (kind === 'workoutCorrect') {
+    // SET-CORRECTION-V1 — in-place correction of ONE workout_log_entries row.
+    // Targeting is EXACT and never approximate: the row id the shell kept from
+    // its own insert, or the performance reference the shell minted and the row
+    // stores. Both are scoped to the authenticated client's id, so a token can
+    // only ever correct its own rows and a stale or foreign id matches nothing.
+    // A correction that can name neither is REFUSED (no_row_to_correct); it is
+    // never widened into a "most recent similar row" match, and no replacement
+    // row is inserted. See the targeting note below before changing this.
+    const exName = String(body.exerciseName ?? body.exercise ?? '');
+    const phaseKey = body.phase != null ? String(body.phase) : null;
+    const dayIdx = body.dayIdx != null ? Number(body.dayIdx) : null;
+    if (!exName || phaseKey == null || dayIdx == null || isNaN(dayIdx)) {
+      return err('bad_params', { detail: 'exerciseName, phase and dayIdx are required' });
+    }
+    // TARGETING. Exactly two ways to name the row, both scoped to the
+    // authenticated client's own id, which comes from the verified token and
+    // never from the body:
+    //   1. the row id this client's own insert returned, or
+    //   2. the performance reference this client minted and the row stores.
+    // There is deliberately NO "most recent row that looks similar" fallback:
+    // the same exercise can be performed twice on the same day, in the same
+    // phase, in two occurrences, and a correction must never land on the wrong
+    // one. A correction that can name neither is refused and stays local.
+    const clientRef = String(body.clientRef ?? '').trim() || null;
+    let targetId: string | null = null;
+    if (body.rowId) {
+      const { data: owned } = await admin.from('workout_log_entries')
+        .select('id').eq('id', String(body.rowId)).eq('client_id', clientId).maybeSingle();
+      if (owned?.id) targetId = owned.id;          // another client's id (or a stale one) matches nothing
+    }
+    if (!targetId && clientRef) {
+      const { data: byRef } = await admin.from('workout_log_entries')
+        .select('id').eq('client_id', clientId).eq('client_ref', clientRef).maybeSingle();
+      if (byRef?.id) targetId = byRef.id;
+    }
+    // Nothing addressable: the performance was never sent from this device
+    // (offline, corrected before the exercise completed, or logged on another
+    // device whose reference this one never had). The shell keeps the corrected
+    // values locally and marks them; no row is touched and none is created.
+    if (!targetId) return err('no_row_to_correct');
+    const { error: upErr } = await admin.from('workout_log_entries').update({
+      weight:    String(body.weightActual ?? body.weight ?? ''),
+      reps_done: String(body.repsActual   ?? body.reps   ?? ''),
+      sets_done: String(body.setsActual   ?? body.sets   ?? ''),
+      rpe:       String(body.rpeActual    ?? body.rpe    ?? ''),
+      // logged_at is NOT touched: the performance happened when it happened, and
+      // every reader orders by it. No corrected_at column is assumed to exist;
+      // the correction is marked in notes instead, which is already free text.
+      notes:     String(body.notes ?? '') + (body.notes ? ' · ' : '') + 'corrected ' + new Date().toISOString().slice(0, 16).replace('T', ' '),
+    }).eq('id', targetId).eq('client_id', clientId);
+    if (upErr) { logEfError(kind, key, 'workout_correct_failed', upErr.message); return err('db_error'); }
+    // The progression engine reads the latest row for this exercise, which is
+    // the row just corrected. Re-evaluate it so next session's prescription
+    // comes from what actually happened, not from the number being corrected.
+    try { await _autoProgressAfterWorkout(key, clientId, body); }
+    catch (autoErr) { logEfError('autoProgress', key, 'auto_progression_failed_after_correction', String(autoErr)); }
+    return ok({ tab: 'workout_log_entries', id: targetId, corrected: true });
   }
   if (kind === 'photoUpload') {
     // Weekly check-in photo. `key` is derived from the verified client token,
