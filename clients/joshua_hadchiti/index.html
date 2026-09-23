@@ -2319,6 +2319,13 @@
 .tv2-tile b{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;
   font-weight:800;margin-top:.3rem;letter-spacing:-.01em;}
 .tv2-sum{display:flex;align-items:center;gap:.8rem;border-bottom:1px solid var(--tv2-line);padding:.8rem .4rem;}
+.tv2-fix{margin-left:.6rem;padding:.3rem .6rem;border-radius:8px;border:1px solid var(--tv2-line2);
+  background:var(--tv2-surface);color:var(--tv2-muted);font-size:11px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:32px;}
+.tv2-fix:active{background:var(--tv2-surface2);}
+.tv2-unsync{font-size:11px;color:var(--tv2-warn,#c98a2b);margin-top:.25rem;font-weight:600;
+  display:flex;gap:.35rem;align-items:flex-start;line-height:1.35;}
+.tv2-unsync b{font-weight:800;}
 .tv2-sum .n{font-size:14.5px;font-weight:650;color:var(--tv2-muted);min-width:0;overflow-wrap:anywhere;}
 .tv2-sum .v{margin-left:auto;flex:0 0 auto;color:var(--tv2-ok);font-family:ui-monospace,monospace;font-size:12px;}
 
@@ -4577,8 +4584,34 @@ function getWorkoutLogEntry(phase, dayIdx, exName) {
 
 const _workoutPending = new Set();
 
+/* SET-CORRECTION-V1 — stable identity for one performance (one exercise in one
+   session occurrence). It is minted on this device before the row exists, sent
+   with the write, and stored on the row, so the row can be addressed later
+   without guessing: an insert that is retried resolves to the same row, and a
+   correction names the exact row instead of "the latest one that looks right".
+   A shell that cannot mint one (no crypto, very old browser) simply sends none
+   and keeps today's behaviour. */
+function _perfRef() {
+  try {
+    if (window.crypto && crypto.randomUUID) return 'perf_' + crypto.randomUUID();
+    if (window.crypto && crypto.getRandomValues) {
+      var a = new Uint8Array(16); crypto.getRandomValues(a);
+      return 'perf_' + [].map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    }
+  } catch (e) {}
+  return '';
+}
+function _ensurePerfRef(id) {
+  var logs = loadWorkoutLogs(), e = logs[id];
+  if (!e) return '';
+  if (!e.perfRef) { e.perfRef = _perfRef(); saveWorkoutLogsLocal(logs); }
+  return e.perfRef || '';
+}
 async function postWorkoutLog(entry) {
+  const id0 = _workoutLogId(entry.phase, entry.dayIdx, entry.exName);
+  const clientRef = _ensurePerfRef(id0);
   const r = await cloudWrite('workout', {
+    clientRef:    clientRef,
     phase:        entry.phase,
     dayIdx:       entry.dayIdx,
     exerciseName: entry.exName,
@@ -4591,7 +4624,11 @@ async function postWorkoutLog(entry) {
   try {
     const logs = loadWorkoutLogs();
     const id = _workoutLogId(entry.phase, entry.dayIdx, entry.exName);
-    if (logs[id]) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error; saveWorkoutLogsLocal(logs); }
+    if (logs[id]) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error;
+                    /* SET-CORRECTION-V1: remember which row this exercise became,
+                       so a later correction updates that row instead of adding one. */
+                    if (r.ok && r.data && r.data.id) logs[id].rowId = r.data.id;
+                    saveWorkoutLogsLocal(logs); }
   } catch (e) {}
   if (r.ok) syncSaved(); else syncFailed(r.error);
   return r;
@@ -4740,6 +4777,12 @@ function saveWorkoutLog() {
   if (_workoutPending.has(id)) return;
   entry.synced = false;
   const logs = loadWorkoutLogs();
+  /* SET-CORRECTION-V1: the record is rebuilt from the form, but the identity of
+     the performance it represents is not form data. Carry it across, or a later
+     correction has no row to name. */
+  const _prevRec = logs[id] || {};
+  if (_prevRec.perfRef) entry.perfRef = _prevRec.perfRef;
+  if (_prevRec.rowId)   entry.rowId   = _prevRec.rowId;
   logs[id] = entry;
   saveWorkoutLogsLocal(logs);
   cancelWorkoutLog();
@@ -8003,6 +8046,7 @@ function sw3Use(i) {
   var V = { view: 'home', phase: null, day: 0, active: 0, edit: -1, rir: {}, started: null,
             sid: null,            /* session being viewed; null = fresh sheet (no occurrence yet) */
             fresh: false,         /* true when the client explicitly chose to start this day again */
+            fix: false,           /* SET-CORRECTION-V1: correcting a logged set in a session that is already finished */
             dirty: false };       /* an override arrived while a row was being typed; repaint later */
 
   function P() { return phases[V.phase] || phases[Object.keys(phases)[0]]; }
@@ -8154,6 +8198,14 @@ function sw3Use(i) {
   }
   function dayExs() { var s = curSession(); if (s && s.exs && s.exs.length) return s.exs; var d = tv2Day(V.phase, V.day); return d ? d.exercises : []; }
   function liveMode() { var s = curSession(); return !s || s.status === 'open'; }
+  /* SET-CORRECTION-V1. Logging a NEW set still requires an open occurrence
+     (liveMode). CORRECTING a set already logged is allowed in the occurrence on
+     screen even after it finished, because the wrong number is already recorded
+     and the only alternative the UI offered was starting the workout again -
+     which creates a second occurrence and a second history entry. Correction
+     never creates an occurrence, never adds a set and never changes status,
+     completedAt or which sets exist. */
+  function canEdit() { var s = curSession(); return !!s && (s.status === 'open' || V.fix === true); }
   function slFor(s, name) { var en = s && s.entries && s.entries[name]; return (en && en.setLog && en.setLog.length) ? en.setLog : []; }
   function exDoneIn(s, ex) {
     var en = s && s.entries && s.entries[ex.name]; if (!en) return false;
@@ -8199,6 +8251,10 @@ function sw3Use(i) {
     var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), prev = logs[id] || {};
     var s = summarise(sl);
     logs[id] = { phase: ph, dayIdx: di, exName: name,
+      /* SET-CORRECTION-V1: identity of the performance this record stands for -
+         never re-minted by a rewrite, never inherited across occurrences (the
+         flush clears it when the occurrence changes). */
+      perfRef: prev.perfRef || '', rowId: prev.rowId || null,
       sets: s.sets, reps: s.reps, weight: s.weight,
       /* The legacy scalar stays empty on purpose. It is rendered by the shell
          as 'RPE <value>' and colour-banded on a 0-10 RPE scale, so a reported
@@ -8226,6 +8282,25 @@ function sw3Use(i) {
     var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), e = logs[id];
     if (!e || !setsOfRec(e).length) return false;
     if (e.setLogSynced === e.setLog.length) return false;
+    /* SET-CORRECTION-V1: the latest-record id is per exercise per day, so the
+       SAME id is reused by every occurrence of that day. The performance ref
+       therefore belongs to the OCCURRENCE: it is minted once per session entry
+       and copied onto the record before the write, so two sessions of the same
+       exercise on the same day address two different rows. */
+    try {
+      var s0 = curSession();
+      if (s0 && s0.entries && s0.entries[name]) {
+        if (!s0.entries[name].perfRef) {
+          s0.entries[name].perfRef = (typeof _perfRef === 'function' ? _perfRef() : '');
+          putSession(ph, di, s0);
+        }
+        if (s0.entries[name].perfRef && e.perfRef !== s0.entries[name].perfRef) {
+          e.perfRef = s0.entries[name].perfRef;
+          e.rowId = null;                       /* a different performance: never inherit the previous row */
+          saveWorkoutLogsLocal(logs);
+        }
+      }
+    } catch (eRef) {}
     if (typeof openWorkoutLog !== 'function' || typeof window.saveWorkoutLog !== 'function') return false;
     if (!q('wl-sets') || !q('wl-notes')) return false;
     try {
@@ -8264,6 +8339,52 @@ function sw3Use(i) {
     } catch (err) { try { cancelWorkoutLog(); } catch (e2) {} return false; }
   }
   function setsOfRec(e) { return (e && Object.prototype.toString.call(e.setLog) === '[object Array]') ? e.setLog : []; }
+  /* SET-CORRECTION-V1 — honest sync state for a correction. A correction is
+     only ever "sent" when the backend confirmed it updated the exact owned row.
+     Anything else (offline, refused, or a performance logged before this
+     update and therefore holding no row id or reference) stays PENDING and is
+     shown as pending. We never silently present an unsynced correction as
+     synced, and we never widen row matching to make an old entry syncable. */
+  function corrState(ph, di, name) {
+    try {
+      var e = loadWorkoutLogs()[_workoutLogId(ph, di, name)];
+      if (!e || !e.correctedAt) return null;
+      if (e.correctionSynced === true) return null;
+      return (e.correctionErr === 'no_row_to_correct') ? 'unsendable' : 'pending';
+    } catch (e2) { return null; }
+  }
+  /* SET-CORRECTION-V1 — cloud side of a correction to an exercise that was
+     already sent. The `workout` action INSERTS a history row, so it is never
+     reused here: that would record one performance twice and inflate the
+     coach's set and session counts. `workoutCorrect` updates that row in place.
+     A backend that does not offer the action refuses it; the correction then
+     stays local and stays marked, and nothing is duplicated either way. */
+  function correctCloud(ph, di, name) {
+    var logs = loadWorkoutLogs(), id = _workoutLogId(ph, di, name), e = logs[id];
+    if (!e) return false;
+    e.correctedAt = new Date().toISOString();
+    e.correctionSynced = false;
+    saveWorkoutLogsLocal(logs);
+    if (typeof cloudWrite !== 'function') return false;
+    try {
+      cloudWrite('workoutCorrect', {
+        phase: ph, dayIdx: di, exerciseName: name,
+        rowId: e.rowId || null, clientRef: e.perfRef || null,
+        setsActual: e.sets, repsActual: e.reps, weightActual: e.weight,
+        rpeActual: e.rpe || '', notes: e.notes || ''
+      }).then(function (r) {
+        var l2 = loadWorkoutLogs(); if (!l2[id]) return;
+        l2[id].correctionSynced = !!(r && r.ok);
+        if (r && !r.ok) l2[id].correctionErr = r.error || 'refused';
+        saveWorkoutLogsLocal(l2);
+        if (r && r.ok) { try { syncSaved(); } catch (e2) {} }
+        /* repaint the summary so the pending badge clears on a confirmed
+           correction, and stays visible when the backend refused it. */
+        try { if (V.view === 'done' && !V.fix) { var cs = curSession(); if (cs) renderDone(cs); } } catch (e5) {}
+      })['catch'](function () {});
+    } catch (e3) {}
+    return true;
+  }
   /* Flush every complete, unflushed exercise of the OPEN occurrence only. */
   function flushAll() {
     var s = openSession(V.phase, V.day); if (!s) return;
@@ -8623,12 +8744,16 @@ function sw3Use(i) {
     else if (now) { wv = carried(V.phase, V.day, ex, sl); rp = esc(ex.reps); wp = 'kg'; }
     else { wp = carried(V.phase, V.day, ex, sl) || 'kg'; rp = '–'; }
 
+    /* SET-CORRECTION-V1: a logged row's own values open the editor when tapped.
+       The inputs stay readonly so a tap cannot silently change a recorded number
+       without entering edit; the tap is what enters it. The tick keeps working. */
+    var tapEdit = (done && !editing) ? ' onclick="tv2EditSet(' + i + ')" title="Tap to correct set ' + n + '"' : '';
     var wIn = '<input class="tv2-in" id="tv2-w' + i + '" inputmode="decimal" enterkeyhint="next" ' +
       'aria-label="Set ' + n + ' weight" ' + ((done && !editing) ? 'readonly ' : '') +
-      'value="' + esc(wv) + '" placeholder="' + esc(wp) + '">';
+      'value="' + esc(wv) + '" placeholder="' + esc(wp) + '"' + tapEdit + '>';
     var rIn = '<input class="tv2-in" id="tv2-r' + i + '" inputmode="numeric" enterkeyhint="done" ' +
       'aria-label="Set ' + n + ' reps achieved" ' + ((done && !editing) ? 'readonly ' : '') +
-      'value="' + esc(rv) + '" placeholder="' + (rp ? esc(rp) : '') + '">';
+      'value="' + esc(rv) + '" placeholder="' + (rp ? esc(rp) : '') + '"' + tapEdit + '>';
     var rir = (done || editing) ? String((sl[i] && sl[i].rir) || '') : '';
     var btn = editing
       ? '<button class="tv2-log save" onclick="tv2SaveSet(' + i + ')">Save</button>'
@@ -8662,9 +8787,9 @@ function sw3Use(i) {
 
   function renderWorkout() {
     var s = curSession();
-    if (s && s.status !== 'open') { return renderDone(s); }          /* history is read-only */
+    if (s && s.status !== 'open' && !V.fix) { return renderDone(s); } /* history is read-only unless correcting */
     var d = tv2Day(V.phase, V.day), exs = dayExs(), pr = s ? progressIn(s) : { done: 0, total: exs.length };
-    if (s && pr.total && pr.done >= pr.total) { return renderDone(s); }
+    if (s && pr.total && pr.done >= pr.total && !V.fix) { return renderDone(s); }
     if (V.active >= exs.length || !exs[V.active]) V.active = 0;
 
     var doneRows = '', upRows = '', act = '';
@@ -8693,13 +8818,16 @@ function sw3Use(i) {
         (lastDone.status === 'complete' ? 'completed' : 'not finished') + '<span>View ›</span></button>' : '';
     var abandon = (s && pr.done > 0) ? '<button class="tv2-restart" onclick="tv2StartAgain(' + V.day + ')">Start this workout again</button>' : '';
 
+    var fixing = !!V.fix;
+    var fixNote = fixing ? '<div class="tv2-again">Correcting a logged set · this session stays as it is, nothing is added</div>' +
+      '<button class="tv2-hist" onclick="tv2FixDone()">Done correcting<span>Back to summary ›</span></button>' : '';
     q('tv2-workout').innerHTML =
       '<div class="tv2-whead"><div class="tv2-whead-row">' +
-        '<button class="tv2-back" onclick="tv2Home()" aria-label="Back to Training">‹</button>' +
-        '<h2 class="tv2-wtitle">' + esc(shortName(d.label)) + '</h2>' +
+        '<button class="tv2-back" onclick="' + (fixing ? 'tv2FixDone()' : 'tv2Home()') + '" aria-label="' + (fixing ? 'Back to session summary' : 'Back to Training') + '">‹</button>' +
+        '<h2 class="tv2-wtitle">' + (fixing ? 'Correct a set' : esc(shortName(d.label))) + '</h2>' +
         '<span class="tv2-count">' + pr.done + ' / ' + pr.total + ' done</span></div>' +
         '<div class="tv2-bar"><i style="width:' + (pr.total ? Math.round(pr.done / pr.total * 100) : 0) + '%"></i></div>' +
-      '</div>' + note +
+      '</div>' + fixNote + note +
       doneRows + act +
       (upRows ? '<span class="tv2-sec">Upcoming exercises</span>' + upRows : '') + abandon;
   }
@@ -8758,7 +8886,7 @@ function sw3Use(i) {
     show(V.view === 'workout' ? 'workout' : V.view);
   };
   window.tv2EditSet = function (i) {
-    if (!liveMode()) return;
+    if (!canEdit()) return;
     V.edit = i;
     try {
       var ex0 = dayExs()[V.active];
@@ -8768,9 +8896,14 @@ function sw3Use(i) {
     show('workout');
     setTimeout(function () { var el = q('tv2-r' + i); if (el) el.focus(); }, 30); };
   window.tv2SaveSet = function (i) {
-    if (!liveMode()) return;
-    var s = openSession(V.phase, V.day); if (!s) { V.edit = -1; show('workout'); return; }
-    var ex = s.exs[V.active], v = readRow(i);
+    if (!canEdit()) return;
+    /* The occurrence being corrected is the one on screen - openSession() would
+       silently retarget a finished session's correction at a different (open)
+       one, so the session, the exercise and the set index are all taken from
+       what the client is looking at. */
+    var s = curSession(); if (!s) { V.edit = -1; show('workout'); return; }
+    var ex = (s.exs && s.exs[V.active]) || dayExs()[V.active]; if (!ex) { V.edit = -1; show('workout'); return; }
+    var v = readRow(i);
     if (badReps(v.r)) { nudge(i); return; }
     var sl = slFor(s, ex.name).slice();
     if (!sl[i]) { V.edit = -1; show('workout'); return; }
@@ -8778,13 +8911,31 @@ function sw3Use(i) {
               edited: new Date().toISOString() };
     delete V.rir[i];
     var wasFlushed = !!(s.entries[ex.name] && s.entries[ex.name].flushed);
+    var wasStatus = s.status, wasCompletedAt = s.completedAt;
     writeLocal(V.phase, V.day, ex.name, sl, wasFlushed);
     writeSession(s, ex.name, sl, wasFlushed);
+    s.status = wasStatus; if (wasCompletedAt) s.completedAt = wasCompletedAt;   /* a correction never reopens or re-closes an occurrence */
+    putSession(V.phase, V.day, s);
     V.edit = -1;
-    if (sl.length >= presSets(ex) && flushCloud(V.phase, V.day, ex.name)) { s.entries[ex.name].flushed = true; putSession(V.phase, V.day, s); }
+    if (!wasFlushed && s.status === 'open' && sl.length >= presSets(ex) && flushCloud(V.phase, V.day, ex.name)) {
+      s.entries[ex.name].flushed = true; putSession(V.phase, V.day, s);
+    } else if (wasFlushed) {
+      /* Already sent once. The cloud row is append-only and has no update
+         action, so re-sending would add a second history entry for one
+         performance. The correction is recorded locally and marked, and
+         correctCloud() sends it only where the backend offers an in-place
+         correction. */
+      correctCloud(V.phase, V.day, ex.name);
+    }
     show('workout');
   };
-  window.tv2Go = function (i) { if (!liveMode()) return; V.active = i; V.edit = -1; V.rir = {}; show('workout'); };
+  window.tv2Go = function (i) { if (!canEdit()) return; V.active = i; V.edit = -1; V.rir = {}; show('workout'); };
+  /* Enter / leave correction mode for a finished occurrence. */
+  window.tv2Fix = function (i) {
+    var s = curSession(); if (!s) return;
+    V.fix = true; V.active = i; V.edit = -1; V.rir = {}; show('workout'); top();
+  };
+  window.tv2FixDone = function () { V.fix = false; V.edit = -1; V.rir = {}; show('done'); top(); };
   function advance() {
     var s = openSession(V.phase, V.day), exs = dayExs();
     for (var i = 0; i < exs.length; i++) {
@@ -8825,6 +8976,15 @@ function sw3Use(i) {
 
   /* Read-only view of one occurrence. Its prescription is the one frozen when
      it was created - a later progression never rewrites it. */
+  function corrNote(ph, di, name) {
+    var st = corrState(ph, di, name);
+    if (!st) return '';
+    return '<div class="tv2-unsync"><span aria-hidden="true">!</span><span>' +
+      (st === 'unsendable'
+        ? '<b>Corrected on this device only.</b> This set was logged before the correction feature existed, so your coach&rsquo;s copy cannot be changed automatically &mdash; tell your coach if it matters.'
+        : '<b>Corrected on this device &mdash; not sent to your coach yet.</b> It will be sent next time this correction goes through.') +
+      '</span></div>';
+  }
   function renderDone(s) {
     var d = tv2Day(V.phase, V.day), pr = progressIn(s), st = sessionStats(s);
     var nextIdx = null, days = P().days;
@@ -8854,10 +9014,17 @@ function sw3Use(i) {
         '<div class="tv2-sub" style="margin-top:.4rem;">' + esc(shortName(d.label)) + ' · ' + (s.restored ? 'restored' : 'session ' + s.sid) + (when ? ' · ' + esc(fmtDate(when)) : '') + '</div></div>' +
       '<div class="tv2-tiles">' + tiles + '</div>' +
       '<span class="tv2-sec">This session</span>' +
-      st.per.map(function (x) {
+      st.per.map(function (x, xi) {
+        /* SET-CORRECTION-V1: a logged number can be corrected from the summary of
+           the LATEST occurrence of this day. Older occurrences stay read-only
+           history. Correcting never adds a set, an occurrence or a history row. */
+        var _ls = lastSession(V.phase, V.day);
+        var fixable = !!(x.sets && _ls && _ls.sid === s.sid);
         return '<div class="tv2-sum"><span class="tv2-bullet' + (x.done ? ' done' : '') + '"></span>' +
-          '<span class="n">' + esc(x.name) + '<div class="tv2-sumrx">Rx ' + presSets(x.rx) + ' × ' + esc(x.rx.reps) + (String(x.rx.weight || '').trim() ? ' · ' + esc(x.rx.weight) : '') + (x.actual ? ' · did ' + esc(x.actual) : '') + '</div></span>' +
-          '<span class="v">' + (x.sets ? x.sets + ' set' + (x.sets === 1 ? '' : 's') : 'not logged') + '</span></div>';
+          '<span class="n">' + esc(x.name) + '<div class="tv2-sumrx">Rx ' + presSets(x.rx) + ' × ' + esc(x.rx.reps) + (String(x.rx.weight || '').trim() ? ' · ' + esc(x.rx.weight) : '') + (x.actual ? ' · did ' + esc(x.actual) : '') + '</div>' + corrNote(V.phase, V.day, x.name) + '</span>' +
+          '<span class="v">' + (x.sets ? x.sets + ' set' + (x.sets === 1 ? '' : 's') : 'not logged') +
+          (fixable ? '<button class="tv2-fix" onclick="tv2Fix(' + xi + ')" aria-label="Correct a logged set for ' + esc(x.name) + '">Fix</button>' : '') +
+          '</span></div>';
       }).join('') +
       (st.mins == null ? '<div class="tv2-pres" style="margin-top:1rem;">Duration is shown only when at least two sets carry timestamps from this session.</div>' : '') +
       restoredNote +
@@ -8962,7 +9129,7 @@ function sw3Use(i) {
     if (v === 'home') renderHome();
     if (v === 'workout') {
       var s = curSession();
-      if (s && (s.status !== 'open' || progressIn(s).done >= progressIn(s).total)) {
+      if (s && !V.fix && (s.status !== 'open' || progressIn(s).done >= progressIn(s).total)) {
         /* a finished occurrence is shown as its summary, never as an empty sheet */
         q('tv2-workout').hidden = true; q('tv2-done').hidden = false; V.view = 'done'; renderDone(s);
       } else renderWorkout();
@@ -8975,7 +9142,7 @@ function sw3Use(i) {
   }
   function top() { try { window.scrollTo(0, 0); } catch (e) {} }
 
-  window.tv2Home = function () { flushAll(); V.edit = -1; V.rir = {}; V.sid = null; V.fresh = false; show('home'); top(); };
+  window.tv2Home = function () { flushAll(); V.edit = -1; V.rir = {}; V.fix = false; V.sid = null; V.fresh = false; show('home'); top(); };
   /* Opening a day never creates an occurrence: an open one resumes, a finished
      one shows its summary, a day never done shows the fresh sheet. */
   /* TV2-NAV-V1: HISTORY != ACTIVE SESSION. Tapping a day resumes its open
@@ -8983,7 +9150,7 @@ function sw3Use(i) {
      occurrence (created only when a set is logged) - never the historical
      summary, which stays one tap away via "View last session". */
   window.tv2Open = function (i) {
-    V.day = i; V.edit = -1; V.rir = {};
+    V.day = i; V.edit = -1; V.rir = {}; V.fix = false;
     var o = openSession(V.phase, i);
     V.sid = o ? o.sid : null; V.fresh = !o;
     V.active = 0;
@@ -8993,7 +9160,7 @@ function sw3Use(i) {
   };
   /* View one specific occurrence (read-only unless it is the open one). */
   window.tv2OpenSession = function (i, sid) {
-    V.day = i; V.edit = -1; V.rir = {}; V.fresh = false; V.sid = sid; V.active = 0;
+    V.day = i; V.edit = -1; V.rir = {}; V.fix = false; V.fresh = false; V.sid = sid; V.active = 0;
     var s = findSession(V.phase, i, sid); if (!s) { tv2Open(i); return; }
     show(s.status === 'open' ? 'workout' : 'done'); top();
   };
@@ -9009,7 +9176,7 @@ function sw3Use(i) {
       else { if (!window.confirm('Start this workout again? The ' + progressIn(o).done + ' exercise(s) already logged stay on record as an unfinished session.')) return;
              flushAll(); o.status = 'abandoned'; putSession(V.phase, i, o); }
     }
-    V.sid = null; V.fresh = true; V.edit = -1; V.rir = {}; V.active = 0;
+    V.sid = null; V.fresh = true; V.edit = -1; V.rir = {}; V.fix = false; V.active = 0;
     show('workout'); top();
   };
   window.tv2Guide = function () { show('guide'); top(); };
@@ -9020,7 +9187,7 @@ function sw3Use(i) {
       return;
     }
     flushAll();
-    V.phase = String(n); V.day = 0; V.edit = -1; V.rir = {}; V.sid = null; V.fresh = false; show('home'); top();
+    V.phase = String(n); V.day = 0; V.edit = -1; V.rir = {}; V.fix = false; V.sid = null; V.fresh = false; show('home'); top();
   };
   window.tv2Acc = function (i) {
     var b = q('tv2-acc-' + i), ic = q('tv2-acc-i' + i);
