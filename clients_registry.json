@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T10:18:04Z",
+  "generatedAt": "2026-09-23T01:54:14Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 47,
+  "clientCount": 48,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -191,6 +191,10 @@
     {
       "storageKey": "zain_hussein",
       "programUrl": "clients/zain_hussein/"
+    },
+    {
+      "storageKey": "zayne_ali",
+      "programUrl": "clients/zayne_ali/"
     }
   ],
   "note": "Public slim registry. Auto-generated from clients/*/index.html on every push. Full metadata lives behind the coach-authed registryGetPrivate endpoint."
