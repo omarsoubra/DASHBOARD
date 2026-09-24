@@ -1,0 +1,7 @@
+function _logWeightText(e) {
+  if (!e) return '';
+  var v = e.weight;
+  if (v === undefined || v === null || v === '') v = e.weightActual;
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}

@@ -10,6 +10,25 @@ const IIFE={
   ENGINE :{markers:['createSession','writeLocal','entryFor']},
   RESTORE:{markers:['hydrateFromCloud','KEY_LAST_RESTORE']},
 };
+/* PRE-LIFECYCLE ENGINE LOCATOR.
+   A shell that predates the TV2 session lifecycle has no IIFE defining
+   createSession/writeLocal/entryFor, so the ordinary ENGINE locator reports
+   ABSENT and the transplant refuses. Such a shell nevertheless carries the TV2
+   screen engine: exactly one top-level IIFE that publishes the tv2 window
+   surface. It is located by that surface - never by size or position - and it
+   is installed only when replacing it cannot remove behaviour the shell still
+   uses, which is what the export-subset gate below proves. */
+const PRE_LIFECYCLE={
+  requires:['tv2Open','tv2LogSet','tv2Go','tv2Home'],   /* the TV2 screen surface */
+  forbids:['createSession'],                            /* the lifecycle's own constructor */
+  forbidsText:['_workout_sessions']                     /* and its ledger key */
+};
+function preLifecycleEngines(file){
+  return units(file).filter(x=>
+    PRE_LIFECYCLE.requires.every(m=>x.exports.includes(m)) &&
+    !PRE_LIFECYCLE.forbids.some(m=>x.names.includes(m)) &&
+    !PRE_LIFECYCLE.forbidsText.some(t=>x.text.includes(t)));
+}
 function iifeUnit(file,markers){
   const c=units(file).filter(x=>markers.every(m=>x.names.includes(m)));
   return c.sort((a,b)=>b.bytes-a.bytes)[0]||null;
@@ -21,7 +40,7 @@ const sha32=s=>crypto.createHash('sha256').update(s).digest('hex');
 const UNITS={
   TRACK_A   :{members:['cloudWrite','_markSync','syncSaving','syncSaved','syncFailed','_mealPending','retryUnsyncedMeals'], anchorBefore:['loadWorkoutLogs','postWorkoutLog']},
   WORKOUT_IO:{members:['_workoutLogId','loadWorkoutLogs','saveWorkoutLogsLocal','postWorkoutLog','saveWorkoutLog','cancelWorkoutLog'], anchorBefore:['postWorkoutLog']},
-  FIND_LOAD :{members:['_FL_NON_LOAD','_FL_TOKEN','_fmtKg','_loadState','_FL_AUTH_KG','_FL_AUTH_FIND','_authoredLoadKind','_FL_EFFORT','_authoredEffortCue','_fl_esc','_resolveLoadBadge'], anchorBefore:['_workoutPending','postWorkoutLog']},
+  FIND_LOAD :{members:['_logWeightText','_FL_NON_LOAD','_FL_TOKEN','_fmtKg','_loadState','_FL_AUTH_KG','_FL_AUTH_FIND','_authoredLoadKind','_FL_EFFORT','_authoredEffortCue','_fl_esc','_resolveLoadBadge'], anchorBefore:['_workoutPending','postWorkoutLog']},
   PERF_REF  :{members:['_workoutPending','_perfRef','_ensurePerfRef'], anchorBefore:['postWorkoutLog']},
   B5        :{members:['_wlB5','_wlStr','_wlNorm','_wlIsBwRx','_wlLooksLikeLoad','_wlIsRange','_wlPlainInt','_wlField','_wlSet','_wlHintBox','_wlHint','_wlPriorActual','_wlUseLast','_wlValidate'], anchorBefore:['saveWorkoutLog']},
 };
@@ -62,7 +81,20 @@ function transplant(key,ref,refShas,allowed){
     const cur=idx.iifes[u]; const before = cur? sha(cur.text)+':'+cur.bytes : 'ABSENT';
     audit.before[u]=before;
     if(before===refShas[u]) continue;
-    if(before==='ABSENT'){ audit.refusals.push(`${u} IIFE absent — no anchor defined for a full install`); continue; }
+    if(before==='ABSENT'){
+      if(u!=='ENGINE'){ audit.refusals.push(`${u} IIFE absent — no anchor defined for a full install`); continue; }
+      /* pre-lifecycle path — every gate must pass or the shell is refused */
+      const cands=preLifecycleEngines(`${CLIENTS}/${key}/index.html`);
+      if(cands.length!==1){ audit.refusals.push(`ENGINE absent and the pre-lifecycle locator matched ${cands.length} candidates (need exactly 1)`); continue; }
+      const pre=cands[0], preSha=sha(pre.text)+':'+pre.bytes;
+      audit.before.ENGINE='PRE_LIFECYCLE:'+preSha;
+      if(!(allowed.ENGINE_PRE||[]).includes(preSha)){ audit.refusals.push(`unknown pre-lifecycle ENGINE variant ${preSha}`); continue; }
+      const lost=pre.exports.filter(x=>!ref.iifes.ENGINE.exports.includes(x));
+      if(lost.length){ audit.refusals.push(`pre-lifecycle ENGINE exports the reference does not provide: ${lost.join(',')}`); continue; }
+      edits.push({start:pre.start,end:pre.end,text:ref.iifes.ENGINE.text,what:'ENGINE(pre-lifecycle)'});
+      audit.actions.push(`ENGINE pre-lifecycle ${preSha} -> ${refShas.ENGINE} (exports ${pre.exports.length} -> ${ref.iifes.ENGINE.exports.length}, none lost)`);
+      continue;
+    }
     if(!allowed[u].includes(before)){ audit.refusals.push(`unknown ${u} IIFE variant ${before}`); continue; }
     edits.push({start:cur.start,end:cur.end,text:ref.iifes[u].text,what:u});
     audit.actions.push(`${u} IIFE replaced ${before} -> ${refShas[u]}`);
@@ -129,4 +161,4 @@ function transplant(key,ref,refShas,allowed){
 }
 const TRANSPLANTED=new Set(Object.values(UNITS).flatMap(u=>u.members));
 function isTransplanted(n){ return TRANSPLANTED.has(n); }
-module.exports={transplant,index,unitSha,UNITS,IIFE,contentHashes,sha};
+module.exports={transplant,index,unitSha,UNITS,IIFE,contentHashes,sha,preLifecycleEngines};
