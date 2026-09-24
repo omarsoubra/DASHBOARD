@@ -8609,7 +8609,7 @@ function _cdPanelProgression(c, sum) {
       ? '<span style="font-size:9px;opacity:.5;margin-left:3px" title="Auto-sourced from authored program">prog</span>' : '';
     return `
       <tr class="pg-ex-row" data-ex="${_esc(ex.name)}">
-        <td class="pg-ex-name" title="${_esc(ex.name)}">${_esc(ex.name)}</td>
+        <td class="pg-ex-name" title="${_esc(ex.name)}${ex.prescribedFor ? ' — substituted for ' + _esc(ex.prescribedFor) : ''}">${_esc(ex.name)}${ex.prescribedFor ? `<br><span style="font-size:10px;color:#f59e0b;font-weight:600">sub for ${_esc(ex.prescribedFor)}</span>` : ''}</td>
         <td class="pg-ex-last">${_esc(ex.lastWeight || '—')} × ${_esc(ex.lastSets || '—')} × ${_esc(ex.lastReps || '—')}${ex.lastRpe ? ' @ RPE ' + _esc(ex.lastRpe) : ''}<br><span style="opacity:.6;font-size:10px">${_esc(ex.lastDate || '')}</span></td>
         <td><input class="pg-input" style="width:56px" placeholder="e.g. 8–10" value="${repRangeVal}"
               oninput="_pgSetRx('${_esc(key)}','${_esc(ex.name)}','repRange',this.value)" title="Prescribed rep range (e.g. 8-10)">${srcBadge}</td>
@@ -8702,6 +8702,9 @@ function _pgGroupByExercise(workouts) {
     if (!name || seen.has(name)) continue;
     seen.set(name, {
       name,
+      // SUBSTITUTION-V1 — what the program asked for, when the client performed
+      // a coach-approved substitute instead. Null for an ordinary performance.
+      prescribedFor: w.prescribedExerciseName || w.prescribed_exercise_name || null,
       phase:      w.phase    || w.phase_key || null,
       dayIdx:     w.dayIdx   != null ? w.dayIdx : (w.day_index != null ? w.day_index : null),
       sets:       w.setsActual   || '',
