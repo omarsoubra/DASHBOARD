@@ -4442,6 +4442,14 @@ function _ensurePerfRef(id) {
   return e.perfRef || '';
 }
 
+function _logWeightText(e) {
+  if (!e) return '';
+  var v = e.weight;
+  if (v === undefined || v === null || v === '') v = e.weightActual;
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
 var _FL_NON_LOAD = /(\brir\b|\brpe\b|\bbw\b|body\s*weight|\bassist\w*\b|\bband\b|km\s*\/?\s*h|incline|%|\bpace\b|\bsteady\b|all[\s-]?out|max\s*hr|max\s*intent|\bhard\b|\beasy\b|\bround\b|\bmin\b|\bsec\b|\bfail\w*\b|\bamrap\b)/i;
 
 var _FL_TOKEN = /^\s*(\d+(?:\.\d+)?)\s*(?:kgs?)?\s*(ea|each|per\s*side|\/\s*side|ps)?\s*$/i;
