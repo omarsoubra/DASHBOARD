@@ -4516,6 +4516,83 @@ function getWorkoutLogEntry(phase, dayIdx, exName) {
   return loadWorkoutLogs()[_workoutLogId(phase, dayIdx, exName)] || null;
 }
 
+var _FL_NON_LOAD = /(\brir\b|\brpe\b|\bbw\b|body\s*weight|\bassist\w*\b|\bband\b|km\s*\/?\s*h|incline|%|\bpace\b|\bsteady\b|all[\s-]?out|max\s*hr|max\s*intent|\bhard\b|\beasy\b|\bround\b|\bmin\b|\bsec\b|\bfail\w*\b|\bamrap\b)/i;
+
+var _FL_TOKEN = /^\s*(\d+(?:\.\d+)?)\s*(?:kgs?)?\s*(ea|each|per\s*side|\/\s*side|ps)?\s*$/i;
+
+function _fmtKg(n) {
+  var r = Math.round(n * 100) / 100;
+  return String(r);
+}
+
+function _loadState(entry) {
+  var NONE     = { state: 'none',     loadKg: null, display: null };
+  var NON_LOAD = { state: 'non_load', loadKg: null, display: null };
+  var raw = _logWeightText(entry);
+  if (!raw) return NONE;
+  if (_FL_NON_LOAD.test(raw)) return NON_LOAD;
+
+  var parts = raw.split(/[,;\/]+|\bthen\b|\band\b/i);
+  var vals = [], qual = '';
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i].trim();
+    if (p === '') continue;
+    var m = _FL_TOKEN.exec(p);
+    if (!m) return NON_LOAD;                 /* one unparseable token poisons the whole entry */
+    var v = parseFloat(m[1]);
+    if (!isFinite(v) || v <= 0) return NON_LOAD;
+    vals.push(v);
+    if (m[2] && !qual) qual = ' EA';
+  }
+  if (!vals.length) return NONE;
+
+  for (var j = 1; j < vals.length; j++) {
+    /* MIXED: do not pick first / last / highest / lowest / mean. The detailed
+       history line stays truthful; the badge points the client at it. */
+    if (vals[j] !== vals[0]) return { state: 'mixed', loadKg: null, display: 'SEE LOG' };
+  }
+  return { state: 'single', loadKg: vals[0], display: 'LAST ' + _fmtKg(vals[0]) + 'KG' + qual };
+}
+
+var _FL_AUTH_KG   = /\d+(?:\.\d+)?\s*kg|^\s*[+-]?\d+(?:\.\d+)?\s*$|assist\s*-\s*\d+/i;
+
+var _FL_AUTH_FIND = /find\s+(?:your\s+)?load|your\s+logged\s+load|beat\s+the\s+log|^\s*set\s+wk\d+/i;
+
+function _authoredLoadKind(w) {
+  var s = String(w === undefined || w === null ? '' : w).trim();
+  if (!s) return 'other';
+  if (_FL_AUTH_KG.test(s))   return 'explicit';
+  if (_FL_AUTH_FIND.test(s)) return 'find';
+  return 'other';
+}
+
+var _FL_EFFORT = /\bRIR\s*\d+(?:\s*[-–]\s*\d+)?|\d+(?:\s*[-–]\s*\d+)?\s*\+?\s*RIR\b|\bRPE\s*\d+(?:\s*[-–]\s*\d+)?/i;
+
+function _authoredEffortCue(w) {
+  var m = _FL_EFFORT.exec(String(w === undefined || w === null ? '' : w));
+  return m ? m[0].toUpperCase().replace(/\s+/g, ' ').replace(/–/g, '-') : '';
+}
+
+function _fl_esc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function _resolveLoadBadge(ex, entry) {
+  var authored = (ex && ex.weight !== undefined && ex.weight !== null) ? ex.weight : '';
+  var kind = _authoredLoadKind(authored);
+  if (kind !== 'find') return _fl_esc(authored);
+
+  var st = _loadState(entry);
+  if (st.state !== 'single' && st.state !== 'mixed') return _fl_esc(authored);
+
+  var cue = _authoredEffortCue(authored);
+  return _fl_esc(st.display) + (cue
+    ? '<span style="display:block;font-family:\'DM Mono\',monospace;font-size:10px;'
+      + 'opacity:0.7;letter-spacing:0.02em;margin-top:2px;">' + _fl_esc(cue) + '</span>'
+    : '');
+}
+
 const _workoutPending = new Set();
 
 /* SET-CORRECTION-V1 — stable identity for one performance (one exercise in one
