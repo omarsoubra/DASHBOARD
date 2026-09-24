@@ -647,7 +647,7 @@ async function dashboard(body: any) {
     admin.from('weight_logs').select('client_key, logged_at, weight_kg').gte('logged_at', ninetyAgo),
     admin.from('check_ins').select('client_key, submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10, notes').gte('submitted_at', ninetyAgo),
     admin.from('meal_logs').select('client_id, logged_at, meal_name, kcal, protein_g, carbs_g, fat_g').gte('logged_at', ninetyAgo),
-    admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, weight, sets_done, reps_done, rpe, phase_key, day_index').gte('logged_at', ninetyAgo),
+    admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, prescribed_exercise_name, weight, sets_done, reps_done, rpe, phase_key, day_index').gte('logged_at', ninetyAgo),
   ]);
   const allRows = clientsAll ?? [];
   const hidden = new Set(allRows.filter((c: any) => c.is_internal === true).map((c: any) => c.storage_key));
@@ -700,6 +700,7 @@ async function dashboard(body: any) {
     p.recentWorkouts.push({
       timestamp:    r.logged_at,
       exerciseName: r.exercise_name,
+      prescribedExerciseName: r.prescribed_exercise_name ?? null,   // SUBSTITUTION-V1
       weightActual: r.weight,
       setsActual:   r.sets_done,
       repsActual:   r.reps_done,
@@ -1248,7 +1249,7 @@ async function clientRestoreGet(clientKey: string) {
       .order('logged_at', { ascending: false })
       .limit(30),
     admin.from('workout_log_entries')
-      .select('logged_at, exercise_name, weight, sets_done, reps_done, rpe, notes, phase_key, day_index')
+      .select('logged_at, exercise_name, prescribed_exercise_name, weight, sets_done, reps_done, rpe, notes, phase_key, day_index')
       .eq('client_key', clientKey)
       .gte('logged_at', ninetyAgo)
       .order('logged_at', { ascending: false })
@@ -1277,6 +1278,7 @@ async function clientRestoreGet(clientKey: string) {
       recentWorkouts: (workouts ?? []).map(r => ({
         timestamp: r.logged_at,
         exerciseName: r.exercise_name,
+        prescribedExerciseName: r.prescribed_exercise_name ?? null,  // SUBSTITUTION-V1
         phase: r.phase_key,
         dayIdx: r.day_index,
         weightActual: r.weight,
@@ -1398,8 +1400,27 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
         .select('id').eq('client_id', clientId).eq('client_ref', clientRef).maybeSingle();
       if (dupe?.id) return ok({ tab: 'workout_log_entries', id: dupe.id, deduped: true });
     }
+    // ══ SUBSTITUTION-V1 — the AUTHORITATIVE prescribed identity ═════════════
+    // A performance can be a coach-approved substitute for the exercise the
+    // program asked for. The row records both, and this is the only place that
+    // record is created, so it is validated here rather than trusted:
+    //
+    //   exercise_name            = what was PERFORMED. Never rewritten to the
+    //                              prescription: progression, Find Load and
+    //                              SET-CORRECTION-V1 all key on it.
+    //   prescribed_exercise_name = what the program asked for, or NULL.
+    //
+    // NULL is the single representation of "performed as prescribed". Every
+    // row written before this column existed is NULL and genuinely was
+    // performed as prescribed, so their meaning does not change. A value equal
+    // to the performed name is collapsed to NULL for the same reason — a row
+    // must not claim a substitution that did not happen.
+    const _perfName = String(body.exerciseName ?? body.exercise ?? '');
+    const _rawRx = String(body.prescribedExerciseName ?? '').trim().slice(0, 200);
+    const prescribedEx = (!_rawRx || _rawRx === _perfName.trim()) ? null : _rawRx;
     const { data, error: wkErr } = await admin.from('workout_log_entries').insert({
       client_ref: clientRef,
+      prescribed_exercise_name: prescribedEx,
       client_id: clientId, client_key: key,
       exercise_name: body.exerciseName ?? body.exercise ?? '',
       phase_key:  body.phase  != null ? String(body.phase)  : null,
@@ -1459,6 +1480,11 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
     // device whose reference this one never had). The shell keeps the corrected
     // values locally and marks them; no row is touched and none is created.
     if (!targetId) return err('no_row_to_correct');
+    // SET PERFORMANCE ONLY. The columns below are exhaustive and deliberately
+    // exclude every identity the row carries: exercise_name (performed),
+    // prescribed_exercise_name (SUBSTITUTION-V1), client_ref, id, client_id and
+    // logged_at. A correction fixes what the numbers say happened; it can never
+    // change WHICH performance this row is, or what it stood in for.
     const { error: upErr } = await admin.from('workout_log_entries').update({
       weight:    String(body.weightActual ?? body.weight ?? ''),
       reps_done: String(body.repsActual   ?? body.reps   ?? ''),
