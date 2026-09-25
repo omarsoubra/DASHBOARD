@@ -2236,6 +2236,115 @@
   margin-top:1rem;padding:.95rem 0 .1rem;color:var(--tv2-accent);font-size:12.5px;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-align:left;}
 
+.tv2-subfor{font-size:11.5px;color:var(--tv2-accent);font-weight:700;margin-top:.3rem;
+  letter-spacing:.02em;line-height:1.35;}
+.tv2-subtag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--tv2-accent);margin-left:.4rem;white-space:nowrap;}
+.tv2-swap{display:inline-block;margin-top:.7rem;margin-right:.5rem;padding:.5rem .8rem;border-radius:9px;
+  border:1px solid var(--tv2-line2);background:var(--tv2-surface);color:var(--tv2-muted);
+  font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:36px;}
+.tv2-swap:active{background:var(--tv2-surface2);}
+/* ══ SUBSTITUTION-V1 · SHEET PRESENTATION · 2026-09-25 ════════════════
+   Presentation only. Nothing in this block, or in the markup it styles,
+   changes which alternatives are offered, the order they appear in, or what
+   picking one does.
+
+   ROOT CAUSE. subSheetEl() appends the sheet to <body>. Every --tv2-* token
+   in this shell is declared on #section-training, and custom properties
+   inherit, so outside that subtree every var(--tv2-...) in the original
+   rules was invalid at computed-value time. Measured on the shipped bytes at
+   390x844: .tv2-subcard background computed to rgba(0,0,0,0) - fully
+   transparent - and .tv2-subopt border-bottom-width to 0px. The sheet
+   therefore rendered as loose text laid directly over the live workout, with
+   the set inputs, LOG buttons and the RIR strip showing through between the
+   alternatives, and "Keep <exercise>" having no surface of its own under the
+   bottom nav.
+
+   Why the existing probes passed: .tv2-subsheet's own position/inset/z-index
+   and the rgba backdrop are literals, so geometry and stacking were correct
+   and an elementFromPoint grid over the card returned 0 foreign hit points at
+   every viewport tested. Only a rendered screenshot shows this.
+
+   #tv2-sheet .panel, the other body-level sheet in this shell, already avoids
+   the trap with literal colours and a safe-area-aware bottom pad. This block
+   follows that precedent: the tokens are re-declared on .tv2-subsheet with
+   the same values #section-training uses, so the component renders as it was
+   written to and nothing outside the sheet is affected.
+
+   LAYOUT. The card was a single scroll box flush to the bottom of the
+   viewport. At 320x568 that put "Keep ..." at y=563..605 against a 568px
+   viewport - off-screen, elementFromPoint at its centre returning null - and
+   scrolling to it took the title away with it. The card bottom also overran
+   the fixed bottom nav's top edge by 69px at every size measured, and nothing
+   reserved env(safe-area-inset-bottom). Now: header and action are fixed
+   panes, only the option list scrolls, and the card is lifted clear of the
+   nav by its measured height. */
+.tv2-subsheet{
+  --tv2-surface:#ffffff; --tv2-surface2:#f1efe9;
+  --tv2-line:#e8e3db; --tv2-line2:#d9d2c7;
+  --tv2-text:#16181c; --tv2-muted:#63686f; --tv2-dim:#9a9ba0;
+  --tv2-accent:#ff5c33;
+  /* tv2Swap overwrites this with the nav's measured height, which already
+     includes its own safe-area padding; the default stands in when the nav
+     is absent or unmeasurable. */
+  --tv2-navclear:calc(72px + env(safe-area-inset-bottom,0px));
+  position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0 .6rem calc(var(--tv2-navclear) + 10px);
+  overscroll-behavior:contain;}
+.tv2-subsheet[hidden]{display:none;}
+.tv2-subcard{display:flex;flex-direction:column;
+  width:100%;max-width:520px;max-height:min(82vh,100%);min-height:0;overflow:hidden;
+  background:var(--tv2-surface);color:var(--tv2-text);
+  border:1px solid var(--tv2-line);border-radius:18px;
+  box-shadow:0 -18px 44px -24px rgba(22,24,28,.45);
+  animation:tv2subup .26s cubic-bezier(.22,1,.36,1);}
+@keyframes tv2subup{from{transform:translateY(10%);opacity:.5}to{transform:translateY(0);opacity:1}}
+.tv2-subhead{flex:0 0 auto;padding:1.1rem 1.05rem .85rem;border-bottom:1px solid var(--tv2-line);}
+.tv2-subh{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0;color:var(--tv2-text);}
+.tv2-subcur{font-size:13.5px;font-weight:700;color:var(--tv2-accent);margin:.3rem 0 0;
+  line-height:1.35;overflow-wrap:anywhere;}
+.tv2-subsub{font-size:11.5px;color:var(--tv2-dim);margin:.45rem 0 0;line-height:1.45;}
+.tv2-sublist{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;padding:.85rem 1.05rem .4rem;
+  display:flex;flex-direction:column;gap:.55rem;}
+.tv2-subopt{display:flex;align-items:center;gap:.75rem;width:100%;text-align:left;
+  background:var(--tv2-surface2);border:1px solid var(--tv2-line);border-radius:14px;
+  padding:.85rem .9rem;cursor:pointer;min-height:60px;}
+.tv2-subopt:active{background:var(--tv2-line);}
+.tv2-subopt .n{flex:1 1 auto;min-width:0;font-size:15px;font-weight:700;line-height:1.3;
+  color:var(--tv2-text);overflow-wrap:anywhere;}
+.tv2-subopt .v{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--tv2-dim);
+  font-family:ui-monospace,monospace;white-space:nowrap;letter-spacing:.02em;}
+.tv2-subfoot{flex:0 0 auto;padding:.7rem 1.05rem 1.05rem;border-top:1px solid var(--tv2-line);
+  background:var(--tv2-surface);border-bottom-left-radius:18px;border-bottom-right-radius:18px;}
+.tv2-subclose{display:block;width:100%;margin:0;padding:.95rem .8rem;border-radius:12px;
+  border:1px solid var(--tv2-line2);background:var(--tv2-surface);color:var(--tv2-muted);
+  font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  min-height:52px;line-height:1.3;overflow-wrap:anywhere;}
+.tv2-subclose:active{background:var(--tv2-surface2);}
+.tv2-subnone{font-size:12.5px;color:var(--tv2-dim);padding:.9rem .2rem 1.1rem;line-height:1.5;}
+/* The two floating chips and the check-in banner sit at or above the sheet's
+   9000 and paint over it, exactly as they did over .modal-overlay before the
+   2026-09-14 fix: #sunday-checkin-reminder is 9999, #trainer-btn is 9000 and
+   only loses the tie on DOM order, and the Quick-Log FAB owns the bottom
+   right corner the sets x reps column runs into. #sync-indicator, the
+   transient "saved" toast, is also 9000 and lands in the gap the card leaves
+   for the nav; it carries no action and returns on the next sync. Same
+   remedy as that fix, scoped to this sheet and reversed the moment it
+   closes. */
+body.tv2-sub-open{overflow-y:hidden;}
+body.tv2-sub-open .sync-status-badge,
+body.tv2-sub-open #sync-indicator,
+body.tv2-sub-open #sunday-checkin-reminder,
+body.tv2-sub-open #trainer-btn,
+body.tv2-sub-open .fab{display:none!important;}
+@media (max-width:360px){
+  .tv2-subhead{padding:.95rem .85rem .75rem;}
+  .tv2-sublist{padding:.75rem .85rem .35rem;}
+  .tv2-subfoot{padding:.65rem .85rem .95rem;}
+  .tv2-subopt{padding:.8rem .75rem;min-height:56px;}
+  .tv2-subh{font-size:16px;}}
 .tv2-up{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;background:transparent;
   border:0;border-bottom:1px solid var(--tv2-line);padding:.85rem .4rem;cursor:pointer;}
 .tv2-up .i{font-family:ui-monospace,monospace;font-size:12px;color:var(--tv2-dim);flex:0 0 auto;font-weight:700;}
@@ -9040,15 +9149,25 @@ async function sw2Save() {
     }
     return el;
   }
-  window.tv2SubClose = function () { var el = document.getElementById('tv2-subsheet'); if (el) { el.hidden = true; el.innerHTML = ''; } };
+  window.tv2SubClose = function () {
+    var el = document.getElementById('tv2-subsheet'); if (el) { el.hidden = true; el.innerHTML = ''; }
+    try { document.body.classList.remove('tv2-sub-open'); } catch (eC) {}
+  };
   window.tv2Swap = function (i) {
     var exs = dayExs(), ex = exs[i]; if (!ex || !canSwap(ex)) return;
     var opts = subCandidates(ex);
     var el = subSheetEl();
+    /* Wrappers only. The option list below is byte-identical to the version
+       it replaces: same opts, same order, same presSets/reps, same
+       tv2SubPick(i,k) indices. */
     el.innerHTML = '<div class="tv2-subcard">' +
-      '<h3 class="tv2-subh">Swap this exercise</h3>' +
-      '<p class="tv2-subsub">' + esc(prescribedNameOf(ex)) + ' · approved alternatives only. ' +
-        'Same sets, reps and effort. This session only — next time the programmed exercise is back.</p>' +
+      '<div class="tv2-subhead">' +
+        '<h3 class="tv2-subh">Swap this exercise</h3>' +
+        '<p class="tv2-subcur">' + esc(prescribedNameOf(ex)) + '</p>' +
+        '<p class="tv2-subsub">Approved alternatives only. Same sets, reps and effort. ' +
+          'This session only — next time the programmed exercise is back.</p>' +
+      '</div>' +
+      '<div class="tv2-sublist">' +
       (opts.length
         ? opts.map(function (o, k) {
             var e2 = makeSubEntry(rxOf(ex), o);
@@ -9057,8 +9176,20 @@ async function sw2Save() {
               '<span class="v">' + presSets(e2) + ' × ' + esc(e2.reps) + '</span></button>';
           }).join('')
         : '<div class="tv2-subnone">No approved alternative is available here right now.</div>') +
-      '<button class="tv2-subclose" onclick="tv2SubClose()">Keep ' + esc(ex.name) + '</button>' +
+      '</div>' +
+      '<div class="tv2-subfoot">' +
+        '<button class="tv2-subclose" onclick="tv2SubClose()">Keep ' + esc(ex.name) + '</button>' +
+      '</div>' +
       '</div>';
+    /* Clear the fixed bottom nav by its own measured height, which already
+       carries its safe-area padding, and stand the floating chips down. */
+    try {
+      var _nv = document.querySelector('.bottom-nav');
+      var _nh = _nv ? Math.ceil(_nv.getBoundingClientRect().height) : 0;
+      if (_nh > 0) el.style.setProperty('--tv2-navclear', _nh + 'px');
+      else el.style.removeProperty('--tv2-navclear');
+    } catch (eNV) {}
+    try { document.body.classList.add('tv2-sub-open'); } catch (eB) {}
     el.hidden = false;
   };
   /* Apply a chosen alternative. With an occurrence open the swap is written
