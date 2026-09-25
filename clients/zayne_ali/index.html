@@ -8637,6 +8637,27 @@ function sw3Use(i) {
      update and therefore holding no row id or reference) stays PENDING and is
      shown as pending. We never silently present an unsynced correction as
      synced, and we never widen row matching to make an old entry syncable. */
+  /* SET-CORRECTION-V1 — may this entry actually be corrected?
+     Gated on the correction path's OWN prerequisites, never on whether the
+     occurrence was restored:
+       1. tv2SaveSet writes sl[i], so there must be a set row to edit at all;
+       2. an entry already sent to the cloud can only be corrected IN PLACE, and
+          correctCloud addresses that row by rowId / perfRef (clientRef). With
+          neither, the backend answers no_row_to_correct and nothing is
+          corrected - the same identity corrState already calls unsendable.
+     An entry not yet sent needs no row address: its edit stays local until the
+     normal flush, exactly as today. A restored entry that DOES hold both is
+     offered Fix like any other. Nothing here widens row matching. */
+  function canFixEntry(s, name) {
+    if (!s || !slFor(s, name).length) return false;
+    var en = s.entries && s.entries[name];
+    if (!en) return false;
+    if (!en.flushed) return true;
+    try {
+      var e = loadWorkoutLogs()[_workoutLogId(V.phase, V.day, name)];
+      return !!(e && (e.rowId || e.perfRef));
+    } catch (e2) { return false; }
+  }
   function corrState(ph, di, name) {
     try {
       var e = loadWorkoutLogs()[_workoutLogId(ph, di, name)];
@@ -9425,7 +9446,7 @@ function sw3Use(i) {
            the LATEST occurrence of this day. Older occurrences stay read-only
            history. Correcting never adds a set, an occurrence or a history row. */
         var _ls = lastSession(V.phase, V.day);
-        var fixable = !!(x.sets && _ls && _ls.sid === s.sid);
+        var fixable = !!(x.sets && _ls && _ls.sid === s.sid && canFixEntry(s, x.name));
         /* SUBSTITUTION-V1: the summary names BOTH, so a swap is never hidden. */
         var _sx = (s.exs || []).filter(function (e) { return e.name === x.name; })[0];
         var _subNote = (_sx && _sx.subFor) ? '<div class="tv2-subfor">Substituted for ' + esc(_sx.subFor) + '</div>' : '';
