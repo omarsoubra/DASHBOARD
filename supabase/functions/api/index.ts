@@ -597,6 +597,7 @@ Deno.serve(async (req) => {
       case 'intake':             return intakeSubmit(body);   // legacy alias — same safe handler
       case 'intakeSubmit':       return intakeSubmit(body);
       case 'intakeList':         return intakeList(body);
+      case 'intakeGet':          return intakeGet(body);    // READ-ONLY: one intake, coaching fields only
       case 'intakeLink':         return intakeLink(body);
       case 'intakePromote':      return intakePromote(body);
       case 'legacyQueueGet':     return legacyQueueGet(body);
@@ -1905,6 +1906,39 @@ async function intakeList(body: any) {
     legacyPhotoViews: PHOTO_VIEWS.filter(v => !i['photo_' + v + '_path'] && i['photo_' + v + '_url']),
   }));
   return ok({ intakes: rows });
+}
+
+// ── COACH: read ONE intake's coaching answers (READ-ONLY) ──────────────────
+// Used by the LOCKED IN trusted acquisition helper to build an immutable client
+// snapshot. SELECT only: no insert/update/upsert/delete/rpc/storage call. Scoped
+// to exactly one intake UUID; unknown or malformed ids fail closed. Returns only
+// coaching-relevant columns: no phone, email, location, full name or photo
+// paths/URLs (identity is resolved by the caller from intakeList).
+const INTAKE_COACHING_COLUMNS = [
+  'id', 'submitted_at', 'status', 'ingestion_state', 'linked_client_id',
+  'age', 'sex', 'height_cm', 'weight_kg',
+  'goal', 'success_vision', 'why_now',
+  'training_history', 'current_routine', 'stopped_consistency',
+  'days_per_week', 'training_location', 'training_time', 'job_activity',
+  'meals_per_day', 'food_restrictions', 'tracks_macros', 'enjoy_eating', 'meal_variety',
+  'injuries', 'sleep_hours', 'stress_level',
+];
+async function intakeGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const intakeId = String(body?.intakeId ?? '').trim().toLowerCase();
+  if (!UUID_RE.test(intakeId)) return err('bad_intake_id');
+  const { data: intake, error } = await admin.from('intakes')
+    .select(INTAKE_COACHING_COLUMNS.join(', ')).eq('id', intakeId).maybeSingle();
+  if (error) return err('intake_get_failed', { detail: error.message });
+  if (!intake) return err('unknown_intake');
+  let linkedStorageKey: string | null = null;
+  if ((intake as any).linked_client_id) {
+    const { data: c } = await admin.from('clients').select('storage_key')
+      .eq('id', (intake as any).linked_client_id).maybeSingle();
+    linkedStorageKey = c?.storage_key ?? null;
+  }
+  const { linked_client_id: _omit, ...fields } = intake as any;   // raw client UUID never leaves the server
+  return ok({ intake: fields, linkedStorageKey });
 }
 
 // ── COACH: link an intake to a client, then promote its baseline photos ────
