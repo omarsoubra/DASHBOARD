@@ -8307,6 +8307,36 @@ function sw3Use(i) {
       var day = tv2Day(G.ph, G.di); if (!day) return;
       var native = G.recs.every(function (r) { return r.rec.setLog && r.rec.setLog.length && r.rec.synced !== true; });
       var ex = day.exercises.map(rxOf);
+      /* SUBSTITUTION-V1 RESTORE. A restored occurrence must show what was
+         PERFORMED, in the programmed slot it replaced. The record already carries
+         both identities: its key is the performed name, and rec.subFor is the
+         prescribed name the server persisted (exercise_name / prescribed_exercise_name).
+         Slots are claimed by EXACT string match only - no fuzzy matching, no
+         substring matching, no normalisation, no registry lookup. A record
+         performed under its own programmed name claims its slot FIRST, so two
+         slots sharing a name cannot contaminate each other. A record whose
+         prescribed slot is absent or already claimed changes nothing, and a
+         record with no subFor (legacy row) changes nothing at all. */
+      var _subClaimed = {};
+      G.recs.forEach(function (r) {
+        var sf = (r.rec && r.rec.subFor) ? String(r.rec.subFor) : '';
+        if (sf && sf !== r.name) return;
+        for (var ci = 0; ci < ex.length; ci++) {
+          if (!_subClaimed[ci] && ex[ci].name === r.name) { _subClaimed[ci] = 1; return; }
+        }
+      });
+      G.recs.forEach(function (r) {
+        var sf = (r.rec && r.rec.subFor) ? String(r.rec.subFor) : '';
+        if (!sf || sf === r.name) return;
+        for (var cj = 0; cj < ex.length; cj++) {
+          if (_subClaimed[cj] || ex[cj].name !== sf) continue;
+          _subClaimed[cj] = 1;
+          var o = {};
+          for (var k in ex[cj]) if (Object.prototype.hasOwnProperty.call(ex[cj], k)) o[k] = ex[cj][k];
+          o.name = String(r.name); o.subFor = sf; ex[cj] = o;
+          return;
+        }
+      });
       var s = { sid: nextSidIn(ss), startedAt: G.recs.map(function (r) { return r.ts; }).sort()[0], completedAt: null, status: 'partial', restored: !native,
                 exs: ex, entries: {} };
       G.recs.forEach(function (r) {
