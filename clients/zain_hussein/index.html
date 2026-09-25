@@ -8214,6 +8214,60 @@ function sw3Use(i) {
   }
   function subsClearPending(ph, di) { var all = subsLoad(); delete all[dayKey(ph, di)]; subsSave(all); }
 
+  /* ══ REGISTRY V1.1 — RUNTIME ADAPTER ═══════════════════════════════════════
+     Registry V1.1 decides WHICH alternatives are eligible; preferred_runtime_name
+     decides WHICH runtime exercise string is exposed. Nothing here performs a
+     swap: the list this returns is handed to the EXISTING altsFor →
+     subCandidates → tv2Swap → tv2SubPick → makeSubEntry → applySub path,
+     unchanged. There is no second substitution engine.
+
+     REG_V1_1 is a pure projection of the approved frozen artifact
+     (registry_v1_1.json, md5 709f0939):
+       src[<exact prescribed string>] = [target index, …]  frozen order, A/B only
+       tgt[i] = [preferred_runtime_name, other clean deployed spellings …]
+     A source the artifact does not expose — protocol-suppressed, manual-review,
+     cardio, no-equivalent, unresolved, or one whose only targets are runtime-
+     unavailable — simply has no key here, so it yields nothing. C and REJECT
+     edges are absent by construction. No canonical id, grade, audit state,
+     suppression flag or any other registry metadata is present in this table or
+     reachable by the client. */
+  var REG_V1_1 = {"v":"LOCKED_IN_HYPERTROPHY_EXERCISE_REGISTRY_V1.1","src":{"Ab Crunch Machine":[0],"Pull-Up Assisted (Machine)":[1,2,3],"Assisted Pull-Up (Machine)":[1,2,3],"Back Squat":[4],"Barbell Back Squat":[4],"Barbell Bench Press":[5,6,7],"Barbell Row":[8,9,10],"Bayesian Cable Curl":[11],"Bulgarian Split Squat":[12,13],"Dumbbell Bulgarian Split Squat (each leg)":[12,13],"Cable Bicep Curl":[14,15,16,17],"Cable Curl":[14,15,16,17],"Cable Chest Fly (Mid)":[18],"Cable Crunch":[19],"Cable Crunch (Rope)":[19],"Cable Bicep Curl (Straight Bar)":[20,16,17],"Cable Bicep Curl (Bar)":[20,16,17],"Cable Lateral Raise":[21,22],"Cable Lateral Raise (Single Arm)":[23,22],"Cable Lateral Raise (single arm)":[23,22],"Overhead Cable Tricep Ext":[24,25],"Cable Rope Overhead Tricep Ext":[24,25],"Cable Overhead Tricep Extension":[24,25],"Cable Tricep Overhead Ext":[24,25],"Overhead Cable Triceps Extension":[24,25],"Overhead Cable Triceps Ext":[24,25],"Cable Pullover (Rope, Kneeling)":[26],"Cable Rope Hammer Curl":[27,28],"Chest-Supported Machine Row":[8,29,30,31],"Chest-Supported Row (Machine)":[8,29,30,31],"Machine Row (Chest-Supported)":[8,29,30,31],"Chest-Supported Rear Delt Fly":[32,33,34,35],"Chest-Supported Row":[36,29,37,30,31,38],"Chest-Supported Row (machine or DB)":[36,29,37,30,31,38],"Chest-Supported Row (Neutral)":[8,36,39],"Chest-Supported T-Bar Row":[37,36,8,31],"DB Bent-Over Row":[40,38],"DB Bicep Curl":[15,20,14,17,11],"DB Hammer Curl":[27,41],"Dumbbell Hammer Curl":[27,41],"Dumbbell Lateral Raise":[23,21],"DB Lateral Raise":[23,21],"Overhead Tricep Extension (DB)":[42,25],"DB Overhead Tricep Ext":[42,25],"DB Overhead Tricep Ext (Both Hands 1 DB)":[42,25],"DB Rear Delt Fly":[43,33,34,35],"Rear Delt Fly (DB)":[43,33,34,35],"DB Rear Delt Fly (Bent Over)":[43,33,34,35],"Dumbbell Shoulder Press":[44,45,46,47],"DB Shoulder Press":[44,45,46,47],"DB Shoulder Press (Seated or Standing)":[44,45,46,47],"DB Skullcrusher":[42,24],"DB Tricep Kickback":[48,49],"Dead Bug":[50],"EZ Bar Curl":[20,14,16],"EZ-Bar Curl":[20,14,16],"Cable Face Pulls (Rope)":[43,32,34,35],"Face Pull (Cable)":[43,32,34,35],"Face Pulls (Cable)":[43,32,34,35],"Cable Face Pull (Rope)":[43,32,34,35],"Face Pull (cable)":[43,32,34,35],"Face Pulls (Rope)":[43,32,34,35],"Flat DB Chest Press":[51,6,7],"Flat DB Press":[51,6,7],"Flat Dumbbell Press":[51,6,7],"Goblet Box Squat":[52],"Goblet Squat (DB)":[53,54,4],"Goblet Squat":[53,54,4],"DB Goblet Squat":[53,54,4],"Hack Squat":[55],"Machine Hack Squat":[55],"Hack Squat Machine":[55],"Hammer Curl":[41,28],"Hanging Knee Raise":[56,57],"Hanging Knee Raises":[56,57],"Hanging Leg Raise":[58,57],"Hanging Leg Raise (Weighted)":[58,57],"Hanging Leg Raises":[58,57],"Hip Thrust":[59,60,61,62],"Hip Thrust (barbell or machine)":[59,60,61,62],"Barbell Hip Thrust":[63,61,60],"DB Hip Thrust":[63,59,60],"Machine Hip Thrust":[63,59,61],"Hip Thrust (Machine)":[63,59,61],"Incline Barbell Press":[64,65,66],"Incline DB Curl":[15],"Incline DB Chest Press":[67,65,66],"Incline DB Press":[67,65,66],"Incline Dumbbell Press":[67,65,66],"Incline Dumbbell Press (30 degrees)":[67,65,66],"Machine Incline Press":[67,64,66],"Incline Machine Press":[67,64,66],"Smith Machine Incline Bench":[67,64,65],"Incline Smith Press":[67,64,65],"Smith Machine Incline Press":[67,64,65],"Lat Pulldown":[2,3,68],"Lat Pulldown (Neutral Grip)":[1,68,3],"Lat Pulldown (neutral grip)":[1,68,3],"Lat Pulldown (Wide Grip)":[1,68,2],"Lat Pulldown (wide grip)":[1,68,2],"Lat Pulldown (wide, pronated)":[1,68,2],"Leg Press":[4],"Lying Leg Curl":[69],"Lying Leg Curl (Machine)":[69],"Machine Chest Fly":[70],"Machine Chest Press":[51,5,7],"Machine Shoulder Press":[71,44,46,47],"Barbell Row (Pendlay)":[40],"Plank Hold":[72],"Plate-Loaded Chest Press":[51,5,6],"Pull-Up (Weighted)":[68,1,2,3],"Weighted Pull-Up":[68,1,2,3],"Rear Delt Cable Fly":[43,32,33,35],"Reverse Crunch":[58,56],"Reverse Pec Deck":[43,32,33,34],"Romanian Deadlift":[73,74],"Romanian Deadlift (Barbell)":[75,74],"Barbell Romanian Deadlift":[75,74],"Romanian Deadlift (DB)":[75,73],"Romanian Deadlift (dumbbell)":[75,73],"DB Romanian Deadlift":[75,73],"Seated Cable Row":[39,37,36,8,30,76],"Seated Cable Row (Neutral Grip)":[31,29],"Seated Cable Row (Neutral)":[31,29],"Seated Cable Row (neutral grip)":[31,29],"Seated DB Shoulder Press":[71,45,46,47],"Seated Dumbbell Shoulder Press":[71,45,46,47],"Seated Leg Curl":[77],"Seated Leg Curl (Machine)":[77],"Leg Curl (Seated)":[77],"Seated Overhead Press":[47,71,45,44],"Single-Arm Cable Row":[31,39,38],"Single Arm DB Row":[8,9,76],"One-Arm DB Row":[8,9,76],"Single-Leg Hip Thrust":[63,59],"Smith Shoulder Press":[46,71,45,44],"Smith Machine Shoulder Press":[46,71,45,44],"DB Split Squat (dumbbells at sides)":[78,13],"Cable Straight-Arm Pulldown":[79],"Straight-Arm Cable Pulldown":[79],"Straight-Arm Pulldown":[79],"Cable Tricep Pushdown":[80,49],"Cable Triceps Pushdown":[80,49],"Triceps Pushdown (Straight Bar)":[48,49],"Cable Rope Tricep Pushdown":[48,80],"Cable Tricep Rope Pushdown":[48,80],"Triceps Pushdown (Rope)":[48,80],"Triceps Pushdown (rope)":[48,80],"Tricep Pushdown (Rope)":[48,80],"Cable Triceps Pushdown (Rope)":[48,80],"Tricep Rope Pushdown":[48,80],"Cable Triceps Pushdown (rope)":[48,80],"Walking Lunges (DB)":[78,12],"Walking Lunge (DB)":[78,12]},"tgt":[["Cable Crunch","Cable Crunch (Rope)"],["Lat Pulldown"],["Lat Pulldown (Neutral Grip)","Lat Pulldown (neutral grip)"],["Lat Pulldown (Wide Grip)","Lat Pulldown (wide grip)","Lat Pulldown (wide, pronated)"],["Hack Squat","Machine Hack Squat","Hack Squat Machine"],["Flat DB Chest Press","Flat DB Press","Flat Dumbbell Press"],["Machine Chest Press"],["Plate-Loaded Chest Press"],["Chest-Supported Row"],["DB Bent-Over Row"],["Barbell Row (Pendlay)"],["Incline DB Curl"],["DB Split Squat (dumbbells at sides)"],["Walking Lunges (DB)","Walking Lunge (DB)"],["Cable Bicep Curl (Straight Bar)","Cable Bicep Curl (Bar)"],["Bayesian Cable Curl"],["DB Bicep Curl"],["EZ Bar Curl","EZ-Bar Curl"],["Machine Chest Fly"],["Ab Crunch Machine"],["Cable Bicep Curl","Cable Curl"],["Cable Lateral Raise (Single Arm)","Cable Lateral Raise (single arm)"],["Dumbbell Lateral Raise","DB Lateral Raise"],["Cable Lateral Raise"],["Overhead Tricep Extension (DB)","DB Overhead Tricep Ext","DB Overhead Tricep Ext (Both Hands 1 DB)"],["DB Skullcrusher"],["Cable Straight-Arm Pulldown","Straight-Arm Cable Pulldown","Straight-Arm Pulldown"],["Hammer Curl"],["DB Hammer Curl","Dumbbell Hammer Curl"],["Chest-Supported Row (Neutral)"],["Chest-Supported T-Bar Row"],["Seated Cable Row"],["DB Rear Delt Fly","Rear Delt Fly (DB)","DB Rear Delt Fly (Bent Over)"],["Face Pull (Cable)","Cable Face Pulls (Rope)","Face Pulls (Cable)","Cable Face Pull (Rope)","Face Pull (cable)","Face Pulls (Rope)"],["Rear Delt Cable Fly"],["Reverse Pec Deck"],["Chest-Supported Machine Row","Chest-Supported Row (Machine)","Machine Row (Chest-Supported)"],["Chest-Supported High Row"],["Single Arm DB Row","One-Arm DB Row"],["Seated Cable Row (Neutral Grip)","Seated Cable Row (Neutral)","Seated Cable Row (neutral grip)"],["Barbell Row"],["Cable Rope Hammer Curl"],["Cable Overhead Tricep Extension","Overhead Cable Tricep Ext","Cable Rope Overhead Tricep Ext","Cable Tricep Overhead Ext","Overhead Cable Triceps Extension","Overhead Cable Triceps Ext"],["Chest-Supported Rear Delt Fly"],["Seated DB Shoulder Press","Seated Dumbbell Shoulder Press"],["Machine Shoulder Press"],["Seated Overhead Press"],["Smith Shoulder Press","Smith Machine Shoulder Press"],["Cable Tricep Pushdown","Cable Triceps Pushdown"],["Cable Rope Tricep Pushdown","Cable Tricep Rope Pushdown","Triceps Pushdown (Rope)","Triceps Pushdown (rope)","Tricep Pushdown (Rope)","Cable Triceps Pushdown (Rope)","Tricep Rope Pushdown","Cable Triceps Pushdown (rope)"],["Plank Hold"],["Barbell Bench Press"],["Goblet Squat","Goblet Squat (DB)","DB Goblet Squat"],["Back Squat","Barbell Back Squat"],["Goblet Box Squat"],["Leg Press"],["Hanging Leg Raise","Hanging Leg Raise (Weighted)","Hanging Leg Raises"],["Reverse Crunch"],["Hanging Knee Raise","Hanging Knee Raises"],["Barbell Hip Thrust"],["Machine Hip Thrust","Hip Thrust (Machine)"],["DB Hip Thrust"],["Single-Leg Hip Thrust"],["Hip Thrust"],["Incline DB Chest Press","Incline DB Press","Incline Dumbbell Press","Incline Dumbbell Press (30 degrees)"],["Incline Machine Press","Machine Incline Press"],["Incline Smith Press","Smith Machine Incline Bench","Smith Machine Incline Press"],["Incline Barbell Press"],["Assisted Pull-Up (Machine)","Pull-Up Assisted (Machine)"],["Seated Leg Curl","Seated Leg Curl (Machine)","Leg Curl (Seated)"],["Cable Chest Fly (Mid)"],["DB Shoulder Press","Dumbbell Shoulder Press"],["Dead Bug"],["Romanian Deadlift (Barbell)","Barbell Romanian Deadlift"],["Romanian Deadlift (DB)","Romanian Deadlift (dumbbell)","DB Romanian Deadlift"],["Romanian Deadlift"],["Single-Arm Cable Row"],["Lying Leg Curl","Lying Leg Curl (Machine)"],["Bulgarian Split Squat","Dumbbell Bulgarian Split Squat (each leg)"],["Cable Pullover (Rope, Kneeling)"],["Triceps Pushdown (Straight Bar)"]]};
+  /* Every exercise name this client's own programme uses, in any phase or day. */
+  function _regOwnNames() {
+    var seen = {};
+    try {
+      for (var p in phases) {
+        if (!Object.prototype.hasOwnProperty.call(phases, p)) continue;
+        var ds = (phases[p] && phases[p].days) || [];
+        for (var i = 0; i < ds.length; i++) {
+          var ex = (ds[i] && ds[i].exercises) || [];
+          for (var j = 0; j < ex.length; j++) if (ex[j] && ex[j].name) seen[String(ex[j].name)] = 1;
+        }
+      }
+    } catch (e) {}
+    return seen;
+  }
+  /* Eligible alternatives for one EXACT prescribed string, as runtime names, in
+     the registry's own order. Where the registry carries more than one deployed
+     spelling of a target, the spelling this client's programme already uses wins
+     so their history is not split; otherwise preferred_runtime_name is used. A
+     name is never invented and the lookup is exact - no fuzzy matching. */
+  function registryAltsFor(prescribedName) {
+    var out = [];
+    try {
+      var idx = REG_V1_1.src[prescribedName];
+      if (Object.prototype.toString.call(idx) !== '[object Array]') return [];
+      var own = _regOwnNames(), seen = {};
+      for (var i = 0; i < idx.length; i++) {
+        var sp = REG_V1_1.tgt[idx[i]]; if (!sp || !sp.length) continue;
+        var pick = sp[0];
+        for (var j = 1; j < sp.length; j++) if (own[sp[j]]) { pick = sp[j]; break; }
+        if (pick === prescribedName || seen[pick]) continue;
+        seen[pick] = 1; out.push({ name: pick });
+      }
+    } catch (e2) { return []; }
+    return out;
+  }
   /* The approved list for one prescribed exercise, normalised to objects. */
   function altsFor(prescribedName) {
     var out = [], seen = {};
@@ -8230,6 +8284,7 @@ function sw3Use(i) {
         seen[n] = 1; out.push(o);
       });
     }
+    try { var _rg = {}; _rg[prescribedName] = registryAltsFor(prescribedName); take(_rg); } catch (e0) {}
     try { take(CLIENT_CONFIG.training && CLIENT_CONFIG.training.exerciseAlternatives); } catch (e) {}
     try { take(loadOverrides()['_exerciseAlternatives']); } catch (e2) {}
     return out;
