@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T01:54:14Z",
+  "generatedAt": "2026-09-26T01:03:18Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 48,
+  "clientCount": 49,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -187,6 +187,10 @@
     {
       "storageKey": "yusuf",
       "programUrl": "clients/yusuf/"
+    },
+    {
+      "storageKey": "zac",
+      "programUrl": "clients/zac/"
     },
     {
       "storageKey": "zain_hussein",
