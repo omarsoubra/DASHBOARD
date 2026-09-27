@@ -5626,9 +5626,9 @@ function deleteCheckin(i){
 // ║                and macros per meal.                                     ║
 // ╚═════════════════════════════════════════════════════════════════════════╝
 const phaseTargets = {
-  1: { cal: 2595, p: 190, c: 301, f: 70, deficit: 400 },
-  2: { cal: 2445, p: 190, c: 264, f: 70, deficit: 600 },
-  3: { cal: 2345, p: 190, c: 239, f: 70, deficit: 800 },
+  1: { cal: 2595, p: 190, c: 301, f: 70, deficit: 811 },
+  2: { cal: 2445, p: 190, c: 264, f: 70, deficit: 961 },
+  3: { cal: 2345, p: 190, c: 239, f: 70, deficit: 1061 },
 };
 
 const DAY_NAMES=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -5702,7 +5702,7 @@ function renderNutrition(){
   const macroEdited=isMacroOverridden(phase);
   const startWeek=phase===1?1:phase===2?5:9;
   const endWeek=phase===1?4:phase===2?8:12;
-  const rationale=['Foundation phase. Moderate deficit (400 kcal) to start losing fat steadily without cratering training. Protein high to protect muscle.','Build phase. Deficit tightens to 600 kcal as metabolism adapts. Carbs reduced and timed around training for performance.','Peak phase. Largest deficit (800 kcal). Carbs minimal except pre-workout. Every calorie earns its place.'][phase-1];
+  const rationale=['Foundation phase. Estimated deficit ~811 kcal/day (2,595 kcal against a ~3,406 kcal working TDEE at 100 kg), roughly 0.74 kg a week in theory, to start losing fat steadily without cratering training. These are estimates, not guaranteed scale drops; your logged morning weigh-ins decide. Protein high to protect muscle.','Build phase. Deficit tightens to ~961 kcal/day (2,445 kcal), roughly 0.87 kg a week in theory, as metabolism adapts. Carbs reduced and timed around training for performance.','Peak phase. Largest deficit, ~1,061 kcal/day (2,345 kcal), roughly 0.96 kg a week in theory. Carbs minimal except pre-workout. Every calorie earns its place.'][phase-1];
   const totalMacroKcal=(t.p*4)+(t.c*4)+(t.f*9);
   const pPct=Math.round((t.p*4/totalMacroKcal)*100);
   const cPct=Math.round((t.c*4/totalMacroKcal)*100);
@@ -5716,7 +5716,7 @@ function renderNutrition(){
     ${editPrompt ? `<div style="margin-bottom:0.5rem;text-align:right;">${editPrompt} ${macroResetBtn}</div>` : ''}
     <div class="macro-grid" style="margin-bottom:1.5rem;">
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Daily Calories ${macroEdited ? '<span class="trainer-edited-badge">EDITED</span>' : ''}</div><div class="info-card-val">${t.cal.toLocaleString()}</div><div class="info-card-desc">~${t.deficit} kcal deficit</div></div>
-      <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">1.79g/kg · muscle shield</div></div>
+      <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">1.9g/kg · muscle shield</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Carbs</div><div class="info-card-val" style="color:var(--accent2)">${t.c}g</div><div class="info-card-desc">Around workouts</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Fat</div><div class="info-card-val" style="color:var(--accent3)">${t.f}g</div><div class="info-card-desc">Hormones + satiety</div></div>
     </div>
@@ -9950,7 +9950,7 @@ function sw3Use(i) {
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-09-27T08:06:38.747737Z
+  generatedAt: 2026-09-27T08:20:42.323021Z
   clientStorageKey: zain_hussein
   configPath: zain_hussein.json
   safetyBlockers: 0
