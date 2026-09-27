@@ -10038,6 +10038,13 @@ var SWAP_ONLY_POOL = [{"name": "Chicken Wrap", "time": "12:30pm", "cal": 435, "p
 (function(){ var _base = sw3Pool; sw3Pool = function(){ var out = _base();
   SWAP_ONLY_POOL.forEach(function(x){ out.push({name:x.name,time:x.time,cal:x.cal,p:x.p,c:x.c,f:x.f,src:'library'}); });
   return out; }; })();
+/* VISIBILITY: the normal ranked top 3 stays exactly as ranked; every declared swap-only meal for the same
+   time slot is then appended (once - no duplicate if it already ranked in), so it is always selectable. */
+(function(){ var _rank = sw3Rank; sw3Rank = function(t, currentName, limit){ var top = _rank(t, currentName, limit);
+  var seen = {}; seen[sw3Key(currentName)] = 1; top.forEach(function(x){ seen[sw3Key(x.name)] = 1; });
+  SWAP_ONLY_POOL.forEach(function(x){ var k = sw3Key(x.name);
+    if (t && x.time === t.time && !seen[k]) { seen[k] = 1; top.push({name:x.name,time:x.time,cal:x.cal,p:x.p,c:x.c,f:x.f,src:'library'}); } });
+  return top; }; })();
 </script>
 </body>
 </html>
@@ -10045,7 +10052,7 @@ var SWAP_ONLY_POOL = [{"name": "Chicken Wrap", "time": "12:30pm", "cal": 435, "p
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-09-26T11:44:03.372994Z
+  generatedAt: 2026-09-27T04:04:13.695752Z
   clientStorageKey: zac
   configPath: zac.json
   safetyBlockers: 0
