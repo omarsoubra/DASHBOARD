@@ -82,16 +82,61 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Notification handling (unchanged from v1).
+// ─────────────────────────────────────────────────────────────────────────
+// LOCKED IN Push Notifications (minimal proof).
+// A client shell registers THIS file with scope = its own folder
+// (register('../../sw.js', { scope: './' })), so one worker file serves every
+// client while each registration — and its push subscription — stays scoped
+// to that one client's pages.
+// ─────────────────────────────────────────────────────────────────────────
+
+// A notification may only ever open a page inside this registration's scope.
+// Anything else (other origin, other client's folder, javascript:, garbage)
+// falls back to the scope root.
+function _liSafeClickUrl(raw, scope) {
+  try {
+    const base = new URL(scope);
+    const u = new URL(typeof raw === 'string' && raw ? raw : './', base);
+    if (u.origin !== base.origin) return base.href;
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return base.href;
+    if (!u.pathname.startsWith(base.pathname)) return base.href;
+    return u.href;
+  } catch (_) {
+    return scope;
+  }
+}
+
+// iOS revokes subscriptions whose pushes do not show a notification, so this
+// ALWAYS shows one — even for an empty or malformed payload.
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (_) { d = {}; }
+  if (!d || typeof d !== 'object') d = {};
+  const scope = self.registration.scope;
+  const title = (typeof d.title === 'string' && d.title.trim()) ? d.title.slice(0, 80) : 'LOCKED IN';
+  const body = typeof d.body === 'string' ? d.body.slice(0, 240) : '';
+  const tag = (typeof d.tag === 'string' && /^[A-Za-z0-9_-]{1,32}$/.test(d.tag)) ? d.tag : 'locked-in';
+  const eventId = (typeof d.eventId === 'string' && d.eventId.length <= 64) ? d.eventId : null;
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    tag,
+    icon: new URL('icon-192.png', self.location.href).href,
+    badge: new URL('icon-192.png', self.location.href).href,
+    data: { url: _liSafeClickUrl(d.url, scope), eventId },
+  }));
+});
+
+// Notification click → focus an open window of this scope, else open one.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const scope = self.registration.scope;
+  const target = _liSafeClickUrl(event.notification.data && event.notification.data.url, scope);
   event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then((clients) => {
-      const url = event.notification.data && event.notification.data.url ? event.notification.data.url : './';
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const c of clients) {
-        if (c.url.indexOf(url) !== -1 && 'focus' in c) return c.focus();
+        if (c.url && c.url.split('#')[0] === target.split('#')[0] && 'focus' in c) return c.focus();
       }
-      return self.clients.openWindow(url);
+      return self.clients.openWindow(target);
     })
   );
 });
