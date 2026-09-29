@@ -1,33 +1,39 @@
 #!/usr/bin/env python3
 """
-LOCKED IN Push Notifications V1 — pilot shell integration (byte-surgical).
+LOCKED IN Push Notifications V1 — 1:1 shell integration (byte-surgical).
 
-    python3 scripts/push/patch_pilot_shell.py <storage_key> [--check] [--out FILE]
+    python3 scripts/push/patch_pilot_shell.py <storage_key> [--check] [--out FILE] [--repo DIR]
+    python3 scripts/push/patch_pilot_shell.py --file PATH  [--check] [--out FILE]   (e.g. master_template.html)
 
-Makes exactly FOUR edits to clients/<key>/index.html and nothing else:
+Makes exactly FOUR edits and nothing else:
 
-  1. SW   navigator.serviceWorker.register('sw.js')
-          → navigator.serviceWorker.register('../../sw.js', { scope: './' })
-          (the one shared root worker, scoped to this client's folder)
-  2. LEGACY  removes the two in-page `try { if (Notification…granted) new Notification(…)
-          … setTimeout(requestPermission, 3000) } catch` blocks. Permission is only
-          ever requested from the explicit "Turn on" tap now. The in-app check-in
-          banner itself is untouched.
-  3. MOUNT  <div id="li-push-settings"> at the end of the Tracker (weekly check-in)
-          section — a compact, collapsed "Notifications · On/Off" row.
-  4. SCRIPT  ../../push-client.js + a 10-line mount call before </body>.
+  1. SW      navigator.serviceWorker.register('sw.js')
+             → navigator.serviceWorker.register('../../sw.js', { scope: './' })
+             (the one shared root worker, scoped to this client's folder)
+  2+3. LEGACY  removes the two in-page `try { if (Notification…granted) new Notification(…)
+             … setTimeout(requestPermission, 3000) } catch` blocks. Permission is only
+             ever requested from the explicit "Turn on" tap now. The in-app check-in
+             banner itself is untouched.
+  4. MOUNT   at the end of the Tracker (weekly check-in) section: the mount point,
+             ../../push-client.js (defer) and a DOMContentLoaded mount call — a
+             compact, collapsed "Notifications · On/Off" row.
 
-Plus: writes clients/<key>/manifest.json (display: standalone, scope ./) if the
-folder has none — data, not code; the shell already links to it.
+The MOUNT block lives inside the Tracker section (which is template text), never at
+</body>, so a shell patched here is byte-identical to one the generator produces
+from the equally-patched master_template.html (the generator injects its own
+scripts at </body> after rendering).
+
+Plus, for a client folder: writes clients/<key>/manifest.json (display: standalone,
+scope ./) if the folder has none — data, not code; the shell already links to it.
+This runs even for an already-patched shell, so a newly deployed client folder can
+be completed by running the tool once.
 
 Safety:
   * Refuses unless every anchor is found exactly as expected (count-checked).
-  * Idempotent: a shell carrying the LOCKED-IN-PUSH:v1 marker is left alone.
+  * Idempotent: a file carrying the LOCKED-IN-PUSH:v1 marker is left alone.
   * Proves itself: reversing the four edits must reproduce the ORIGINAL bytes
-    exactly, so no prescription, meal, training or config byte can have moved.
+    exactly, so no prescription, meal, training, config or auth byte can move.
   * --check reports without writing. Rollback is `git revert` of the commit.
-
-Never run this on a live client shell without Omar's approval of the pilot list.
 """
 import argparse
 import hashlib
@@ -42,23 +48,24 @@ SW_NEW = "navigator.serviceWorker.register('../../sw.js', { scope: './' })"
 LEGACY_HEAD = re.compile(r"try \{\s*if \('Notification' in window && Notification\.permission === 'granted'\) \{")
 LEGACY_REPLACEMENT = "/* {m}: reminders arrive as opt-in push notifications; no automatic permission prompt. */".format(m=MARKER)
 TRACKER_OPEN = '<section class="section" id="section-tracker">'
-MOUNT_HTML = ('\n  <!-- {m} -->\n  <div id="li-push-settings" style="margin-top:1.5rem;"></div>\n').format(m=MARKER)
-SCRIPT_HTML = """<!-- {m} -->
-<script src="../../push-client.js"></script>
-<script>
-(function () {{
-  try {{
-    var box = document.getElementById('li-push-settings');
-    var url = String((window.CLIENT_CONFIG || CLIENT_CONFIG).sheetsWebhookUrl || '');
-    if (!box || !window.LockedInPush || !/^https:\\/\\/[a-z0-9]+\\.supabase\\.co\\/functions\\/v1\\/api$/.test(url)) return;
-    var key = CLIENT_CONFIG.client.storageKey;
-    window.LockedInPush.mount({{
-      container: box, storageKey: key, compact: true, swUrl: '../../sw.js', pushUrl: url.replace(/\\/api$/, '/push'),
-      getToken: function () {{ try {{ return (typeof CLIENT_TOKEN === 'string' && CLIENT_TOKEN) || localStorage.getItem(key + '_access_token') || ''; }} catch (e) {{ return ''; }} }},
-    }});
-  }} catch (e) {{}}
-}})();
-</script>
+MOUNT_HTML = """
+  <!-- {m} -->
+  <div id="li-push-settings" style="margin-top:1.5rem;"></div>
+  <script src="../../push-client.js" defer></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {{
+    try {{
+      var box = document.getElementById('li-push-settings');
+      var url = String(CLIENT_CONFIG.sheetsWebhookUrl || '');
+      if (!box || !window.LockedInPush || !/^https:\\/\\/[a-z0-9]+\\.supabase\\.co\\/functions\\/v1\\/api$/.test(url)) return;
+      var key = CLIENT_CONFIG.client.storageKey;
+      window.LockedInPush.mount({{
+        container: box, storageKey: key, compact: true, swUrl: '../../sw.js', pushUrl: url.replace(/\\/api$/, '/push'),
+        getToken: function () {{ try {{ return (typeof CLIENT_TOKEN === 'string' && CLIENT_TOKEN) || localStorage.getItem(key + '_access_token') || ''; }} catch (e) {{ return ''; }} }},
+      }});
+    }} catch (e) {{}}
+  }});
+  </script>
 """.format(m=MARKER)
 
 KEY_RE = re.compile(r'^[a-z0-9_]{2,40}$')
@@ -126,7 +133,8 @@ def legacy_blocks(s):
 
 
 def patch(src):
-    """Return (patched_text, edits) or raise PatchError. edits allow exact reversal."""
+    """Return (patched_text, edits) or raise PatchError. edits allow exact reversal.
+    edits: ('insert', at, text) | ('replace', at, old, new) in ORIGINAL coordinates."""
     if MARKER in src:
         return src, None
     if src.count(SW_OLD) != 1:
@@ -140,28 +148,22 @@ def patch(src):
     t_close = src.index('</section>', t0)
     if '<section' in src[t0 + len(TRACKER_OPEN):t_close]:
         raise PatchError('tracker section contains a nested section')
-    if src.count('</body>') != 1:
-        raise PatchError('</body> not found exactly once')
-    body_close = src.rindex('</body>')
 
-    # Apply from the end backwards so earlier offsets stay valid.
-    edits = [
-        ('insert', body_close, SCRIPT_HTML),
-        ('insert', t_close, MOUNT_HTML),
-    ]
-    sw_at = src.index(SW_OLD)
-    edits.append(('replace', sw_at, SW_OLD, SW_NEW))
+    edits = [('insert', t_close, MOUNT_HTML), ('replace', src.index(SW_OLD), SW_OLD, SW_NEW)]
     for (a, b) in blocks:
         edits.append(('replace', a, src[a:b], LEGACY_REPLACEMENT))
-    edits.sort(key=lambda e: e[1], reverse=True)
+    offsets = sorted(e[1] for e in edits)
+    if len(set(offsets)) != len(offsets):
+        raise PatchError('overlapping edit anchors')
 
     out = src
-    for e in edits:
+    for e in sorted(edits, key=lambda e: e[1], reverse=True):   # from the end: earlier offsets stay valid
         if e[0] == 'insert':
             out = out[:e[1]] + e[2] + out[e[1]:]
         else:
             _, at, old, new = e
-            assert out[at:at + len(old)] == old
+            if out[at:at + len(old)] != old:
+                raise PatchError('anchor moved during patch')
             out = out[:at] + new + out[at + len(old):]
     return out, edits
 
@@ -188,6 +190,43 @@ def unpatch(patched, edits):
     return out
 
 
+def _h(t):
+    return hashlib.sha256(t.encode('utf-8')).hexdigest()
+
+
+def describe(src, edits):
+    """Region list for the fleet manifest (original coordinates; line numbers 1-based)."""
+    regions = []
+    for e in sorted(edits, key=lambda e: e[1]):
+        line = src.count('\n', 0, e[1]) + 1
+        if e[0] == 'insert':
+            regions.append({'region': 'mount_block', 'line': line, 'removed_bytes': 0,
+                            'inserted_bytes': len(e[2].encode()), 'inserted_sha256': _h(e[2])})
+        else:
+            kind = 'sw_registration' if e[2] == SW_OLD else 'legacy_notification_block'
+            regions.append({'region': kind, 'line': line, 'removed_bytes': len(e[2].encode()), 'removed_sha256': _h(e[2]),
+                            'inserted_bytes': len(e[3].encode()), 'inserted_sha256': _h(e[3])})
+    return regions
+
+
+def patch_and_prove(src):
+    """Patch + reversal proof + post-conditions. Returns (out, edits|None)."""
+    out, edits = patch(src)
+    if edits is None:
+        return out, None
+    try:
+        ok = unpatch(out, edits) == src
+    except PatchError:
+        ok = False
+    if not ok:
+        raise PatchError('reversal did not reproduce the original bytes')
+    if 'requestPermission' in out or 'new Notification(' in out:
+        raise PatchError('legacy notification code still present')
+    if out.count(MARKER) != 3 or out.count('id="li-push-settings"') != 1:
+        raise PatchError('integration markers not as expected')
+    return out, edits
+
+
 def manifest_for(folder, src):
     m = re.search(r'<meta name="apple-mobile-web-app-title" content="([^"]{1,40})"', src)
     name = m.group(1) if m else 'LOCKED IN'
@@ -203,50 +242,49 @@ def manifest_for(folder, src):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('key')
+    ap.add_argument('key', nargs='?')
+    ap.add_argument('--file', help='patch an arbitrary file (e.g. master_template.html); no manifest')
     ap.add_argument('--repo', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
     ap.add_argument('--check', action='store_true', help='report only, write nothing')
-    ap.add_argument('--out', help='write the patched shell here instead of in place (testing)')
+    ap.add_argument('--out', help='write the patched file here instead of in place (testing)')
     a = ap.parse_args(argv)
-    if not KEY_RE.match(a.key) or a.key.startswith('_'):
-        raise SystemExit('refusing: %r is not a real client storage key' % a.key)
-    folder = os.path.join(os.path.abspath(a.repo), 'clients', a.key)
-    path = os.path.join(folder, 'index.html')
+    if bool(a.key) == bool(a.file):
+        raise SystemExit('refusing: give exactly one of <storage_key> or --file')
+    folder = None
+    if a.key:
+        if not KEY_RE.match(a.key) or a.key.startswith('_'):
+            raise SystemExit('refusing: %r is not a real client storage key' % a.key)
+        folder = os.path.join(os.path.abspath(a.repo), 'clients', a.key)
+        path = os.path.join(folder, 'index.html')
+    else:
+        path = os.path.abspath(a.file)
     with open(path, 'rb') as f:
         raw = f.read()
     src = raw.decode('utf-8')
     if 'rel="manifest" href="manifest.json"' not in src:
-        raise SystemExit('refusing: shell does not link manifest.json')
+        raise SystemExit('refusing: file does not link manifest.json')
     try:
-        out, edits = patch(src)
+        out, edits = patch_and_prove(src)
     except PatchError as e:
-        raise SystemExit('refusing: %s — shell left untouched' % e)
-    report = {'key': a.key, 'sha256_before': hashlib.sha256(raw).hexdigest()}
+        raise SystemExit('refusing: %s — file left untouched' % e)
+    report = {'target': a.key or path, 'sha256_before': hashlib.sha256(raw).hexdigest()}
     if edits is None:
         report['status'] = 'already_patched'
-        print(json.dumps(report))
-        return 0
-    try:
-        reversed_ok = unpatch(out, edits) == src
-    except PatchError:
-        reversed_ok = False
-    if not reversed_ok:
-        raise SystemExit('refusing: reversal did not reproduce the original bytes — shell left untouched')
-    if 'requestPermission' in out or 'new Notification(' in out:
-        raise SystemExit('refusing: legacy notification code still present')
-    new_bytes = out.encode('utf-8')
-    report.update({
-        'status': 'would_patch' if a.check else 'patched',
-        'sha256_after': hashlib.sha256(new_bytes).hexdigest(),
-        'edits': {'sw_registration': 1, 'legacy_blocks_removed': 2, 'mount_points': 1, 'script_blocks': 1},
-        'bytes_delta': len(new_bytes) - len(raw),
-        'reversal_proof': 'reversing the 5 edits reproduces the original bytes exactly',
-    })
-    man_path = os.path.join(folder, 'manifest.json')
-    if not a.check:
-        with open(a.out or path, 'wb') as f:
-            f.write(new_bytes)
-        if not a.out and not os.path.exists(man_path):
+    else:
+        new_bytes = out.encode('utf-8')
+        report.update({
+            'status': 'would_patch' if a.check else 'patched',
+            'sha256_after': hashlib.sha256(new_bytes).hexdigest(),
+            'regions': describe(src, edits),
+            'bytes_delta': len(new_bytes) - len(raw),
+            'reversal_proof': 'reversing the 4 edits reproduces the original bytes exactly',
+        })
+        if not a.check:
+            with open(a.out or path, 'wb') as f:
+                f.write(new_bytes)
+    if folder and not a.check and not a.out:
+        man_path = os.path.join(folder, 'manifest.json')
+        if not os.path.exists(man_path):
             with open(man_path, 'w') as f:
                 json.dump(manifest_for(folder, src), f, indent=2)
                 f.write('\n')

@@ -493,6 +493,13 @@ const os = require('os');
 const vm = require('vm');
 const { execFileSync } = require('child_process');
 const PILOT_CANDIDATES = ['zac', 'mohamad_taha', 'zain_hussein'];
+// Live shells are integrated since the 1:1 fleet rollout; the tool is exercised on
+// their PRE-ROLLOUT bytes from the baseline commit (full history in CI).
+const PRE_ROLLOUT = 'e29d69b';
+function origShell(key) {
+  try { return execFileSync('git', ['show', `${PRE_ROLLOUT}:clients/${key}/index.html`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }); }
+  catch { return null; }
+}
 
 function tmpRepoWith(key, html) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'push-shell-'));
@@ -508,15 +515,21 @@ function inlineScripts(html) {
   return [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 }
 
-test('U1 real pilot-candidate shells: patched copy compiles, legacy prompt gone, four edits only', async () => {
+test('U1 real 1:1 shells: patched copy compiles, legacy prompt gone, four edits only, block inside Tracker', async () => {
   for (const key of PILOT_CANDIDATES) {
-    const orig = rd(`clients/${key}/index.html`);
+    const orig = origShell(key);
+    assert(orig, key + ': pre-rollout baseline readable (needs git history)');
     const dir = tmpRepoWith(key, orig);
     const r = tool([key, '--repo', dir]);
     eq(r.code, 0, key + ' patched: ' + r.out.slice(0, 200));
     const out = fs.readFileSync(path.join(dir, 'clients', key, 'index.html'), 'utf8');
     assert(!/requestPermission|new Notification\(/.test(out), key + ': no automatic prompt / in-page notification');
-    eq((out.match(/LOCKED-IN-PUSH:v1/g) || []).length, 4, key + ': 2 legacy stubs + mount + script');
+    eq((out.match(/LOCKED-IN-PUSH:v1/g) || []).length, 3, key + ': 2 legacy stubs + 1 mount block');
+    const tr0 = out.indexOf('id="section-tracker"'), tr1 = out.indexOf('</section>', tr0), mp = out.indexOf('id="li-push-settings"');
+    assert(tr0 > 0 && mp > tr0 && mp < tr1, key + ': mount block inside the Tracker section');
+    assert(/<script src="\.\.\/\.\.\/push-client\.js" defer><\/script>/.test(out.slice(tr0, tr1)), key + ': push-client.js deferred, inside Tracker');
+    assert(/addEventListener\('DOMContentLoaded'/.test(out.slice(tr0, tr1)), key + ': mounts after the shell scripts have run');
+    eq(out.slice(out.lastIndexOf('</body>') - 200), orig.slice(orig.lastIndexOf('</body>') - 200), key + ': nothing added at </body>');
     eq((out.match(/register\('\.\.\/\.\.\/sw\.js', \{ scope: '\.\/' \}\)/g) || []).length, 1, key + ': shared worker, own scope');
     eq((out.match(/id="li-push-settings"/g) || []).length, 1, key + ': one mount point');
     for (const [i, js] of inlineScripts(out).entries()) new vm.Script(js, { filename: `${key}-inline-${i}.js` });   // throws on syntax error
@@ -533,7 +546,8 @@ test('U1 real pilot-candidate shells: patched copy compiles, legacy prompt gone,
 test('U2 tool refuses: canary / invalid keys, missing anchors, and never writes on refusal', async () => {
   assert(/refusing/.test(tool(['_push_canary', '--check']).out), 'underscore keys refused');
   assert(/refusing/.test(tool(['../zac', '--check']).out), 'path-like key refused');
-  const orig = rd('clients/zac/index.html');
+  const orig = origShell('zac');
+  assert(orig, 'pre-rollout baseline readable');
   for (const [label, mutate] of [
     ['no legacy block', (s) => s.replace(/Notification\.requestPermission/g, 'x')],
     ['two sw registrations', (s) => s + "\n<script>navigator.serviceWorker.register('sw.js')</script>"],
@@ -548,11 +562,45 @@ test('U2 tool refuses: canary / invalid keys, missing anchors, and never writes 
   }
 });
 
-test('U3 --check never writes; live shells in this repo are untouched by the test run', async () => {
+test('U3 --check never writes; live 1:1 shells are already integrated (idempotent)', async () => {
   const before = PILOT_CANDIDATES.map((k) => sha256hex(rd(`clients/${k}/index.html`)));
-  for (const k of PILOT_CANDIDATES) assert(/would_patch/.test(tool([k, '--check']).out), k + ' dry run');
+  for (const k of PILOT_CANDIDATES) assert(/already_patched/.test(tool([k, '--check']).out), k + ' already integrated');
   eq(PILOT_CANDIDATES.map((k) => sha256hex(rd(`clients/${k}/index.html`))).join(), before.join(), 'bytes unchanged');
-  for (const k of PILOT_CANDIDATES) assert(!fs.existsSync(`clients/${k}/manifest.json`), k + ': no manifest written by --check');
+});
+
+test('U5 fleet invariant: every eligible 1:1 shell carries the integration, and nothing else prompts', async () => {
+  const API = /sheetsWebhookUrl:\s*'https:\/\/[a-z0-9]{20}\.supabase\.co\/functions\/v1\/api'/;
+  let eligible = 0;
+  for (const key of fs.readdirSync('clients').sort()) {
+    const f = `clients/${key}/index.html`;
+    if (key.startsWith('_') || !fs.existsSync(f)) continue;
+    const html = rd(f);
+    if (html.includes('x-registry-skip') || !API.test(html) || !html.includes('const CLIENT_TOKEN')) continue;   // shims / legacy non-Supabase shells
+    eligible++;
+    eq((html.match(/LOCKED-IN-PUSH:v1/g) || []).length, 3, key + ': integration markers');
+    assert(!/requestPermission|new Notification\(/.test(html), key + ': no automatic prompt or in-page notification');
+    eq((html.match(/register\('\.\.\/\.\.\/sw\.js', \{ scope: '\.\/' \}\)/g) || []).length, 1, key + ': shared worker, own scope');
+    assert(!/navigator\.serviceWorker\.register\('sw\.js'\)/.test(html), key + ': no per-folder worker registration');
+    const man = JSON.parse(rd(`clients/${key}/manifest.json`));
+    eq(man.display + man.scope, 'standalone./', key + ': standalone manifest scoped to the client');
+  }
+  assert(eligible >= 51, 'at least the 51 rolled-out 1:1 shells were checked (got ' + eligible + ')');
+});
+
+test('U4 --file mode on a copy of master_template.html: same four edits, reversal-proven, idempotent', async () => {
+  const tpl = path.join(process.env.HOME, 'Desktop/client_template/master_template.html');
+  if (!fs.existsSync(tpl)) return;   // CI checkout has no client_template; covered locally
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'push-tpl-'));
+  const copy = path.join(dir, 'master_template.html');
+  fs.copyFileSync(tpl, copy);
+  const r = tool(['--file', copy]);
+  eq(r.code, 0, 'template patched: ' + r.out.slice(0, 200));
+  const out = fs.readFileSync(copy, 'utf8');
+  eq((out.match(/LOCKED-IN-PUSH:v1/g) || []).length, 3, 'markers');
+  assert(!/requestPermission|new Notification\(/.test(out), 'no automatic prompt in the template');
+  assert(/already_patched/.test(tool(['--file', copy]).out), 'idempotent');
+  eq(fs.existsSync(path.join(dir, 'manifest.json')), false, '--file never writes a manifest');
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 run('push_v1');

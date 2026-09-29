@@ -1,0 +1,3001 @@
+{
+  "subsystem": "LOCKED IN Push Notifications V1 \u2014 1:1 fleet integration",
+  "integration_marker": "LOCKED-IN-PUSH:v1",
+  "mount_block_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448",
+  "legacy_replacement_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4",
+  "sw_registration": {
+    "from": "navigator.serviceWorker.register('sw.js')",
+    "to": "navigator.serviceWorker.register('../../sw.js', { scope: './' })"
+  },
+  "eligible": 51,
+  "excluded": [
+    {
+      "key": "_p0_canary",
+      "reason": "internal canary / test folder (not a client)"
+    },
+    {
+      "key": "_push_canary",
+      "reason": "internal canary / test folder (not a client)"
+    },
+    {
+      "key": "_recipe_canary",
+      "reason": "internal canary / test folder (not a client)"
+    },
+    {
+      "key": "_tv2_canary",
+      "reason": "internal canary / test folder (not a client)"
+    },
+    {
+      "key": "mayank_block2",
+      "path": "clients/mayank_block2/index.html",
+      "original_sha256": "6b1f2cb70f6815dc154f65c0cd66150cbc32b0fd5a8682af772cf04f108209ad",
+      "reason": "declared redirect shim (x-registry-skip), not a client shell"
+    },
+    {
+      "key": "siam",
+      "path": "clients/siam/index.html",
+      "original_sha256": "3b28423abbbed86c024fcef6f9f1b34f0379dbfdcecbb712ed27e6f2dab8d146",
+      "reason": "not wired to the Supabase api (legacy Apps Script / other backend) \u2014 no client auth to attach push to"
+    }
+  ],
+  "shells": [
+    {
+      "key": "abdullah",
+      "path": "clients/abdullah/index.html",
+      "original_sha256": "cf2d48ea1f9c1b792dfe415c0b014530e5bfd5df8fee121e557ffd513aec3ba5",
+      "patched_sha256": "0d8f9403d2dfd34ca773acb07f6679feca1ed01bce93a31806c4f56ba518b97b",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2731,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5853,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5915,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5999,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "c627285971487f9fc2a19cf3e77e48efe2eae3ba9f839c973753989537f7d650",
+      "programme_fingerprint_after": "c627285971487f9fc2a19cf3e77e48efe2eae3ba9f839c973753989537f7d650",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "adam_ahmad",
+      "path": "clients/adam_ahmad/index.html",
+      "original_sha256": "88507111bb0ccf449317a83ccacd2fbbec84d344aefe80db4d2b915bcf42f742",
+      "patched_sha256": "4e398e470fae0cf581558ed2b0d3ab90989a2cb8e5a615d13631767b5aa990da",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2731,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5858,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5920,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6004,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "010e190d3569356f6c752574ead50349be759422c0235192d69c53479c7efd61",
+      "programme_fingerprint_after": "010e190d3569356f6c752574ead50349be759422c0235192d69c53479c7efd61",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "ali",
+      "path": "clients/ali/index.html",
+      "original_sha256": "09b47fe391cbb6b2a7ecbf1a39b8a024ac013d871fe46f4f43176cb5c9438d79",
+      "patched_sha256": "685ff94f62adee6941fcbb803e03b5c74e1c876900983303fbfa10e1eef5efa3",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5548,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5610,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5694,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "d2541143a1acdc0117a1b98352f912e6a5ca02c1b92044241d1682f61b6f6a9c",
+      "programme_fingerprint_after": "d2541143a1acdc0117a1b98352f912e6a5ca02c1b92044241d1682f61b6f6a9c",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "ali_alfatlawi",
+      "path": "clients/ali_alfatlawi/index.html",
+      "original_sha256": "f6c181942a6ef07ad20283e6654bc1047d6a6460b2bca41dc8b64c3ed856cd49",
+      "patched_sha256": "962b67bf5217e005194266fe73240b879a096b8c56dcc858c89f01bba4965225",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6224,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6286,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6370,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "429c4795502be22797f825afbb0aea80c996f8ad7bc1491800a7389cfe41e946",
+      "programme_fingerprint_after": "429c4795502be22797f825afbb0aea80c996f8ad7bc1491800a7389cfe41e946",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "ali_khan",
+      "path": "clients/ali_khan/index.html",
+      "original_sha256": "6b3e5217ca9c1e16bf68f2d2d30d023702cec96a567dfae031ddf4d2cb1f6900",
+      "patched_sha256": "373010f733e53f0021e4ef37139761f7b184b003a1f1e2e7fe7ebc4462aba09b",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6230,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6292,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6376,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "b618d87d89fc4ef2759a736e507dd031a77d484f33f04df217b5d2fd6c3e6406",
+      "programme_fingerprint_after": "b618d87d89fc4ef2759a736e507dd031a77d484f33f04df217b5d2fd6c3e6406",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "amir",
+      "path": "clients/amir/index.html",
+      "original_sha256": "e289442fc82e1d444c18d4ad01f488027e7e95038bb65d42ca302823a6954ebd",
+      "patched_sha256": "dc7945405b2c130fbdcb1add674a8e52deb28334ff2eac08e034de594e06af4c",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5517,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5579,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5663,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "c4f84bf0aac01cbf200940b88f29dbdeb799ad3ab4e732eee786f343c182169a",
+      "programme_fingerprint_after": "c4f84bf0aac01cbf200940b88f29dbdeb799ad3ab4e732eee786f343c182169a",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "bishoy_shaker",
+      "path": "clients/bishoy_shaker/index.html",
+      "original_sha256": "b645396e69a168b96867600f982e940f3967ef79d9b1810e899c6f811ed1762d",
+      "patched_sha256": "38bf8d40647530774a6d7463f3f55fcffc0b13498c762f1f16598b3e454e83a2",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2982,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6210,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6272,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6356,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "1d86b3a93f7eb21d0913496424af90f7555e5c1245a877e0b0a556d3292082b5",
+      "programme_fingerprint_after": "1d86b3a93f7eb21d0913496424af90f7555e5c1245a877e0b0a556d3292082b5",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "cruz_rehayem",
+      "path": "clients/cruz_rehayem/index.html",
+      "original_sha256": "13b86536ad466fa6362fce20919eb34034494bd461cb39c530de5439d7efea41",
+      "patched_sha256": "8e7fb1ecb0feb37d314971fbf767e92d2ebf4f70a0018815524e0ded29894bb7",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2999,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6264,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6326,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6410,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "5530a3382939bbb998d30d098004f680141fb3d9e4787ec747482eb0aa0353a1",
+      "programme_fingerprint_after": "5530a3382939bbb998d30d098004f680141fb3d9e4787ec747482eb0aa0353a1",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "dib_kerdy",
+      "path": "clients/dib_kerdy/index.html",
+      "original_sha256": "7bfe4412edcf200f05f87057ebcc6c3d2b70fe51078b0ce314a7c438e29f2f0c",
+      "patched_sha256": "bc091943b65806aa5b3659b03ea7c29be0ed405655458583c16620456fa27cbc",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3079,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6290,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6352,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6442,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "5124f2c81e53d70ec9096d9ef69d7783da50ae33e3dcb6952afde89003bf9239",
+      "programme_fingerprint_after": "5124f2c81e53d70ec9096d9ef69d7783da50ae33e3dcb6952afde89003bf9239",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "faith_kainuku",
+      "path": "clients/faith_kainuku/index.html",
+      "original_sha256": "5486a54a36713abc42e3e0b055bec6ddaff5ab7facd1380412ede4aa3b434c46",
+      "patched_sha256": "9ffdecd5739bc4e09a5dfb0d2a6c55b59e1a262c07ae2a25279f90085808eb57",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6222,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6284,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6368,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "87c4e2a5088329bb57b8d37214e3b3aa41cd6cbb78549ef08277876c05fa93f7",
+      "programme_fingerprint_after": "87c4e2a5088329bb57b8d37214e3b3aa41cd6cbb78549ef08277876c05fa93f7",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "hamza",
+      "path": "clients/hamza/index.html",
+      "original_sha256": "6ee57a2a9426d3bc566bcb4968eb00f4eb44a7aaa4db61a0ec83eb021994604f",
+      "patched_sha256": "3aa9f085bea63a7e028e9f8aaee4c0159d372cb15b4b587df39024f7641815e0",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5548,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5610,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5694,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "eaa9abef8f7b7572b894b61903cf0ae6a96a46ff47fc4d758e743202b80ab1d1",
+      "programme_fingerprint_after": "eaa9abef8f7b7572b894b61903cf0ae6a96a46ff47fc4d758e743202b80ab1d1",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "hamzah_dargham",
+      "path": "clients/hamzah_dargham/index.html",
+      "original_sha256": "0cbb4acc8143dd42e45a9b15d00a87ba8dd9cfa9368a82382fb16fb568cc2b6f",
+      "patched_sha256": "4fe18bb16d32a4378a2e6c8c4f4971fbbcf53a1feb2a113be3bb639053974326",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6221,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6283,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6367,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "3ce78b9737e836ee7b52d02bb1e30933dcc2594f701ff5e95042c7a8d5f6a698",
+      "programme_fingerprint_after": "3ce78b9737e836ee7b52d02bb1e30933dcc2594f701ff5e95042c7a8d5f6a698",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "ilham",
+      "path": "clients/ilham/index.html",
+      "original_sha256": "3e4852a67ebf448551a33f69fc40d119349a9c275a0c24d16674765659a3cad2",
+      "patched_sha256": "a4bc6ef8e98e857d0f7a90835847ed88560f3a4f8a3267d958fc111184633235",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5551,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5613,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5697,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "357f47d231421e91ab4c9a2cf73e89cba44f6eb8cd44365703f15a46cac92d85",
+      "programme_fingerprint_after": "357f47d231421e91ab4c9a2cf73e89cba44f6eb8cd44365703f15a46cac92d85",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "irfaan_win",
+      "path": "clients/irfaan_win/index.html",
+      "original_sha256": "e866bd38ec536fcc68f9d022086f318a27af797b0237e3c3aaa7ae67ab46ed59",
+      "patched_sha256": "18c679328a897a99900cfa588660eae7e170cbf98e9c7d9e34a9db88e8309361",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3002,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6252,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6314,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6398,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "2e9907be44435427069292f5321c0c44118dc2da19e4e1d23de651bbede1b088",
+      "programme_fingerprint_after": "2e9907be44435427069292f5321c0c44118dc2da19e4e1d23de651bbede1b088",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "isaac_alameddine",
+      "path": "clients/isaac_alameddine/index.html",
+      "original_sha256": "71e149680a2a20cc914d4f2a33359cdea26c1f7c312756e816f7b3b61fa9714a",
+      "patched_sha256": "490aa502ba2c6d5209b00a72c4c3d1f355e6a56c20641ee4537a1ffed18f0ac4",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3099,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6171,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6233,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6317,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "1d71658f6338fd2aafc275de88c4874535339bfc2ee6257b797a1d433e328e1e",
+      "programme_fingerprint_after": "1d71658f6338fd2aafc275de88c4874535339bfc2ee6257b797a1d433e328e1e",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "ismail_rasheed",
+      "path": "clients/ismail_rasheed/index.html",
+      "original_sha256": "938ce77d26525db04f76147a059ed2685b2a0b8385e1f2a9598f8aa56680480f",
+      "patched_sha256": "8889bbe66c76857b16c246847a88e38aa3b27f8fde2a8dbbdded687ec510a835",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3023,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6188,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6250,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6334,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "4de900c0e1450177ed847382103e4e15d51b2f4a6b2a026b4d2d16c84edcf403",
+      "programme_fingerprint_after": "4de900c0e1450177ed847382103e4e15d51b2f4a6b2a026b4d2d16c84edcf403",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "jad_elali",
+      "path": "clients/jad_elali/index.html",
+      "original_sha256": "08da9d619b3cc3dffe3ef0ff2548e7677de0e652b8325f51a9b6533d929957e0",
+      "patched_sha256": "499388a13996987a7226e7870e65f969610b1f55f8f3105a29a96702f606d925",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5548,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5610,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5694,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "9daf2831418e9c827dd0746355fb1973de9f90d39cd6a23c39c8bf991b5ea833",
+      "programme_fingerprint_after": "9daf2831418e9c827dd0746355fb1973de9f90d39cd6a23c39c8bf991b5ea833",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "jamal",
+      "path": "clients/jamal/index.html",
+      "original_sha256": "d375e3fc13ae59762c099e71642cc421bb979392283c0f108b9c16fab83045a1",
+      "patched_sha256": "19d3b913bbe8e8db909b099d6c60e7824f243314fcfbddb6dd204d5d4c93572a",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5548,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5610,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5694,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "71400e382fd9cc8d1392df8cf519ffea05f0fb19ee7795887f25021b467fa7ca",
+      "programme_fingerprint_after": "71400e382fd9cc8d1392df8cf519ffea05f0fb19ee7795887f25021b467fa7ca",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "jarone_sepnio",
+      "path": "clients/jarone_sepnio/index.html",
+      "original_sha256": "088100cdac79515676c2a2ef117e85741fdeb46984957af5a51d8b2ad47ff0f8",
+      "patched_sha256": "74d3e90bab58abeda6525ada136502d7999463ee3b5a7cb2c2af1ce0ec55eb4d",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2987,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6069,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6131,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6215,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "306dfe3ed402d9cbcad5e3596cb5f1a42fb0d32549e9a03a32d64eb656f472af",
+      "programme_fingerprint_after": "306dfe3ed402d9cbcad5e3596cb5f1a42fb0d32549e9a03a32d64eb656f472af",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "joey_saleh",
+      "path": "clients/joey_saleh/index.html",
+      "original_sha256": "679dd6a076561ade02b8d4557a904dc42e9dd3f26e343461aeee1f2c3ef619c9",
+      "patched_sha256": "70fb420f362636b366d6a07b78e2381b62a83b207182d31b86bb92f9e9b35f9a",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3061,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6259,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6321,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6405,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "aa0cc5d3c140584da4847027708397794331a5e4778aa692b2cac0ea23e00c89",
+      "programme_fingerprint_after": "aa0cc5d3c140584da4847027708397794331a5e4778aa692b2cac0ea23e00c89",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "joshua_hadchiti",
+      "path": "clients/joshua_hadchiti/index.html",
+      "original_sha256": "97f07bf942dfab6d74a0b015f7bc051ca1bfc203b6d1ac7f66fceff4c3b28a8a",
+      "patched_sha256": "b20b64718cec55634758c69ab19a205b9ef8eae4ae98055d3bc329256f418813",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3002,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6267,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6329,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6413,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "5fc128040de357ec2357bf68d8a8f3fc6dcb9f54867f03b288d154bc27db941b",
+      "programme_fingerprint_after": "5fc128040de357ec2357bf68d8a8f3fc6dcb9f54867f03b288d154bc27db941b",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "karim",
+      "path": "clients/karim/index.html",
+      "original_sha256": "df74e828f436a2f938e4d1f9a94735b18eada4c016ef9f714f8a658e7e7a29ee",
+      "patched_sha256": "ae06c3c296c42827a794bd2401ede22e848c8a694d923f758e8ab76eed9c6ba2",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6223,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6285,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6369,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "d7da8d98c9e68cae486f73187624cf9e2f60cac6c012b70e7c0b77b211d7d247",
+      "programme_fingerprint_after": "d7da8d98c9e68cae486f73187624cf9e2f60cac6c012b70e7c0b77b211d7d247",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "lana",
+      "path": "clients/lana/index.html",
+      "original_sha256": "2824b2533c24d9738bbdc08f2cf4e9016ea1cd5b64f01c8336b5093f3ee473ce",
+      "patched_sha256": "be83fd9252c8625eee474b8f72ce01239bc1b3f1a41394247a87654ee012b5c4",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6224,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6286,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6370,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "f6b3a44860fbb641967aaed1e08f99dfe21a206a26251223361df74c76363484",
+      "programme_fingerprint_after": "f6b3a44860fbb641967aaed1e08f99dfe21a206a26251223361df74c76363484",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "maddison",
+      "path": "clients/maddison/index.html",
+      "original_sha256": "882e99d8edd0ca7a4c207106d284cabb8a7e5c17b2c55abc3580d05e6ffe4f27",
+      "patched_sha256": "0aefa36fe7cad8ed12363d44ab430e85a6db113ec45493283ec1f7c29d459922",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5551,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5613,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5697,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "6c22330c53e9879d837d176b0f69ffcc363a4d46290e3f723229dd01bee7745b",
+      "programme_fingerprint_after": "6c22330c53e9879d837d176b0f69ffcc363a4d46290e3f723229dd01bee7745b",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "malak_hanani",
+      "path": "clients/malak_hanani/index.html",
+      "original_sha256": "89b9958a53ef5ac413c4160ffc09955f0f73c43ecf313fb153e15d3308d81b2f",
+      "patched_sha256": "9107808667fcaaba1ee995868c9c63650b2fa5cadebf6778deb1424cfe081713",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6191,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6253,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6337,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "a9fd2204d44d17519239a725d2df75786d0ba8bfa312cdc72ff0ab0711a49b35",
+      "programme_fingerprint_after": "a9fd2204d44d17519239a725d2df75786d0ba8bfa312cdc72ff0ab0711a49b35",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "mayank",
+      "path": "clients/mayank/index.html",
+      "original_sha256": "68d8721025ef746a179c383acbbb7816b0a18bdb7af526b3ce4da7ed149a0a24",
+      "patched_sha256": "5e43b8135376bec2c7b77716adcfe898b96c4b5ecd41d246713798678a0d9359",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3029,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6239,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6301,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6385,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "ed3c328d582cdf66140d7010c54b457741c09f19a03787064e033bcd04e73390",
+      "programme_fingerprint_after": "ed3c328d582cdf66140d7010c54b457741c09f19a03787064e033bcd04e73390",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "michael_mahmoud",
+      "path": "clients/michael_mahmoud/index.html",
+      "original_sha256": "920c0b2faf9f7f6c55f371debdc9684ab7a68f04b559f95e353a133ca1629300",
+      "patched_sha256": "19ebe9ade71f4d57ed6e41405096f08a7339611372562a9a3da2defd32287690",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2613,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5574,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5636,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5720,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "0b231c0f598edd597339b617e7f2b264f26b10a42a46144eb20e1a5eb746a2d5",
+      "programme_fingerprint_after": "0b231c0f598edd597339b617e7f2b264f26b10a42a46144eb20e1a5eb746a2d5",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "mohamad_abboud",
+      "path": "clients/mohamad_abboud/index.html",
+      "original_sha256": "36dc95bfb7b793698d896be3ab21f465fe4bb5666728ad9298b3a96bd2f36f24",
+      "patched_sha256": "55d3aebe8ed2b4031dfc2f841bf6fd988285f826413587854110738d1ec5ce20",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2940,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6284,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6346,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6430,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "18f50ef08a990b56b7c501989072c938070ad78aabf1cd0f3901c1c90ba34ad3",
+      "programme_fingerprint_after": "18f50ef08a990b56b7c501989072c938070ad78aabf1cd0f3901c1c90ba34ad3",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "mohamad_mehajer",
+      "path": "clients/mohamad_mehajer/index.html",
+      "original_sha256": "78cc83b18b4210de195755996fee909f15b4f6ffdcc60085a3719cd365161c89",
+      "patched_sha256": "50b41f37c76c6fd96325e4eae87924600f9a39c58ac64b426c018271469a6be6",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3011,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6141,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6203,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6287,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "23b012efe820b379d056d508cf24b4f6d2ab272bb2e9ed96a0b3aab7c7b34d3a",
+      "programme_fingerprint_after": "23b012efe820b379d056d508cf24b4f6d2ab272bb2e9ed96a0b3aab7c7b34d3a",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "mohamad_taha",
+      "path": "clients/mohamad_taha/index.html",
+      "original_sha256": "e94e1caef5cb5e8b68908370cfff9ac5af83418eca054c09fc906b8f781ee75d",
+      "patched_sha256": "616404b39bbaffe2f734d957a641c2c5cbb33fc65df6a0683f6d1be0b6a61469",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2940,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6215,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6277,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6361,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "c8aeff5e654e0f5d006d43c5ae9077dec467fcd97a07c50d05288b4c444ea749",
+      "programme_fingerprint_after": "c8aeff5e654e0f5d006d43c5ae9077dec467fcd97a07c50d05288b4c444ea749",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 6,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "mohammed_hardani",
+      "path": "clients/mohammed_hardani/index.html",
+      "original_sha256": "a6864fde4c058e7d097122af4bf112f0931939a0769111eabacee5cfc7f7156e",
+      "patched_sha256": "d657fe64e9ba2a18c7a4ca4199c93ff778c4a50ee79c75ba58c92902130fca79",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5509,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5571,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5655,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "96908fc127e6e8e85605ab3ca5db7f0d673876cd2c6415cd0b442e518d17275c",
+      "programme_fingerprint_after": "96908fc127e6e8e85605ab3ca5db7f0d673876cd2c6415cd0b442e518d17275c",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "mohammed_taleb",
+      "path": "clients/mohammed_taleb/index.html",
+      "original_sha256": "c454b81d674d8edb8e3304963800aee5045e4340db2a3fc3d31eff15ca6309cd",
+      "patched_sha256": "325afcd6d3f1397e6833b862d25430f3047b8c571b082959c62f0ad33bea9bd7",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5548,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5610,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5694,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "b5e83b78bb9f675573963860084dbfa81c4c220531299ee77b5476e787d55f55",
+      "programme_fingerprint_after": "b5e83b78bb9f675573963860084dbfa81c4c220531299ee77b5476e787d55f55",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "muhamad_amarni",
+      "path": "clients/muhamad_amarni/index.html",
+      "original_sha256": "12fff7e7834d0c7324be756aa6909a20cc9ea5ce0f83c2c044de5a05fa9f7111",
+      "patched_sha256": "7b82e6cd53f9c21e245f0786401a1c930ad6357da3c2f6c9bffdf0e9368222d1",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2993,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6228,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6290,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6374,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "75cfc34a32b1e804f4f176d13c7162679408fdfaaa220f13a43a4a60d3f6affe",
+      "programme_fingerprint_after": "75cfc34a32b1e804f4f176d13c7162679408fdfaaa220f13a43a4a60d3f6affe",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 8,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "muhammad_saad",
+      "path": "clients/muhammad_saad/index.html",
+      "original_sha256": "3bf94267e1d149dad5812e6e75f58d3d4eb424cfc851bc923072fb4c665966fc",
+      "patched_sha256": "66abb7daded8aa465d436aeabd04ad80b055a27cad29d17492b2e8ed3b8ae078",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2961,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6131,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6193,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6277,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "acdd2b93874c54942e9a52efa5cc64bf1415b803118d27b3d29f54fc3a7ccfdd",
+      "programme_fingerprint_after": "acdd2b93874c54942e9a52efa5cc64bf1415b803118d27b3d29f54fc3a7ccfdd",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "nasri_assaad",
+      "path": "clients/nasri_assaad/index.html",
+      "original_sha256": "c423d5914f6c32a8c79731f46d0d0d62acf813ba1bdc377321e306981b85304d",
+      "patched_sha256": "d734ce3cfeb317a40901fbf9381ba3d518f523993fad0116b28c548ac589f27e",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3002,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6254,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6316,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6400,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "31884af3fab414a074603e7314a2852011f5ab026b7231fb66e74a640f067fc9",
+      "programme_fingerprint_after": "31884af3fab414a074603e7314a2852011f5ab026b7231fb66e74a640f067fc9",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "nicholas",
+      "path": "clients/nicholas/index.html",
+      "original_sha256": "0d8f427d92c4457ccaea51c010ca388a99be0627b453c44c367a34b33681e85c",
+      "patched_sha256": "018a4ca652157a0ac7de6108a31409718915f22bafb17656906485e1bbf9c104",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5540,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5602,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5686,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "3dfece5e8a02881c53442edeaf2500cde1f3c18d24d30768c8d0289ea7de775d",
+      "programme_fingerprint_after": "3dfece5e8a02881c53442edeaf2500cde1f3c18d24d30768c8d0289ea7de775d",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "omar",
+      "path": "clients/omar/index.html",
+      "original_sha256": "2297e38bd3f6571b36abc9161c0b62d4985b15005f5646f310a0f8c9fdfe1b21",
+      "patched_sha256": "130f0cb7ca5802ef05258312523e21855658a635fee19a0f808f5a2c443066fe",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6178,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6240,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6324,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "a36e01b53214c8dd6f27f919686977a106e6218ea3449d7e2b477eea8dc81d71",
+      "programme_fingerprint_after": "a36e01b53214c8dd6f27f919686977a106e6218ea3449d7e2b477eea8dc81d71",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "omar_yagmour",
+      "path": "clients/omar_yagmour/index.html",
+      "original_sha256": "abf200d9df0ba81c2a7c5f4deb0ce5ef08a56d9bf5db3ad6d070fbe271866f14",
+      "patched_sha256": "bedbff691d77d3146dd11664b1da85251bbd7ddf96d02a29fdb5b60fefb32e5c",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6203,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6265,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6349,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "547692df77d374c86017cc5546ee46fe5faa54c704e797eabfa007c796376d23",
+      "programme_fingerprint_after": "547692df77d374c86017cc5546ee46fe5faa54c704e797eabfa007c796376d23",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "omer_al_amoodi",
+      "path": "clients/omer_al_amoodi/index.html",
+      "original_sha256": "bfacaf081dfc91aa68c3d03e739343c790760e275801265c6baa54b30978ce75",
+      "patched_sha256": "0d62f7385e4ccf76c7be30ce2e814f915e478fc345c400e1312610a72274385f",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2952,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6070,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6132,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6216,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "46f7283a91aa1f24ffb02a13f250b46e9bb38dea442394bbc2b894a4be4603d3",
+      "programme_fingerprint_after": "46f7283a91aa1f24ffb02a13f250b46e9bb38dea442394bbc2b894a4be4603d3",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "salman_abdallah",
+      "path": "clients/salman_abdallah/index.html",
+      "original_sha256": "6bc1ad5f2e50e8bf8ba5597bb7808c1f45fec77db83716cf933b8fd1b8929b12",
+      "patched_sha256": "88444ff57aa0637e0c4704d81279441c560c49217afadc47c5cf6ec63baaf02c",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3002,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6258,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6320,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6404,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "ee99bc13fbcf5a05f84cd4354a5434cc2e969e4cc76ee95d1c4e343c70942ea5",
+      "programme_fingerprint_after": "ee99bc13fbcf5a05f84cd4354a5434cc2e969e4cc76ee95d1c4e343c70942ea5",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "salman_ghanem",
+      "path": "clients/salman_ghanem/index.html",
+      "original_sha256": "e6cfcd69fbe325c3f92b4a5702eb62e55c7e2fd068d69812be0737bef9f32b29",
+      "patched_sha256": "aa22dc8b3b688f90dfcbb0ce96b5af6cebacbd7f004bd23509c4740deebeba01",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2971,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6173,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6235,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6319,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "cab9bf59434e506fa71aeb4a32fcd9958f584b6a8da92907c3611640525ec8c0",
+      "programme_fingerprint_after": "cab9bf59434e506fa71aeb4a32fcd9958f584b6a8da92907c3611640525ec8c0",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "samir",
+      "path": "clients/samir/index.html",
+      "original_sha256": "038f0567732f54f9dee37839f354a74af24aaabee1fd2ec192c6dd53372e7b30",
+      "patched_sha256": "2b9e8ae7116eddfcf1dad51477b5b4a1912a160d125da2da31480d9dfd5b66aa",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6223,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6285,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6369,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "eb6a5f86a22c67d5dc5f65413e8e26289db2a42d191ce3df206603fbf1404a17",
+      "programme_fingerprint_after": "eb6a5f86a22c67d5dc5f65413e8e26289db2a42d191ce3df206603fbf1404a17",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "sarah",
+      "path": "clients/sarah/index.html",
+      "original_sha256": "7987ff85482504e5b24df46fc190abd8723a6084479ae9453c1a97f0d65090da",
+      "patched_sha256": "4af6159a4e826988514a9e91773829f9f9544e2c55468054923d802329b3b410",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2622,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5548,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 5610,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 5694,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "19548ca1f4ed4d0dfacbd2d6e41c2ec1dbf90dd345245d0d64c5bc43768d962a",
+      "programme_fingerprint_after": "19548ca1f4ed4d0dfacbd2d6e41c2ec1dbf90dd345245d0d64c5bc43768d962a",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 4,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "shkar_abubaker",
+      "path": "clients/shkar_abubaker/index.html",
+      "original_sha256": "26f6ef1d10c197a858cb89096211c116a51189918412db7f1849266871b1fbe2",
+      "patched_sha256": "60c4599e1b2cb6d86a4621811626d0aac9bf5efafb6dc7a90d5a9ea4e075c4b1",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6223,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6285,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6369,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "c93de1488b3fbcc7a383ed00ef2cb45841126c6f06e69a5444978e5a77028dcc",
+      "programme_fingerprint_after": "c93de1488b3fbcc7a383ed00ef2cb45841126c6f06e69a5444978e5a77028dcc",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "tarkyn",
+      "path": "clients/tarkyn/index.html",
+      "original_sha256": "c655de9303f4d6f6326c2aaa8b3b8fd5a956ca1f44dac37087f7a932f4030990",
+      "patched_sha256": "2c2a6f958a837b92b9aafc6f3d4b232f76bffd2753a265a7da9c8619b70674de",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6221,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6283,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6367,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "ca2dc069a9736822de8e1ad2f54aea9d94de53d1bb106d7d8872516462c56ef4",
+      "programme_fingerprint_after": "ca2dc069a9736822de8e1ad2f54aea9d94de53d1bb106d7d8872516462c56ef4",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "tufail_shinwar",
+      "path": "clients/tufail_shinwar/index.html",
+      "original_sha256": "d6ac55cd0d6cf4d1132fdcdaa2de464a8c36182e37f96754cf7f23967f17176d",
+      "patched_sha256": "b6160e3fcd9c6f299511f2663497b2e690f0afa7fe04aa7a631b6a2f13e47446",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6221,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6283,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6367,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "75e3f2840df4aa98a037eda118c6d989909260d7d99fc0a1a509cf3ff6516c89",
+      "programme_fingerprint_after": "75e3f2840df4aa98a037eda118c6d989909260d7d99fc0a1a509cf3ff6516c89",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "yousef_hamze",
+      "path": "clients/yousef_hamze/index.html",
+      "original_sha256": "228c91e4e13c56d515beec4b76ecb5f9b35dd6d8d246b831dec0449310c62bae",
+      "patched_sha256": "cc5ae0d3518f076feb023816a38c82497ebf802279fafdce71aab82311a5361c",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3011,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6147,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6209,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6293,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "e632a070eb71dbd540ab7b19cb64bb0b33eee50b7db1bd55897be8dad8e177a8",
+      "programme_fingerprint_after": "e632a070eb71dbd540ab7b19cb64bb0b33eee50b7db1bd55897be8dad8e177a8",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "yusuf",
+      "path": "clients/yusuf/index.html",
+      "original_sha256": "a160fe8006f80b9e94608503cb8c2b977d024615b12c7381fcd61d10fade0748",
+      "patched_sha256": "e582d549b4fa568b490f32823846c9d938fb1de24cc10d7722cec95064843a6e",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3020,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6221,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6283,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6367,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "e93cef687082577d76f5b2f2ddda7d207c37b44d5d9f87e7272a44b5e23865bf",
+      "programme_fingerprint_after": "e93cef687082577d76f5b2f2ddda7d207c37b44d5d9f87e7272a44b5e23865bf",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "exists"
+    },
+    {
+      "key": "zac",
+      "path": "clients/zac/index.html",
+      "original_sha256": "98e8e6c2ca8b54f2dce07a2e9584a781cf4ef72cb102a89f433580194ca74a36",
+      "patched_sha256": "37a9560bd71dab31bef284520d6618b5ba79146d6fbd5d95bf46269f0270b939",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2999,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6344,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6406,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6490,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "505a1f5d490f5549af790720f0018dff9d9966d1252d4f926b44fd99e3a85691",
+      "programme_fingerprint_after": "505a1f5d490f5549af790720f0018dff9d9966d1252d4f926b44fd99e3a85691",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 8,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "zain_hussein",
+      "path": "clients/zain_hussein/index.html",
+      "original_sha256": "e0a3223bfc27a4677b9149bdd44cbb9f518aea0692bb070602a5d5d8988a6011",
+      "patched_sha256": "ff3d9e261dad7c13ee2b6abd8c546d79ba2c782761c28e0a76005de0f25eae8e",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 3002,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6257,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6319,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6403,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "44bbd6ffeeece848f48357eb5d87369f9474e87837993d399c1a682d60531ea4",
+      "programme_fingerprint_after": "44bbd6ffeeece848f48357eb5d87369f9474e87837993d399c1a682d60531ea4",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    },
+    {
+      "key": "zayne_ali",
+      "path": "clients/zayne_ali/index.html",
+      "original_sha256": "4c194a078ed9affcfea8abe5c3fbda3084ff471a3a7ccff7ca48fb4a0cce3b74",
+      "patched_sha256": "5c68bdf76d3d0fed3296ed8d52fb7b9ff68439cfb8c1f2ca2514cd0e4c843190",
+      "bytes_delta": -154,
+      "regions": [
+        {
+          "region": "mount_block",
+          "line": 2999,
+          "removed_bytes": 0,
+          "inserted_bytes": 901,
+          "inserted_sha256": "34798a0e0a3c34a06a144f5a8805ff7f8974725c5d3315ea0f46029a3144c448"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6267,
+          "removed_bytes": 682,
+          "removed_sha256": "f151661d352667344c640f8fde3f8b892b11df5018a3d9a4b675ca39a723129c",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "legacy_notification_block",
+          "line": 6329,
+          "removed_bytes": 602,
+          "removed_sha256": "d7f12c5c67053f7ce816d5b897d03565849cb166654b62014fd2f6b909e0559f",
+          "inserted_bytes": 103,
+          "inserted_sha256": "3d3a056a48da753f49d1e060c2200ab529ab82ab4a54813c67aa08309ba4ccd4"
+        },
+        {
+          "region": "sw_registration",
+          "line": 6413,
+          "removed_bytes": 41,
+          "removed_sha256": "2dd5cb024cf8d73ae2fa6f0edf14ea7df629f5c61dfc7fcf8552a521fd62d97b",
+          "inserted_bytes": 64,
+          "inserted_sha256": "4c28ce71d86048fe14db18593addab217df83fd4c22a5795a35fda34318f1e56"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint_before": "d9403a58007cc0b7beab2942a5ee9d4e37746eb4460a85faa7eb8da149f3e368",
+      "programme_fingerprint_after": "d9403a58007cc0b7beab2942a5ee9d4e37746eb4460a85faa7eb8da149f3e368",
+      "programme_parts_equal": true,
+      "programme_parts": [
+        "CLIENT_CONFIG",
+        "DAY_TYPES",
+        "mealPlan",
+        "phaseTargets",
+        "phases"
+      ],
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": [],
+      "auto_prompt_after": false,
+      "manifest_json": "will_create"
+    }
+  ]
+}

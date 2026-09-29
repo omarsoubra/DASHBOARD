@@ -44,8 +44,10 @@ jobs:
           echo "::error::confirm input was '${{ github.event.inputs.confirm }}', expected DEPLOY"
           exit 1
 
-      - name: Checkout
+      - name: Checkout (full history: tests read the pre-rollout shell baseline)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify required secrets are present
         env:

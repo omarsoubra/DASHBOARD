@@ -77,6 +77,26 @@ Push-service calls are outbound fetches, not invocations.
 4. `git revert` the pilot shell commit — restores the exact previous shell bytes.
 5. Migration DOWN blocks (V1, then proof) — drops only push tables/columns.
 
+## 1:1 fleet rollout (2026-09-29)
+
+Capability deployed to **every eligible 1:1 shell (51)**; nobody is subscribed, prompted or notified by the
+rollout itself. Each client still opts in with an explicit tap.
+
+* Integration: `scripts/push/patch_pilot_shell.py` — four byte-surgical edits per shell (shared worker
+  registration, the two legacy auto-prompt blocks removed, one mount block at the end of the Tracker section),
+  reversal-proven; `manifest.json` added where missing.
+* Evidence: `docs/push_fleet_manifest.json` — per shell: original/patched sha256, exact regions, reversal proof,
+  programme payload fingerprint (CLIENT_CONFIG, phases, phaseTargets, DAY_TYPES, mealPlan) before == after,
+  auth-wiring and lint parity, inline-script syntax. Built by `scripts/push/fleet_manifest.py`.
+* Excluded: internal `_` canaries, `mayank_block2` (redirect shim), `siam` (legacy Apps Script shell, no
+  Supabase auth).
+* `master_template.html` (client_template) carries the identical integration, so newly generated 1:1 shells
+  include it; regenerated shells are byte-identical to the patched live shells apart from `generatedAt`.
+* Server gate: `PUSH_ALLOWED_CLIENTS` = `_push_canary` + the 51 keys. **New client:** after deploying the
+  shell, run `python3 scripts/push/patch_pilot_shell.py <key>` once (adds `manifest.json`; the shell itself is
+  already integrated) and append the key to `PUSH_ALLOWED_CLIENTS`.
+* The fleet commit carries no `LOCKED-IN-Program-Update` trailer, so it produced no program-update notices.
+
 ## Proof-stage history
 
 Canary: `_push_canary`, Omar's iPhone, 201 from web.push.apple.com, click confined to scope, dedupe and

@@ -2996,6 +2996,24 @@ body.tv2-sub-open .fab{display:none!important;}
     <div class="checkin-history-title">Check-In History</div>
     <div id="checkin-list"></div>
   </div>
+
+  <!-- LOCKED-IN-PUSH:v1 -->
+  <div id="li-push-settings" style="margin-top:1.5rem;"></div>
+  <script src="../../push-client.js" defer></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      var box = document.getElementById('li-push-settings');
+      var url = String(CLIENT_CONFIG.sheetsWebhookUrl || '');
+      if (!box || !window.LockedInPush || !/^https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/api$/.test(url)) return;
+      var key = CLIENT_CONFIG.client.storageKey;
+      window.LockedInPush.mount({
+        container: box, storageKey: key, compact: true, swUrl: '../../sw.js', pushUrl: url.replace(/\/api$/, '/push'),
+        getToken: function () { try { return (typeof CLIENT_TOKEN === 'string' && CLIENT_TOKEN) || localStorage.getItem(key + '_access_token') || ''; } catch (e) { return ''; } },
+      });
+    } catch (e) {}
+  });
+  </script>
 </section>
 
 <!-- MODAL -->
@@ -6264,19 +6282,7 @@ function _showCheckinReminder(overdueDays, isSunday) {
   }
   banner.style.display = 'block';
   // Fire a browser notification if permission is granted
-  try {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const n = new Notification(isSunday ? 'Sunday check-in due' : 'Check-in overdue', {
-        body: 'Take 2 minutes to submit this week\'s check-in — helps me adjust your plan.',
-        tag: 'checkin-reminder',
-        renotify: false,
-      });
-      n.onclick = () => { window.focus(); scrollToCheckin(); n.close(); };
-    } else if ('Notification' in window && Notification.permission === 'default') {
-      // Ask once, silently — user can accept if they want
-      setTimeout(() => { Notification.requestPermission(); }, 3000);
-    }
-  } catch (e) { /* Notifications not supported */ }
+  /* LOCKED-IN-PUSH:v1: reminders arrive as opt-in push notifications; no automatic permission prompt. */
 }
 
 var _checkinDismissed = false;
@@ -6326,17 +6332,7 @@ function renderCheckinBanner() {
    client is not nagged by a push. */
 function _maybeNotifyCheckin(st) {
   if (st.kind !== 'due_today' && st.kind !== 'overdue' && st.kind !== 'first_due') return;
-  try {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      var n = new Notification(st.kind === 'due_today' ? 'Sunday check-in due' : 'Check-in due', {
-        body: 'Take 2 minutes to submit this week\'s check-in \u2014 helps me adjust your plan.',
-        tag: 'checkin-reminder', renotify: false,
-      });
-      n.onclick = function () { window.focus(); scrollToCheckin(); n.close(); };
-    } else if ('Notification' in window && Notification.permission === 'default') {
-      setTimeout(function () { Notification.requestPermission(); }, 3000);
-    }
-  } catch (e) {}
+  /* LOCKED-IN-PUSH:v1: reminders arrive as opt-in push notifications; no automatic permission prompt. */
 }
 
 window.addEventListener('load', function () { renderCheckinBanner(); });
@@ -6410,7 +6406,7 @@ async function handlePhotoPicked(event, slot) {
 // ─── PWA REGISTRATION ──────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg failed:', err));
+    navigator.serviceWorker.register('../../sw.js', { scope: './' }).catch(err => console.log('SW reg failed:', err));
   });
 }
 
