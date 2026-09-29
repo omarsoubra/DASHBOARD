@@ -59,10 +59,20 @@ Client-owned: notifications on/off, timezone, weigh-in on/time, check-in on/time
 on/off, quiet start/end (15-minute steps). Coach-owned: `weighin_available`, `checkin_dow` (Sunday).
 Defaults (Omar-approved): weigh-in 07:30, check-in Sunday 09:00, quiet hours 21:00–07:00.
 
-## Pilot gating
+## Eligibility (automatic, server-side)
 
-`PUSH_ALLOWED_CLIENTS` (Supabase secret, comma list). Every client, coach, scheduler and deploy op
-refuses any key not on it. No wildcard. Today: `_push_canary` only.
+A client may use push only if the `push` function itself decides, from trusted state:
+
+    NOT clients.is_internal
+    AND client_sessions.access_status = 'active'
+    AND resolved products include locked_in_1to1
+        (active client_entitlements rows — same "active" rule as the api — else the
+         pre-cutover entitlement_legacy marker)
+
+Self-guided-only, internal, revoked/suspended and unprovisioned clients are refused; any read error
+refuses (fail closed). Nothing the caller sends is consulted. `PUSH_ALLOWED_CLIENTS` is now only an
+explicit **exception** list (the internal `_push_canary`, and 1:1 clients whose entitlement was never
+granted). A normal new 1:1 client is eligible the moment their `locked_in_1to1` entitlement is active.
 
 ## Invocation cost
 
@@ -72,7 +82,7 @@ Push-service calls are outbound fetches, not invocations.
 ## Rollback (fastest first)
 
 1. `select cron.unschedule('locked-in-push-tick');` — stops all reminders instantly.
-2. Remove a client from `PUSH_ALLOWED_CLIENTS` — every op for them returns `push_not_enabled`.
+2. End the client's `locked_in_1to1` grant or revoke their access — every op returns `push_not_enabled`.
 3. `delete from push_internal_auth where name = 'deploy';` — program-update notices stop.
 4. `git revert` the pilot shell commit — restores the exact previous shell bytes.
 5. Migration DOWN blocks (V1, then proof) — drops only push tables/columns.
@@ -92,9 +102,9 @@ rollout itself. Each client still opts in with an explicit tap.
   Supabase auth).
 * `master_template.html` (client_template) carries the identical integration, so newly generated 1:1 shells
   include it; regenerated shells are byte-identical to the patched live shells apart from `generatedAt`.
-* Server gate: `PUSH_ALLOWED_CLIENTS` = `_push_canary` + the 51 keys. **New client:** after deploying the
-  shell, run `python3 scripts/push/patch_pilot_shell.py <key>` once (adds `manifest.json`; the shell itself is
-  already integrated) and append the key to `PUSH_ALLOWED_CLIENTS`.
+* Server gate: automatic eligibility (see *Eligibility*); no per-client list. **New client:** nothing
+  push-specific — the generated shell is integrated and the normal `locked_in_1to1` grant makes them eligible.
+  (Optional: `python3 scripts/push/patch_pilot_shell.py <key>` adds a standalone `manifest.json`.)
 * The fleet commit carries no `LOCKED-IN-Program-Update` trailer, so it produced no program-update notices.
 
 ## Proof-stage history

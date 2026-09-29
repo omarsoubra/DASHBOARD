@@ -80,7 +80,8 @@ const SCHEMA = {
   push_preferences: parseColumns('push_preferences'),
   push_internal_auth: parseColumns('push_internal_auth'),
   // Existing tables: only the columns the push function touches (all exist in production).
-  clients: new Set(['id', 'storage_key', 'is_paused', 'start_date']),
+  clients: new Set(['id', 'storage_key', 'is_paused', 'start_date', 'is_internal', 'entitlement_legacy']),
+  client_entitlements: new Set(['id', 'client_id', 'product_code', 'status', 'starts_at', 'ends_at', 'source']),
   client_sessions: new Set(['storage_key', 'token_hash', 'salt', 'access_status', 'client_id']),
   weight_logs: new Set(['id', 'client_id', 'client_key', 'logged_at', 'weight_kg']),
   check_ins: new Set(['id', 'client_id', 'client_key', 'submitted_at', 'week_number']),
@@ -109,7 +110,7 @@ const PREF_DEFAULTS = {
 // In-memory Supabase stand-in (strict)
 // ════════════════════════════════════════════════════════════════════════════
 function makeDb() {
-  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [], push_preferences: [], push_internal_auth: [], weight_logs: [], check_ins: [] };
+  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [], push_preferences: [], push_internal_auth: [], weight_logs: [], check_ins: [], client_entitlements: [] };
   const calls = [];
   let seq = 0;
   const uuid = () => '00000000-0000-4000-8000-' + String(++seq).padStart(12, '0');
@@ -304,10 +305,12 @@ function makePushService(subsByEndpoint, vapidPublicB64, clock) {
 async function world(opts = {}) {
   const db = makeDb();
   const canaryId = db.uuid(), otherId = db.uuid(), secondId = db.uuid();
+  // Mirrors production: canaries are internal (eligible only via the explicit
+  // exception list); OTHER ('zac') is a normal client, not entitled by default.
   db.T.clients.push(
-    { id: canaryId, storage_key: CANARY, is_paused: false, start_date: null },
-    { id: otherId, storage_key: OTHER, is_paused: false, start_date: null },
-    { id: secondId, storage_key: '_push_canary2', is_paused: false, start_date: null });
+    { id: canaryId, storage_key: CANARY, is_paused: false, start_date: null, is_internal: true, entitlement_legacy: false },
+    { id: otherId, storage_key: OTHER, is_paused: false, start_date: null, is_internal: false, entitlement_legacy: false },
+    { id: secondId, storage_key: '_push_canary2', is_paused: false, start_date: null, is_internal: true, entitlement_legacy: false });
   const salt1 = 's1' + nodeCrypto.randomBytes(8).toString('hex');
   const salt2 = 's2' + nodeCrypto.randomBytes(8).toString('hex');
   const salt3 = 's3' + nodeCrypto.randomBytes(8).toString('hex');

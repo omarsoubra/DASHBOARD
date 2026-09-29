@@ -107,14 +107,16 @@ test('B1 subscribe: missing / wrong / other-client token → 401, nothing stored
   assertNoLeak(w);
 });
 
-test('B2 non-allow-listed client is refused before any DB read', async () => {
+test('B2 non-eligible client is refused after auth, with no writes; eligibility never leaks to unauthenticated callers', async () => {
   const w = await world(); const s = w.newSub();
-  const before = w.db.calls.length;
+  const writes = () => w.db.calls.filter((c) => c.mode !== 'select').length;
+  const before = writes();
   const r = await w.call({ type: 'pushSubscribe', storageKey: OTHER, token: OTHER_TOKEN, subscription: s.json });
-  eq(r.status, 403, 'status'); eq(r.j.error, 'push_not_enabled', 'error');
-  eq(w.db.calls.length, before, 'zero DB calls');
+  eq(r.status, 403, 'status'); eq(r.j.error, 'push_not_enabled', 'authenticated but not eligible');
+  eq(writes(), before, 'zero writes');
+  eq((await w.call({ type: 'pushSubscribe', storageKey: OTHER, token: 'x'.repeat(40), subscription: s.json })).j.error, 'bad_token', 'bad token → auth error, not an eligibility answer');
   const w2 = await world({ allowed: [] });
-  eq((await w2.subscribe(w2.newSub())).j.error, 'push_not_enabled', 'empty allow-list = nobody');
+  eq((await w2.subscribe(w2.newSub())).j.error, 'push_not_enabled', 'internal canary without the exception list = refused');
 });
 
 test('B3 caller-supplied client_id / clientId are ignored', async () => {

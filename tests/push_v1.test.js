@@ -486,6 +486,135 @@ test('S10 migration V1 is additive and locked down', async () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// EL. Automatic push eligibility from trusted server state (no manual list)
+// ════════════════════════════════════════════════════════════════════════════
+const grant = (w, clientId, product = 'locked_in_1to1', extra = {}) =>
+  w.db.T.client_entitlements.push({ id: w.db.uuid(), client_id: clientId, product_code: product, status: 'active', starts_at: null, ends_at: null, source: 'manual', ...extra });
+const asZac = (w, type, extra = {}) => w.call({ type, storageKey: OTHER, token: OTHER_TOKEN, ...extra });
+
+test('EL1 normal 1:1 client (active locked_in_1to1, active access, not internal) is eligible with NO list entry', async () => {
+  const w = await world({ allowed: [CANARY], now: at(SUN, '09:05') });
+  grant(w, w.otherId);
+  const sub = w.newSub();
+  const r = await asZac(w, 'pushSubscribe', { subscription: sub.json, timezone: TZ });
+  eq(r.j.ok, true, 'subscribe'); eq((await asZac(w, 'pushPrefsGet')).j.prefs.optedIn, true, 'prefs');
+  await w.tick();
+  eq(w.svc.received.filter((x) => x.url === sub.json.endpoint).length, 1, 'scheduler reminded the auto-eligible client');
+  eq((await w.programUpdated({ storageKey: OTHER, deployHash: sha256hex('zac-v2') })).j.status, 'sent', 'program update');
+  eq((await w.send({ storageKey: OTHER })).j.status, 'sent', 'coach test send');
+});
+
+test('EL2 self-guided-only client is never eligible (client ops, scheduler, deploy, coach)', async () => {
+  const w = await world({ allowed: [CANARY], now: at(SUN, '09:05') });
+  grant(w, w.otherId, 'locked_in_self_guided_12w');
+  for (const type of ['pushStatus', 'pushSubscribe', 'pushPrefsGet']) eq((await asZac(w, type, { subscription: w.newSub().json })).j.error, 'push_not_enabled', type);
+  w.db.T.push_preferences.push({ client_id: w.otherId, storage_key: OTHER, notifications_enabled: true, consent_at: iso(0), timezone: TZ, weighin_available: false,
+    weighin_enabled: true, weighin_time: '07:30', checkin_enabled: true, checkin_dow: 0, checkin_time: '09:00', program_updates_enabled: true, quiet_start: '21:00', quiet_end: '07:00' });
+  await w.tick();
+  eq(events(w).filter((e) => e.client_id === w.otherId).length, 0, 'scheduler never evaluated');
+  eq((await w.programUpdated({ storageKey: OTHER })).j.error, 'push_not_enabled', 'deploy notifier');
+  eq((await w.send({ storageKey: OTHER })).j.error, 'push_not_enabled', 'coach');
+});
+
+test('EL3 internal account with a locked_in_1to1 grant is still not automatically eligible', async () => {
+  const w = await world({ allowed: [] });
+  grant(w, w.canaryId);
+  eq((await w.subscribe(w.newSub())).j.error, 'push_not_enabled', 'internal refused');
+  w.db.T.clients.find((c) => c.id === w.otherId).is_internal = true; grant(w, w.otherId);
+  eq((await asZac(w, 'pushStatus')).j.error, 'push_not_enabled', 'internal real-looking key refused');
+});
+
+test('EL4 inactive grants never count (paused / expired / revoked / pending / future start / past end)', async () => {
+  for (const extra of [{ status: 'paused' }, { status: 'expired' }, { status: 'revoked' }, { status: 'pending' },
+                       { starts_at: iso(Date.UTC(2027, 0, 1)) }, { ends_at: iso(Date.UTC(2026, 0, 1)) }]) {
+    const w = await world({ allowed: [] });
+    grant(w, w.otherId, 'locked_in_1to1', extra);
+    eq((await asZac(w, 'pushStatus')).j.error, 'push_not_enabled', JSON.stringify(extra));
+  }
+});
+
+test('EL5 pre-cutover legacy marker counts as 1:1 (same as the api); no grant + no marker = refused', async () => {
+  let w = await world({ allowed: [] });
+  w.db.T.clients.find((c) => c.id === w.otherId).entitlement_legacy = true;
+  eq((await asZac(w, 'pushStatus')).j.ok, true, 'legacy marker → eligible');
+  w = await world({ allowed: [] });
+  eq((await asZac(w, 'pushStatus')).j.error, 'push_not_enabled', 'unprovisioned → refused');
+  w = await world({ allowed: [OTHER] });
+  eq((await asZac(w, 'pushStatus')).j.ok, true, 'explicit exception list still admits an unprovisioned client');
+});
+
+test('EL6 access revoked or suspended → refused; access is re-read, never trusted from the caller', async () => {
+  for (const st of ['revoked', 'suspended']) {
+    const w = await world({ allowed: [] });
+    grant(w, w.otherId);
+    w.db.T.client_sessions.find((x) => x.storage_key === OTHER).access_status = st;
+    eq((await asZac(w, 'pushStatus')).j.error, 'access_' + st, st);
+    eq((await w.send({ storageKey: OTHER })).j.error, 'push_not_enabled', st + ' (coach path)');
+  }
+});
+
+test('EL7 a newly-created 1:1 client becomes eligible automatically — and stops when the grant ends', async () => {
+  const w = await world({ allowed: [CANARY] });
+  const id = w.db.uuid(), token = 'newclient_' + nodeCrypto.randomBytes(16).toString('hex'), salt = 'sn' + nodeCrypto.randomBytes(8).toString('hex');
+  w.db.T.clients.push({ id, storage_key: 'new_client', is_paused: false, start_date: null, is_internal: false, entitlement_legacy: false });
+  w.db.T.client_sessions.push({ client_id: id, storage_key: 'new_client', token_hash: sha256hex(token + salt), salt, access_status: 'active' });
+  const ask = () => w.call({ type: 'pushStatus', storageKey: 'new_client', token });
+  eq((await ask()).j.error, 'push_not_enabled', 'before provisioning: refused');
+  grant(w, id);
+  eq((await ask()).j.ok, true, 'after the locked_in_1to1 grant: eligible, no list or env change');
+  w.db.T.client_entitlements.find((e) => e.client_id === id).status = 'revoked';
+  eq((await ask()).j.error, 'push_not_enabled', 'grant revoked: refused again');
+});
+
+test('EL8 caller-supplied eligibility hints are ignored', async () => {
+  const w = await world({ allowed: [] });
+  const r = await asZac(w, 'pushSubscribe', { subscription: w.newSub().json, eligible: true, productCode: 'locked_in_1to1', is_internal: false, entitlement: 'locked_in_1to1', allowed: true });
+  eq(r.j.error, 'push_not_enabled', 'still refused'); eq(w.db.T.push_devices.length, 0, 'nothing stored');
+});
+
+test('EL9 client holding both self-guided and 1:1 grants is eligible (1:1 present)', async () => {
+  const w = await world({ allowed: [] });
+  grant(w, w.otherId, 'locked_in_self_guided_12w'); grant(w, w.otherId);
+  eq((await asZac(w, 'pushStatus')).j.ok, true, 'eligible');
+});
+
+test('EL10 entitlement state unreadable → fail closed everywhere', async () => {
+  const w = await world({ allowed: [CANARY], now: at(SUN, '09:05') });
+  grant(w, w.otherId);
+  const sub = w.newSub(); eq((await asZac(w, 'pushSubscribe', { subscription: sub.json, timezone: TZ })).j.ok, true, 'opted in while healthy');
+  w.db.fail.on = 'client_entitlements';
+  eq((await asZac(w, 'pushStatus')).j.error, 'push_not_enabled', 'client op refused');
+  const t = await w.tick();
+  eq(t.j.summary.clients, 0, 'scheduler evaluates nobody'); eq(w.svc.received.length, 0, 'nothing sent');
+  eq((await w.programUpdated({ storageKey: OTHER })).j.error, 'push_not_enabled', 'deploy notifier refused');
+  // A pre-cutover (legacy-marker) client must NOT fall back to the marker when grants are unreadable (api denies too).
+  const w2 = await world({ allowed: [] });
+  w2.db.T.clients.find((c) => c.id === w2.otherId).entitlement_legacy = true;
+  eq((await asZac(w2, 'pushStatus')).j.ok, true, 'legacy client eligible while healthy');
+  w2.db.fail.on = 'client_entitlements';
+  eq((await asZac(w2, 'pushStatus')).j.error, 'push_not_enabled', 'legacy client refused when grants are unreadable');
+});
+
+test('EL11 entitlementRowIsActive is a verbatim copy of the api implementation', async () => {
+  const grabFn = (src) => {
+    const i = src.indexOf('function entitlementRowIsActive'); assert(i >= 0, 'present');
+    const j = src.indexOf('\n}', i); return src.slice(i, j + 2).replace(/\s+/g, ' ');
+  };
+  eq(grabFn(rd('supabase/functions/push/handler.ts')), grabFn(rd('supabase/functions/api/index.ts')), 'identical');
+});
+
+test('EL12 scheduler evaluates only eligible opted-in clients; the explicit list is exceptions only', async () => {
+  const w = await pilot({ allowed: [CANARY], now: at(SUN, '09:05'), weighinAvailable: false });
+  grant(w, w.otherId);
+  const zs = w.newSub(); await asZac(w, 'pushSubscribe', { subscription: zs.json, timezone: TZ });
+  const t = await w.tick();
+  eq(t.j.summary.clients, 2, 'canary (exception) + auto-eligible zac');
+  w.db.T.client_entitlements.forEach((e) => { e.status = 'expired'; });
+  w.clock.now = at(SUN, '09:20');
+  eq((await w.tick()).j.summary.clients, 1, 'zac drops out the moment the grant lapses; canary remains');
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // U. Pilot shell integration tool (throwaway copies only — never a live shell)
 // ════════════════════════════════════════════════════════════════════════════
 const fs = require('fs');

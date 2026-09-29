@@ -21,7 +21,13 @@
 //
 // Hard boundaries (each has a test in tests/push_proof.test.js or push_v1.test.js):
 //   * Client identity comes ONLY from verifyClientToken(token, storageKey).
-//   * PUSH_ALLOWED_CLIENTS gates every client, coach, scheduler and deploy op. Unset = nobody.
+//   * Push eligibility is decided server-side from trusted state and gates every
+//     client, coach, scheduler and deploy op: NOT internal AND access active AND the
+//     client's resolved products include locked_in_1to1 (the api's own resolution:
+//     active client_entitlements rows, else the pre-cutover entitlement_legacy marker).
+//     Self-guided-only, internal, revoked/suspended and unprovisioned clients: refused.
+//     PUSH_ALLOWED_CLIENTS is only an explicit exception list (e.g. _push_canary).
+//     Any read error → not eligible (fail closed). No caller-supplied flag is read.
 //   * Endpoints must be https on an allow-listed push-service host.
 //   * Responses and logs never contain endpoints, subscription keys, tokens or secrets.
 //   * Payloads come from fixed, lock-screen-safe templates only.
@@ -73,7 +79,17 @@ const MAX_ENDPOINT_LEN = 1024;
 const MAX_ACTIVE_DEVICES_PER_CLIENT = 5;
 const MAX_EVENTS_PER_CLIENT_PER_DAY = 20;
 const MAX_DEVICES_PER_SEND = 10;
-const MAX_TICK_CLIENTS = 100;
+const MAX_TICK_CLIENTS = 500;
+const LOCKED_IN_1TO1 = 'locked_in_1to1';
+
+// Verbatim copy of api/index.ts entitlementRowIsActive — tests/push_v1.test.js
+// fails if this body drifts from the api's, so both functions agree on "active".
+function entitlementRowIsActive(row: { status?: string; starts_at?: string | null; ends_at?: string | null }, nowMs: number): boolean {
+  if (row?.status !== 'active') return false;
+  if (row.starts_at && Date.parse(row.starts_at) > nowMs) return false;
+  if (row.ends_at   && Date.parse(row.ends_at)  <= nowMs) return false;
+  return true;
+}
 const MAX_DEFERRED_PER_TICK = 50;
 const DISABLE_AFTER_FAILURES = 5;
 const CLIENT_KEY_RE = /^[a-z0-9_]{2,40}$/;
@@ -243,16 +259,58 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return timingSafeEqual(await sha256(presented), String(data.secret_sha256));
   }
 
-  /** Allow-list → token → canonical client id. Returns a Response on failure. */
+  type ClientRow = { id: string; storage_key: string; is_internal?: boolean | null; entitlement_legacy?: boolean | null };
+  const CLIENT_ELIG_COLS = 'id, storage_key, is_internal, entitlement_legacy';
+
+  /**
+   * Push eligibility for a batch of clients — trusted server state only.
+   *   eligible ⇔ explicit PUSH_ALLOWED_CLIENTS entry
+   *            OR (NOT is_internal AND client_sessions.access_status = 'active'
+   *                AND resolved products ∋ locked_in_1to1)
+   *   resolved products = active client_entitlements rows (same rule as the api),
+   *                       else ['locked_in_1to1'] when entitlement_legacy = true, else none.
+   * Returns the eligible ids and each client's access status. Any read error → nobody.
+   */
+  async function resolveEligibility(rows: ClientRow[]): Promise<{ eligible: Set<string>; access: Map<string, string> }> {
+    const eligible = new Set<string>(), access = new Map<string, string>();
+    if (!rows.length) return { eligible, access };
+    const { data: sess, error: sErr } = await admin.from('client_sessions')
+      .select('storage_key, access_status').in('storage_key', rows.map((r) => r.storage_key));
+    const { data: ents, error: eErr } = await admin.from('client_entitlements')
+      .select('client_id, product_code, status, starts_at, ends_at').in('client_id', rows.map((r) => r.id));
+    if (sErr || eErr) { log('eligibility', 'read_failed', (sErr ?? eErr)?.message ?? ''); return { eligible, access }; }
+    for (const s of sess ?? []) access.set(s.storage_key, String(s.access_status ?? ''));
+    const nowMs = now();
+    const products = new Map<string, Set<string>>();
+    for (const e of ents ?? []) {
+      if (!entitlementRowIsActive(e, nowMs)) continue;
+      if (!products.has(e.client_id)) products.set(e.client_id, new Set());
+      products.get(e.client_id)!.add(String(e.product_code));
+    }
+    for (const r of rows) {
+      if (env.allowedClients.has(r.storage_key)) { eligible.add(r.id); continue; }   // explicit exception list
+      if (r.is_internal !== false) continue;                    // internal (or unknown) → never automatic
+      if (access.get(r.storage_key) !== 'active') continue;
+      const p = products.get(r.id) ?? (r.entitlement_legacy === true ? new Set([LOCKED_IN_1TO1]) : new Set<string>());
+      if (p.has(LOCKED_IN_1TO1)) eligible.add(r.id);
+    }
+    return { eligible, access };
+  }
+
+  async function isEligible(row: ClientRow): Promise<boolean> {
+    return (await resolveEligibility([row])).eligible.has(row.id);
+  }
+
+  /** Token → canonical client → eligibility. Returns a Response on failure. */
   async function authClient(body: any): Promise<{ clientId: string; storageKey: string } | Response> {
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
     if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
-    if (!env.allowedClients.has(storageKey)) return err('push_not_enabled', 403);
     const token = typeof body?.token === 'string' ? body.token : undefined;
     const v = await verifyClientToken(token, storageKey);
     if (!v.ok) return err(v.reason ?? 'unauthorized', 401);
-    const { data: client } = await admin.from('clients').select('id').eq('storage_key', storageKey).single();
+    const { data: client } = await admin.from('clients').select(CLIENT_ELIG_COLS).eq('storage_key', storageKey).single();
     if (!client?.id) return err('unknown_client', 401);
+    if (!(await isEligible(client))) return err('push_not_enabled', 403);
     return { clientId: client.id, storageKey };
   }
 
@@ -494,16 +552,15 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
     if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
-    if (!env.allowedClients.has(storageKey)) return err('push_not_enabled', 403);
     const tpl = String(body?.template ?? '') === 'test' ? TEMPLATES.test : null;   // coach: test only
     if (!tpl) return err('unknown_template', 400);
+    const { data: client } = await admin.from('clients').select(CLIENT_ELIG_COLS).eq('storage_key', storageKey).maybeSingle();
+    if (!client?.id) return err('unknown_client', 404);
+    if (!(await isEligible(client))) return err('push_not_enabled', 403);
     const requestId = String(body?.requestId ?? '');
     if (!REQUEST_ID_RE.test(requestId)) return err('bad_requestId', 400);
     const v = await vapidOrNull();
     if (!v) return err('push_not_configured', 503);
-
-    const { data: client } = await admin.from('clients').select('id').eq('storage_key', storageKey).single();
-    if (!client?.id) return err('unknown_client', 404);
     const clientId: string = client.id;
     const nowMs = now();
     const nowIso = new Date(nowMs).toISOString();
@@ -551,21 +608,20 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const summary = { clients: 0, due: 0, sent: 0, duplicates: 0, suppressed: {} as Record<string, number>, stateErrors: 0, deferredSent: 0 };
     const bump = (r: string) => { summary.suppressed[r] = (summary.suppressed[r] ?? 0) + 1; };
 
-    const keys = [...env.allowedClients].filter((k) => CLIENT_KEY_RE.test(k)).slice(0, MAX_TICK_CLIENTS);
-    if (!keys.length) return ok({ summary });
+    // Only clients who opted in have a preferences row; evaluate those, and only
+    // the ones that are push-eligible right now (entitlement / access / internal).
+    const { data: prefAll, error: pErr } = await admin.from('push_preferences').select(PREF_COLUMNS).limit(MAX_TICK_CLIENTS);
+    if (pErr) { log('pushTick', 'prefs_failed', pErr.message); return err('state_unavailable', 503); }
+    const optedIds = (prefAll ?? []).filter((p: any) => p.consent_at).map((p: any) => p.client_id);
+    if (!optedIds.length) return ok({ summary });
 
     const { data: clients, error: cErr } = await admin.from('clients')
-      .select('id, storage_key, is_paused, start_date').in('storage_key', keys);
+      .select(`${CLIENT_ELIG_COLS}, is_paused, start_date`).in('id', optedIds);
     if (cErr) { log('pushTick', 'clients_failed', cErr.message); return err('state_unavailable', 503); }
-    const byId = new Map<string, any>((clients ?? []).map((c: any) => [c.id, c]));
-    if (!byId.size) return ok({ summary });
-
-    const { data: sessions } = await admin.from('client_sessions').select('storage_key, access_status').in('storage_key', keys);
-    const access = new Map<string, string>((sessions ?? []).map((s: any) => [s.storage_key, s.access_status ?? 'active']));
+    const { eligible, access } = await resolveEligibility((clients ?? []) as ClientRow[]);
+    const byId = new Map<string, any>((clients ?? []).filter((c: any) => eligible.has(c.id)).map((c: any) => [c.id, c]));
     const isActive = (c: any) => access.get(c.storage_key) === 'active' && c.is_paused !== true;
-
-    const { data: prefRows, error: pErr } = await admin.from('push_preferences').select(PREF_COLUMNS).in('client_id', [...byId.keys()]);
-    if (pErr) { log('pushTick', 'prefs_failed', pErr.message); return err('state_unavailable', 503); }
+    const prefRows = (prefAll ?? []).filter((p: any) => byId.has(p.client_id));
 
     for (const pr of (prefRows ?? []) as Prefs[] & any[]) {
       const c = byId.get(pr.client_id);
@@ -642,7 +698,6 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     if (!(await verifyInternal('deploy', req.headers.get('x-push-deploy-secret')))) return err('unauthorized', 401);
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
     if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
-    if (!env.allowedClients.has(storageKey)) return err('push_not_enabled', 403);
     const deployHash = String(body?.deployHash ?? '');
     if (!SHA256_HEX_RE.test(deployHash)) return err('bad_deployHash', 400);
     const commit = body?.commit == null ? null : String(body.commit);
@@ -650,8 +705,9 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const v = await vapidOrNull();
     if (!v) return err('push_not_configured', 503);
 
-    const { data: c } = await admin.from('clients').select('id, storage_key, is_paused').eq('storage_key', storageKey).maybeSingle();
+    const { data: c } = await admin.from('clients').select(`${CLIENT_ELIG_COLS}, is_paused`).eq('storage_key', storageKey).maybeSingle();
     if (!c?.id) return err('unknown_client', 404);
+    if (!(await isEligible(c))) return err('push_not_enabled', 403);   // nothing recorded for ineligible clients
     const nowMs = now();
     const nowIso = new Date(nowMs).toISOString();
     const tpl = TEMPLATES.program_update;
