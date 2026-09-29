@@ -233,13 +233,20 @@ test('PH1 next week gets new keys; last week\'s events never suppress it', async
   eq(next.length, 1, 'new period event'); eq(next[0].status, 'sent', 'sent'); eq(next[0].dedupe_key, `checkin_due:${w.canaryId}:${NEXT_SUN}`, 'new key');
 });
 
-test('PH2 completion window = the shell rule: D-6 (Monday) counts, D-7 (last Sunday) does not', async () => {
-  let w = await seqWorld();
-  logCheckin(w, at('2026-10-05', '00:05'));          // Monday D-6
-  await w.tick(); eq(ci(w)[0].suppression_reason, 'already_completed', 'D-6 counts');
-  w = await seqWorld();
-  logCheckin(w, at('2026-10-04', '23:50'));          // Sunday D-7
-  await w.tick(); eq(ci(w)[0].status, 'sent', 'D-7 does not count');
+test('PH2 period = [D-3, D+4): Thu–Sat early counts for this Sunday; last Mon–Wed late does not', async () => {
+  const cases = [
+    ['2026-10-08', '00:05', 'already_completed', 'Thursday D-3 (early)'],
+    ['2026-10-07', '23:55', null, 'Wednesday D-4 (last week, late)'],
+    ['2026-10-05', '08:00', null, 'Monday D-6 (last week, late)'],
+    ['2026-10-04', '23:50', null, 'Sunday D-7 (last week)'],
+  ];
+  for (const [d, t, reason, label] of cases) {
+    const w = await seqWorld();
+    logCheckin(w, at(d, t));
+    await w.tick();
+    if (reason) eq(ci(w)[0].suppression_reason, reason, label + ' counts');
+    else eq(ci(w)[0].status, 'sent', label + ' does not count');
+  }
 });
 
 test('PH3 Sydney DST start (Sun 2026-10-04, 23 h day): stages at 09:00/18:00 AEDT, final Mon 10:00 AEDT', async () => {
@@ -372,6 +379,113 @@ test('PH15 deploying V2 on a non-check-in day sends nothing', async () => {
   const w = await realClientWorld({ now: at('2026-09-30', '12:00') });   // a Wednesday
   await scheduler(w, at('2026-09-30', '00:00'), at('2026-10-03', '23:59'));
   eq(pushes(w).length, 0, 'no notification merely because V2 deployed'); eq(ci(w).length, 0, 'nothing recorded');
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PB. Period boundaries — one submission satisfies exactly one weekly period
+// ════════════════════════════════════════════════════════════════════════════
+const PREV_SUN = '2026-10-04', PREV_MON = '2026-10-05';
+
+test('PB1 previous Sunday missed → Monday submission → next Sunday reminder still sent', async () => {
+  const w = await seqWorld({ now: at(PREV_SUN, '08:00') });
+  await scheduler(w, at(PREV_SUN, '08:00'), at(PREV_MON, '12:00'), async (t) => { if (t === at(PREV_MON, '11:00')) logCheckin(w, t); });
+  eq(ci(w).filter((e) => e.period_key === PREV_SUN && e.status === 'sent').length, 3, 'week A: all three sent (late submission after the final)');
+  await scheduler(w, at(PREV_MON, '12:00'), at(SUN, '09:16'));
+  const b = ci(w).filter((e) => e.period_key === SUN);
+  eq(b.length, 1, 'week B due evaluated'); eq(b[0].status, 'sent', 'week B Sunday reminder NOT suppressed by last Monday');
+});
+
+test('PB2 current Sunday submission before 09:00 → 09:00 reminder suppressed', async () => {
+  const w = await seqWorld();
+  logCheckin(w, at(SUN, '08:10'));
+  await tickAt(w, at(SUN, '09:00'));
+  eq(pushes(w).length, 0, 'silent'); eq(ci(w)[0].suppression_reason, 'already_completed', 'reason');
+});
+
+test('PB3 morning reminder → Sunday afternoon submission → 18:00 and Monday 10:00 both suppressed', async () => {
+  const w = await seqWorld();
+  await scheduler(w, at(SUN, '09:00'), at(MON, '12:00'), async (t) => { if (t === at(SUN, '15:00')) logCheckin(w, at(SUN, '14:40')); });
+  eq(pushes(w).length, 1, 'only the morning push');
+  const s = Object.fromEntries(ci(w).map((e) => [stageOf(e), e]));
+  eq(s.checkin_followup.suppression_reason, 'already_completed', '18:00'); eq(s.checkin_final.suppression_reason, 'already_completed', 'Mon 10:00');
+});
+
+test('PB4 morning + evening reminders → Monday 08:00 submission → Monday 10:00 suppressed', async () => {
+  const w = await seqWorld();
+  await scheduler(w, at(SUN, '09:00'), at(MON, '12:00'), async (t) => { if (t === at(MON, '08:00')) logCheckin(w, t); });
+  eq(pushes(w).length, 2, 'morning + evening only');
+  eq(ci(w).find((e) => stageOf(e) === 'checkin_final').suppression_reason, 'already_completed', 'final suppressed');
+});
+
+test('PB5 previous week\'s Sunday submission → current Sunday reminder unaffected', async () => {
+  const w = await seqWorld();
+  logCheckin(w, at(PREV_SUN, '10:00'));
+  await w.tick();
+  eq(ci(w)[0].status, 'sent', 'sent');
+});
+
+test('PB6 previous week\'s Monday / Tuesday / Wednesday late submission → current Sunday unaffected', async () => {
+  for (const d of [PREV_MON, '2026-10-06', '2026-10-07']) {
+    const w = await seqWorld();
+    logCheckin(w, at(d, '23:30'));
+    await w.tick();
+    eq(ci(w)[0].status, 'sent', `late ${d} does not complete ${SUN}`);
+  }
+});
+
+test('PB7 current period completion cannot suppress the next period', async () => {
+  const w = await seqWorld();
+  logCheckin(w, at(SUN, '09:30'));
+  await scheduler(w, at(SUN, '09:00'), at(NEXT_SUN, '09:16'));
+  eq(ci(w).find((e) => e.period_key === NEXT_SUN).status, 'sent', 'next Sunday still reminded');
+  for (const late of [at(MON, '20:00'), at('2026-10-14', '23:59')]) {   // Monday / Wednesday late for SUN
+    const w2 = await seqWorld({ now: at(NEXT_SUN, '09:05') });
+    logCheckin(w2, late);
+    await w2.tick();
+    eq(ci(w2)[0].status, 'sent', `${iso(late)} (late for ${SUN}) does not complete ${NEXT_SUN}`);
+  }
+});
+
+test('PB8 every submission instant satisfies exactly one period (5 weeks, every 7 minutes, Sydney + UTC + Mon due day)', async () => {
+  for (const [tz, dow] of [[TZ, 0], ['UTC', 0], [TZ, 1]]) {
+    const periods = [];
+    for (let d = '2026-09-06'; d <= '2026-11-15'; d = SCH.addDays(d, 1)) {
+      const [y, m, dd] = d.split('-').map(Number);
+      if (new Date(Date.UTC(y, m - 1, dd)).getUTCDay() === dow) periods.push(d);
+    }
+    for (let t = at('2026-09-20', '00:00', tz); t < at('2026-10-25', '00:00', tz); t += 7 * 60000) {
+      const hits = periods.filter((D) => { const b = SCH.checkinPeriodBounds(D, tz); return t >= b.start && t < b.end; });
+      eq(hits.length, 1, `${iso(t)} ${tz} dow${dow} in exactly one period`);
+      eq(SCH.checkinPeriodOf(t, tz, dow), hits[0], 'checkinPeriodOf agrees with the bounds the evaluator uses');
+    }
+  }
+});
+
+test('PB9 DST: submissions around the Sydney DST switches land in the right period', async () => {
+  // DST start Sun 2026-10-04 02:00→03:00; DST end Sun 2027-04-04 03:00→02:00.
+  eq(SCH.checkinPeriodOf(at('2026-10-04', '01:59'), TZ, 0), '2026-10-04', 'just before the switch');
+  eq(SCH.checkinPeriodOf(at('2026-10-04', '03:01'), TZ, 0), '2026-10-04', 'just after the switch');
+  eq(SCH.checkinPeriodOf(at('2026-10-07', '23:59'), TZ, 0), '2026-10-04', 'Wednesday late (AEDT)');
+  eq(SCH.checkinPeriodOf(at('2026-10-08', '00:00'), TZ, 0), '2026-10-11', 'Thursday 00:00 AEDT → next period');
+  eq(SCH.checkinPeriodOf(at('2026-10-01', '00:00'), TZ, 0), '2026-10-04', 'Thursday 00:00 AEST before DST → DST Sunday');
+  eq(SCH.checkinPeriodOf(at('2027-03-31', '23:59'), TZ, 0), '2027-03-28', 'Wednesday before DST end');
+  eq(SCH.checkinPeriodOf(at('2027-04-01', '00:00'), TZ, 0), '2027-04-04', 'Thursday → DST-end Sunday');
+  const b = SCH.checkinPeriodBounds('2026-10-04', TZ);
+  eq((b.end - b.start) / 3600000, 7 * 24 - 1, 'DST-start period is 167 h (local days, not 168 h)');
+  const w = await seqWorld({ now: at('2026-10-04', '09:05') });
+  logCheckin(w, at('2026-09-30', '23:30'));            // Wednesday late for 09-27, AEST
+  await w.tick();
+  eq(ci(w)[0].status, 'sent', 'pre-DST Wednesday late check-in does not complete the DST Sunday');
+});
+
+test('PB10 scheduler retries around the Sunday boundary never reuse the previous period\'s key', async () => {
+  const w = await seqWorld({ now: at(SAT, '23:45') });
+  for (const t of [at(SAT, '23:45'), at(SAT, '23:59'), at(SUN, '00:00'), at(SUN, '09:00'), at(SUN, '09:00'), at(SUN, '09:15')]) await tickAt(w, t);
+  const due = ci(w).filter((e) => stageOf(e) === 'checkin_due');
+  eq(due.length, 1, 'one due event'); eq(due[0].dedupe_key, `checkin_due:${w.canaryId}:${SUN}`, 'key is THIS Sunday');
+  const w2 = await seqWorld({ now: at(MON, '10:05') });           // final of SUN, then next Sunday's due
+  await w2.tick(); await tickAt(w2, at(NEXT_SUN, '09:05'));
+  eq(ci(w2).map((e) => e.dedupe_key).sort().join(' '), [`checkin_due:${w2.canaryId}:${NEXT_SUN}`, `checkin_final:${w2.canaryId}:${SUN}`].sort().join(' '), 'distinct period keys');
 });
 
 // ════════════════════════════════════════════════════════════════════════════

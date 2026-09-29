@@ -196,10 +196,38 @@ export function evaluateCheckin(p: Prefs, nowMs: number, programStartDate?: stri
 // +WINDOW_MINUTES or the next stage's time, so at most ONE stage is open at any
 // instant: a scheduler outage can never release a burst of stages at recovery.
 //
-// Completion = any check-in submitted from the start of local day D-6 up to
-// now — the same "a check-in within the last 6 days" rule the client shells
-// use for their banner, so the push never contradicts the app.
+// PERIODS. Every instant belongs to exactly ONE check-in period: the one whose
+// due date D is nearest in local calendar days — [start of D-3, start of D+4).
+// For a Sunday due date that is Thursday 00:00 → Wednesday 24:00: a Thu–Sat
+// submission is an early check-in for the coming Sunday, a Sun–Wed submission
+// is the (on-time or late) check-in for that Sunday. A submission can therefore
+// satisfy only one period, and a Monday-late check-in for last week can never
+// complete this week. (Deliberately NOT the shells' rolling "within 6 days"
+// banner rule, which lets last Monday's late check-in suppress this Sunday.)
+// Completion of period D = any check-in in [periodStart(D), now].
+// There is no canonical period id in the data: check_ins.week_number is typed
+// by the client (placeholder-only autofill, capped at 12), so it is not used.
 // ============================================================================
+
+export const PERIOD_DAYS_BEFORE = 3;   // D-3 .. D+3 → 7 local days, disjoint, contiguous
+
+/** [start, end) instants of check-in period D in `tz` (local-day aligned, DST-correct). */
+export function checkinPeriodBounds(D: string, tz: string): { start: number; end: number } {
+  return {
+    start: localDayBounds(addDays(D, -PERIOD_DAYS_BEFORE), tz).start,
+    end: localDayBounds(addDays(D, 7 - PERIOD_DAYS_BEFORE), tz).start,
+  };
+}
+
+/** The check-in period (due date D) a submission instant belongs to, for weekday `dow` in `tz`. */
+export function checkinPeriodOf(ms: number, tz: string, dow: number): string {
+  const local = localParts(ms, tz).date;
+  for (let k = -PERIOD_DAYS_BEFORE; k <= 6 - PERIOD_DAYS_BEFORE; k++) {
+    const D = addDays(local, k);          // D is k days after the submission's local date
+    if (dowOf(D) === dow) return D;
+  }
+  throw new Error('unreachable: every 7-day span contains the weekday');
+}
 
 export const STAGE_MIN_GAP = 15;
 export type CheckinStage = 'due' | 'followup' | 'final';
@@ -260,7 +288,8 @@ export function evaluateCheckinStage(p: SequencePrefs, nowMs: number, programSta
       const ev = {
         due: true as const, stage: s.stage, periodKey: D,
         eligibleAt: zonedTimeToUtc(stageDate, s.at % MINUTES_PER_DAY, p.timezone),
-        stateFrom: localDayBounds(addDays(D, -6), p.timezone).start, stateTo: nowMs,
+        stateFrom: checkinPeriodBounds(D, p.timezone).start,
+        stateTo: Math.min(nowMs, checkinPeriodBounds(D, p.timezone).end - 1),
       };
       if (!p.notifications_enabled || !p.checkin_enabled) return { ...ev, suppress: 'disabled' };
       if (inQuietHours(now.minuteOfDay, parseTime(p.quiet_start) ?? 0, parseTime(p.quiet_end) ?? 0)) return { ...ev, suppress: 'quiet_hours' };

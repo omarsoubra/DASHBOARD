@@ -23,10 +23,21 @@ handler deliberately does **not** import: no workout, nutrition or weigh-in remi
 
 ## 2. Check-in state machine (per client, per period)
 
-Period = due date **D** (client's check-in weekday, local; fleet = Sunday). Completion = any check-in
-submitted from local start of **D−6** until the evaluation instant — the same "check-in within the
-last 6 days" rule the client shells use for the banner, so the push never contradicts the app.
+Period = due date **D** (client's check-in weekday, local; fleet = Sunday). There is no canonical
+period id in the data (`check_ins.week_number` is typed by the client; 14 client/week-number pairs are
+reused more than 8 days apart), so the period is derived: **every instant belongs to exactly one
+period — the due date nearest in local calendar days, `[start of D−3, start of D+4)`**. For Sunday:
+Thursday 00:00 → Wednesday 24:00. Thu–Sat = early check-in for the coming Sunday; Sun–Wed = on-time
+or late check-in for that Sunday. Completion of D = any check-in in `[start of D−3, now]`.
 Not due at all while the programme is < 6 days old (V1 rule).
+
+Why not the shells' rolling "within the last 6 days" banner rule: a Monday-late check-in for last week
+would complete this week. Replayed read-only over 10 Sundays of production history (828 client ×
+Sunday × stage evaluations), the rolling rule wrongly stayed silent 98 times (42 Sunday-morning, 31
+evening, 25 Monday), all caused by Mon/Tue/Wed late submissions from the previous week; in 62 of those
+the client then submitted a separate check-in for the new week. 0 cases went the other way. The
+client banner still uses the rolling rule (shells are out of scope), so after a Monday-late check-in the
+push reminds on Sunday while the banner may stay hidden.
 
 ```
             ┌─ completed at any point ───────────────────────────► SILENT (rest of period)
