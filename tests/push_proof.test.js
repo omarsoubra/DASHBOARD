@@ -859,16 +859,20 @@ test('G5 migration is additive + locked down', async () => {
 });
 
 test('G6 the existing api function and the sw.js cache/fetch logic are untouched', async () => {
-  let head;
-  try { head = execSync('git show HEAD:sw.js', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString(); } catch { head = null; }
-  if (head !== null) {
-    const cut = (s, marker) => s.slice(0, s.indexOf(marker));
-    const was = head.includes('// Notification handling') ? cut(head, '// Notification handling') : cut(head, '// ───────────────────────────────────────────────────────────────────────── \n// LOCKED IN Push');
-    const now = cut(rd('sw.js'), '// ─────────────────────────────────────────────────────────────────────────\n// LOCKED IN Push');
-    eq(now, was, 'install/activate/fetch section byte-identical to HEAD');
+  // Pinned against the pre-push baseline (f68e464), so this holds after commit
+  // and in CI's shallow checkout: sha256 of sw.js up to the push section.
+  const SW_PREFIX_SHA256 = 'f108f10d63f32dd37b293eedba1f013a71230e6d39321837bf7937da845c4915';
+  const MARKER = '// ─────────────────────────────────────────────────────────────────────────\n// LOCKED IN Push';
+  const sw = rd('sw.js');
+  assert(sw.includes(MARKER), 'push section marker present');
+  eq(sha256hex(sw.slice(0, sw.indexOf(MARKER))), SW_PREFIX_SHA256, 'install/activate/fetch section byte-identical to pre-push baseline');
+  // api vs the same baseline — only checkable where that commit exists (not in shallow CI clones).
+  let haveBase = true;
+  try { execSync('git cat-file -e f68e464^{commit}', { cwd: ROOT, stdio: 'ignore' }); } catch { haveBase = false; }
+  if (haveBase) {
     let apiDirty = false;
-    try { execSync('git diff --quiet HEAD -- supabase/functions/api', { cwd: ROOT, stdio: 'ignore' }); } catch { apiDirty = true; }
-    eq(apiDirty, false, 'supabase/functions/api has no changes');
+    try { execSync('git diff --quiet f68e464 -- supabase/functions/api', { cwd: ROOT, stdio: 'ignore' }); } catch { apiDirty = true; }
+    eq(apiDirty, false, 'supabase/functions/api unchanged since the pre-push baseline');
   }
   assert(/const CACHE_NAME = 'strengthbyo-v4-2026-08-30-pwa-refresh';/.test(rd('sw.js')), 'CACHE_NAME not bumped (no forced reload for existing users)');
 });
