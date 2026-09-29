@@ -59,7 +59,7 @@ jobs:
       - name: Verify the function source exists
         run: |
           set -euo pipefail
-          for f in index.ts handler.ts webpush.ts; do
+          for f in index.ts handler.ts webpush.ts schedule.ts; do
             test -f "supabase/functions/push/$f" || { echo "::error::supabase/functions/push/$f is missing"; exit 1; }
           done
 
@@ -71,8 +71,11 @@ jobs:
       - name: Install TypeScript (test harness transpiles the real source)
         run: npm install --no-save typescript@5.9.3
 
-      - name: Run the push test suite
-        run: node tests/push_proof.test.js
+      - name: Run the push test suites
+        run: |
+          set -euo pipefail
+          node tests/push_proof.test.js
+          node tests/push_v1.test.js
 
       - name: Install Supabase CLI (pinned)
         uses: supabase/setup-cli@v1

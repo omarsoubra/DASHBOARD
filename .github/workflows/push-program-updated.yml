@@ -1,0 +1,65 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# LOCKED IN — "Program updated" push notifier
+# ══════════════════════════════════════════════════════════════════════════════
+# Observes an approved programme deploy AFTER it is live; never takes part in it.
+#
+# Notifies a client only when a pushed commit carries the explicit trailer
+#     LOCKED-IN-Program-Update: <storage_key>
+# AND that client's shell changed AND GitHub Pages serves the committed bytes.
+# Fleet-wide shell patches carry no trailer → nothing is sent.
+#
+# Inert until the PUSH_DEPLOY_SECRET repository secret exists. The `push`
+# function then applies the pilot allow-list, the client's opt-in and
+# program-update setting, and quiet hours (deferred, not dropped).
+#
+# Manual re-notify (e.g. after a verified deploy whose commit lacked the
+# trailer): Run workflow → storage_key + confirm NOTIFY. Same verification.
+
+name: Push — program updated notifier
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/*/index.html'
+  workflow_dispatch:
+    inputs:
+      storage_key:
+        description: 'Client storage key whose live programme update should be notified'
+        required: true
+      confirm:
+        description: 'Type NOTIFY to confirm'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: push-program-updated-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout (full history for the pushed range)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify live, then notify
+        env:
+          PUSH_DEPLOY_SECRET: ${{ secrets.PUSH_DEPLOY_SECRET }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SHA: ${{ github.sha }}
+          BEFORE: ${{ github.event.before }}
+          DISPATCH_KEY: ${{ github.event.inputs.storage_key }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: node scripts/push/notify_program_update.mjs

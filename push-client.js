@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LOCKED IN Push Notifications — client opt-in (minimal proof)
+   LOCKED IN Push Notifications — client opt-in + settings (V1)
    --------------------------------------------------------------------------
    ONE shared file for every client shell. A shell includes it and calls:
 
@@ -9,15 +9,18 @@
        getToken:   () => '<client access token>',   // read at call time, never stored here
        pushUrl:    'https://<ref>.supabase.co/functions/v1/push',
        swUrl:      '../../sw.js',                    // root worker, scoped to the shell's folder
+       compact:    true,                             // optional: collapsed one-line summary until tapped
      });
 
    Rules this file keeps:
      * Notification permission is requested ONLY inside the "Turn on" tap
-       handler (_onEnable). Never on load, never on a timer.
+       handler (_onEnable). Never on load, never on a timer, never repeatedly.
      * No secret lives here. The VAPID public key is fetched from the server.
      * The client token goes only into POST bodies to pushUrl — never a URL,
        never the console, never the DOM.
      * All dynamic text is set with textContent.
+     * Styling inherits the host page (CSS variables, fonts); base rules use
+       :where() so the page's own styles always win.
    ========================================================================== */
 (function () {
   'use strict';
@@ -25,6 +28,7 @@
   var UA = (navigator.userAgent || '');
   var IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   var IS_ANDROID = /Android/i.test(UA);
+  var DAYS = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 
   function isStandalone() {
     try {
@@ -57,13 +61,56 @@
     return n;
   }
 
+  function label12(hhmm) {
+    var p = hhmm.split(':'), h = +p[0], m = p[1];
+    return ((h % 12) || 12) + ':' + m + (h < 12 ? ' AM' : ' PM');
+  }
+
+  var TIMES = (function () {
+    var out = [];
+    for (var m = 0; m < 1440; m += 15) out.push(('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2));
+    return out;
+  })();
+
+  function injectStyle() {
+    if (document.getElementById('lip-style')) return;
+    var css =
+      ':where(.lip-card){background:var(--surface,#15161b);border:1px solid var(--border,rgba(127,127,127,.25));border-radius:14px;padding:16px;margin:16px 0;color:var(--text,inherit);}' +
+      ':where(.lip-title){font-weight:700;font-size:16px;margin-bottom:6px;}' +
+      ':where(.lip-text,.lip-muted,.lip-ok,.lip-err){margin:8px 0;font-size:14px;line-height:1.45;}' +
+      ':where(.lip-muted){color:var(--muted,#8a8a92);font-size:13px;}' +
+      ':where(.lip-ok){color:var(--accent3,#2e9e5b);}' +
+      ':where(.lip-err){color:var(--danger,#d64545);}' +
+      ':where(.lip-steps){margin:8px 0;padding-left:20px;font-size:14px;} :where(.lip-steps li){margin:4px 0;}' +
+      ':where(.lip-btn){display:block;width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:var(--accent,#6ea8ff);color:#fff;font:inherit;font-weight:600;cursor:pointer;}' +
+      ':where(.lip-btn2){background:transparent;color:var(--text,inherit);border:1px solid var(--border,rgba(127,127,127,.35));}' +
+      ':where(.lip-btn[disabled]){opacity:.6;}' +
+      ':where(.lip-head){display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;background:none;border:0;padding:0;width:100%;color:inherit;font:inherit;text-align:left;}' +
+      ':where(.lip-pill){font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--border,rgba(127,127,127,.35));color:var(--muted,#8a8a92);white-space:nowrap;}' +
+      ':where(.lip-pill.on){color:var(--accent3,#2e9e5b);border-color:currentColor;}' +
+      ':where(.lip-row){display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-top:1px solid var(--border,rgba(127,127,127,.2));font-size:14px;}' +
+      ':where(.lip-row .lip-sub){display:block;color:var(--muted,#8a8a92);font-size:12px;margin-top:2px;}' +
+      ':where(.lip-ctrl){display:flex;align-items:center;gap:6px;flex-shrink:0;}' +
+      ':where(.lip-sel){font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid var(--border,rgba(127,127,127,.35));background:var(--surface2,transparent);color:inherit;max-width:110px;}' +
+      ':where(.lip-switch){position:relative;width:44px;height:26px;border-radius:13px;border:0;background:var(--border,rgba(127,127,127,.35));cursor:pointer;flex-shrink:0;padding:0;}' +
+      ':where(.lip-switch)::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .15s;}' +
+      ':where(.lip-switch[aria-checked="true"]){background:var(--accent,#6ea8ff);}' +
+      ':where(.lip-switch[aria-checked="true"])::after{transform:translateX(18px);}' +
+      ':where(.lip-switch[disabled]){opacity:.5;}';
+    var s = el('style', { id: 'lip-style' }); s.textContent = css;
+    (document.head || document.documentElement).appendChild(s);
+  }
+
   function Push(opts) {
     this.o = opts;
     this.reg = null;
     this.vapidKey = null;
     this.serverRegistered = false;
+    this.prefs = null;
     this.busy = false;
+    this.saving = false;
     this.lastError = '';
+    this.open = !opts.compact;
   }
 
   Push.prototype.api = function (type, extra) {
@@ -94,10 +141,16 @@
           if (!j || j.ok !== true) { self.lastError = self.explain(j && j.error); return; }
           self.vapidKey = j.vapidPublicKey || null;
           self.serverRegistered = !!(sub && j.registered);
+          if (self.serverRegistered) return self.loadPrefs();
         });
       })
       .catch(function () { self.lastError = 'Could not start notifications on this device.'; })
       .then(function () { self.render(); });
+  };
+
+  Push.prototype.loadPrefs = function () {
+    var self = this;
+    return self.api('pushPrefsGet', {}).then(function (j) { if (j && j.ok) self.prefs = j.prefs; });
   };
 
   Push.prototype.explain = function (code) {
@@ -136,7 +189,7 @@
         timezone: localTimezone(),
         standalone: isStandalone(),
       }).then(function (res) {
-        if (res && res.ok === true) { self.serverRegistered = true; return; }
+        if (res && res.ok === true) { self.serverRegistered = true; self.open = true; return self.loadPrefs(); }
         // Server refused: do not leave a browser subscription nobody can use.
         self.lastError = self.explain(res && res.error);
         return sub.unsubscribe().catch(function () {});
@@ -146,12 +199,14 @@
     }).then(function () { self.busy = false; self.render(); });
   };
 
-  // ── Turn off: server revoke first (needs the endpoint), then browser ───────
+  // ── Turn off: settings off + server revoke (needs the endpoint), then browser ─
   Push.prototype._onDisable = function () {
     var self = this;
     if (self.busy || !self.reg) return;
     self.busy = true; self.lastError = ''; self.render();
-    self.reg.pushManager.getSubscription().then(function (sub) {
+    self.api('pushPrefsSet', { prefs: { notificationsEnabled: false } }).then(function () {
+      return self.reg.pushManager.getSubscription();
+    }).then(function (sub) {
       if (!sub) return;
       return self.api('pushUnsubscribe', { endpoint: sub.endpoint }).then(function (res) {
         if (!res || res.ok !== true) self.lastError = 'Turned off on this phone; the server will clean up on the next send.';
@@ -159,16 +214,45 @@
       });
     }).catch(function () {
       self.lastError = 'Could not turn off notifications.';
-    }).then(function () { self.serverRegistered = false; self.busy = false; self.render(); });
+    }).then(function () { self.serverRegistered = false; self.prefs = null; self.busy = false; self.render(); });
+  };
+
+  // ── settings: one field per request, optimistic with rollback ──────────────
+  Push.prototype._save = function (field, value) {
+    var self = this;
+    if (self.saving || !self.prefs) return;
+    var before = self.prefs[field];
+    self.prefs[field] = value; self.saving = true; self.lastError = ''; self.render();
+    var patch = {}; patch[field] = value;
+    self.api('pushPrefsSet', { prefs: patch }).then(function (j) {
+      if (j && j.ok && j.prefs) self.prefs = j.prefs;
+      else { self.prefs[field] = before; self.lastError = 'Could not save that change. Try again.'; }
+    }).then(function () { self.saving = false; self.render(); });
   };
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   Push.prototype.render = function () {
     var self = this;
     var c = self.o.container;
+    if (!c) return;
+    injectStyle();
     while (c.firstChild) c.removeChild(c.firstChild);
     var card = el('div', { class: 'lip-card' });
-    card.appendChild(el('div', { class: 'lip-title' }, 'Notifications'));
+    // "On" only when this very context can receive pushes — never in an iPhone
+    // Safari tab, where the body shows Home Screen guidance instead.
+    var on = self.serverRegistered && supportsPush() && !(IS_IOS && !isStandalone()) &&
+             Notification.permission === 'granted';
+
+    if (self.o.compact) {
+      var head = el('button', { type: 'button', class: 'lip-head', 'aria-expanded': String(self.open) });
+      head.appendChild(el('span', { class: 'lip-title' }, 'Notifications'));
+      head.appendChild(el('span', { class: 'lip-pill' + (on ? ' on' : '') }, on ? 'On' : 'Off'));
+      head.addEventListener('click', function () { self.open = !self.open; self.render(); });
+      card.appendChild(head);
+      if (!self.open) { c.appendChild(card); self._emit(); return; }
+    } else {
+      card.appendChild(el('div', { class: 'lip-title' }, 'Notifications'));
+    }
 
     function para(t, cls) { card.appendChild(el('p', { class: cls || 'lip-text' }, t)); }
     function steps(list) {
@@ -201,18 +285,62 @@
       steps(IS_IOS
         ? ['Open iPhone Settings → Notifications.', 'Find LOCKED IN and switch on "Allow Notifications".', 'Come back here and reopen the app.']
         : ['Open your browser site settings for this page.', 'Allow notifications.', 'Reload this page.']);
-    } else if (self.serverRegistered && Notification.permission === 'granted') {
+    } else if (on) {
       para('Notifications are on for this device.', 'lip-ok');
+      if (self.prefs) self._settings(card); else para('Loading your settings…', 'lip-muted');
       button(self.busy ? 'Working…' : 'Turn off notifications', function () { self._onDisable(); }, true);
     } else {
-      para('Get a notification when Omar sends you something. You can turn this off at any time.');
+      para('Reminders for your check-in and a heads-up when Omar updates your program. You can turn this off at any time.');
       button(self.busy ? 'Working…' : 'Turn on notifications', function () { self._onEnable(); });
     }
 
     if (self.lastError) para(self.lastError, 'lip-err');
     c.appendChild(card);
-    if (typeof self.o.onState === 'function') {
-      try { self.o.onState(self.diagnostics()); } catch (e) {}
+    self._emit();
+  };
+
+  Push.prototype._settings = function (card) {
+    var self = this, p = self.prefs;
+    function row(title, sub, controls) {
+      var r = el('div', { class: 'lip-row' });
+      var left = el('div'); left.appendChild(el('span', null, title));
+      if (sub) left.appendChild(el('span', { class: 'lip-sub' }, sub));
+      var right = el('div', { class: 'lip-ctrl' });
+      controls.forEach(function (x) { right.appendChild(x); });
+      r.appendChild(left); r.appendChild(right); card.appendChild(r);
+    }
+    function sw(field, labelText) {
+      var b = el('button', { type: 'button', role: 'switch', class: 'lip-switch', 'aria-checked': String(!!p[field]), 'aria-label': labelText });
+      if (self.saving) b.setAttribute('disabled', 'disabled');
+      b.addEventListener('click', function () { self._save(field, !p[field]); });
+      return b;
+    }
+    function sel(field, labelText) {
+      var s = el('select', { class: 'lip-sel', 'aria-label': labelText });
+      TIMES.forEach(function (t) { var o = el('option', { value: t }, label12(t)); if (t === p[field]) o.selected = true; s.appendChild(o); });
+      if (self.saving) s.setAttribute('disabled', 'disabled');
+      s.addEventListener('change', function () { self._save(field, s.value); });
+      return s;
+    }
+    if (p.weighinAvailable) {
+      row('Morning weigh-in', 'Only if you haven\'t logged today', p.weighinEnabled ? [sel('weighinTime', 'Weigh-in reminder time'), sw('weighinEnabled', 'Morning weigh-in reminder')] : [sw('weighinEnabled', 'Morning weigh-in reminder')]);
+    }
+    row('Weekly check-in', (DAYS[p.checkinDow] || 'Sundays') + ', only if it isn\'t done', p.checkinEnabled ? [sel('checkinTime', 'Check-in reminder time'), sw('checkinEnabled', 'Weekly check-in reminder')] : [sw('checkinEnabled', 'Weekly check-in reminder')]);
+    row('Program updates', 'When Omar updates your program', [sw('programUpdatesEnabled', 'Program update notifications')]);
+    row('Quiet hours', 'Nothing is sent in this window', [sel('quietStart', 'Quiet hours start'), el('span', { class: 'lip-muted' }, '–'), sel('quietEnd', 'Quiet hours end')]);
+    var tz = localTimezone();
+    if (tz && p.timezone !== tz) {
+      var fix = el('button', { type: 'button', class: 'lip-sel' }, 'Use ' + tz);
+      fix.addEventListener('click', function () { self._save('timezone', tz); });
+      row('Timezone', p.timezone || 'Not set', [fix]);
+    } else {
+      card.appendChild(el('p', { class: 'lip-muted' }, 'Times are in ' + (p.timezone || 'your timezone') + '.'));
+    }
+  };
+
+  Push.prototype._emit = function () {
+    if (typeof this.o.onState === 'function') {
+      try { this.o.onState(this.diagnostics()); } catch (e) {}
     }
   };
 

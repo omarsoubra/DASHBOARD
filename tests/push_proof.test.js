@@ -13,317 +13,17 @@
 //   * the RFC 8291 Appendix A known-answer vector.
 //
 // Usage (from the DASHBOARD repo root):   node tests/push_proof.test.js
+// Shared stand-in, fixtures and fake push service: tests/push_harness.js
 'use strict';
-const ts = require('typescript');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const vm = require('vm');
 const nodeCrypto = require('crypto');
 const { execSync } = require('child_process');
+const {
+  ROOT, rd, WP, H, test, assert, eq, run, b64u, unb64u, sha256hex, MIGRATION,
+  CANARY, OTHER, CANARY_TOKEN, OTHER_TOKEN, SECOND_TOKEN, COACH_HASH,
+  makeVapid, makeBrowserSub, nodeDecrypt, verifyVapidHeader, world, assertNoLeak,
+} = require('./push_harness');
 
-const ROOT = process.cwd();
-const rd = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-
-// ── load the real TS source ─────────────────────────────────────────────────
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'push-proof-'));
-function transpile(src, out) {
-  const js = ts.transpileModule(rd(src), {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
-  }).outputText.replace(/require\("\.\/webpush\.ts"\)/g, 'require("./webpush.js")');
-  fs.writeFileSync(path.join(tmp, out), js);
-}
-transpile('supabase/functions/push/webpush.ts', 'webpush.js');
-transpile('supabase/functions/push/handler.ts', 'handler.js');
-const WP = require(path.join(tmp, 'webpush.js'));
-const H = require(path.join(tmp, 'handler.js'));
-
-// ── tiny runner ─────────────────────────────────────────────────────────────
-const tests = [];
-const test = (name, fn) => tests.push({ name, fn });
-function assert(cond, msg) { if (!cond) throw new Error('ASSERT: ' + msg); }
-function eq(a, b, msg) { if (a !== b) throw new Error(`ASSERT: ${msg} — expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
-
-const b64u = (buf) => Buffer.from(buf).toString('base64url');
-const unb64u = (s) => Buffer.from(s.replace(/\s+/g, ''), 'base64url');
-const sha256hex = (s) => nodeCrypto.createHash('sha256').update(s).digest('hex');
-
-// ════════════════════════════════════════════════════════════════════════════
-// Schema from the migration
-// ════════════════════════════════════════════════════════════════════════════
-const MIGRATION = rd('supabase/migrations/20260928120000_push_notifications_proof.sql');
-function parseColumns(table) {
-  const m = MIGRATION.match(new RegExp(`create table if not exists public\\.${table} \\(([\\s\\S]*?)\\n\\);`));
-  if (!m) throw new Error('migration: table not found ' + table);
-  const cols = new Set();
-  for (const line of m[1].split('\n')) {
-    const c = line.trim().match(/^([a-z][a-z0-9_]*)\s+(uuid|text|boolean|integer|timestamptz|jsonb)\b/);
-    if (c) cols.add(c[1]);
-  }
-  return cols;
-}
-const SCHEMA = {
-  push_devices: parseColumns('push_devices'),
-  notification_events: parseColumns('notification_events'),
-  // Existing tables: only the columns this function touches.
-  clients: new Set(['id', 'storage_key']),
-  client_sessions: new Set(['storage_key', 'token_hash', 'salt', 'access_status', 'client_id']),
-};
-const UNIQUE = { push_devices: ['endpoint_hash'], notification_events: ['dedupe_key'], clients: ['storage_key'], client_sessions: ['storage_key'] };
-const CHECKS = {
-  push_devices: (r) => ['active', 'revoked', 'expired', 'disabled'].includes(r.status) &&
-    (r.status !== 'active' || (r.endpoint && r.p256dh && r.auth_secret)) && /^[0-9a-f]{64}$/.test(r.endpoint_hash),
-  notification_events: (r) => ['test'].includes(r.kind) &&
-    ['claimed', 'sent', 'partial', 'failed', 'suppressed'].includes(r.status) &&
-    ['coach', 'system', 'client'].includes(r.created_by),
-};
-
-// ════════════════════════════════════════════════════════════════════════════
-// In-memory Supabase stand-in (strict)
-// ════════════════════════════════════════════════════════════════════════════
-function makeDb() {
-  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [] };
-  const calls = [];
-  let seq = 0;
-  const uuid = () => '00000000-0000-4000-8000-' + String(++seq).padStart(12, '0');
-  const colErr = (t, c) => ({ message: `column ${t}.${c} does not exist`, code: '42703' });
-
-  function checkCols(t, cols) {
-    for (const c of cols) if (!SCHEMA[t].has(c)) return colErr(t, c);
-    return null;
-  }
-  function parseSelect(t, s) {
-    const cols = []; let embedded = null;
-    for (const part of String(s).split(',').map((x) => x.trim()).filter(Boolean)) {
-      const e = part.match(/^([a-z_]+)\(([a-z_, ]+)\)$/);
-      if (e) { embedded = { table: e[1], cols: e[2].split(',').map((x) => x.trim()) }; continue; }
-      cols.push(part);
-    }
-    return { cols, embedded };
-  }
-  function project(t, row, sel) {
-    const o = {};
-    for (const c of sel.cols) o[c] = row[c];
-    if (sel.embedded && sel.embedded.table === 'clients') {
-      const cl = T.clients.find((c) => c.id === row.client_id);
-      o.clients = cl ? Object.fromEntries(sel.embedded.cols.map((c) => [c, cl[c]])) : null;
-    }
-    return o;
-  }
-
-  function from(t) {
-    if (!T[t]) throw new Error('stand-in: unknown table ' + t);
-    const q = { t, filters: [], mode: 'select', sel: null, opts: {}, limitN: null, payload: null, returning: null };
-    const b = {};
-    const matchRow = (r) => q.filters.every(([op, c, v]) => op === 'eq' ? r[c] === v : op === 'gte' ? String(r[c]) >= String(v) : false);
-    b.select = (s = '*', opts = {}) => {
-      if (q.mode === 'select') { q.sel = parseSelect(t, s); q.opts = opts; }
-      else q.returning = parseSelect(t, s);
-      return b;
-    };
-    b.eq = (c, v) => { q.filters.push(['eq', c, v]); return b; };
-    b.gte = (c, v) => { q.filters.push(['gte', c, v]); return b; };
-    b.limit = (n) => { q.limitN = n; return b; };
-    b.insert = (obj) => { q.mode = 'insert'; q.payload = obj; return b; };
-    b.update = (obj) => { q.mode = 'update'; q.payload = obj; return b; };
-
-    function run() {
-      calls.push({ t, mode: q.mode, filters: q.filters.map((f) => f.slice()) });
-      const fe = checkCols(t, q.filters.map((f) => f[1]));
-      if (fe) return { data: null, error: fe };
-      if (q.mode === 'select') {
-        const se = checkCols(t, q.sel.cols); if (se) return { data: null, error: se };
-        let rows = T[t].filter(matchRow);
-        if (q.limitN != null) rows = rows.slice(0, q.limitN);
-        if (q.opts.count === 'exact' && q.opts.head) return { data: null, error: null, count: rows.length };
-        return { data: rows.map((r) => project(t, r, q.sel)), error: null };
-      }
-      if (q.mode === 'insert') {
-        const ce = checkCols(t, Object.keys(q.payload)); if (ce) return { data: null, error: ce };
-        const row = { id: uuid(), ...q.payload };
-        for (const u of UNIQUE[t] || []) {
-          if (T[t].some((r) => r[u] === row[u])) return { data: null, error: { message: `duplicate key value violates unique constraint "${t}_${u}_key"`, code: '23505' } };
-        }
-        if (CHECKS[t] && !CHECKS[t](row)) return { data: null, error: { message: `new row for relation "${t}" violates check constraint`, code: '23514' } };
-        T[t].push(row);
-        return { data: q.returning ? [project(t, row, q.returning)] : null, error: null };
-      }
-      if (q.mode === 'update') {
-        const ce = checkCols(t, Object.keys(q.payload)); if (ce) return { data: null, error: ce };
-        const hits = T[t].filter(matchRow);
-        for (const r of hits) {
-          const next = { ...r, ...q.payload };
-          if (CHECKS[t] && !CHECKS[t](next)) return { data: null, error: { message: 'check constraint violation', code: '23514' } };
-        }
-        for (const r of hits) Object.assign(r, q.payload);
-        return { data: q.returning ? hits.map((r) => project(t, r, q.returning)) : null, error: null };
-      }
-      throw new Error('stand-in: bad mode');
-    }
-    b.single = async () => {
-      const r = run(); if (r.error) return r;
-      const rows = Array.isArray(r.data) ? r.data : [];
-      if (rows.length !== 1) return { data: null, error: { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' } };
-      return { data: rows[0], error: null };
-    };
-    b.maybeSingle = async () => {
-      const r = run(); if (r.error) return r;
-      const rows = Array.isArray(r.data) ? r.data : [];
-      if (rows.length > 1) return { data: null, error: { message: 'multiple rows', code: 'PGRST116' } };
-      return { data: rows[0] ?? null, error: null };
-    };
-    b.then = (res, rej) => Promise.resolve().then(run).then(res, rej);
-    return b;
-  }
-  return { admin: { from }, T, calls, uuid };
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Fixtures: clients, tokens, VAPID keys, browser subscriptions
-// ════════════════════════════════════════════════════════════════════════════
-const CANARY = '_push_canary';
-const OTHER = 'zac';                          // a real-looking key that is NOT allow-listed
-const CANARY_TOKEN = 'canarytoken_' + nodeCrypto.randomBytes(16).toString('hex');
-const OTHER_TOKEN = 'othertoken_' + nodeCrypto.randomBytes(16).toString('hex');
-const SECOND_TOKEN = 'secondtoken_' + nodeCrypto.randomBytes(16).toString('hex');
-const COACH_HASH = sha256hex('coach-password-for-tests');
-
-async function makeVapid() {
-  const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
-  const jwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
-  const pub = Buffer.concat([Buffer.from([4]), unb64u(jwk.x), unb64u(jwk.y)]);
-  return { publicB64: b64u(pub), privateB64: jwk.d };
-}
-
-function makeBrowserSub(host = 'web.push.apple.com') {
-  const ecdh = nodeCrypto.createECDH('prime256v1');
-  ecdh.generateKeys();
-  const auth = nodeCrypto.randomBytes(16);
-  const endpoint = `https://${host}/${nodeCrypto.randomBytes(24).toString('base64url')}`;
-  return {
-    ecdh, auth,
-    json: { endpoint, keys: { p256dh: b64u(ecdh.getPublicKey()), auth: b64u(auth) } },
-  };
-}
-
-// Independent RFC 8291 decryptor: node:crypto ECDH + HKDF + AES-128-GCM.
-function nodeDecrypt(body, ecdh, auth) {
-  const salt = body.subarray(0, 16);
-  const rs = body.readUInt32BE(16);
-  const idlen = body[20];
-  const asPub = body.subarray(21, 21 + idlen);
-  const ct = body.subarray(21 + idlen);
-  assert(rs === 4096, 'record size 4096');
-  assert(idlen === 65, 'keyid is a 65-byte P-256 point');
-  assert(ct.length <= rs, 'single record');
-  const shared = ecdh.computeSecret(asPub);
-  const uaPub = ecdh.getPublicKey();
-  const keyInfo = Buffer.concat([Buffer.from('WebPush: info\0'), uaPub, asPub]);
-  const ikm = Buffer.from(nodeCrypto.hkdfSync('sha256', shared, auth, keyInfo, 32));
-  const cek = Buffer.from(nodeCrypto.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: aes128gcm\0'), 16));
-  const nonce = Buffer.from(nodeCrypto.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: nonce\0'), 12));
-  const d = nodeCrypto.createDecipheriv('aes-128-gcm', cek, nonce);
-  d.setAuthTag(ct.subarray(ct.length - 16));
-  const padded = Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]);
-  let end = padded.length - 1;
-  while (end >= 0 && padded[end] === 0) end--;
-  assert(padded[end] === 2, 'last-record delimiter 0x02');
-  return padded.subarray(0, end).toString('utf8');
-}
-
-function verifyVapidHeader(authz, expectedAud, vapidPublicB64, nowSec) {
-  const m = /^vapid t=([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+), k=([A-Za-z0-9_-]+)$/.exec(authz || '');
-  assert(m, 'Authorization is "vapid t=<jwt>, k=<key>"');
-  eq(m[2], vapidPublicB64, 'k= is the configured VAPID public key');
-  const [h, p, s] = m[1].split('.');
-  const header = JSON.parse(unb64u(h).toString());
-  const claims = JSON.parse(unb64u(p).toString());
-  eq(header.alg, 'ES256', 'JWT alg'); eq(header.typ, 'JWT', 'JWT typ');
-  eq(claims.aud, expectedAud, 'JWT aud = push service origin');
-  assert(claims.exp > nowSec && claims.exp <= nowSec + 24 * 3600, 'JWT exp within 24h');
-  assert(/^(mailto:|https:)/.test(claims.sub), 'JWT sub is mailto:/https:');
-  const pub = unb64u(m[2]);
-  const key = nodeCrypto.createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)) }, format: 'jwk' });
-  assert(nodeCrypto.verify('sha256', Buffer.from(h + '.' + p), { key, dsaEncoding: 'ieee-p1363' }, unb64u(s)), 'JWT ES256 signature verifies');
-}
-
-// Fake push service. statusFor(endpoint) decides the HTTP answer.
-function makePushService(subsByEndpoint, vapidPublicB64, nowSec) {
-  const received = [];
-  let statusFor = () => 201;
-  const fetchImpl = async (url, init) => {
-    const u = new URL(url);
-    eq(init.method, 'POST', 'push is POST');
-    eq(init.redirect, 'manual', 'push never follows redirects');
-    eq(init.headers['Content-Encoding'], 'aes128gcm', 'Content-Encoding');
-    assert(/^\d+$/.test(init.headers.TTL), 'TTL header');
-    assert(['very-low', 'low', 'normal', 'high'].includes(init.headers.Urgency), 'Urgency header');
-    verifyVapidHeader(init.headers.Authorization, u.origin, vapidPublicB64, nowSec);
-    const sub = subsByEndpoint.get(url);
-    assert(sub, 'push went to a registered endpoint');
-    const plaintext = nodeDecrypt(Buffer.from(init.body), sub.ecdh, sub.auth);
-    received.push({ url, headers: init.headers, payload: JSON.parse(plaintext) });
-    const status = statusFor(url);
-    if (status === 'throw') throw new TypeError('fetch failed');
-    return new Response(null, { status });
-  };
-  return { fetchImpl, received, setStatus: (fn) => { statusFor = fn; } };
-}
-
-// A complete world: DB rows, env, handler, push service, captured logs.
-async function world(opts = {}) {
-  const db = makeDb();
-  const canaryId = db.uuid(), otherId = db.uuid(), secondId = db.uuid();
-  db.T.clients.push({ id: canaryId, storage_key: CANARY }, { id: otherId, storage_key: OTHER }, { id: secondId, storage_key: '_push_canary2' });
-  const salt1 = 's1' + nodeCrypto.randomBytes(8).toString('hex');
-  const salt2 = 's2' + nodeCrypto.randomBytes(8).toString('hex');
-  const salt3 = 's3' + nodeCrypto.randomBytes(8).toString('hex');
-  db.T.client_sessions.push(
-    { client_id: canaryId, storage_key: CANARY, token_hash: sha256hex(CANARY_TOKEN + salt1), salt: salt1, access_status: opts.canaryAccess ?? 'active' },
-    { client_id: otherId, storage_key: OTHER, token_hash: sha256hex(OTHER_TOKEN + salt2), salt: salt2, access_status: 'active' },
-    { client_id: secondId, storage_key: '_push_canary2', token_hash: sha256hex(SECOND_TOKEN + salt3), salt: salt3, access_status: 'active' },
-  );
-  const vapid = opts.vapid ?? await makeVapid();
-  const env = {
-    vapidPublicKey: vapid.publicB64,
-    vapidPrivateKey: opts.noVapid ? '' : vapid.privateB64,
-    vapidSubject: 'https://omarsoubra.github.io/DASHBOARD/',
-    coachPasswordHash: COACH_HASH,
-    allowedClients: new Set(opts.allowed ?? [CANARY, '_push_canary2']),
-  };
-  const nowMs = Date.UTC(2026, 8, 28, 9, 0, 0);
-  const subs = new Map();
-  const svc = makePushService(subs, vapid.publicB64, Math.floor(nowMs / 1000));
-  const logs = [];
-  const handle = H.makePushHandler({ admin: db.admin, env, fetchImpl: svc.fetchImpl, now: () => nowMs, log: (...a) => logs.push(a.join(' | ')) });
-  const responses = [];
-  async function call(body, method = 'POST') {
-    const req = method === 'GET'
-      ? new Request('https://x.supabase.co/functions/v1/push?type=' + body)
-      : new Request('https://x.supabase.co/functions/v1/push', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: typeof body === 'string' ? body : JSON.stringify(body) });
-    const r = await handle(req);
-    const text = await r.text();
-    responses.push(text);
-    return { status: r.status, j: JSON.parse(text) };
-  }
-  const newSub = (host) => { const s = makeBrowserSub(host); subs.set(s.json.endpoint, s); return s; };
-  const subscribe = (s, extra = {}) => call({ type: 'pushSubscribe', storageKey: CANARY, token: CANARY_TOKEN, subscription: s.json, timezone: 'Australia/Sydney', standalone: true, ...extra });
-  let rid = 0;
-  const send = (extra = {}) => call({ type: 'coachPushSend', coachToken: COACH_HASH, storageKey: CANARY, template: 'test', requestId: 'req_' + String(++rid).padStart(6, '0') + '_' + nodeCrypto.randomBytes(3).toString('hex'), ...extra });
-  return { db, env, vapid, svc, logs, responses, call, newSub, subscribe, send, canaryId, otherId, secondId };
-}
-
-// Every secret that must never leave the server or reach a log.
-function assertNoLeak(w, extraSecrets = []) {
-  const secrets = [w.vapid.privateB64, CANARY_TOKEN, OTHER_TOKEN, SECOND_TOKEN, COACH_HASH, ...extraSecrets];
-  const hay = w.responses.join('\n') + '\n' + w.logs.join('\n');
-  for (const s of secrets) assert(!hay.includes(s), 'secret leaked into a response or log');
-  for (const d of w.db.T.push_devices) {
-    if (d.endpoint) assert(!w.responses.join('\n').includes(d.endpoint), 'endpoint leaked into a response');
-    if (d.p256dh) assert(!w.responses.join('\n').includes(d.p256dh), 'p256dh leaked into a response');
-    if (d.auth_secret) assert(!w.responses.join('\n').includes(d.auth_secret), 'auth secret leaked into a response');
-  }
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // A. Crypto — RFC vectors and independent verification
@@ -691,11 +391,15 @@ test('E7 only fixed templates; bad requestId refused', async () => {
   eq(w.svc.received.length, 0, 'nothing sent');
 });
 
-test('E8 templates are lock-screen safe (no numbers, no body/health terms)', async () => {
+test('E8 templates are lock-screen safe (no numbers, no targets/units/body data)', async () => {
+  // The word "weight" is allowed ONLY in Omar's approved weigh-in copy, which
+  // asks for an action and carries no value.
+  const APPROVED_WEIGHT_COPY = "Morning bro. Log your weight when you're up.";
   for (const [k, t] of Object.entries(H.TEMPLATES)) {
     const text = t.title + ' ' + t.body;
     assert(!/\d/.test(text), k + ': no digits');
-    assert(!/\b(kg|kgs|lb|lbs|kcal|calorie|calories|protein|carb|carbs|fat|macro|macros|weight|weigh-in|bmi|body)\b/i.test(text), k + ': no health terms');
+    assert(!/\b(kg|kgs|lb|lbs|kcal|calorie|calories|protein|carb|carbs|fat|macro|macros|bmi|body|deficit|target|goal)\b/i.test(text), k + ': no targets/units/body data');
+    if (/\bweigh/i.test(text)) eq(t.body, APPROVED_WEIGHT_COPY, k + ': "weight" only in the approved copy');
     assert(/^\.\/[A-Za-z0-9#_-]*$/.test(t.url), k + ': url is scope-relative');
   }
 });
@@ -885,14 +589,4 @@ test('G7 handler never follows redirects and caps work per call', async () => {
   assert(!/\bwhile\s*\(/.test(h + wp), 'no while loops (Rule 2)');
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-(async () => {
-  let pass = 0, fail = 0;
-  for (const t of tests) {
-    try { await t.fn(); pass++; console.log('  PASS  ' + t.name); }
-    catch (e) { fail++; console.log('  FAIL  ' + t.name + '\n        ' + (e && e.message)); }
-  }
-  fs.rmSync(tmp, { recursive: true, force: true });
-  console.log(`\npush_proof: ${pass} passed, ${fail} failed, ${tests.length} total`);
-  process.exit(fail ? 1 : 0);
-})();
+run('push_proof');
