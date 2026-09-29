@@ -15,6 +15,8 @@
 //     coachPushSend    send the fixed `test` template to one client
 //   internal secret (sha256 in push_internal_auth):
 //     pushTick         scheduler: weigh-in + check-in reminders, deferred events   [x-push-cron-secret]
+//                      (V2: check-in adherence sequence due → followup → final for
+//                       clients in PUSH_CHECKIN_V2_CLIENTS; see schedule.ts)
 //     programUpdated   deploy notifier: a verified-live programme update            [x-push-deploy-secret]
 //   none:
 //     ping             liveness + "is VAPID configured" (no secrets)
@@ -40,8 +42,8 @@ import {
   type VapidKeys,
 } from './webpush.ts';
 import {
-  evaluateCheckin, evaluateWeighin, formatTime, inQuietHours, isValidTimezone,
-  localParts, nextLocalTime, parseTime, type Prefs,
+  decideReminder, evaluateCheckin, evaluateCheckinStage, evaluateWeighin, formatTime, inQuietHours,
+  isValidTimezone, localParts, nextLocalTime, parseTime, type Observation, type Prefs,
 } from './schedule.ts';
 
 export type PushEnv = {
@@ -50,10 +52,14 @@ export type PushEnv = {
   vapidSubject: string;
   coachPasswordHash: string;
   allowedClients: Set<string>;
+  /** V2 check-in adherence sequence rollout: '*' = every eligible client, else these keys. Unset = nobody (V1 single reminder). */
+  checkinSequence?: { all: boolean; keys: Set<string> };
 };
 
 export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
   const allowed = String(get('PUSH_ALLOWED_CLIENTS') ?? '')
+    .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const seq = String(get('PUSH_CHECKIN_V2_CLIENTS') ?? '')
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   return {
     vapidPublicKey: get('VAPID_PUBLIC_KEY') ?? '',
@@ -61,6 +67,7 @@ export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
     vapidSubject: get('VAPID_SUBJECT') ?? '',
     coachPasswordHash: get('COACH_PASSWORD_HASH') ?? '',
     allowedClients: new Set(allowed),
+    checkinSequence: { all: seq.includes('*'), keys: new Set(seq.filter((k) => k !== '*')) },
   };
 }
 
@@ -73,7 +80,7 @@ type Deps = {
 };
 
 // ── constants ───────────────────────────────────────────────────────────────
-export const PUSH_VERSION = 'push-v1';
+export const PUSH_VERSION = 'push-v2';
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ENDPOINT_LEN = 1024;
 const MAX_ACTIVE_DEVICES_PER_CLIENT = 5;
@@ -114,10 +121,18 @@ export const TEMPLATES: Record<string, Template> = {
   weighin_reminder: { kind: 'weighin_reminder', title: 'LOCKED IN', body: "Morning bro. Log your weight when you're up.", url: './', tag: 'li-weighin', ttlSec: 2 * 3600 },
   checkin_reminder: { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your weekly check-in is ready when you are.',  url: './', tag: 'li-checkin', ttlSec: 6 * 3600 },
   program_update:   { kind: 'program_update',   title: 'LOCKED IN', body: 'Your program has been updated. Tap to view it.', url: './', tag: 'li-program', ttlSec: 24 * 3600 },
+  // V2 check-in adherence sequence. Same kind + tag: a later stage replaces an
+  // unread earlier one on the lock screen instead of stacking. TTLs end before
+  // the next default stage, so an offline phone never receives a stale stage.
+  checkin_due:      { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your weekly check-in is ready. Take a minute to get it done.', url: './', tag: 'li-checkin', ttlSec: 6 * 3600 },
+  checkin_followup: { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your check-in is still waiting. Get it done tonight so Omar can review your week.', url: './', tag: 'li-checkin', ttlSec: 3 * 3600 },
+  checkin_final:    { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'You missed your weekly check-in. Get it done today so your coaching stays on track.', url: './', tag: 'li-checkin', ttlSec: 8 * 3600 },
 };
 
 // Settings: defaults (conservative — nothing is sent until the client opts in).
 const PREF_COLUMNS = 'client_id, notifications_enabled, consent_at, timezone, weighin_available, weighin_enabled, weighin_time, checkin_enabled, checkin_dow, checkin_time, program_updates_enabled, quiet_start, quiet_end';
+// Scheduler only: + the coach-owned V2 stage schedule (migration 20260930120000).
+const TICK_PREF_COLUMNS = PREF_COLUMNS + ', checkin_followup_time, checkin_final_time, checkin_final_day_offset';
 export const DEFAULT_PREFS = {
   notifications_enabled: false, timezone: null as string | null, weighin_available: false,
   weighin_enabled: true, weighin_time: '07:30', checkin_enabled: true, checkin_dow: 0,
@@ -593,6 +608,12 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return ok({ eventId: c.id, ...r });
   }
 
+  /** V2 rollout gate (PUSH_CHECKIN_V2_CLIENTS). Off-sequence clients keep the V1 single Sunday reminder. */
+  function inCheckinSequence(storageKey: string): boolean {
+    const s = env.checkinSequence;
+    return !!s && (s.all || s.keys.has(storageKey));
+  }
+
   // ── pushTick: the scheduler ───────────────────────────────────────────────
   // Called every 15 minutes by pg_cron. A timer firing is NOT a reason to send:
   // for each allow-listed, opted-in client it asks "is a reminder window open?",
@@ -605,12 +626,56 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     if (!v) return err('push_not_configured', 503);
     const nowMs = now();
     const nowIso = new Date(nowMs).toISOString();
-    const summary = { clients: 0, due: 0, sent: 0, duplicates: 0, suppressed: {} as Record<string, number>, stateErrors: 0, deferredSent: 0 };
+    const summary = { clients: 0, due: 0, sent: 0, duplicates: 0, suppressed: {} as Record<string, number>, stateErrors: 0, deferredSent: 0,
+                      checkinStages: { due: 0, followup: 0, final: 0 } as Record<string, number> };
     const bump = (r: string) => { summary.suppressed[r] = (summary.suppressed[r] ?? 0) + 1; };
+
+    // ── V2 check-in adherence sequence: one step per client per tick ───────
+    // evaluateCheckinStage says which stage (if any) is open; decideReminder
+    // applies the one adherence pattern; the dedupe claim authorises the send.
+    const checkinSequenceStep = async (c: any, pr: any, active: boolean): Promise<void> => {
+      const ev = evaluateCheckinStage(pr, nowMs, c.start_date);
+      if (!ev.due) return;
+      summary.due++;
+      const key = `checkin_${ev.stage}:${c.id}:${ev.periodKey}`;
+      // Already decided for this stage (sent OR suppressed) → nothing, ever. The
+      // due stage also honours a V1 single reminder already claimed for the same
+      // period, so moving a client onto the sequence mid-Sunday cannot double up.
+      const prior = [key, ...(ev.stage === 'due' ? [`checkin:${c.id}:${ev.periodKey}`] : [])];
+      const { data: seen, error: seenErr } = await admin.from('notification_events').select('id').in('dedupe_key', prior).limit(1);
+      if (seenErr) { summary.stateErrors++; log('pushTick', 'dedupe_read_failed', seenErr.message); return; }
+      if ((seen ?? []).length) { summary.duplicates++; return; }
+      // Observation: the client's check-in state, read immediately before deciding.
+      const { count, error } = await admin.from('check_ins').select('id', { count: 'exact', head: true }).eq('client_id', c.id)
+        .gte('submitted_at', new Date(ev.stateFrom).toISOString()).lte('submitted_at', new Date(ev.stateTo).toISOString());
+      const observation: Observation = error || typeof count !== 'number' ? 'unknown' : count > 0 ? 'completed' : 'incomplete';
+      const d = decideReminder({
+        due: true, observation, eligible: true /* tick evaluates eligible clients only */, active,
+        enabled: ev.suppress !== 'disabled', quiet: ev.suppress === 'quiet_hours',
+        hasDevice: observation === 'incomplete' ? (await activeDeviceCount(c.id)) > 0 : true,
+      });
+      if (!d.send && !d.record) {                                   // unknown state → silence, retry next tick
+        summary.stateErrors++; log('pushTick', 'state_query_failed', `checkin_${ev.stage}:${error?.message ?? 'no_count'}`); return;
+      }
+      const tpl = TEMPLATES[`checkin_${ev.stage}`];
+      const reason = d.send ? null : d.reason;
+      const got = await claim({
+        client_id: c.id, storage_key: c.storage_key, kind: tpl.kind, dedupe_key: key,
+        status: reason ? 'suppressed' : 'claimed', suppression_reason: reason,
+        title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'system',
+        created_at: nowIso, eligible_at: new Date(ev.eligibleAt).toISOString(), period_key: ev.periodKey,
+      });
+      if (got === 'duplicate') { summary.duplicates++; return; }
+      if (!got) { summary.stateErrors++; return; }
+      if (reason) { bump(reason); return; }
+      const r = await deliver(got.id, c.id, tpl, v, nowMs);
+      if (r.status === 'sent' || r.status === 'partial') { summary.sent++; summary.checkinStages[ev.stage]++; }
+      else bump(r.reason ?? r.status);
+    };
 
     // Only clients who opted in have a preferences row; evaluate those, and only
     // the ones that are push-eligible right now (entitlement / access / internal).
-    const { data: prefAll, error: pErr } = await admin.from('push_preferences').select(PREF_COLUMNS).limit(MAX_TICK_CLIENTS);
+    const { data: prefAll, error: pErr } = await admin.from('push_preferences').select(TICK_PREF_COLUMNS).limit(MAX_TICK_CLIENTS);
     if (pErr) { log('pushTick', 'prefs_failed', pErr.message); return err('state_unavailable', 503); }
     const optedIds = (prefAll ?? []).filter((p: any) => p.consent_at).map((p: any) => p.client_id);
     if (!optedIds.length) return ok({ summary });
@@ -627,10 +692,12 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
       const c = byId.get(pr.client_id);
       if (!c || !pr.consent_at) continue;                         // never opted in → never evaluated
       summary.clients++;
+      const onSequence = inCheckinSequence(c.storage_key);
       const checks: Array<[string, ReturnType<typeof evaluateWeighin>]> = [
         ['weighin_reminder', evaluateWeighin(pr, nowMs)],
-        ['checkin_reminder', evaluateCheckin(pr, nowMs, c.start_date)],
+        ...(onSequence ? [] : [['checkin_reminder', evaluateCheckin(pr, nowMs, c.start_date)] as [string, ReturnType<typeof evaluateWeighin>]]),
       ];
+      if (onSequence) await checkinSequenceStep(c, pr, isActive(c));
       for (const [kind, ev] of checks) {
         if (!ev.due) continue;
         summary.due++;
@@ -638,6 +705,12 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         let reason: string | null = ev.suppress ?? null;
         if (!reason && !isActive(c)) reason = 'inactive_client';
         if (!reason && (await activeDeviceCount(c.id)) === 0) reason = 'no_active_device';
+        if (kind === 'checkin_reminder') {
+          // Rollback safety: a V2 due stage already claimed for this period counts as this reminder.
+          const { data: v2seen, error: v2err } = await admin.from('notification_events').select('id').eq('dedupe_key', `checkin_due:${c.id}:${ev.periodKey}`).limit(1);
+          if (v2err) { summary.stateErrors++; log('pushTick', 'dedupe_read_failed', v2err.message); continue; }
+          if ((v2seen ?? []).length) { summary.duplicates++; continue; }
+        }
         if (!reason) {
           // Current client state, read immediately before claiming.
           const q = kind === 'weighin_reminder'

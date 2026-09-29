@@ -176,3 +176,123 @@ export function evaluateCheckin(p: Prefs, nowMs: number, programStartDate?: stri
   if (inQuietHours(now.minuteOfDay, parseTime(p.quiet_start) ?? 0, parseTime(p.quiet_end) ?? 0)) return { ...ev, suppress: 'quiet_hours' };
   return ev;
 }
+
+// ============================================================================
+// V2 — WEEKLY CHECK-IN ADHERENCE SEQUENCE
+//
+// One check-in period per due date D (the client's check-in weekday, local).
+// Up to three stages, each sent ONLY if the check-in is still incomplete when
+// that stage is evaluated:
+//
+//   due       D   at checkin_time            (default Sunday 09:00)
+//   followup  D   at checkin_followup_time   (default Sunday 18:00)
+//   final     D+1 at checkin_final_time      (default Monday 10:00)
+//
+// Stage times are wall-clock minutes from local midnight of D, so DST days and
+// timezone changes never move a stage into another period. Stages must be
+// strictly increasing with >= STAGE_MIN_GAP between them; a stage that is not
+// (e.g. a client-chosen 19:00 check-in time after the 18:00 follow-up) is
+// dropped — never reordered. Each stage's window closes at the earlier of
+// +WINDOW_MINUTES or the next stage's time, so at most ONE stage is open at any
+// instant: a scheduler outage can never release a burst of stages at recovery.
+//
+// Completion = any check-in submitted from the start of local day D-6 up to
+// now — the same "a check-in within the last 6 days" rule the client shells
+// use for their banner, so the push never contradicts the app.
+// ============================================================================
+
+export const STAGE_MIN_GAP = 15;
+export type CheckinStage = 'due' | 'followup' | 'final';
+
+export type SequencePrefs = Prefs & {
+  checkin_followup_time?: string | null;
+  checkin_final_time?: string | null;
+  checkin_final_day_offset?: number | null;
+};
+
+/** Stage schedule for one period, minutes from local midnight of D. Invalid stages dropped. */
+export function checkinStages(p: SequencePrefs): Array<{ stage: CheckinStage; at: number }> {
+  const due = parseTime(p.checkin_time);
+  if (due === null) return [];
+  const out: Array<{ stage: CheckinStage; at: number }> = [{ stage: 'due', at: due }];
+  const fu = parseTime(p.checkin_followup_time ?? '18:00');
+  if (fu !== null && fu >= due + STAGE_MIN_GAP) out.push({ stage: 'followup', at: fu });
+  const off = p.checkin_final_day_offset ?? 1;
+  const fin = parseTime(p.checkin_final_time ?? '10:00');
+  if (fin !== null && (off === 0 || off === 1)) {
+    const at = off * MINUTES_PER_DAY + fin;
+    if (at >= out[out.length - 1].at + STAGE_MIN_GAP) out.push({ stage: 'final', at });
+  }
+  return out;
+}
+
+function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number), [by, bm, bd] = b.split('-').map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+}
+
+export type StageEvaluation =
+  | { due: false }
+  | { due: true; stage: CheckinStage; periodKey: string; eligibleAt: number;
+      suppress?: 'disabled' | 'quiet_hours'; stateFrom: number; stateTo: number };
+
+/**
+ * Which check-in stage (if any) is open at `now`. Pure. Reports preference and
+ * quiet-hour suppressions so they are recorded once per stage; everything else
+ * (eligibility, device, completion) is the handler's job, against live state.
+ */
+export function evaluateCheckinStage(p: SequencePrefs, nowMs: number, programStartDate?: string | null): StageEvaluation {
+  if (!isValidTimezone(p.timezone)) return { due: false };
+  const stages = checkinStages(p);
+  if (!stages.length) return { due: false };
+  const now = localParts(nowMs, p.timezone);
+  // D is at most 2 local days back (final stage on D+1, window may cross midnight).
+  for (let back = 0; back <= 2; back++) {
+    const D = addDays(now.date, -back);
+    if (dowOf(D) !== p.checkin_dow) continue;
+    const rel = daysBetween(D, now.date) * MINUTES_PER_DAY + now.minuteOfDay;
+    for (let i = 0; i < stages.length; i++) {
+      const s = stages[i];
+      const end = Math.min(s.at + WINDOW_MINUTES, i + 1 < stages.length ? stages[i + 1].at : Infinity);
+      if (rel < s.at || rel >= end) continue;
+      if (programStartDate && /^\d{4}-\d{2}-\d{2}$/.test(programStartDate) && programStartDate > addDays(D, -6)) return { due: false };
+      const stageDate = addDays(D, Math.floor(s.at / MINUTES_PER_DAY));
+      const ev = {
+        due: true as const, stage: s.stage, periodKey: D,
+        eligibleAt: zonedTimeToUtc(stageDate, s.at % MINUTES_PER_DAY, p.timezone),
+        stateFrom: localDayBounds(addDays(D, -6), p.timezone).start, stateTo: nowMs,
+      };
+      if (!p.notifications_enabled || !p.checkin_enabled) return { ...ev, suppress: 'disabled' };
+      if (inQuietHours(now.minuteOfDay, parseTime(p.quiet_start) ?? 0, parseTime(p.quiet_end) ?? 0)) return { ...ev, suppress: 'quiet_hours' };
+      return ev;
+    }
+  }
+  return { due: false };
+}
+
+// ============================================================================
+// V2 — ADHERENCE DECISION (the one pattern every adherence reminder follows)
+//
+//   observation → due? → already completed? → eligible? → enabled?
+//               → quiet hours? → device? → dedupe (the claim) → send
+//
+// Default is SILENCE: `send` is true only when every question has a positive
+// answer. An unknown observation is never treated as "incomplete".
+// ============================================================================
+export type Observation = 'completed' | 'incomplete' | 'unknown';
+export type Decision = { send: true } | { send: false; record: boolean; reason: string | null };
+
+export function decideReminder(i: {
+  due: boolean; observation: Observation; eligible: boolean; active: boolean;
+  enabled: boolean; quiet: boolean; hasDevice: boolean;
+}): Decision {
+  if (!i.due) return { send: false, record: false, reason: null };
+  if (i.observation === 'unknown') return { send: false, record: false, reason: 'state_unknown' };  // retry next tick
+  if (!i.eligible) return { send: false, record: false, reason: 'not_eligible' };                  // never recorded
+  if (i.observation === 'completed') return { send: false, record: true, reason: 'already_completed' };
+  if (!i.active) return { send: false, record: true, reason: 'inactive_client' };
+  if (!i.enabled) return { send: false, record: true, reason: 'disabled' };
+  if (i.quiet) return { send: false, record: true, reason: 'quiet_hours' };
+  if (!i.hasDevice) return { send: false, record: true, reason: 'no_active_device' };
+  return { send: true };
+}

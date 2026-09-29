@@ -28,9 +28,11 @@ function transpile(src, out) {
 transpile('supabase/functions/push/webpush.ts', 'webpush.js');
 transpile('supabase/functions/push/schedule.ts', 'schedule.js');
 transpile('supabase/functions/push/handler.ts', 'handler.js');
+transpile('supabase/functions/push/adherence.ts', 'adherence.js');
 const WP = require(path.join(tmp, 'webpush.js'));
 const SCH = require(path.join(tmp, 'schedule.js'));
 const H = require(path.join(tmp, 'handler.js'));
+const ADH = require(path.join(tmp, 'adherence.js'));
 
 // ── tiny runner ─────────────────────────────────────────────────────────────
 const tests = [];
@@ -57,7 +59,8 @@ const sha256hex = (s) => nodeCrypto.createHash('sha256').update(s).digest('hex')
 // ════════════════════════════════════════════════════════════════════════════
 const MIGRATION = rd('supabase/migrations/20260928120000_push_notifications_proof.sql');
 const MIGRATION_V1 = rd('supabase/migrations/20260929120000_push_v1_pilot.sql');
-const ALL_MIGRATIONS = MIGRATION + '\n' + MIGRATION_V1;
+const MIGRATION_V2 = rd('supabase/migrations/20260930120000_push_v2_checkin_sequence.sql');
+const ALL_MIGRATIONS = MIGRATION + '\n' + MIGRATION_V1 + '\n' + MIGRATION_V2;
 const COL_RE = /^([a-z][a-z0-9_]*)\s+(uuid|text|boolean|integer|smallint|timestamptz|jsonb|time)\b/;
 function parseColumns(table) {
   const cols = new Set();
@@ -104,6 +107,7 @@ const PREF_DEFAULTS = {
   notifications_enabled: false, consent_at: null, timezone: null, weighin_available: false, weighin_enabled: true,
   weighin_time: '07:30:00', checkin_enabled: true, checkin_dow: 0, checkin_time: '09:00:00',
   program_updates_enabled: true, quiet_start: '21:00:00', quiet_end: '07:00:00', updated_by: 'client',
+  checkin_followup_time: '18:00:00', checkin_final_time: '10:00:00', checkin_final_day_offset: 1,
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -329,6 +333,7 @@ async function world(opts = {}) {
     vapidSubject: 'https://omarsoubra.github.io/DASHBOARD/',
     coachPasswordHash: COACH_HASH,
     allowedClients: new Set(opts.allowed ?? [CANARY, '_push_canary2']),
+    ...(opts.checkinSeq ? { checkinSequence: { all: opts.checkinSeq.includes('*'), keys: new Set(opts.checkinSeq.filter((k) => k !== '*')) } } : {}),
   };
   const clock = { now: opts.now ?? Date.UTC(2026, 8, 28, 9, 0, 0) };
   const subs = new Map();
@@ -369,8 +374,8 @@ function assertNoLeak(w, extraSecrets = []) {
 }
 
 module.exports = {
-  ROOT, rd, WP, SCH, H, test, tests, assert, eq, run, b64u, unb64u, sha256hex,
-  MIGRATION, MIGRATION_V1, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
+  ROOT, rd, WP, SCH, H, ADH, test, tests, assert, eq, run, b64u, unb64u, sha256hex,
+  MIGRATION, MIGRATION_V1, MIGRATION_V2, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
   CANARY, OTHER, CANARY_TOKEN, OTHER_TOKEN, SECOND_TOKEN, COACH_HASH, CRON_SECRET, DEPLOY_SECRET,
   makeVapid, makeBrowserSub, nodeDecrypt, verifyVapidHeader, makePushService, world, assertNoLeak,
 };
