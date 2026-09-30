@@ -21,12 +21,12 @@ const js = ts.transpileModule(vct + '\n' + block, { compilerOptions: { target: t
 
 const COACH = nodeCrypto.createHash('sha256').update('coach-pw-for-tests').digest('hex');
 let DB, CALLS;
-const ALLOWED = new Set(['clients', 'workout_completions']);
+const ALLOWED = new Set(['clients', 'workout_completions', 'push_preferences']);
 function table(name) {
   if (!ALLOWED.has(name)) throw new Error('coach view touched forbidden table ' + name);
   const q = { f: [], order: null, lim: null };
   const b = {};
-  b.select = () => b;
+  b.select = (cols) => { if (name === 'push_preferences' && cols !== 'client_id, timezone') throw new Error('push_preferences read beyond client_id, timezone: ' + cols); return b; };
   b.gte = (c, v) => { q.f.push([c, v]); return b; };
   b.order = (c, o) => { q.order = [c, o && o.ascending === false ? -1 : 1]; return b; };
   b.limit = (n) => { q.lim = n; return b; };
@@ -62,7 +62,7 @@ function seed() {
     { id: 'B', storage_key: 'client_b', display_name: 'Client B', is_internal: false },
     { id: 'Z', storage_key: 'client_zero', display_name: 'Zero', is_internal: false },
     { id: 'I', storage_key: '_workout_canary', display_name: 'Canary', is_internal: true },
-  ], workout_completions: [] };
+  ], workout_completions: [], push_preferences: [] };
   CALLS = [];
 }
 const call = (b) => M.coachWorkoutCompletions(b).then((r) => r.__body);
@@ -169,12 +169,13 @@ test('CV11 logged metadata: none / partial / all / unknown', async () => {
   eq(M.cwvLogged({ exercises_prescribed: 5, exercises_logged: null }), 'unknown', 'no logged count');
 });
 
-test('CV12 read-only: only clients + workout_completions are read; no write, no push/notification table', async () => {
+test('CV12 read-only: only clients + workout_completions (+ push_preferences client_id,timezone) are read; no write, no notification table', async () => {
   seed(); DB.workout_completions.push(row('A'));
   await call({ coachToken: COACH }); await call({ coachToken: COACH, storageKey: 'client_a' });
   assert(CALLS.every((t) => ALLOWED.has(t)), 'tables: ' + CALLS.join(','));
-  const code = block.replace(/\/\/.*$/gm, '');
-  for (const w of ['.insert(', '.update(', '.upsert(', '.delete(', 'notification_events', 'push_', 'workout_log_entries', 'programs', 'rpc(']) assert(!code.includes(w), 'block has no ' + w);
+  const code = block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  for (const w of ['.insert(', '.update(', '.upsert(', '.delete(', 'notification_events', 'push_devices', 'push_internal_auth', 'workout_log_entries', 'programs', 'rpc(']) assert(!code.includes(w), 'block has no ' + w);
+  assert((code.match(/push_preferences/g) || []).length === 1, 'push_preferences referenced once (the timezone read)');
 });
 
 test('CV13 database outage → db_error, nothing fabricated', async () => {
@@ -191,6 +192,27 @@ test('CV14 existing coach `dashboard` op byte-identical; new op dispatched; coac
   const fn = SRC.slice(SRC.indexOf('async function coachWorkoutCompletions('));
   assert(fn.indexOf('verifyCoachToken(') < fn.indexOf('admin.from('), 'coach auth before any read');
   assert(!/verifyClientToken/.test(block), 'no client-token path into the coach view');
+});
+
+test('CV15 timezone precedence: stored client timezone > latest completion > Australia/Sydney', async () => {
+  const mon = Date.UTC(2026, 9, 11, 13, 30);                                    // Mon 00:30 Sydney, Sun 13:30 UTC
+  const rows = [row('A', { local_date: '2026-10-11', completed_at: '2026-10-11T01:00:00.000Z', timezone: 'Australia/Sydney' })];
+  let s = M.cwvSummarize(rows, mon, 'UTC');
+  eq(s.timezone, 'UTC', 'stored wins over completion'); eq(s.timezoneSource, 'client_setting', 'source'); eq(s.thisWeek.from, '2026-10-05', 'UTC: still Sunday');
+  s = M.cwvSummarize(rows, mon, null);
+  eq(s.timezone, 'Australia/Sydney', 'completion when no stored'); eq(s.timezoneSource, 'latest_completion', 'source'); eq(s.thisWeek.from, '2026-10-12', 'Sydney: Monday');
+  s = M.cwvSummarize([], mon, 'America/Los_Angeles');
+  eq(s.timezone, 'America/Los_Angeles', 'zero completions use the stored timezone'); eq(s.timezoneSource, 'client_setting', 'source');
+  s = M.cwvSummarize([], mon, null);
+  eq(s.timezone, 'Australia/Sydney', 'final fallback'); eq(s.timezoneSource, 'default', 'source');
+  eq(M.cwvSummarize([], mon, 'Mars/Base').timezoneSource, 'default', 'invalid stored timezone ignored');
+  seed(); DB.push_preferences.push({ client_id: 'Z', timezone: 'Europe/London' }, { client_id: 'A', timezone: 'Not/AZone' });
+  DB.workout_completions.push(row('A', { timezone: 'Australia/Perth' }));
+  const r = await call({ coachToken: COACH });
+  eq(r.clients.client_zero.timezone, 'Europe/London', 'op: zero-completion client uses stored timezone');
+  eq(r.clients.client_a.timezone, 'Australia/Perth', 'op: invalid stored → latest completion');
+  eq(r.clients.client_b.timezone, 'Australia/Sydney', 'op: nothing stored, no completions → fallback');
+  DB.fail = 'push_preferences'; eq((await call({ coachToken: COACH })).ok, true, 'timezone read failure falls through, view still served');
 });
 
 (async () => {

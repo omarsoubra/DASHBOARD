@@ -692,23 +692,32 @@ function cwvEvent(r: any) {
     revokedAt: r.revoked_at ?? null, revokedBy: r.revoked_by ?? null,
   };
 }
+function cwvValidTz(tz: unknown): tz is string {
+  if (typeof tz !== 'string' || !tz || tz.length > 64) return false;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
 /**
  * Pure. rows = workout_completions rows of ONE client. The "current" week is the
- * calendar week containing today in the client's timezone (the timezone of
- * their most recent completion; Australia/Sydney when none is recorded).
+ * calendar week containing today in the client's timezone, by precedence:
+ *   1. the client's stored timezone (push_preferences.timezone — the only
+ *      per-client timezone in the data model, saved at notification opt-in);
+ *   2. the timezone of their most recent completion;
+ *   3. Australia/Sydney.
  * Counts include only ACTIVE (status 'completed') events; revoked are counted
  * separately and stay visible in the history, marked.
  */
-function cwvSummarize(rows: any[], nowMs: number) {
+function cwvSummarize(rows: any[], nowMs: number, storedTz?: string | null) {
   const sorted = rows.slice().sort((a, b) => Date.parse(b.completed_at) - Date.parse(a.completed_at));
-  const tz = (sorted.find((r) => r.timezone)?.timezone) || CWV_DEFAULT_TZ;
+  const fromRow = sorted.find((r) => cwvValidTz(r.timezone))?.timezone;
+  const tz = cwvValidTz(storedTz) ? storedTz : (fromRow || CWV_DEFAULT_TZ);
+  const timezoneSource = cwvValidTz(storedTz) ? 'client_setting' : fromRow ? 'latest_completion' : 'default';
   const today = cwvLocalDate(nowMs, tz);
   const curStart = cwvWeekStart(today), prevStart = cwvAddDays(curStart, -7);
   const curEnd = cwvAddDays(curStart, 6), prevEnd = cwvAddDays(prevStart, 6);
   const active = sorted.filter((r) => r.status === 'completed');
   const inRange = (r: any, a: string, b: string) => String(r.local_date) >= a && String(r.local_date) <= b;
   return {
-    timezone: tz,
+    timezone: tz, timezoneSource,
     latest: active.length ? cwvEvent(active[0]) : null,
     thisWeek: { from: curStart, to: curEnd, completed: active.filter((r) => inRange(r, curStart, curEnd)).length },
     previousWeek: { from: prevStart, to: prevEnd, completed: active.filter((r) => inRange(r, prevStart, prevEnd)).length },
@@ -728,12 +737,17 @@ async function coachWorkoutCompletions(body: any) {
   const { data: rows, error: wErr } = await admin.from('workout_completions').select(CWV_COLS)
     .gte('completed_at', since).order('completed_at', { ascending: false }).limit(5000);
   if (wErr) { logEfError('coachWorkoutCompletions', null, 'completions_read_failed', wErr.message); return err('db_error'); }
+  // Stored client timezone (read-only: client_id + timezone only). Optional
+  // enrichment — if it cannot be read, precedence simply falls through.
+  const { data: prefRows, error: tErr } = await admin.from('push_preferences').select('client_id, timezone');
+  if (tErr) logEfError('coachWorkoutCompletions', null, 'timezone_read_failed', tErr.message);
+  const tzById = new Map<string, string>((prefRows ?? []).filter((p: any) => cwvValidTz(p.timezone)).map((p: any) => [p.client_id, p.timezone]));
   const byClient = new Map<string, any[]>();
   for (const r of rows ?? []) { if (!byClient.has(r.client_id)) byClient.set(r.client_id, []); byClient.get(r.client_id)!.push(r); }
   const nowMs = Date.now();
   const out: Record<string, unknown> = {};
   for (const c of clients) {
-    out[c.storage_key] = { displayName: c.display_name ?? null, ...cwvSummarize(byClient.get(c.id) ?? [], nowMs) };
+    out[c.storage_key] = { displayName: c.display_name ?? null, ...cwvSummarize(byClient.get(c.id) ?? [], nowMs, tzById.get(c.id) ?? null) };
   }
   return ok({ generatedAt: new Date(nowMs).toISOString(), windowDays: CWV_HISTORY_DAYS, clients: out });
 }
