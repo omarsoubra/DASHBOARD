@@ -262,7 +262,7 @@ def _tv2_bounds(src):
     return a, b
 
 
-def plan(src):
+def plan(src, template=False):
     """Return [(offset, text)] insertions, or None when already integrated."""
     if MARKER in src:
         return None
@@ -289,7 +289,7 @@ def plan(src):
                 'function dayOf(', 'function fmtDate(', 'function esc('):
         if dep not in tv2:
             raise PatchError(f'Training V2 block lacks {dep.strip("(")} — incompatible shell')
-    if 'async function cloudWrite(' not in src:
+    if not template and 'async function cloudWrite(' not in src:
         raise PatchError('shell has no cloudWrite() — not wired to the api')
     return sorted(out, key=lambda x: x[1])
 
@@ -313,8 +313,8 @@ def unpatch(patched, edits):
     return res
 
 
-def patch_and_prove(src):
-    edits = plan(src)
+def patch_and_prove(src, template=False):
+    edits = plan(src, template)
     if edits is None:
         return src, None
     out = apply(src, edits)
@@ -334,11 +334,12 @@ def main():
     ap.add_argument('--file', required=True)
     ap.add_argument('--check', action='store_true', help='prove only; write nothing')
     ap.add_argument('--out', help='write the patched shell here (default: in place)')
+    ap.add_argument('--template', action='store_true', help='master_template.html: cloudWrite() is injected later by the generator')
     a = ap.parse_args()
     raw = open(a.file, 'rb').read()
     src = raw.decode('utf-8')
     try:
-        out, edits = patch_and_prove(src)
+        out, edits = patch_and_prove(src, a.template)
     except PatchError as e:
         print(f'REFUSED: {e}', file=sys.stderr)
         sys.exit(2)

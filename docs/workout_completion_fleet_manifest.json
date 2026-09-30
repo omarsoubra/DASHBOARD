@@ -1,0 +1,1658 @@
+{
+  "subsystem": "LOCKED IN Workout Completion V1 \u2014 fleet integration",
+  "marker": "WORKOUT-COMPLETION-V1",
+  "block_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20",
+  "integrated": 39,
+  "applied": true,
+  "excluded": [
+    {
+      "key": "ali",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "amir",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "hamza",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "ilham",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "jad_elali",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "jamal",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "maddison",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "michael_mahmoud",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "mohammed_hardani",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "mohammed_taleb",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "nicholas",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    },
+    {
+      "key": "sarah",
+      "reason": "patch refused: shell has no cloudWrite() \u2014 not wired to the api"
+    }
+  ],
+  "shells": [
+    {
+      "key": "abdullah",
+      "path": "clients/abdullah/index.html",
+      "original_sha256": "0d8f9403d2dfd34ca773acb07f6679feca1ed01bce93a31806c4f56ba518b97b",
+      "patched_sha256": "feeb2ff60158b6ec3068d17cf83b065ac9708a2cb60ba02fb1523bf642d0918d",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 582822,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 598225,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 600492,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 616041,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "c627285971487f9fc2a19cf3e77e48efe2eae3ba9f839c973753989537f7d650",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": []
+    },
+    {
+      "key": "adam_ahmad",
+      "path": "clients/adam_ahmad/index.html",
+      "original_sha256": "4e398e470fae0cf581558ed2b0d3ab90989a2cb8e5a615d13631767b5aa990da",
+      "patched_sha256": "86f6de2244ce27d64e05f2fb27846646f998310c5e5e6a16db45a2b6b33200bd",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 552194,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 567597,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 569864,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 585413,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "010e190d3569356f6c752574ead50349be759422c0235192d69c53479c7efd61",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 4,
+      "inline_script_errors": []
+    },
+    {
+      "key": "ali_alfatlawi",
+      "path": "clients/ali_alfatlawi/index.html",
+      "original_sha256": "962b67bf5217e005194266fe73240b879a096b8c56dcc858c89f01bba4965225",
+      "patched_sha256": "20b5976d8eeeeb53c28ed357bddbee932f2cfbd929333b627d0efd006643df32",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 621592,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 636995,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 639262,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 654811,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "429c4795502be22797f825afbb0aea80c996f8ad7bc1491800a7389cfe41e946",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "ali_khan",
+      "path": "clients/ali_khan/index.html",
+      "original_sha256": "373010f733e53f0021e4ef37139761f7b184b003a1f1e2e7fe7ebc4462aba09b",
+      "patched_sha256": "a97f2612a58b095a6d968c246293dc92670abf79e3fe7a9539fa9ac55a3a66ea",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 597386,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 612789,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 615056,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 630605,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "b618d87d89fc4ef2759a736e507dd031a77d484f33f04df217b5d2fd6c3e6406",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "bishoy_shaker",
+      "path": "clients/bishoy_shaker/index.html",
+      "original_sha256": "38bf8d40647530774a6d7463f3f55fcffc0b13498c762f1f16598b3e454e83a2",
+      "patched_sha256": "ccde2f33b53c0ebe8ee589a8e1f5d10693c3563d911b9500b5b97d04bca34090",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 596143,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 611546,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 613813,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 629362,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "1d86b3a93f7eb21d0913496424af90f7555e5c1245a877e0b0a556d3292082b5",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "cruz_rehayem",
+      "path": "clients/cruz_rehayem/index.html",
+      "original_sha256": "8e7fb1ecb0feb37d314971fbf767e92d2ebf4f70a0018815524e0ded29894bb7",
+      "patched_sha256": "5fd0e03c029a1ae9d4ecd833f15a1aefb1bd5be5c89fb08bb74683e3de9f9919",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 593103,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 608506,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 610773,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 626322,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "5530a3382939bbb998d30d098004f680141fb3d9e4787ec747482eb0aa0353a1",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "dib_kerdy",
+      "path": "clients/dib_kerdy/index.html",
+      "original_sha256": "bc091943b65806aa5b3659b03ea7c29be0ed405655458583c16620456fa27cbc",
+      "patched_sha256": "7f67ca9de4e0ca136c169c22384653c30d6412df71e669ac0531d998446346f8",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 567639,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 583042,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 585309,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 600858,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "5124f2c81e53d70ec9096d9ef69d7783da50ae33e3dcb6952afde89003bf9239",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "faith_kainuku",
+      "path": "clients/faith_kainuku/index.html",
+      "original_sha256": "9ffdecd5739bc4e09a5dfb0d2a6c55b59e1a262c07ae2a25279f90085808eb57",
+      "patched_sha256": "5fdde82036fd978df881a8eba6befabbdc5a0407748a4b39ebefd3eddcabd32a",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 574743,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 590146,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 592413,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 607962,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "87c4e2a5088329bb57b8d37214e3b3aa41cd6cbb78549ef08277876c05fa93f7",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "hamzah_dargham",
+      "path": "clients/hamzah_dargham/index.html",
+      "original_sha256": "4fe18bb16d32a4378a2e6c8c4f4971fbbcf53a1feb2a113be3bb639053974326",
+      "patched_sha256": "3c84f9a7ca8afb66a8013bfd3e796197659c97a862a33f2ba40c46e9d246a558",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 595216,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 610619,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 612886,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 628435,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "3ce78b9737e836ee7b52d02bb1e30933dcc2594f701ff5e95042c7a8d5f6a698",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "irfaan_win",
+      "path": "clients/irfaan_win/index.html",
+      "original_sha256": "18c679328a897a99900cfa588660eae7e170cbf98e9c7d9e34a9db88e8309361",
+      "patched_sha256": "f133cf76290938e4570dce05572a86b5ac13052506f160b11c4bf32379fb9eb8",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 581789,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 597192,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 599459,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 615008,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "2e9907be44435427069292f5321c0c44118dc2da19e4e1d23de651bbede1b088",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "isaac_alameddine",
+      "path": "clients/isaac_alameddine/index.html",
+      "original_sha256": "490aa502ba2c6d5209b00a72c4c3d1f355e6a56c20641ee4537a1ffed18f0ac4",
+      "patched_sha256": "01290f1c8193e3062a0aede93fce7ac6657d0289d82ae007c88614d47061bd32",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 580076,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 595479,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 597746,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 613295,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "1d71658f6338fd2aafc275de88c4874535339bfc2ee6257b797a1d433e328e1e",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "ismail_rasheed",
+      "path": "clients/ismail_rasheed/index.html",
+      "original_sha256": "8889bbe66c76857b16c246847a88e38aa3b27f8fde2a8dbbdded687ec510a835",
+      "patched_sha256": "851b8ba3b9d474bc212a2e1b69cfbe3b13d2157066f87fe7b8530f2d1e402adc",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 574178,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 589581,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 591848,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 607397,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "4de900c0e1450177ed847382103e4e15d51b2f4a6b2a026b4d2d16c84edcf403",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "jarone_sepnio",
+      "path": "clients/jarone_sepnio/index.html",
+      "original_sha256": "74d3e90bab58abeda6525ada136502d7999463ee3b5a7cb2c2af1ce0ec55eb4d",
+      "patched_sha256": "aa9733cf514bbdcd26e32ce083b6daf8e44db9af8714ee0640b4e79f0a65c655",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 583559,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 598962,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 601229,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 616778,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "306dfe3ed402d9cbcad5e3596cb5f1a42fb0d32549e9a03a32d64eb656f472af",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "joey_saleh",
+      "path": "clients/joey_saleh/index.html",
+      "original_sha256": "70fb420f362636b366d6a07b78e2381b62a83b207182d31b86bb92f9e9b35f9a",
+      "patched_sha256": "2c98591b66b871a2e75f8e9650c960622a60e677b115b3368ddade471ba37d51",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 560284,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 575687,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 577954,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 593503,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "aa0cc5d3c140584da4847027708397794331a5e4778aa692b2cac0ea23e00c89",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "joshua_hadchiti",
+      "path": "clients/joshua_hadchiti/index.html",
+      "original_sha256": "b20b64718cec55634758c69ab19a205b9ef8eae4ae98055d3bc329256f418813",
+      "patched_sha256": "c2f8319643101bc7f16225d5daf48f948c2d93fd4189e0f1d34e8ed2809baeea",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 566219,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 581622,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 583889,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 599438,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "5fc128040de357ec2357bf68d8a8f3fc6dcb9f54867f03b288d154bc27db941b",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "karim",
+      "path": "clients/karim/index.html",
+      "original_sha256": "ae06c3c296c42827a794bd2401ede22e848c8a694d923f758e8ab76eed9c6ba2",
+      "patched_sha256": "d5d8cbca80dad0757e020b7640739078a117b5ceea293b78af54cbcc2a332a51",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 623019,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 638422,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 640689,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 656238,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "d7da8d98c9e68cae486f73187624cf9e2f60cac6c012b70e7c0b77b211d7d247",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "lana",
+      "path": "clients/lana/index.html",
+      "original_sha256": "be83fd9252c8625eee474b8f72ce01239bc1b3f1a41394247a87654ee012b5c4",
+      "patched_sha256": "d8d78f280acb764dfde0aea0a482650f2d670ed9afc4ac5870661983fc8be98f",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 641665,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 657068,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 659335,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 674884,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "f6b3a44860fbb641967aaed1e08f99dfe21a206a26251223361df74c76363484",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "malak_hanani",
+      "path": "clients/malak_hanani/index.html",
+      "original_sha256": "9107808667fcaaba1ee995868c9c63650b2fa5cadebf6778deb1424cfe081713",
+      "patched_sha256": "c6ec05e3b2f23c8f4717170d6ce5ddee4d690650ccc810899703afacbc254d52",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 593644,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 609047,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 611314,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 626863,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "a9fd2204d44d17519239a725d2df75786d0ba8bfa312cdc72ff0ab0711a49b35",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "mayank",
+      "path": "clients/mayank/index.html",
+      "original_sha256": "5e43b8135376bec2c7b77716adcfe898b96c4b5ecd41d246713798678a0d9359",
+      "patched_sha256": "e1e9e2a9fd5e792994828afb120af00bf840162b12d670a60f912f8995619a14",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 580825,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 596228,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 598495,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 614044,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "ed3c328d582cdf66140d7010c54b457741c09f19a03787064e033bcd04e73390",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "mohamad_abboud",
+      "path": "clients/mohamad_abboud/index.html",
+      "original_sha256": "55d3aebe8ed2b4031dfc2f841bf6fd988285f826413587854110738d1ec5ce20",
+      "patched_sha256": "e41e9f3c9d6e66d3df8f4c56661f0ba7a12a55f49793c31f7ef9fb7f17fcadbd",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 596770,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 612173,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 614440,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 629989,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "18f50ef08a990b56b7c501989072c938070ad78aabf1cd0f3901c1c90ba34ad3",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": []
+    },
+    {
+      "key": "mohamad_mehajer",
+      "path": "clients/mohamad_mehajer/index.html",
+      "original_sha256": "50b41f37c76c6fd96325e4eae87924600f9a39c58ac64b426c018271469a6be6",
+      "patched_sha256": "4309c80610f5be9f06fd02f68a5760d06e3add26fefb6e307ede4eb9f302f3f2",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 581961,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 597364,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 599631,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 615180,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "23b012efe820b379d056d508cf24b4f6d2ab272bb2e9ed96a0b3aab7c7b34d3a",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "mohamad_taha",
+      "path": "clients/mohamad_taha/index.html",
+      "original_sha256": "616404b39bbaffe2f734d957a641c2c5cbb33fc65df6a0683f6d1be0b6a61469",
+      "patched_sha256": "3eb3123deadc448a4def612a99ad153d8e0c1f82793681261d57032b44ea35e0",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 584387,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 599790,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 602057,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 617606,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "c8aeff5e654e0f5d006d43c5ae9077dec467fcd97a07c50d05288b4c444ea749",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 6,
+      "inline_script_errors": []
+    },
+    {
+      "key": "muhamad_amarni",
+      "path": "clients/muhamad_amarni/index.html",
+      "original_sha256": "7b82e6cd53f9c21e245f0786401a1c930ad6357da3c2f6c9bffdf0e9368222d1",
+      "patched_sha256": "182763fbf28bcfeb72ff49a6d06979feea5e7b217a937081b30cc5544ed74d67",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 562967,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 578370,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 580637,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 596186,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "75cfc34a32b1e804f4f176d13c7162679408fdfaaa220f13a43a4a60d3f6affe",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 8,
+      "inline_script_errors": []
+    },
+    {
+      "key": "muhammad_saad",
+      "path": "clients/muhammad_saad/index.html",
+      "original_sha256": "66abb7daded8aa465d436aeabd04ad80b055a27cad29d17492b2e8ed3b8ae078",
+      "patched_sha256": "1a44d696c8133261464c7edacbc9fe24c29fe34990b9eee5be587ced4823b426",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 574487,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 589890,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 592157,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 607706,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "acdd2b93874c54942e9a52efa5cc64bf1415b803118d27b3d29f54fc3a7ccfdd",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": []
+    },
+    {
+      "key": "nasri_assaad",
+      "path": "clients/nasri_assaad/index.html",
+      "original_sha256": "d734ce3cfeb317a40901fbf9381ba3d518f523993fad0116b28c548ac589f27e",
+      "patched_sha256": "a7c80d2af3e5fdd2495fd8db96ba4b977b1d78996a4a998c06771458e17bf7df",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 592662,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 608065,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 610332,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 625881,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "31884af3fab414a074603e7314a2852011f5ab026b7231fb66e74a640f067fc9",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "omar",
+      "path": "clients/omar/index.html",
+      "original_sha256": "130f0cb7ca5802ef05258312523e21855658a635fee19a0f808f5a2c443066fe",
+      "patched_sha256": "31884958027e72f472f732f39d2d5a70545485a8f9ab9b8485c5a7137416655a",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 620831,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 636234,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 638501,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 654050,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "a36e01b53214c8dd6f27f919686977a106e6218ea3449d7e2b477eea8dc81d71",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "omar_yagmour",
+      "path": "clients/omar_yagmour/index.html",
+      "original_sha256": "bedbff691d77d3146dd11664b1da85251bbd7ddf96d02a29fdb5b60fefb32e5c",
+      "patched_sha256": "5717c996c41207e90db9edf0a0c2267da411490fb5d5ba1a20596d5f20b0a439",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 593723,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 609126,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 611393,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 626942,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "547692df77d374c86017cc5546ee46fe5faa54c704e797eabfa007c796376d23",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "omer_al_amoodi",
+      "path": "clients/omer_al_amoodi/index.html",
+      "original_sha256": "0d62f7385e4ccf76c7be30ce2e814f915e478fc345c400e1312610a72274385f",
+      "patched_sha256": "f53d9eb75c03a67f01232356623d866aa1354441af22323eaf8b2e3c0790fe7e",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 569490,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 584893,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 587160,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 602709,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "46f7283a91aa1f24ffb02a13f250b46e9bb38dea442394bbc2b894a4be4603d3",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": []
+    },
+    {
+      "key": "salman_abdallah",
+      "path": "clients/salman_abdallah/index.html",
+      "original_sha256": "88444ff57aa0637e0c4704d81279441c560c49217afadc47c5cf6ec63baaf02c",
+      "patched_sha256": "e8d7b66f8619bb2b9e5e46c945ad4db6f33b8e8478a58ed893eaffc0291a4aa6",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 590995,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 606398,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 608665,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 624214,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "ee99bc13fbcf5a05f84cd4354a5434cc2e969e4cc76ee95d1c4e343c70942ea5",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "salman_ghanem",
+      "path": "clients/salman_ghanem/index.html",
+      "original_sha256": "aa22dc8b3b688f90dfcbb0ce96b5af6cebacbd7f004bd23509c4740deebeba01",
+      "patched_sha256": "5bb8addb466d80553744e3acaa1f13e850a240b060e37b1ca0fe7dc5db1b0fcf",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 589270,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 604673,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 606940,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 622489,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "cab9bf59434e506fa71aeb4a32fcd9958f584b6a8da92907c3611640525ec8c0",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 6,
+      "inline_script_errors": []
+    },
+    {
+      "key": "samir",
+      "path": "clients/samir/index.html",
+      "original_sha256": "2b9e8ae7116eddfcf1dad51477b5b4a1912a160d125da2da31480d9dfd5b66aa",
+      "patched_sha256": "4e3aa36b084277dce8bcc920bc30010c1e038b929dc86c8c3162d64361c5690a",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 596592,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 611995,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 614262,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 629811,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "eb6a5f86a22c67d5dc5f65413e8e26289db2a42d191ce3df206603fbf1404a17",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "shkar_abubaker",
+      "path": "clients/shkar_abubaker/index.html",
+      "original_sha256": "60c4599e1b2cb6d86a4621811626d0aac9bf5efafb6dc7a90d5a9ea4e075c4b1",
+      "patched_sha256": "5c6f7e086c7f2a0e162c301b51325fd144cd7511117dee399f1d4e202af0200c",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 595533,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 610936,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 613203,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 628752,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "c93de1488b3fbcc7a383ed00ef2cb45841126c6f06e69a5444978e5a77028dcc",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "tarkyn",
+      "path": "clients/tarkyn/index.html",
+      "original_sha256": "2c2a6f958a837b92b9aafc6f3d4b232f76bffd2753a265a7da9c8619b70674de",
+      "patched_sha256": "6ac8473fb004cf3f3314e305758f4fd1181333cf734c0650d0a44ead3b73bd5b",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 623957,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 639360,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 641627,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 657176,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "ca2dc069a9736822de8e1ad2f54aea9d94de53d1bb106d7d8872516462c56ef4",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "tufail_shinwar",
+      "path": "clients/tufail_shinwar/index.html",
+      "original_sha256": "b6160e3fcd9c6f299511f2663497b2e690f0afa7fe04aa7a631b6a2f13e47446",
+      "patched_sha256": "42b4aca3a676001a9e560e7c4c228f93e6e59c15d259d48b19bd98a59ef07d60",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 597463,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 612866,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 615133,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 630682,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "75e3f2840df4aa98a037eda118c6d989909260d7d99fc0a1a509cf3ff6516c89",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "yousef_hamze",
+      "path": "clients/yousef_hamze/index.html",
+      "original_sha256": "cc5ae0d3518f076feb023816a38c82497ebf802279fafdce71aab82311a5361c",
+      "patched_sha256": "336a924e18442e66ba34450ea9d0b2bdbda2dc4db4abda8b79168e4535f636fb",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 553649,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 569052,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 571319,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 586868,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "e632a070eb71dbd540ab7b19cb64bb0b33eee50b7db1bd55897be8dad8e177a8",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 0,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "yusuf",
+      "path": "clients/yusuf/index.html",
+      "original_sha256": "e582d549b4fa568b490f32823846c9d938fb1de24cc10d7722cec95064843a6e",
+      "patched_sha256": "babe11f7bcbdd27aa7c3ea1c882156f92e0b9a801d07c460a5ad28252ffd06ca",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 623084,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 638487,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 640754,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 656303,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "e93cef687082577d76f5b2f2ddda7d207c37b44d5d9f87e7272a44b5e23865bf",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "zac",
+      "path": "clients/zac/index.html",
+      "original_sha256": "37a9560bd71dab31bef284520d6618b5ba79146d6fbd5d95bf46269f0270b939",
+      "patched_sha256": "50c82e050b311d740f0b210e7759e0adf07bcf78e6c85c7a1b4e2b2ed42a6900",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 613112,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 628515,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 630782,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 646331,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "505a1f5d490f5549af790720f0018dff9d9966d1252d4f926b44fd99e3a85691",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 8,
+      "inline_script_errors": []
+    },
+    {
+      "key": "zain_hussein",
+      "path": "clients/zain_hussein/index.html",
+      "original_sha256": "ff3d9e261dad7c13ee2b6abd8c546d79ba2c782761c28e0a76005de0f25eae8e",
+      "patched_sha256": "abdbac18523d95500c64a5380ee37909e34ea3c3096489ba136d27eae718fabd",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 566827,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 582230,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 584497,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 600046,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "44bbd6ffeeece848f48357eb5d87369f9474e87837993d399c1a682d60531ea4",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    },
+    {
+      "key": "zayne_ali",
+      "path": "clients/zayne_ali/index.html",
+      "original_sha256": "5c68bdf76d3d0fed3296ed8d52fb7b9ff68439cfb8c1f2ca2514cd0e4c843190",
+      "patched_sha256": "98ad2590ef3e1d592d0804b583c2762849103deb710d57f2063a33c1bcda681f",
+      "bytes_delta": 12636,
+      "edits": [
+        {
+          "edit": "WORKOUT",
+          "offset": 582022,
+          "inserted_bytes": 44,
+          "inserted_sha256": "dc1daaf396bb31189aac48d2fec574a90c07e8a60e73a88bb68f757996a96181"
+        },
+        {
+          "edit": "DONE",
+          "offset": 597425,
+          "inserted_bytes": 45,
+          "inserted_sha256": "dbbc9336d40005b1ab52dbdb806813647f34b73da97f876f72f59814b26fe3c4"
+        },
+        {
+          "edit": "BLOCK",
+          "offset": 599692,
+          "inserted_bytes": 12480,
+          "inserted_sha256": "a4d3b891d3eed5e5ad0039fddfd3040578d664c7c0af8c89f1782be9fc2e6f20"
+        },
+        {
+          "edit": "BOOT",
+          "offset": 615241,
+          "inserted_bytes": 67,
+          "inserted_sha256": "908655ae5b73afd8a80e25b7646f3602efe6f9f3bc7d19e4fef3ddc0955e795b"
+        }
+      ],
+      "reversal_proof": true,
+      "programme_fingerprint": "d9403a58007cc0b7beab2942a5ee9d4e37746eb4460a85faa7eb8da149f3e368",
+      "programme_equal": true,
+      "auth_lines_equal": true,
+      "lint_equal": true,
+      "lint_exit": 1,
+      "inline_scripts": 7,
+      "inline_script_errors": []
+    }
+  ]
+}

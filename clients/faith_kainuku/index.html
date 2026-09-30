@@ -9277,7 +9277,7 @@ function sw3Use(i) {
         '<div class="tv2-bar"><i style="width:' + (pr.total ? Math.round(pr.done / pr.total * 100) : 0) + '%"></i></div>' +
       '</div>' + fixNote + note +
       doneRows + act +
-      (upRows ? '<span class="tv2-sec">Upcoming exercises</span>' + upRows : '') + abandon;
+      (upRows ? '<span class="tv2-sec">Upcoming exercises</span>' + upRows : '') + wcFinishBar() + /* WORKOUT-COMPLETION-V1 */ abandon;
   }
 
   // =============================================== SET LOGGING ACTIONS
@@ -9552,7 +9552,7 @@ function sw3Use(i) {
       '<div class="tv2-donewrap"><div class="tv2-check">' + (complete ? '✓' : '–') + '</div>' +
         '<h1 class="tv2-doneh">' + (complete ? 'Workout complete' : 'Workout not finished') + '</h1>' +
         '<div class="tv2-sub" style="margin-top:.4rem;">' + esc(shortName(d.label)) + ' · ' + (s.restored ? 'restored' : 'session ' + s.sid) + (when ? ' · ' + esc(fmtDate(when)) : '') + '</div></div>' +
-      '<div class="tv2-tiles">' + tiles + '</div>' +
+      wcDoneBlock(s) + /* WORKOUT-COMPLETION-V1 */ '<div class="tv2-tiles">' + tiles + '</div>' +
       '<span class="tv2-sec">This session</span>' +
       st.per.map(function (x, xi) {
         /* SET-CORRECTION-V1: a logged number can be corrected from the summary of
@@ -9578,6 +9578,204 @@ function sw3Use(i) {
         esc(shortName(days[nextIdx].label)) + '<span>›</span></button>' : '') +
       hist;
   }
+
+  // ============================================= WORKOUT-COMPLETION-V1
+  /* The client's EXPLICIT statement "I completed this workout" (Finish Workout).
+     It is NEVER derived from exercise logs: the automatic TV2 'complete' status
+     above stays as it was and creates nothing on the server. Only tv2Finish()
+     does, after a deliberate tap (plus a confirmation when exercises are
+     unlogged). One completion ref is minted per occurrence and saved in the
+     ledger BEFORE any network write, so double taps, refreshes, retries,
+     offline/online and app restarts all converge on one server row
+     (api: workoutComplete is idempotent on (client, ref)).
+     s.wc = { ref, state: 'pending'|'synced'|'error', finishedAt, localDate, tz,
+              snap: {...}, recordedAt, err, revoked, revokedAt }
+     s.wcPast = [ { ref, revokedAt } ]   refs that were undone (audit only). */
+  var WC_UNDO_MS = 24 * 3600e3;
+  var WC_TRANSIENT = /^(network|timeout|http_5\d\d|http_429|db_error|write_failed|internal_error|bad_response|refused)$/;
+  var wcInFlight = {};
+  function wcRef() {
+    try {
+      if (window.crypto && crypto.randomUUID) return 'cmp_' + crypto.randomUUID();
+      if (window.crypto && crypto.getRandomValues) {
+        var a = new Uint8Array(16); crypto.getRandomValues(a);
+        return 'cmp_' + [].map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+      }
+    } catch (e) {}
+    return 'cmp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
+  }
+  function wcTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  function wcKind(d) {
+    var b = String((d && d.badge) || ''), l = String((d && d.label) || '');
+    if (/optional/i.test(b) || /optional/i.test(l)) return 'optional';
+    if (/^\s*mandatory\s*$/i.test(b)) return 'mandatory';
+    return 'unspecified';
+  }
+  function wcHex(buf) { return [].map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function wcFingerprint(s) {
+    try {
+      if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve(null);
+      var names = (s.exs || []).map(function (x) { return String(x.subFor || x.name); }).join('\n');
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(names)).then(wcHex, function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  function wcFindRef(ref) {
+    var L = ledgerLoad(), hit = null;
+    Object.keys(L).forEach(function (k) {
+      var m = k.match(/^p([^.]+)\.d(\d+)$/); if (!m) return;
+      (L[k] || []).forEach(function (s) { if (s && s.wc && s.wc.ref === ref) hit = { ph: m[1], di: Number(m[2]), s: s }; });
+    });
+    return hit;
+  }
+  function wcAll() {
+    var L = ledgerLoad(), out = [];
+    Object.keys(L).forEach(function (k) {
+      var m = k.match(/^p([^.]+)\.d(\d+)$/); if (!m) return;
+      (L[k] || []).forEach(function (s) { if (s && s.wc) out.push({ ph: m[1], di: Number(m[2]), s: s }); });
+    });
+    return out;
+  }
+  /* The client's latest recorded (not undone) completion — the only one the
+     server lets them undo, and only within 24 h of it being recorded. */
+  function wcCanUndo(s) {
+    if (!s || !s.wc || s.wc.state !== 'synced' || s.wc.revoked) return false;
+    if (!(Date.now() - Date.parse(s.wc.recordedAt || s.wc.finishedAt || '') < WC_UNDO_MS)) return false;
+    var mine = Date.parse(s.wc.finishedAt || '') || 0;
+    return !wcAll().some(function (x) { return x.s.wc.ref !== s.wc.ref && !x.s.wc.revoked && x.s.wc.state !== 'error' && (Date.parse(x.s.wc.finishedAt || '') || 0) > mine; });
+  }
+  function wcRepaint() { try { if (V.view === 'done' || V.view === 'workout') show(V.view); } catch (e) {} }
+  function wcSend(ph, di, sid) {
+    var s = findSession(ph, di, sid); if (!s || !s.wc || s.wc.revoked || s.wc.state === 'synced') return Promise.resolve(null);
+    if (typeof cloudWrite !== 'function') return Promise.resolve(null);
+    var ref = s.wc.ref; if (wcInFlight[ref]) return wcInFlight[ref];
+    var p = cloudWrite('workoutComplete', { completion: {
+        ref: ref, phase: String(ph), dayIdx: Number(di), dayLabel: s.wc.snap.dayLabel, sessionKind: s.wc.snap.sessionKind,
+        rxFingerprint: s.wc.snap.rxFingerprint, exercisesPrescribed: s.wc.snap.exercisesPrescribed,
+        exercisesLogged: s.wc.snap.exercisesLogged, setsLogged: s.wc.snap.setsLogged,
+        completedAt: s.wc.finishedAt, localDate: s.wc.localDate, timezone: s.wc.tz || null } })
+      .then(function (r) {
+        var cur = findSession(ph, di, sid); if (!cur || !cur.wc || cur.wc.ref !== ref) return r;
+        if (r && r.ok && r.data && r.data.completion) {
+          var c = r.data.completion;
+          cur.wc.state = 'synced'; cur.wc.err = null; cur.wc.recordedAt = c.recordedAt || null;
+          if (c.status === 'revoked') { cur.wc.revoked = true; cur.wc.revokedAt = c.revokedAt || null; }
+        } else {
+          var e = String((r && r.error) || 'network');
+          cur.wc.err = e; cur.wc.state = WC_TRANSIENT.test(e) ? 'pending' : 'error';
+        }
+        putSession(ph, di, cur); wcRepaint(); return r;
+      }, function () { return null; })
+      .then(function (r) { delete wcInFlight[ref]; return r; }, function () { delete wcInFlight[ref]; return null; });
+    wcInFlight[ref] = p;
+    return p;
+  }
+  function wcFlushPending() {
+    wcAll().forEach(function (x) { if (x.s.wc.state === 'pending' && !x.s.wc.revoked) wcSend(x.ph, x.di, x.s.sid); });
+  }
+  /* A fresh device has no ledger entries for completions made elsewhere; attach
+     server completions to the matching (phase, day, local date) session only.
+     Nothing is created and nothing is inferred when there is no match. */
+  function wcRestore() {
+    if (typeof cloudWrite !== 'function') return;
+    cloudWrite('workoutCompletionsGet', {}).then(function (r) {
+      if (!(r && r.ok && r.data && r.data.completions)) return;
+      var changed = false;
+      r.data.completions.forEach(function (c) {
+        if (wcFindRef(c.ref)) return;
+        var ss = sessionsOf(String(c.phase), Number(c.dayIdx));
+        for (var i = ss.length - 1; i >= 0; i--) {
+          var s = ss[i];
+          if (s.wc || dayOf(s.completedAt || s.startedAt) !== c.localDate) continue;
+          s.wc = { ref: c.ref, state: 'synced', finishedAt: c.completedAt, localDate: c.localDate, tz: c.timezone || '',
+                   snap: { dayLabel: c.dayLabel, sessionKind: c.sessionKind, rxFingerprint: c.rxFingerprint,
+                           exercisesPrescribed: c.exercisesPrescribed, exercisesLogged: c.exercisesLogged, setsLogged: c.setsLogged },
+                   recordedAt: c.recordedAt, err: null, revoked: c.status === 'revoked', revokedAt: c.revokedAt || null, restored: true };
+          putSession(String(c.phase), Number(c.dayIdx), s); changed = true; break;
+        }
+      });
+      if (changed) wcRepaint();
+    }, function () {});
+  }
+  function wcBoot() {
+    wcFlushPending(); wcRestore();
+    if (!window.__wcListen) {
+      window.__wcListen = true;
+      window.addEventListener('online', wcFlushPending);
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') wcFlushPending(); });
+    }
+  }
+  /* The session Finish applies to: the open occurrence, the fresh sheet (none
+     yet), or the LATEST native occurrence of this day when it finished itself
+     (all sets logged) or its completion was undone. Never history, never a
+     session rebuilt from the cloud. */
+  function wcTarget(s0) {
+    var s = arguments.length ? s0 : curSession();
+    if (!s) return { fresh: true, s: null };
+    if (s.status === 'open') return { fresh: false, s: s };
+    var last = lastSession(V.phase, V.day);
+    if (last && last.sid === s.sid && !s.restored && s.status === 'complete' && (!s.wc || s.wc.revoked)) return { fresh: false, s: s };
+    return null;
+  }
+  function wcFinishBar() {
+    if (V.fix || !wcTarget()) return '';
+    return '<button class="tv2-cta" style="margin-top:1.4rem;" onclick="tv2Finish()">Finish workout</button>';
+  }
+  function wcDoneBlock(s) {
+    var w = s && s.wc, h = '';
+    if (w && !w.revoked && w.state === 'synced') {
+      h = '<div class="tv2-pres" style="margin:.9rem 0 0;color:inherit;"><b>✓ Workout completed</b> · ' + esc(fmtDate(w.finishedAt)) + '</div>' +
+          (wcCanUndo(s) ? '<button class="tv2-link" onclick="tv2FinishUndo()">Undo completion<span>›</span></button>' : '');
+    } else if (w && !w.revoked && w.state === 'pending') {
+      h = '<div class="tv2-unsync"><span aria-hidden="true">✓</span><span><b>Finished · saved on this phone.</b> It will be sent to your coach when you are online.</span></div>' +
+          '<button class="tv2-link" onclick="tv2FinishSync()">Send now<span>›</span></button>';
+    } else if (w && !w.revoked && w.state === 'error') {
+      h = '<div class="tv2-unsync"><span aria-hidden="true">!</span><span><b>This completion could not be recorded</b> (' + esc(w.err || 'error') + '). Tell your coach if it keeps happening.</span></div>';
+    } else if (w && w.revoked) {
+      h = '<div class="tv2-pres" style="margin:.9rem 0 0;">Completion undone' + (w.revokedAt ? ' · ' + esc(fmtDate(w.revokedAt)) : '') + '</div>';
+    }
+    return h + (s && wcTarget(s) && !V.fix ? '<button class="tv2-cta" style="margin-top:1.4rem;" onclick="tv2Finish()">Finish workout</button>' : '');
+  }
+  window.tv2Finish = function () {
+    var t = wcTarget(); if (!t) return;
+    var exs = t.s ? t.s.exs : dayExs(), pr = t.s ? progressIn(t.s) : { done: 0, total: exs.length };
+    if (pr.done === 0 && !(t.s && Object.keys(t.s.entries || {}).length)) {
+      if (!window.confirm('No exercises have been logged. Mark this workout as completed?')) return;
+    } else if (pr.done < pr.total) {
+      if (!window.confirm('Finish workout with ' + pr.done + ' of ' + pr.total + ' exercises logged?')) return;
+    }
+    flushAll();
+    var s = t.s || createSession(V.phase, V.day); if (!s) return;
+    V.sid = s.sid; V.fresh = false;
+    if (s.wc && !s.wc.revoked) { wcSend(V.phase, V.day, s.sid); show('done'); return; }   /* already finished: converge, never re-mint */
+    if (s.wc && s.wc.revoked) { (s.wcPast = s.wcPast || []).push({ ref: s.wc.ref, revokedAt: s.wc.revokedAt || null }); }
+    var d = tv2Day(V.phase, V.day) || {}, st = sessionStats(s), p2 = progressIn(s), now = nowIso();
+    if (s.status === 'open') { s.status = 'complete'; s.completedAt = now; }
+    s.wc = { ref: wcRef(), state: 'pending', finishedAt: now, localDate: dayOf(now), tz: wcTz(),
+             snap: { dayLabel: String(d.label || ('Day ' + (Number(V.day) + 1))).slice(0, 120), sessionKind: wcKind(d), rxFingerprint: null,
+                     exercisesPrescribed: p2.total, exercisesLogged: p2.done, setsLogged: st.sets },
+             recordedAt: null, err: null, revoked: false, revokedAt: null };
+    putSession(V.phase, V.day, s);                         /* persisted BEFORE the network write */
+    show('done');
+    var ph = V.phase, di = V.day, sid = s.sid;
+    wcFingerprint(s).then(function (fp) {
+      var cur = findSession(ph, di, sid);
+      if (cur && cur.wc && cur.wc.state === 'pending' && cur.wc.snap.rxFingerprint == null && fp) { cur.wc.snap.rxFingerprint = fp; putSession(ph, di, cur); }
+      wcSend(ph, di, sid);
+    });
+  };
+  window.tv2FinishSync = function () { var s = curSession(); if (s && s.wc) { if (s.wc.state === 'error') s.wc.state = 'pending'; putSession(V.phase, V.day, s); wcSend(V.phase, V.day, s.sid); } };
+  window.tv2FinishUndo = function () {
+    var s = curSession(); if (!wcCanUndo(s)) return;
+    if (!window.confirm('Undo this workout completion? Your logged sets stay as they are.')) return;
+    var ph = V.phase, di = V.day, sid = s.sid, ref = s.wc.ref;
+    cloudWrite('workoutCompleteUndo', { ref: ref }).then(function (r) {
+      var cur = findSession(ph, di, sid); if (!cur || !cur.wc || cur.wc.ref !== ref) return;
+      if (r && r.ok && r.data && r.data.completion && r.data.completion.status === 'revoked') {
+        cur.wc.revoked = true; cur.wc.revokedAt = r.data.completion.revokedAt || nowIso(); putSession(ph, di, cur); wcRepaint();
+      } else { window.alert('Could not undo right now (' + String((r && r.error) || 'network') + ').'); }
+    });
+  };
+  // =========================================== END WORKOUT-COMPLETION-V1
 
   // ============================================================== GUIDE
   var MARKERS = [
@@ -9873,6 +10071,7 @@ function sw3Use(i) {
   function boot() {
     if (typeof phases === 'undefined') return;
     try { ledgerSync(); } catch (e) {}
+    try { wcBoot(); } catch (eWc) {}   /* WORKOUT-COMPLETION-V1 */
     var rp = null; try { rp = resolvePhase(); } catch (e) {}
     V.phase = String((rp && phases[rp]) ? rp : ((typeof currentPhase !== 'undefined' && phases[currentPhase])
       ? currentPhase : Object.keys(phases)[0]));

@@ -193,10 +193,10 @@ const srv = http.createServer((req, res) => {
     await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: tokScript.identifier }, s);
     await ev(`(localStorage.setItem('${KEY}_access_token', 'not-the-token'), true)`);
     await send('Page.addScriptToEvaluateOnNewDocument', { source: `/* token left as set */` }, s);
-    await load(); await ev(`(tv2Open(4), true)`); await sleep(300);
+    await load(); await ev(`(tv2Open(0), true)`); await sleep(300);          // day 1 again: a NEW occurrence (works for 3-day programmes too)
     const beforeT = canaryRows().length;
     await ev(`(tv2Finish(), true)`); await sleep(1500);
-    const wt = await wcOf(4);
+    const wt = await wcOf(0);
     check('wrong token → error state, no row', wt && wt.state === 'error' && wt.err === 'bad_token' && canaryRows().length === beforeT, wt && wt.err);
     check('error shown to the client', /could not be recorded/i.test(await doneText()));
 
