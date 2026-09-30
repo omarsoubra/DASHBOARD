@@ -571,6 +571,7 @@ Deno.serve(async (req) => {
       case 'authCoach':          return authCoach(body);
       case 'authClient':         return authClient(body);
       case 'dashboard':          return dashboard(body);
+      case 'coachWorkoutCompletions': return coachWorkoutCompletions(body);
       case 'rosterGet':          return rosterGet(body);
       case 'rosterPut':          return rosterPut(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
@@ -637,6 +638,106 @@ async function authClient(body: any) {
   const { data } = await admin.from('client_sessions').select('access_status').eq('storage_key', body.storageKey).single();
   return ok({ storageKey: body.storageKey, accessStatus: data?.access_status ?? 'active' });
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// COACH-WORKOUT-VIEW-V1 — read-only coach view of workout_completions.
+//
+//   coachWorkoutCompletions  { coachToken, storageKey?, includeInternal? }
+//
+// Coach token only (same gate as `dashboard`). SELECTs workout_completions and
+// clients — never writes, never touches exercise logs, programmes or push.
+// A completion means ONLY "the client pressed Finish Workout and the server
+// accepted it". Absence of completions is reported as absence (zero counts,
+// latest=null) — never as missed, behind, non-compliant or inactive. No
+// adherence %, no mandatory-sessions-remaining, no programme-week or weekday
+// assumptions. Weeks are the client's local CALENDAR weeks (Monday–Sunday),
+// grouped on each completion's own local_date.
+// ══════════════════════════════════════════════════════════════════════════
+const CWV_HISTORY_DAYS = 120;
+const CWV_HISTORY_MAX = 60;
+const CWV_DEFAULT_TZ = 'Australia/Sydney';
+const CWV_COLS = 'client_id, completion_ref, phase_key, day_index, day_label, session_kind, exercises_prescribed, exercises_logged, sets_logged, completed_at, recorded_at, local_date, timezone, status, revoked_at, revoked_by';
+
+function cwvLocalDate(ms: number, tz: string): string {
+  let zone = tz;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: zone }); } catch { zone = CWV_DEFAULT_TZ; }
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function cwvAddDays(date: string, n: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+/** Monday of the calendar week containing `date` (YYYY-MM-DD). */
+function cwvWeekStart(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();     // 0 = Sunday
+  return cwvAddDays(date, -((dow + 6) % 7));
+}
+/** 'none' | 'partial' | 'all' | 'unknown' — from the counts recorded at the tap. */
+function cwvLogged(r: any): string {
+  const p = r.exercises_prescribed, l = r.exercises_logged;
+  if (typeof l !== 'number' || typeof p !== 'number' || p <= 0) return 'unknown';
+  if (l <= 0) return 'none';
+  return l >= p ? 'all' : 'partial';
+}
+function cwvEvent(r: any) {
+  return {
+    ref: r.completion_ref, status: r.status, completedAt: r.completed_at, recordedAt: r.recorded_at,
+    localDate: r.local_date, timezone: r.timezone ?? null, phase: r.phase_key, dayIdx: r.day_index,
+    dayLabel: r.day_label, sessionKind: r.session_kind,
+    exercisesPrescribed: r.exercises_prescribed ?? null, exercisesLogged: r.exercises_logged ?? null,
+    setsLogged: r.sets_logged ?? null, logged: cwvLogged(r),
+    revokedAt: r.revoked_at ?? null, revokedBy: r.revoked_by ?? null,
+  };
+}
+/**
+ * Pure. rows = workout_completions rows of ONE client. The "current" week is the
+ * calendar week containing today in the client's timezone (the timezone of
+ * their most recent completion; Australia/Sydney when none is recorded).
+ * Counts include only ACTIVE (status 'completed') events; revoked are counted
+ * separately and stay visible in the history, marked.
+ */
+function cwvSummarize(rows: any[], nowMs: number) {
+  const sorted = rows.slice().sort((a, b) => Date.parse(b.completed_at) - Date.parse(a.completed_at));
+  const tz = (sorted.find((r) => r.timezone)?.timezone) || CWV_DEFAULT_TZ;
+  const today = cwvLocalDate(nowMs, tz);
+  const curStart = cwvWeekStart(today), prevStart = cwvAddDays(curStart, -7);
+  const curEnd = cwvAddDays(curStart, 6), prevEnd = cwvAddDays(prevStart, 6);
+  const active = sorted.filter((r) => r.status === 'completed');
+  const inRange = (r: any, a: string, b: string) => String(r.local_date) >= a && String(r.local_date) <= b;
+  return {
+    timezone: tz,
+    latest: active.length ? cwvEvent(active[0]) : null,
+    thisWeek: { from: curStart, to: curEnd, completed: active.filter((r) => inRange(r, curStart, curEnd)).length },
+    previousWeek: { from: prevStart, to: prevEnd, completed: active.filter((r) => inRange(r, prevStart, prevEnd)).length },
+    totals: { completed: active.length, revoked: sorted.length - active.length, windowDays: CWV_HISTORY_DAYS },
+    history: sorted.slice(0, CWV_HISTORY_MAX).map(cwvEvent),
+  };
+}
+
+async function coachWorkoutCompletions(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const showInternal = body?.includeInternal === true;
+  const only = body?.storageKey == null ? null : String(body.storageKey).toLowerCase();
+  const { data: clientRows, error: cErr } = await admin.from('clients').select('id, storage_key, display_name, is_internal');
+  if (cErr) { logEfError('coachWorkoutCompletions', null, 'clients_read_failed', cErr.message); return err('db_error'); }
+  const clients = (clientRows ?? []).filter((c: any) => (showInternal || c.is_internal !== true) && (!only || c.storage_key === only));
+  const since = new Date(Date.now() - CWV_HISTORY_DAYS * 86400_000).toISOString();
+  const { data: rows, error: wErr } = await admin.from('workout_completions').select(CWV_COLS)
+    .gte('completed_at', since).order('completed_at', { ascending: false }).limit(5000);
+  if (wErr) { logEfError('coachWorkoutCompletions', null, 'completions_read_failed', wErr.message); return err('db_error'); }
+  const byClient = new Map<string, any[]>();
+  for (const r of rows ?? []) { if (!byClient.has(r.client_id)) byClient.set(r.client_id, []); byClient.get(r.client_id)!.push(r); }
+  const nowMs = Date.now();
+  const out: Record<string, unknown> = {};
+  for (const c of clients) {
+    out[c.storage_key] = { displayName: c.display_name ?? null, ...cwvSummarize(byClient.get(c.id) ?? [], nowMs) };
+  }
+  return ok({ generatedAt: new Date(nowMs).toISOString(), windowDays: CWV_HISTORY_DAYS, clients: out });
+}
+// ═══════════════════════════════════════ END COACH-WORKOUT-VIEW-V1
 
 async function dashboard(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');

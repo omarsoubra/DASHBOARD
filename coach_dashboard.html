@@ -7813,6 +7813,94 @@ function _cd3Empty(label) {
   return '<div class="cd3-empty">' + _esc(label) + '</div>';
 }
 
+// ─── COACH-WORKOUT-VIEW-V1 ──────────────────────────────────────────────────
+// Read-only view of explicit workout completions (clients pressing Finish
+// Workout), from the coach-only api op coachWorkoutCompletions. One cached
+// request serves every client (refreshed after 60 s). Wording is deliberate:
+// a completion means only "pressed Finish Workout and the server accepted it";
+// no completion is shown as "none recorded", never as missed / behind /
+// non-compliant / inactive. No adherence %, no sessions-remaining, no weekday
+// or programme-week assumptions.
+const _cwv = { at: 0, data: null, err: null, pending: null };
+function _cwvLoad(force) {
+  if (!force && _cwv.data && Date.now() - _cwv.at < 60000) return Promise.resolve(_cwv.data);
+  if (_cwv.pending) return _cwv.pending;
+  _cwv.pending = coachFetch('coachWorkoutCompletions')
+    .then(r => {
+      if (r && r.ok && r.clients) { _cwv.data = r.clients; _cwv.err = null; _cwv.at = Date.now(); }
+      else { _cwv.err = (r && r.error) || 'unavailable'; }
+      return _cwv.data;
+    })
+    .catch(e => { _cwv.err = String((e && e.message) || e); return _cwv.data; })
+    .finally(() => { _cwv.pending = null; });
+  return _cwv.pending;
+}
+function _cwvWhen(iso, tz) {
+  try {
+    return new Date(iso).toLocaleString('en-AU', { timeZone: tz || undefined, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  } catch (e) { return String(iso || '').slice(0, 16).replace('T', ' '); }
+}
+function _cwvDay(d) {
+  try { const [y, m, dd] = String(d).split('-').map(Number); return new Date(Date.UTC(y, m - 1, dd)).toLocaleDateString('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }); }
+  catch (e) { return String(d); }
+}
+function _cwvLogged(e) {
+  if (e.logged === 'all') return 'all ' + e.exercisesPrescribed + ' exercises logged';
+  if (e.logged === 'partial') return e.exercisesLogged + ' of ' + e.exercisesPrescribed + ' exercises logged';
+  if (e.logged === 'none') return 'no exercises logged';
+  return 'logging not recorded';
+}
+function _cwvKind(k) { return k === 'mandatory' ? 'mandatory' : k === 'optional' ? 'optional' : 'unspecified'; }
+function _cwvRender(key) {
+  if (_cwv.err && !_cwv.data) return _cd3Empty('Workout completions are unavailable right now.');
+  const s = _cwv.data && _cwv.data[key];
+  if (!s) return _cwv.data ? _cd3Empty('No recorded completions yet.') : '<div class="cd3-empty">Loading…</div>';
+  const note = '<div class="cd3-empty" style="text-align:left;margin:0 0 .6rem">Recorded when the client presses <b>Finish Workout</b>. No completion recorded does not mean a session was missed.</div>';
+  if (!s.history.length) return note + _cd3Empty('No recorded completions yet.');
+  const L = s.latest;
+  const latest = L
+    ? `<div><b>Latest:</b> ${_esc(_cwvWhen(L.completedAt, L.timezone || s.timezone))} · Phase ${_esc(L.phase)} · ${_esc(L.dayLabel)} · ${_esc(_cwvKind(L.sessionKind))} · ${_esc(_cwvLogged(L))}</div>`
+    : '<div><b>Latest:</b> none active (only undone completions in the last ' + _esc(s.totals.windowDays) + ' days)</div>';
+  const weeks = `<div style="margin-top:.35rem"><b>This week</b> (${_esc(_cwvDay(s.thisWeek.from))} – ${_esc(_cwvDay(s.thisWeek.to))}): ${_esc(s.thisWeek.completed)}` +
+    ` · <b>Previous week</b> (${_esc(_cwvDay(s.previousWeek.from))} – ${_esc(_cwvDay(s.previousWeek.to))}): ${_esc(s.previousWeek.completed)}` +
+    `<span style="opacity:.6"> · calendar weeks, ${_esc(s.timezone)}</span></div>`;
+  const revoked = s.totals.revoked ? `<div style="margin-top:.35rem;opacity:.75">${_esc(s.totals.revoked)} undone by the client (kept in history, not counted).</div>` : '';
+  const rows = s.history.map(e => `
+        <tr${e.status === 'revoked' ? ' style="opacity:.55"' : ''}>
+          <td>${_esc(_cwvWhen(e.completedAt, e.timezone || s.timezone))}</td>
+          <td>P${_esc(e.phase)}</td>
+          <td>${_esc(e.dayLabel)}</td>
+          <td>${_esc(_cwvKind(e.sessionKind))}</td>
+          <td>${e.logged === 'unknown' ? '—' : _esc(e.exercisesLogged + '/' + e.exercisesPrescribed)}</td>
+          <td>${e.status === 'revoked' ? '↺ Undone by ' + _esc(e.revokedBy || 'client') + (e.revokedAt ? ' · ' + _esc(_cwvWhen(e.revokedAt, e.timezone || s.timezone)) : '') : '✓ Completed'}</td>
+        </tr>`).join('');
+  return note + latest + weeks + revoked + `
+      <details class="cd3-collapsible" style="margin-top:.6rem">
+        <summary>Completion history (${_esc(s.history.length)}, last ${_esc(s.totals.windowDays)} days)</summary>
+        <div style="margin-top:.75rem">
+          <table class="log-table">
+            <tr><th>When</th><th>Phase</th><th>Day</th><th>Session</th><th>Exercises logged</th><th>Status</th></tr>${rows}
+          </table>
+        </div>
+      </details>`;
+}
+function _cwvFill(key) {
+  const el = document.getElementById('cwv-card');
+  if (!el || el.getAttribute('data-key') !== key) return;          // panel closed or another client open
+  el.innerHTML = _cwvRender(key);
+}
+function _cwvCard(c) {
+  const key = c && c.storageKey;
+  if (!key) return '';
+  setTimeout(() => { _cwvFill(key); _cwvLoad(false).then(() => _cwvFill(key)); }, 0);
+  return `
+      <div class="cd3-card">
+        <div class="cd3-card-h">Workout completions</div>
+        <div id="cwv-card" data-key="${_esc(key)}">${_cwvRender(key)}</div>
+      </div>`;
+}
+// ─── END COACH-WORKOUT-VIEW-V1 ──────────────────────────────────────────────
+
 // ── Trend line (header meta row) ──────────────────────────────────────────
 function _cd3MetaRow(c, sum) {
   const cur = (sum && Number.isFinite(sum.latestWeight)) ? sum.latestWeight : (Number.isFinite(c && c.startWeight) ? c.startWeight : null);
@@ -8186,6 +8274,8 @@ function _cd3PanelProgress(c, sum, metrics30) {
           ${meals.length ? renderMealLogTable(meals) : _cd3Empty('No meals logged yet.')}
         </div>
       </details>
+
+      ${_cwvCard(c)}
 
       <details class="cd3-collapsible">
         <summary>Workout logs (${workouts.length} recent)</summary>

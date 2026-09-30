@@ -587,6 +587,12 @@ test('G6 the existing api function and the sw.js cache/fetch logic are untouched
     const WC_START = '// ══════════════════════════════════════════════════════════════════════════\n// WORKOUT-COMPLETION-V1';
     const i = cur.indexOf(WC_START), j = cur.indexOf('async function doWrite(', i);
     if (i >= 0) { assert(j > i, 'workout completion block is terminated before doWrite'); cur = cur.slice(0, i) + cur.slice(j); }
+    // COACH-WORKOUT-VIEW-V1 (read-only coach op), equally explicit and removed the same way.
+    const CV_START = '// ══════════════════════════════════════════════════════════════════════════\n// COACH-WORKOUT-VIEW-V1';
+    const CV_END = '// ═══════════════════════════════════════ END COACH-WORKOUT-VIEW-V1\n\n';
+    const ci = cur.indexOf(CV_START), cj = cur.indexOf(CV_END, ci);
+    if (ci >= 0) { assert(cj > ci, 'coach workout view block is terminated'); cur = cur.slice(0, ci) + cur.slice(cj + CV_END.length); }
+    cur = cur.replace(/\n      case 'coachWorkoutCompletions': return coachWorkoutCompletions\(body\);/, '');
     cur = cur.replace(/\n      case 'workoutComplete(?:Undo)?':\s+return workoutComplete(?:Undo)?\(body\);/g, '')
              .replace(/\n      case 'workoutCompletionsGet': return workoutCompletionsGet\(body\);/, '');
     eq(sha256hex(cur), sha256hex(base), 'api (minus the WORKOUT-COMPLETION-V1 block) byte-identical to the pre-push baseline');
