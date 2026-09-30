@@ -576,9 +576,20 @@ test('G6 the existing api function and the sw.js cache/fetch logic are untouched
   let haveBase = true;
   try { execSync('git cat-file -e f68e464^{commit}', { cwd: ROOT, stdio: 'ignore' }); } catch { haveBase = false; }
   if (haveBase) {
-    let apiDirty = false;
-    try { execSync('git diff --quiet f68e464 -- supabase/functions/api', { cwd: ROOT, stdio: 'ignore' }); } catch { apiDirty = true; }
-    eq(apiDirty, false, 'supabase/functions/api unchanged since the pre-push baseline');
+    // The push subsystem never touches the api. The only later api change is the
+    // separately approved WORKOUT-COMPLETION-V1 block (+ its three dispatch lines):
+    // with exactly that removed, the api must still equal the baseline byte for byte.
+    let otherDirty = false;
+    try { execSync('git diff --quiet f68e464 -- supabase/functions/api ":(exclude)supabase/functions/api/index.ts"', { cwd: ROOT, stdio: 'ignore' }); } catch { otherDirty = true; }
+    eq(otherDirty, false, 'no other api file changed since the pre-push baseline');
+    const base = execSync('git show f68e464:supabase/functions/api/index.ts', { cwd: ROOT, maxBuffer: 64 << 20 }).toString();
+    let cur = rd('supabase/functions/api/index.ts');
+    const WC_START = '// ══════════════════════════════════════════════════════════════════════════\n// WORKOUT-COMPLETION-V1';
+    const i = cur.indexOf(WC_START), j = cur.indexOf('async function doWrite(', i);
+    if (i >= 0) { assert(j > i, 'workout completion block is terminated before doWrite'); cur = cur.slice(0, i) + cur.slice(j); }
+    cur = cur.replace(/\n      case 'workoutComplete(?:Undo)?':\s+return workoutComplete(?:Undo)?\(body\);/g, '')
+             .replace(/\n      case 'workoutCompletionsGet': return workoutCompletionsGet\(body\);/, '');
+    eq(sha256hex(cur), sha256hex(base), 'api (minus the WORKOUT-COMPLETION-V1 block) byte-identical to the pre-push baseline');
   }
   assert(/const CACHE_NAME = 'strengthbyo-v4-2026-08-30-pwa-refresh';/.test(rd('sw.js')), 'CACHE_NAME not bumped (no forced reload for existing users)');
 });

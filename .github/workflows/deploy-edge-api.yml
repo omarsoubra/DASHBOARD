@@ -77,7 +77,8 @@ jobs:
           for t in tests/entitlements.test.js \
                    tests/program_v3.test.js \
                    tests/provisioning.test.js \
-                   tests/write_enforcement.test.js; do
+                   tests/write_enforcement.test.js \
+                   tests/workout_completion.test.js; do
             echo "───── $t"
             node "$t"
           done

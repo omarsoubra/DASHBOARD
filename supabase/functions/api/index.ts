@@ -593,6 +593,9 @@ Deno.serve(async (req) => {
       case 'meal':               return clientWrite('meal', body);
       case 'workout':            return clientWrite('workout', body);
       case 'workoutCorrect':     return clientWrite('workoutCorrect', body);
+      case 'workoutComplete':       return workoutComplete(body);
+      case 'workoutCompleteUndo':   return workoutCompleteUndo(body);
+      case 'workoutCompletionsGet': return workoutCompletionsGet(body);
       case 'photoUpload':        return clientWrite('photoUpload', body);
       case 'intake':             return intakeSubmit(body);   // legacy alias — same safe handler
       case 'intakeSubmit':       return intakeSubmit(body);
@@ -1330,6 +1333,160 @@ async function clientWrite(kind: string, body: any) {
     }).eq('id', queueRow.id);
   }
   return err(v.reason ?? 'unauthorized'); // same opaque response as Apps Script (mode:no-cors clients don't read it)
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WORKOUT-COMPLETION-V1 — the client's EXPLICIT "I completed this session".
+//
+// One row per Finish Workout tap (public.workout_completions). Never inferred
+// from exercise logs, never backfilled, never deleted (undo = status 'revoked').
+//
+//   workoutComplete        record one completion (idempotent on completion_ref)
+//   workoutCompleteUndo    revoke the client's OWN LATEST completion, <= 24 h
+//   workoutCompletionsGet  the client's own completions (restore on a new device)
+//
+// Identity: verifyClientToken + requireCapability('log_workout') — the same
+// path as the `workout` write. client_id comes from the verified storage key;
+// any client_id in the body is ignored. The session fields are a
+// shape-validated snapshot asserted by the client's own shell: the server
+// proves WHO and WHEN, not that the session exists in the current programme.
+// Exercise logging (workout / workoutCorrect) is not touched by any of this.
+// ══════════════════════════════════════════════════════════════════════════
+const WC_REF_RE = /^cmp_[A-Za-z0-9_-]{16,64}$/;
+const WC_PHASE_RE = /^[0-9]{1,2}$/;
+const WC_SHA_RE = /^[0-9a-f]{64}$/;
+const WC_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const WC_KINDS = ['mandatory', 'optional', 'unspecified'];
+const WC_BACKDATE_MS = 72 * 3600_000;     // an offline tap keeps its time for up to 72 h
+const WC_UNDO_MS = 24 * 3600_000;         // client may undo its latest completion for 24 h
+const WC_HISTORY_DAYS = 120;
+const WC_COLS = 'completion_ref, phase_key, day_index, day_label, session_kind, rx_fingerprint, exercises_prescribed, exercises_logged, sets_logged, completed_at, recorded_at, local_date, timezone, status, revoked_at, revoked_by';
+
+function wcPublic(r: any) {
+  return {
+    ref: r.completion_ref, phase: r.phase_key, dayIdx: r.day_index, dayLabel: r.day_label,
+    sessionKind: r.session_kind, rxFingerprint: r.rx_fingerprint ?? null,
+    exercisesPrescribed: r.exercises_prescribed ?? null, exercisesLogged: r.exercises_logged ?? null, setsLogged: r.sets_logged ?? null,
+    completedAt: r.completed_at, recordedAt: r.recorded_at, localDate: r.local_date, timezone: r.timezone ?? null,
+    status: r.status, revokedAt: r.revoked_at ?? null, revokedBy: r.revoked_by ?? null,
+  };
+}
+function wcCount(v: unknown, max: number): number | null | undefined {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= max ? n : undefined;   // undefined = invalid
+}
+function wcValidTz(tz: unknown): boolean {
+  if (typeof tz !== 'string' || !tz || tz.length > 64 || !/^[A-Za-z0-9_+\-/]+$/.test(tz)) return false;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
+
+async function workoutComplete(body: any) {
+  // Identity: verified token → canonical key → log_workout capability (inline, so the
+  // structural gate test in tests/write_enforcement.test.js sees every step).
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(body.storageKey).toLowerCase();
+  const gate = await requireCapability(key, 'log_workout');
+  if (!gate.ok || !gate.clientId) return capabilityDenied(gate.reason);
+  const a = { clientId: gate.clientId, key };
+  const c = body?.completion;
+  if (!c || typeof c !== 'object') return err('bad_completion');
+  const ref = String(c.ref ?? '');
+  if (!WC_REF_RE.test(ref)) return err('bad_completion_ref');
+  const phase = String(c.phase ?? '');
+  if (!WC_PHASE_RE.test(phase)) return err('bad_phase');
+  const dayIdx = Number(c.dayIdx);
+  if (!Number.isInteger(dayIdx) || dayIdx < 0 || dayIdx > 13) return err('bad_day');
+  const label = String(c.dayLabel ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 120);
+  if (!label) return err('bad_day_label');
+  const kind = String(c.sessionKind ?? '');
+  if (!WC_KINDS.includes(kind)) return err('bad_session_kind');
+  const fp = c.rxFingerprint == null || c.rxFingerprint === '' ? null : String(c.rxFingerprint);
+  if (fp !== null && !WC_SHA_RE.test(fp)) return err('bad_rx_fingerprint');
+  const exP = wcCount(c.exercisesPrescribed, 99), exL = wcCount(c.exercisesLogged, 99), sets = wcCount(c.setsLogged, 999);
+  if (exP === undefined || exL === undefined || sets === undefined) return err('bad_counts');
+  const tz = c.timezone == null || c.timezone === '' ? null : String(c.timezone);
+  if (tz !== null && !wcValidTz(tz)) return err('bad_timezone');
+  const localDate = String(c.localDate ?? '');
+  if (!WC_DATE_RE.test(localDate) || isNaN(Date.parse(localDate + 'T00:00:00Z'))) return err('bad_local_date');
+
+  // Idempotency: the device mints one ref per occurrence and re-sends it on
+  // every retry, so a ref already on a row for THIS client is that same tap.
+  const { data: prior, error: pErr } = await admin.from('workout_completions').select(WC_COLS)
+    .eq('client_id', a.clientId).eq('completion_ref', ref).maybeSingle();
+  if (pErr) { logEfError('workoutComplete', a.key, 'read_failed', pErr.message); return err('db_error'); }
+  if (prior) return ok({ completion: wcPublic(prior), duplicate: true });
+
+  const nowMs = Date.now();
+  const tapMs = Date.parse(String(c.completedAt ?? ''));
+  const completedMs = isNaN(tapMs) ? nowMs : Math.min(nowMs, Math.max(nowMs - WC_BACKDATE_MS, tapMs));
+  // The local calendar date must be the tap's own day (± the widest UTC offsets).
+  if (Math.abs(Date.parse(localDate + 'T12:00:00Z') - completedMs) > 38 * 3600_000) return err('bad_local_date');
+
+  const row = {
+    client_id: a.clientId, storage_key: a.key, completion_ref: ref, phase_key: phase, day_index: dayIdx,
+    day_label: label, session_kind: kind, rx_fingerprint: fp, exercises_prescribed: exP, exercises_logged: exL,
+    sets_logged: sets, completed_at: new Date(completedMs).toISOString(), recorded_at: new Date(nowMs).toISOString(),
+    local_date: localDate, timezone: tz, status: 'completed',
+  };
+  const { data: ins, error: iErr } = await admin.from('workout_completions').insert(row).select(WC_COLS).single();
+  if (iErr || !ins) {
+    if (/duplicate key|23505/i.test((iErr?.message ?? '') + ' ' + ((iErr as any)?.code ?? ''))) {
+      const { data: raced } = await admin.from('workout_completions').select(WC_COLS)
+        .eq('client_id', a.clientId).eq('completion_ref', ref).maybeSingle();
+      if (raced) return ok({ completion: wcPublic(raced), duplicate: true });
+    }
+    logEfError('workoutComplete', a.key, 'insert_failed', iErr?.message ?? 'no_row');
+    return err('write_failed');
+  }
+  return ok({ completion: wcPublic(ins), duplicate: false });
+}
+
+async function workoutCompleteUndo(body: any) {
+  // Identity: verified token → canonical key → log_workout capability (inline, so the
+  // structural gate test in tests/write_enforcement.test.js sees every step).
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(body.storageKey).toLowerCase();
+  const gate = await requireCapability(key, 'log_workout');
+  if (!gate.ok || !gate.clientId) return capabilityDenied(gate.reason);
+  const a = { clientId: gate.clientId, key };
+  const ref = String(body?.ref ?? '');
+  if (!WC_REF_RE.test(ref)) return err('bad_completion_ref');
+  const { data: row, error: rErr } = await admin.from('workout_completions').select('id, ' + WC_COLS)
+    .eq('client_id', a.clientId).eq('completion_ref', ref).maybeSingle();
+  if (rErr) { logEfError('workoutCompleteUndo', a.key, 'read_failed', rErr.message); return err('db_error'); }
+  if (!row) return err('not_found');                                   // another client's ref matches nothing
+  if (row.status === 'revoked') return ok({ completion: wcPublic(row), alreadyRevoked: true });
+  const { data: latest, error: lErr } = await admin.from('workout_completions').select('completion_ref')
+    .eq('client_id', a.clientId).eq('status', 'completed').order('completed_at', { ascending: false }).limit(1);
+  if (lErr) { logEfError('workoutCompleteUndo', a.key, 'read_failed', lErr.message); return err('db_error'); }
+  if (!latest?.length || latest[0].completion_ref !== ref) return err('not_latest');
+  const nowMs = Date.now();
+  if (nowMs - Date.parse(row.recorded_at) > WC_UNDO_MS) return err('undo_window_closed');
+  const { data: upd, error: uErr } = await admin.from('workout_completions')
+    .update({ status: 'revoked', revoked_at: new Date(nowMs).toISOString(), revoked_by: 'client' })
+    .eq('id', row.id).eq('client_id', a.clientId).eq('status', 'completed').select(WC_COLS);
+  if (uErr) { logEfError('workoutCompleteUndo', a.key, 'update_failed', uErr.message); return err('write_failed'); }
+  if (!upd?.length) return ok({ completion: wcPublic(row), alreadyRevoked: true });   // raced with another undo
+  return ok({ completion: wcPublic(upd[0]), alreadyRevoked: false });
+}
+
+async function workoutCompletionsGet(body: any) {
+  // Identity: verified token → canonical key → log_workout capability (inline, so the
+  // structural gate test in tests/write_enforcement.test.js sees every step).
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(body.storageKey).toLowerCase();
+  const gate = await requireCapability(key, 'log_workout');
+  if (!gate.ok || !gate.clientId) return capabilityDenied(gate.reason);
+  const a = { clientId: gate.clientId, key };
+  const since = new Date(Date.now() - WC_HISTORY_DAYS * 86400_000).toISOString();
+  const { data, error } = await admin.from('workout_completions').select(WC_COLS)
+    .eq('client_id', a.clientId).gte('completed_at', since).order('completed_at', { ascending: false }).limit(500);
+  if (error) { logEfError('workoutCompletionsGet', a.key, 'read_failed', error.message); return err('db_error'); }
+  return ok({ completions: (data ?? []).map(wcPublic) });
 }
 
 async function doWrite(kind: string, body: any, silent = false): Promise<any> {
