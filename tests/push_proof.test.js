@@ -402,7 +402,8 @@ test('E8 templates are lock-screen safe (no numbers, no targets/units/body data)
     assert(!/\d/.test(text), k + ': no digits');
     assert(!/\b(kg|kgs|lb|lbs|kcal|calorie|calories|protein|carb|carbs|fat|macro|macros|bmi|body|deficit|target|goal)\b/i.test(text), k + ': no targets/units/body data');
     if (/\bweigh/i.test(text)) eq(t.body, APPROVED_WEIGHT_COPY, k + ': "weight" only in the approved copy');
-    assert(/^\.\/[A-Za-z0-9#_-]*$/.test(t.url), k + ': url is scope-relative');
+    // Scope-relative; the only query allowed is a daily-reminder deep link to an existing shell section.
+    assert(/^\.\/[A-Za-z0-9#_-]*$/.test(t.url) || /^\.\/\?li=(training|nutrition)$/.test(t.url), k + ': url is scope-relative');
   }
 });
 

@@ -5,8 +5,14 @@
 // Grounded in the production schema and data inspected 2026-09-29 (see
 // docs/PUSH_NOTIFICATIONS_V2.md). A reminder may only be built on a RELIABLE
 // signal. This module is deliberately NOT imported by the push handler: no
-// workout, nutrition or weigh-in reminder exists, and this file is the gate
-// that explains why.
+// adherence-INFERRING workout, nutrition or weigh-in reminder exists, and this
+// file is the gate that explains why.
+//
+// Daily reminders V1 (2026-10-01) do not change this map. Training and meal
+// reminders are SCHEDULE reminders at times the client chose; nothing here is
+// inferred from them. A training reminder is only ever SUPPRESSED by an explicit
+// Finish Workout (workout_completions, status 'completed'); it never claims a
+// session was missed, and no meal reminder reads meal_logs.
 // ============================================================================
 
 export type Reliability = 'reliable' | 'partial' | 'unavailable';

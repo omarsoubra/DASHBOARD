@@ -60,8 +60,11 @@ const sha256hex = (s) => nodeCrypto.createHash('sha256').update(s).digest('hex')
 const MIGRATION = rd('supabase/migrations/20260928120000_push_notifications_proof.sql');
 const MIGRATION_V1 = rd('supabase/migrations/20260929120000_push_v1_pilot.sql');
 const MIGRATION_V2 = rd('supabase/migrations/20260930120000_push_v2_checkin_sequence.sql');
-const ALL_MIGRATIONS = MIGRATION + '\n' + MIGRATION_V1 + '\n' + MIGRATION_V2;
-const COL_RE = /^([a-z][a-z0-9_]*)\s+(uuid|text|boolean|integer|smallint|timestamptz|jsonb|time)\b/;
+const MIGRATION_DAILY = rd('supabase/migrations/20261002120000_push_daily_reminders.sql');
+// Workout Completion V1 is read (never written) by the daily training reminders.
+const MIGRATION_WC = rd('supabase/migrations/20261001120000_workout_completions.sql');
+const ALL_MIGRATIONS = MIGRATION + '\n' + MIGRATION_V1 + '\n' + MIGRATION_V2 + '\n' + MIGRATION_DAILY + '\n' + MIGRATION_WC;
+const COL_RE = /^([a-z][a-z0-9_]*)\s+(uuid|text|boolean|integer|smallint|timestamptz|jsonb|time|date)\b/;
 function parseColumns(table) {
   const cols = new Set();
   const m = ALL_MIGRATIONS.match(new RegExp(`create table if not exists public\\.${table} \\(([\\s\\S]*?)\\n\\);`));
@@ -72,8 +75,10 @@ function parseColumns(table) {
   return cols;
 }
 function parseCheckList(table, constraint) {
-  const re = new RegExp(`alter table public\\.${table} add constraint ${constraint}\\s+check \\(([\\s\\S]*?)\\);`);
-  const m = MIGRATION_V1.match(re);
+  // The LATEST definition wins (later migrations drop + re-add the same constraint).
+  const re = new RegExp(`alter table public\\.${table} add constraint ${constraint}\\s+check \\(([\\s\\S]*?)\\);`, 'g');
+  const all = [...ALL_MIGRATIONS.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n').matchAll(re)];
+  const m = all[all.length - 1];
   if (!m) throw new Error('migration: constraint not found ' + constraint);
   return [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]);
 }
@@ -82,6 +87,8 @@ const SCHEMA = {
   notification_events: parseColumns('notification_events'),
   push_preferences: parseColumns('push_preferences'),
   push_internal_auth: parseColumns('push_internal_auth'),
+  push_plan_facts: parseColumns('push_plan_facts'),
+  workout_completions: parseColumns('workout_completions'),
   // Existing tables: only the columns the push function touches (all exist in production).
   clients: new Set(['id', 'storage_key', 'is_paused', 'start_date', 'is_internal', 'entitlement_legacy']),
   client_entitlements: new Set(['id', 'client_id', 'product_code', 'status', 'starts_at', 'ends_at', 'source']),
@@ -95,26 +102,42 @@ const REASONS = parseCheckList('notification_events', 'notification_events_suppr
 const UNIQUE = {
   push_devices: ['endpoint_hash'], notification_events: ['dedupe_key'], clients: ['storage_key'],
   client_sessions: ['storage_key'], push_preferences: ['client_id'], push_internal_auth: ['name'],
+  push_plan_facts: ['client_id'],
 };
+const minutesOf = (t) => { const m = /^(\d{2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; };
 const CHECKS = {
   push_devices: (r) => ['active', 'revoked', 'expired', 'disabled'].includes(r.status) &&
     (r.status !== 'active' || (r.endpoint && r.p256dh && r.auth_secret)) && /^[0-9a-f]{64}$/.test(r.endpoint_hash),
   notification_events: (r) => KINDS.includes(r.kind) && STATUSES.includes(r.status || 'claimed') &&
     ['coach', 'system', 'client'].includes(r.created_by) && (r.suppression_reason == null || REASONS.includes(r.suppression_reason)),
-  push_preferences: (r) => !r.notifications_enabled || !!r.consent_at,
+  // Mirrors every push_preferences check constraint (V1 + daily reminders migration).
+  push_preferences: (r) => (!r.notifications_enabled || !!r.consent_at) &&
+    Number.isInteger(r.training_days) && r.training_days >= 0 && r.training_days <= 127 &&
+    (!r.training_enabled || (r.training_time != null && r.training_days > 0)) &&
+    (!r.training_followup_enabled || (r.training_enabled && r.training_time != null && r.training_followup_time != null &&
+      minutesOf(r.training_followup_time) - minutesOf(r.training_time) >= 60)) &&
+    Array.isArray(r.meal_times) && r.meal_times.length <= 8 &&
+    (!r.meals_enabled || r.meal_times.some((x) => x != null)),
+  push_plan_facts: (r) => ['consistent', 'variable', 'unreadable', 'unsupported'].includes(r.meal_facts_status) &&
+    (r.meal_facts_status === 'consistent') === (r.meal_slot_count != null) &&
+    (r.meal_slot_count == null || (r.meal_slot_count >= 1 && r.meal_slot_count <= 8)) &&
+    /^[0-9a-f]{64}$/.test(r.served_sha256) && typeof r.has_workout_completion === 'boolean',
+  workout_completions: (r) => ['completed', 'revoked'].includes(r.status),
 };
 const PREF_DEFAULTS = {
   notifications_enabled: false, consent_at: null, timezone: null, weighin_available: false, weighin_enabled: true,
   weighin_time: '07:30:00', checkin_enabled: true, checkin_dow: 0, checkin_time: '09:00:00',
   program_updates_enabled: true, quiet_start: '21:00:00', quiet_end: '07:00:00', updated_by: 'client',
   checkin_followup_time: '18:00:00', checkin_final_time: '10:00:00', checkin_final_day_offset: 1,
+  training_enabled: false, training_days: 0, training_time: null, training_followup_enabled: false,
+  training_followup_time: null, meals_enabled: false, meal_times: [],
 };
 
 // ════════════════════════════════════════════════════════════════════════════
 // In-memory Supabase stand-in (strict)
 // ════════════════════════════════════════════════════════════════════════════
 function makeDb() {
-  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [], push_preferences: [], push_internal_auth: [], weight_logs: [], check_ins: [], client_entitlements: [] };
+  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [], push_preferences: [], push_internal_auth: [], weight_logs: [], check_ins: [], client_entitlements: [], push_plan_facts: [], workout_completions: [] };
   const calls = [];
   let seq = 0;
   const uuid = () => '00000000-0000-4000-8000-' + String(++seq).padStart(12, '0');
@@ -145,7 +168,7 @@ function makeDb() {
 
   function from(t) {
     if (!T[t]) throw new Error('stand-in: unknown table ' + t);
-    const q = { filters: [], mode: 'select', sel: null, opts: {}, limitN: null, payload: null, returning: null };
+    const q = { filters: [], mode: 'select', sel: null, opts: {}, limitN: null, payload: null, returning: null, orderBy: null };
     const b = {};
     const matchRow = (r) => q.filters.every(([op, c, v]) => {
       if (op === 'eq') return r[c] === v;
@@ -161,17 +184,29 @@ function makeDb() {
     for (const op of ['eq', 'gte', 'lt', 'lte']) b[op] = (c, v) => { q.filters.push([op, c, v]); return b; };
     b.in = (c, v) => { q.filters.push(['in', c, v]); return b; };
     b.limit = (n) => { q.limitN = n; return b; };
+    b.order = (c, o = {}) => { q.orderBy = [c, o.ascending !== false]; return b; };
     b.insert = (obj) => { q.mode = 'insert'; q.payload = obj; return b; };
+    b.upsert = (obj, o = {}) => { q.mode = 'upsert'; q.payload = obj; q.conflict = o.onConflict; return b; };
     b.update = (obj) => { q.mode = 'update'; q.payload = obj; return b; };
 
     function run() {
       calls.push({ t, mode: q.mode, filters: q.filters.map((f) => f.slice()) });
       if (fail.on === t && q.mode === 'select') return { data: null, error: { message: 'simulated outage', code: 'XX000' }, count: null };
-      const fe = checkCols(t, q.filters.map((f) => f[1]));
+      const fe = checkCols(t, q.filters.map((f) => f[1]).concat(q.orderBy ? [q.orderBy[0]] : []));
       if (fe) return { data: null, error: fe };
+      if (q.mode === 'upsert') {
+        const ce = checkCols(t, Object.keys(q.payload)); if (ce) return { data: null, error: ce };
+        if (!(UNIQUE[t] || []).includes(q.conflict)) return { data: null, error: { message: 'there is no unique constraint matching the ON CONFLICT specification', code: '42P10' } };
+        const cur = T[t].find((r) => r[q.conflict] === q.payload[q.conflict]);
+        const next = { ...(cur || {}), ...q.payload };
+        if (CHECKS[t] && !CHECKS[t](next)) return { data: null, error: { message: `new row for relation "${t}" violates check constraint`, code: '23514' } };
+        if (cur) Object.assign(cur, q.payload); else T[t].push(next);
+        return { data: null, error: null };
+      }
       if (q.mode === 'select') {
         const se = checkCols(t, q.sel.cols); if (se) return { data: null, error: se };
         let rows = T[t].filter(matchRow);
+        if (q.orderBy) { const [c, asc] = q.orderBy; rows = rows.slice().sort((a, b2) => (asc ? 1 : -1) * cmp(norm(a[c]), norm(b2[c]))); }
         if (q.limitN != null) rows = rows.slice(0, q.limitN);
         if (q.opts.count === 'exact' && q.opts.head) return { data: null, error: null, count: rows.length };
         return { data: rows.map((r) => project(r, q.sel)), error: null };
@@ -334,6 +369,7 @@ async function world(opts = {}) {
     coachPasswordHash: COACH_HASH,
     allowedClients: new Set(opts.allowed ?? [CANARY, '_push_canary2']),
     ...(opts.checkinSeq ? { checkinSequence: { all: opts.checkinSeq.includes('*'), keys: new Set(opts.checkinSeq.filter((k) => k !== '*')) } } : {}),
+    ...(opts.daily ? { dailyReminders: { all: opts.daily.includes('*'), keys: new Set(opts.daily.filter((k) => k !== '*')) } } : {}),
   };
   const clock = { now: opts.now ?? Date.UTC(2026, 8, 28, 9, 0, 0) };
   const subs = new Map();
@@ -375,7 +411,7 @@ function assertNoLeak(w, extraSecrets = []) {
 
 module.exports = {
   ROOT, rd, WP, SCH, H, ADH, test, tests, assert, eq, run, b64u, unb64u, sha256hex,
-  MIGRATION, MIGRATION_V1, MIGRATION_V2, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
+  MIGRATION, MIGRATION_V1, MIGRATION_V2, MIGRATION_DAILY, MIGRATION_WC, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
   CANARY, OTHER, CANARY_TOKEN, OTHER_TOKEN, SECOND_TOKEN, COACH_HASH, CRON_SECRET, DEPLOY_SECRET,
   makeVapid, makeBrowserSub, nodeDecrypt, verifyVapidHeader, makePushService, world, assertNoLeak,
 };

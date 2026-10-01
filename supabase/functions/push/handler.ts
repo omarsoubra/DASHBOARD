@@ -13,11 +13,15 @@
 //     pushPrefsSet     change notification settings (client-owned fields only)
 //   coach token:
 //     coachPushSend    send the fixed `test` template to one client
+//     coachPushExplain read-only: why a client did / did not get today's daily reminders
 //   internal secret (sha256 in push_internal_auth):
 //     pushTick         scheduler: weigh-in + check-in reminders, deferred events   [x-push-cron-secret]
 //                      (V2: check-in adherence sequence due → followup → final for
 //                       clients in PUSH_CHECKIN_V2_CLIENTS; see schedule.ts)
+//                      (Daily V1: training + meal reminders for clients in
+//                       PUSH_DAILY_V1_CLIENTS; client-chosen days/times only)
 //     programUpdated   deploy notifier: a verified-live programme update            [x-push-deploy-secret]
+//     planFactsSync    deploy notifier: facts read from a verified-live shell       [x-push-deploy-secret]
 //   none:
 //     ping             liveness + "is VAPID configured" (no secrets)
 //
@@ -42,8 +46,9 @@ import {
   type VapidKeys,
 } from './webpush.ts';
 import {
-  decideReminder, evaluateCheckin, evaluateCheckinStage, evaluateWeighin, formatTime, inQuietHours,
-  isValidTimezone, localParts, nextLocalTime, parseTime, type Observation, type Prefs,
+  DAILY_CAP, MAX_MEAL_SLOTS, dailyPlan, decideReminder, decideScheduled, evaluateCheckin, evaluateCheckinStage,
+  evaluateMealSlots, evaluateTrainingStage, evaluateWeighin, formatTime, inQuietHours, isValidTimezone,
+  localDayBounds, localParts, mealsAvailable, nextLocalTime, parseTime, type Observation, type PlanFacts, type Prefs,
 } from './schedule.ts';
 
 export type PushEnv = {
@@ -54,12 +59,16 @@ export type PushEnv = {
   allowedClients: Set<string>;
   /** V2 check-in adherence sequence rollout: '*' = every eligible client, else these keys. Unset = nobody (V1 single reminder). */
   checkinSequence?: { all: boolean; keys: Set<string> };
+  /** Daily reminders V1 rollout (training + meals): '*' = every eligible client, else these keys. Unset = nobody. */
+  dailyReminders?: { all: boolean; keys: Set<string> };
 };
 
 export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
   const allowed = String(get('PUSH_ALLOWED_CLIENTS') ?? '')
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   const seq = String(get('PUSH_CHECKIN_V2_CLIENTS') ?? '')
+    .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const daily = String(get('PUSH_DAILY_V1_CLIENTS') ?? '')
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   return {
     vapidPublicKey: get('VAPID_PUBLIC_KEY') ?? '',
@@ -68,6 +77,7 @@ export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
     coachPasswordHash: get('COACH_PASSWORD_HASH') ?? '',
     allowedClients: new Set(allowed),
     checkinSequence: { all: seq.includes('*'), keys: new Set(seq.filter((k) => k !== '*')) },
+    dailyReminders: { all: daily.includes('*'), keys: new Set(daily.filter((k) => k !== '*')) },
   };
 }
 
@@ -80,7 +90,7 @@ type Deps = {
 };
 
 // ── constants ───────────────────────────────────────────────────────────────
-export const PUSH_VERSION = 'push-v2';
+export const PUSH_VERSION = 'push-v3-daily';
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ENDPOINT_LEN = 1024;
 const MAX_ACTIVE_DEVICES_PER_CLIENT = 5;
@@ -127,16 +137,33 @@ export const TEMPLATES: Record<string, Template> = {
   checkin_due:      { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your weekly check-in is ready. Take a minute to get it done.', url: './', tag: 'li-checkin', ttlSec: 6 * 3600 },
   checkin_followup: { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your check-in is still waiting. Get it done tonight so Omar can review your week.', url: './', tag: 'li-checkin', ttlSec: 3 * 3600 },
   checkin_final:    { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'You missed your weekly check-in. Get it done today so your coaching stays on track.', url: './', tag: 'li-checkin', ttlSec: 8 * 3600 },
+  // Daily V1. Generic on purpose: a training day is the CLIENT's chosen weekday,
+  // not a known session, so no session is ever named; a meal reminder is a time
+  // the client set, never a claim about eating. Same tag → the follow-up / next
+  // meal replaces an unread earlier one instead of stacking.
+  training_primary:  { kind: 'training_reminder', title: 'Training today 💪', body: 'Your session is ready when you are.', url: './?li=training', tag: 'li-training', ttlSec: 3 * 3600 },
+  training_followup: { kind: 'training_reminder', title: 'Still training today?', body: "Your session is still there whenever you're ready.", url: './?li=training', tag: 'li-training', ttlSec: 3 * 3600 },
+  meal_slot:         { kind: 'meal_reminder', title: 'Meal time 🍽️', body: 'Your next planned meal is ready in LOCKED IN.', url: './?li=nutrition', tag: 'li-meal', ttlSec: 3600 },
 };
 
+/** Meal slot k's lock-screen text: the ordinal only ("Meal 2 time"), never a food, time or amount. */
+export function mealTemplate(slot: number): Template {
+  return { ...TEMPLATES.meal_slot, title: `Meal ${slot} time 🍽️` };
+}
+
 // Settings: defaults (conservative — nothing is sent until the client opts in).
-const PREF_COLUMNS = 'client_id, notifications_enabled, consent_at, timezone, weighin_available, weighin_enabled, weighin_time, checkin_enabled, checkin_dow, checkin_time, program_updates_enabled, quiet_start, quiet_end';
+const PREF_COLUMNS = 'client_id, notifications_enabled, consent_at, timezone, weighin_available, weighin_enabled, weighin_time, checkin_enabled, checkin_dow, checkin_time, program_updates_enabled, quiet_start, quiet_end, ' +
+  'training_enabled, training_days, training_time, training_followup_enabled, training_followup_time, meals_enabled, meal_times';
+const FACT_COLUMNS = 'client_id, meal_facts_status, meal_slot_count, has_workout_completion, served_sha256, updated_at';
 // Scheduler only: + the coach-owned V2 stage schedule (migration 20260930120000).
 const TICK_PREF_COLUMNS = PREF_COLUMNS + ', checkin_followup_time, checkin_final_time, checkin_final_day_offset';
 export const DEFAULT_PREFS = {
   notifications_enabled: false, timezone: null as string | null, weighin_available: false,
   weighin_enabled: true, weighin_time: '07:30', checkin_enabled: true, checkin_dow: 0,
   checkin_time: '09:00', program_updates_enabled: true, quiet_start: '21:00', quiet_end: '07:00',
+  training_enabled: false, training_days: 0, training_time: null as string | null,
+  training_followup_enabled: false, training_followup_time: null as string | null,
+  meals_enabled: false, meal_times: [] as Array<string | null>,
 };
 
 // ── http helpers (mirrors `api`) ────────────────────────────────────────────
@@ -202,8 +229,22 @@ function validTimezone(tz: unknown): string | null {
   return isValidTimezone(tz) ? tz : null;
 }
 
+/** What the daily reminders can offer THIS client right now (rollout gate + served-shell facts). */
+type DailyAccess = { available: boolean; trainingAvailable: boolean; mealsAvailable: boolean; mealSlotCount: number | null };
+const NO_DAILY: DailyAccess = { available: false, trainingAvailable: false, mealsAvailable: false, mealSlotCount: null };
+
+function dailyAccess(inRollout: boolean, facts: PlanFacts): DailyAccess {
+  if (!inRollout) return NO_DAILY;
+  const meals = mealsAvailable(facts);
+  return { available: true, trainingAvailable: facts?.has_workout_completion === true, mealsAvailable: meals,
+           mealSlotCount: meals ? (facts!.meal_slot_count as number) : null };
+}
+
+const hhmmOrNull = (v: unknown) => { const m = parseTime(v); return m === null ? null : formatTime(m); };
+const maskToDays = (mask: unknown) => [0, 1, 2, 3, 4, 5, 6].filter((d) => Number.isInteger(mask) && (((mask as number) >> d) & 1) === 1);
+
 /** Client-facing view of a preferences row (camelCase, HH:MM, no internals). */
-function publicPrefs(row: any | null) {
+function publicPrefs(row: any | null, daily: DailyAccess = NO_DAILY) {
   const p = { ...DEFAULT_PREFS, ...(row ?? {}) };
   const t = (v: string) => formatTime(parseTime(v) ?? 0);
   return {
@@ -219,6 +260,15 @@ function publicPrefs(row: any | null) {
     programUpdatesEnabled: !!p.program_updates_enabled,
     quietStart: t(p.quiet_start),
     quietEnd: t(p.quiet_end),
+    // Daily reminders V1 — blank unless the client set them.
+    daily,
+    trainingEnabled: !!p.training_enabled,
+    trainingDays: maskToDays(p.training_days),
+    trainingTime: hhmmOrNull(p.training_time),
+    trainingFollowupEnabled: !!p.training_followup_enabled,
+    trainingFollowupTime: hhmmOrNull(p.training_followup_time),
+    mealsEnabled: !!p.meals_enabled,
+    mealTimes: (Array.isArray(p.meal_times) ? p.meal_times : []).slice(0, MAX_MEAL_SLOTS).map(hhmmOrNull),
   };
 }
 
@@ -513,10 +563,27 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   }
 
   // ── pushPrefsGet / pushPrefsSet ───────────────────────────────────────────
+  function inDaily(storageKey: string): boolean {
+    const d = env.dailyReminders;
+    return !!d && (d.all || d.keys.has(storageKey));
+  }
+
+  async function loadFacts(clientId: string): Promise<{ facts: PlanFacts; error: boolean }> {
+    const { data, error } = await admin.from('push_plan_facts').select(FACT_COLUMNS).eq('client_id', clientId).maybeSingle();
+    if (error) { log('facts', 'read_failed', error.message); return { facts: null, error: true }; }
+    return { facts: (data ?? null) as PlanFacts, error: false };
+  }
+
+  async function dailyFor(clientId: string, storageKey: string): Promise<DailyAccess> {
+    if (!inDaily(storageKey)) return NO_DAILY;
+    const { facts, error } = await loadFacts(clientId);
+    return error ? NO_DAILY : dailyAccess(true, facts);
+  }
+
   async function pushPrefsGet(body: any): Promise<Response> {
     const a = await authClient(body);
     if (a instanceof Response) return a;
-    return ok({ prefs: publicPrefs(await loadPrefs(a.clientId)) });
+    return ok({ prefs: publicPrefs(await loadPrefs(a.clientId), await dailyFor(a.clientId, a.storageKey)) });
   }
 
   async function pushPrefsSet(body: any): Promise<Response> {
@@ -551,15 +618,83 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
       if (!isValidTimezone(inp.timezone)) return err('bad_timezone', 400);
       patch.timezone = inp.timezone;
     }
-    const unknown = Object.keys(inp).filter((k) => ![...bools, ...times].some(([n]) => n === k) && k !== 'timezone');
+
+    // ── Daily reminders V1 (training + meals). Only for clients in the rollout. ──
+    const DAILY_FIELDS = ['trainingEnabled', 'trainingDays', 'trainingTime', 'trainingFollowupEnabled', 'trainingFollowupTime', 'mealsEnabled', 'mealTimes'];
+    const known = [...bools, ...times].map(([n]) => n).concat('timezone', DAILY_FIELDS);
+    const unknown = Object.keys(inp).filter((k) => !known.includes(k));
     if (unknown.length) return err('unknown_field', 400, { field: unknown[0].slice(0, 40) });
-    if (!Object.keys(patch).length) return ok({ prefs: publicPrefs(prefs) });
+    const touchesDaily = DAILY_FIELDS.some((k) => k in inp);
+    if (touchesDaily) {
+      if (!inDaily(a.storageKey)) return err('daily_not_available', 403);
+      const { facts, error: fErr } = await loadFacts(a.clientId);
+      if (fErr) return err('state_unavailable', 503);
+      const daily = dailyAccess(true, facts);
+      const optTime = (k: string): string | null | Response => {
+        if (inp[k] === null || inp[k] === '') return null;
+        const m = parseTime(inp[k]);
+        return m === null || m % 15 !== 0 ? err('bad_' + k, 400) : formatTime(m);
+      };
+      for (const k of ['trainingEnabled', 'trainingFollowupEnabled', 'mealsEnabled']) {
+        if (k in inp && typeof inp[k] !== 'boolean') return err('bad_' + k, 400);
+      }
+      if ('trainingDays' in inp) {
+        const d = inp.trainingDays;
+        if (!Array.isArray(d) || d.length > 7 || d.some((x: unknown) => !Number.isInteger(x) || (x as number) < 0 || (x as number) > 6) ||
+            new Set(d).size !== d.length) return err('bad_trainingDays', 400);
+        patch.training_days = d.reduce((m: number, x: number) => m | (1 << x), 0);
+      }
+      for (const [k, col] of [['trainingTime', 'training_time'], ['trainingFollowupTime', 'training_followup_time']]) {
+        if (k in inp) { const v = optTime(k); if (v instanceof Response) return v; patch[col] = v; }
+      }
+      if ('trainingEnabled' in inp) {
+        if (inp.trainingEnabled && !daily.trainingAvailable) return err('training_not_available', 409);
+        patch.training_enabled = inp.trainingEnabled;
+        if (!inp.trainingEnabled) patch.training_followup_enabled = false;   // follow-up never outlives training
+      }
+      if ('trainingFollowupEnabled' in inp) {
+        if (inp.trainingFollowupEnabled && (patch.training_enabled ?? prefs.training_enabled) !== true) return err('followup_needs_training', 409);
+        patch.training_followup_enabled = inp.trainingFollowupEnabled;
+      }
+      if ('mealTimes' in inp) {
+        const mt = inp.mealTimes;
+        if (!daily.mealsAvailable) return err('meals_not_available', 409);
+        if (!Array.isArray(mt) || mt.length > (daily.mealSlotCount as number)) return err('bad_mealTimes', 400);
+        const out: Array<string | null> = [];
+        let last = -1;
+        for (const x of mt) {
+          if (x === null || x === '') { out.push(null); continue; }
+          const m = parseTime(x);
+          if (m === null || m % 15 !== 0) return err('bad_mealTimes', 400);
+          if (m <= last) return err('meal_times_order', 400);         // Meal k is later than Meal k-1
+          last = m; out.push(formatTime(m));
+        }
+        patch.meal_times = out;
+      }
+      if ('mealsEnabled' in inp) {
+        if (inp.mealsEnabled && !daily.mealsAvailable) return err('meals_not_available', 409);
+        patch.meals_enabled = inp.mealsEnabled;
+      }
+      // The row as it would be stored: the same rules as the table constraints,
+      // with a specific reason instead of a generic write failure.
+      const next = { ...prefs, ...patch };
+      const pt = parseTime(next.training_time), ft = parseTime(next.training_followup_time);
+      if (next.training_enabled && (pt === null || !(Number(next.training_days) > 0))) return err('training_needs_days_and_time', 409);
+      if (next.training_followup_enabled) {
+        if (ft === null) return err('followup_needs_time', 409);
+        if (pt === null || ft - pt < 60) return err('followup_too_close', 409);
+      }
+      if (next.meals_enabled && !(Array.isArray(next.meal_times) && next.meal_times.some((x: unknown) => parseTime(x) !== null))) {
+        return err('meals_need_a_time', 409);
+      }
+    }
+    if (!Object.keys(patch).length) return ok({ prefs: publicPrefs(prefs, await dailyFor(a.clientId, a.storageKey)) });
 
     const nowIso = new Date(now()).toISOString();
     const { error } = await admin.from('push_preferences')
       .update({ ...patch, updated_at: nowIso, updated_by: 'client' }).eq('client_id', a.clientId);
     if (error) { log('pushPrefsSet', 'update_failed', error.message); return err('write_failed', 500); }
-    return ok({ prefs: publicPrefs(await loadPrefs(a.clientId)) });
+    return ok({ prefs: publicPrefs(await loadPrefs(a.clientId), await dailyFor(a.clientId, a.storageKey)) });
   }
 
   // ── coachPushSend ─────────────────────────────────────────────────────────
@@ -627,7 +762,8 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const nowMs = now();
     const nowIso = new Date(nowMs).toISOString();
     const summary = { clients: 0, due: 0, sent: 0, duplicates: 0, suppressed: {} as Record<string, number>, stateErrors: 0, deferredSent: 0,
-                      checkinStages: { due: 0, followup: 0, final: 0 } as Record<string, number> };
+                      checkinStages: { due: 0, followup: 0, final: 0 } as Record<string, number>,
+                      training: { primary: 0, followup: 0 } as Record<string, number>, meals: 0 };
     const bump = (r: string) => { summary.suppressed[r] = (summary.suppressed[r] ?? 0) + 1; };
 
     // ── V2 check-in adherence sequence: one step per client per tick ───────
@@ -673,6 +809,106 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
       else bump(r.reason ?? r.status);
     };
 
+    // ── Daily reminders V1: training + meals ───────────────────────────────
+    // Every decision below claims ONE deterministic key before anything is sent
+    // (the unique dedupe_key is the send authority), so re-runs, retries,
+    // restarts and racing schedulers can never deliver a stage or slot twice.
+    const prior = async (key: string): Promise<boolean | null> => {
+      const { data, error } = await admin.from('notification_events').select('id').eq('dedupe_key', key).limit(1);
+      if (error) { summary.stateErrors++; log('pushTick', 'dedupe_read_failed', error.message); return null; }
+      return (data ?? []).length > 0;
+    };
+    /** Automatic daily pushes already claimed for this client on local day D (sent, partial, or in flight). */
+    const dailyCount = async (clientId: string, D: string): Promise<number | null> => {
+      const { count, error } = await admin.from('notification_events').select('id', { count: 'exact', head: true })
+        .eq('client_id', clientId).eq('period_key', D).in('kind', ['training_reminder', 'meal_reminder'])
+        .in('status', ['claimed', 'sent', 'partial']);
+      if (error || typeof count !== 'number') { summary.stateErrors++; log('pushTick', 'cap_read_failed', error?.message ?? 'no_count'); return null; }
+      return count;
+    };
+    const claimAndDeliver = async (c: any, tpl: Template, key: string, D: string, eligibleAt: number,
+                                   reason: string | null, context: Record<string, unknown>): Promise<string | null> => {
+      if (!reason) {                                             // safety cap: checked immediately before claiming
+        const n = await dailyCount(c.id, D);
+        if (n === null) return null;                             // unknown → silence, retry next tick
+        if (n >= DAILY_CAP) reason = 'daily_cap';
+      }
+      const got = await claim({
+        client_id: c.id, storage_key: c.storage_key, kind: tpl.kind, dedupe_key: key,
+        status: reason ? 'suppressed' : 'claimed', suppression_reason: reason,
+        title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'system',
+        created_at: nowIso, eligible_at: new Date(eligibleAt).toISOString(), period_key: D, context,
+      });
+      if (got === 'duplicate') { summary.duplicates++; return null; }
+      if (!got) { summary.stateErrors++; return null; }
+      if (reason) { bump(reason); return null; }
+      const r = await deliver(got.id, c.id, tpl, v, nowMs);
+      if (r.status === 'sent' || r.status === 'partial') { summary.sent++; return r.status; }
+      bump(r.reason ?? r.status);
+      return null;
+    };
+
+    const trainingStep = async (c: any, pr: any, facts: PlanFacts, active: boolean): Promise<void> => {
+      const ev = evaluateTrainingStage(pr, nowMs, facts);
+      if (!ev.due) return;                                       // off, incomplete, not a chosen weekday, no window open
+      summary.due++;
+      const key = `training_${ev.stage}:${c.id}:${ev.periodKey}`;
+      const seen = await prior(key);
+      if (seen === null) return;
+      if (seen) { summary.duplicates++; return; }
+      const tpl = TEMPLATES[`training_${ev.stage}`];
+      const context: Record<string, unknown> = { stage: ev.stage };
+      let reason: string | null = null;
+      if (ev.suppress === 'disabled' || ev.suppress === 'unsupported_workout_completion') {
+        reason = ev.suppress;                                    // without Finish Workout nothing could ever suppress it
+      } else {
+        // Observation: an explicit, non-revoked Finish Workout during local day D,
+        // judged by completed_at in the client's notification timezone.
+        const { data: done, error } = await admin.from('workout_completions').select('completion_ref')
+          .eq('client_id', c.id).eq('status', 'completed')
+          .gte('completed_at', new Date(ev.dayFrom).toISOString()).lt('completed_at', new Date(ev.dayTo).toISOString())
+          .order('completed_at', { ascending: false }).limit(1);
+        if (error || !Array.isArray(done)) {                    // unknown state → silence, retry next tick
+          summary.stateErrors++; log('pushTick', 'state_query_failed', `training_${ev.stage}:${error?.message ?? 'no_rows'}`); return;
+        }
+        const observation: Observation = done.length ? 'completed' : 'incomplete';
+        if (done.length) context.completionRef = done[0].completion_ref;
+        if (observation === 'incomplete' && ev.stage === 'followup') {
+          // A follow-up follows a primary that actually reached a device.
+          const { data: p1, error: pErr } = await admin.from('notification_events').select('status')
+            .eq('dedupe_key', `training_primary:${c.id}:${ev.periodKey}`).limit(1);
+          if (pErr) { summary.stateErrors++; log('pushTick', 'dedupe_read_failed', pErr.message); return; }
+          if (!['sent', 'partial'].includes(p1?.[0]?.status)) reason = 'primary_not_sent';
+        }
+        if (!reason) {
+          const d = decideReminder({
+            due: true, observation, eligible: true, active, enabled: true, quiet: ev.suppress === 'quiet_hours',
+            hasDevice: observation === 'incomplete' ? (await activeDeviceCount(c.id)) > 0 : true,
+          });
+          reason = d.send ? null : d.reason;
+        }
+      }
+      const st = await claimAndDeliver(c, tpl, key, ev.periodKey, ev.eligibleAt, reason, context);
+      if (st) summary.training[ev.stage]++;
+    };
+
+    const mealStep = async (c: any, pr: any, facts: PlanFacts, active: boolean): Promise<void> => {
+      // Schedule only. No meal log is read: a meal reminder never claims anything about eating.
+      for (const ev of evaluateMealSlots(pr, nowMs, facts)) {
+        summary.due++;
+        const key = `meal:${c.id}:${ev.periodKey}:${ev.slot}`;
+        const seen = await prior(key);
+        if (seen === null) continue;
+        if (seen) { summary.duplicates++; continue; }
+        let reason: string | null = ev.suppress ?? null;
+        if (!reason) {
+          const d = decideScheduled({ due: true, eligible: true, active, enabled: true, quiet: false, hasDevice: (await activeDeviceCount(c.id)) > 0 });
+          reason = d.send ? null : d.reason;
+        }
+        if (await claimAndDeliver(c, mealTemplate(ev.slot), key, ev.periodKey, ev.eligibleAt, reason, { slot: ev.slot })) summary.meals++;
+      }
+    };
+
     // Only clients who opted in have a preferences row; evaluate those, and only
     // the ones that are push-eligible right now (entitlement / access / internal).
     const { data: prefAll, error: pErr } = await admin.from('push_preferences').select(TICK_PREF_COLUMNS).limit(MAX_TICK_CLIENTS);
@@ -687,6 +923,14 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const byId = new Map<string, any>((clients ?? []).filter((c: any) => eligible.has(c.id)).map((c: any) => [c.id, c]));
     const isActive = (c: any) => access.get(c.storage_key) === 'active' && c.is_paused !== true;
     const prefRows = (prefAll ?? []).filter((p: any) => byId.has(p.client_id));
+    // Served-shell facts for the daily-reminder rollout (one read per tick).
+    const dailyIds = prefRows.filter((p: any) => inDaily(byId.get(p.client_id).storage_key)).map((p: any) => p.client_id);
+    let factsById: Map<string, PlanFacts> | null = new Map();
+    if (dailyIds.length) {
+      const { data: fr, error: fErr } = await admin.from('push_plan_facts').select(FACT_COLUMNS).in('client_id', dailyIds);
+      if (fErr) { summary.stateErrors++; log('pushTick', 'facts_failed', fErr.message); factsById = null; }   // unknown → no daily reminders this tick
+      else for (const f of fr ?? []) factsById.set(f.client_id, f as PlanFacts);
+    }
 
     for (const pr of (prefRows ?? []) as Prefs[] & any[]) {
       const c = byId.get(pr.client_id);
@@ -698,6 +942,11 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         ...(onSequence ? [] : [['checkin_reminder', evaluateCheckin(pr, nowMs, c.start_date)] as [string, ReturnType<typeof evaluateWeighin>]]),
       ];
       if (onSequence) await checkinSequenceStep(c, pr, isActive(c));
+      if (factsById && inDaily(c.storage_key)) {
+        const facts = factsById.get(c.id) ?? null;
+        await trainingStep(c, pr, facts, isActive(c));
+        await mealStep(c, pr, facts, isActive(c));
+      }
       for (const [kind, ev] of checks) {
         if (!ev.due) continue;
         summary.due++;
@@ -812,6 +1061,111 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return ok({ eventId: got.id, ...r });
   }
 
+  // ── planFactsSync: facts read from a verified-live shell ────────────────────
+  // Called ONLY by the deploy notifier, with facts it computed from the bytes
+  // GitHub Pages serves (scripts/push/plan_facts.mjs). Writes push_plan_facts
+  // and nothing else: no prescription, shell or preference is touched, and
+  // nothing is sent. A stale slot is handled at send time (no_current_meal_slot).
+  async function planFactsSync(req: Request, body: any): Promise<Response> {
+    if (!(await verifyInternal('deploy', req.headers.get('x-push-deploy-secret')))) return err('unauthorized', 401);
+    const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
+    if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
+    const f = body?.facts;
+    if (!f || typeof f !== 'object') return err('bad_facts', 400);
+    const STATUSES = ['consistent', 'variable', 'unreadable', 'unsupported'];
+    if (!STATUSES.includes(f.meal_facts_status)) return err('bad_meal_facts_status', 400);
+    const n = f.meal_slot_count;
+    if (f.meal_facts_status === 'consistent' ? !(Number.isInteger(n) && n >= 1 && n <= MAX_MEAL_SLOTS) : n !== null) return err('bad_meal_slot_count', 400);
+    if (!SHA256_HEX_RE.test(String(f.served_sha256 ?? ''))) return err('bad_served_sha256', 400);
+    if (f.meal_plan_sig !== null && !SHA256_HEX_RE.test(String(f.meal_plan_sig ?? ''))) return err('bad_meal_plan_sig', 400);
+    if (typeof f.has_workout_completion !== 'boolean') return err('bad_has_workout_completion', 400);
+    const commit = body?.commit == null ? null : String(body.commit);
+    if (commit !== null && !COMMIT_RE.test(commit)) return err('bad_commit', 400);
+
+    const { data: c } = await admin.from('clients').select('id').eq('storage_key', storageKey).maybeSingle();
+    if (!c?.id) return err('unknown_client', 404);
+    const { data: before, error: bErr } = await admin.from('push_plan_facts')
+      .select('meal_facts_status, meal_slot_count, has_workout_completion, served_sha256').eq('client_id', c.id).maybeSingle();
+    if (bErr) { log('planFactsSync', 'read_failed', bErr.message); return err('state_unavailable', 503); }
+    const row = {
+      client_id: c.id, storage_key: storageKey, meal_facts_status: f.meal_facts_status, meal_slot_count: n,
+      meal_plan_sig: f.meal_plan_sig, has_workout_completion: f.has_workout_completion,
+      served_sha256: f.served_sha256, commit_sha: commit, updated_at: new Date(now()).toISOString(),
+    };
+    const { error } = await admin.from('push_plan_facts').upsert(row, { onConflict: 'client_id' });
+    if (error) { log('planFactsSync', 'write_failed', error.message); return err('write_failed', 500); }
+    return ok({
+      storageKey, changed: !before || before.served_sha256 !== f.served_sha256,
+      previous: before ? { mealSlotCount: before.meal_slot_count, hasWorkoutCompletion: before.has_workout_completion } : null,
+      facts: { mealFactsStatus: f.meal_facts_status, mealSlotCount: n, hasWorkoutCompletion: f.has_workout_completion },
+    });
+  }
+
+  // ── coachPushExplain: read-only "why did / didn't this client get it?" ─────
+  // Recomputes local day D from the stored settings and served-shell facts and
+  // lines it up with the events actually recorded. Sends nothing, writes
+  // nothing, returns no endpoint, key, token or prescription detail.
+  async function coachPushExplain(body: any): Promise<Response> {
+    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
+    if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
+    const { data: c } = await admin.from('clients').select(`${CLIENT_ELIG_COLS}, is_paused`).eq('storage_key', storageKey).maybeSingle();
+    if (!c?.id) return err('unknown_client', 404);
+    const nowMs = now();
+    const { eligible, access } = await resolveEligibility([c]);
+    const { data: pr } = await admin.from('push_preferences').select(TICK_PREF_COLUMNS).eq('client_id', c.id).maybeSingle();
+    const { data: factsRow, error: fErr } = await admin.from('push_plan_facts')
+      .select(FACT_COLUMNS + ', meal_plan_sig, commit_sha').eq('client_id', c.id).maybeSingle();
+    const tz = pr && isValidTimezone(pr.timezone) ? pr.timezone : null;
+    const D = /^\d{4}-\d{2}-\d{2}$/.test(String(body?.date ?? '')) ? String(body.date) : tz ? localParts(nowMs, tz).date : null;
+    const base = {
+      storageKey, date: D, timezone: tz, inRollout: inDaily(storageKey), eligible: eligible.has(c.id),
+      active: access.get(storageKey) === 'active' && c.is_paused !== true, optedIn: !!pr?.consent_at,
+      notificationsEnabled: !!pr?.notifications_enabled, activeDevices: await activeDeviceCount(c.id),
+      quietHours: pr ? { start: formatTime(parseTime(pr.quiet_start) ?? 0), end: formatTime(parseTime(pr.quiet_end) ?? 0) } : null,
+      planFacts: fErr ? 'unavailable' : factsRow ? {
+        mealFactsStatus: factsRow.meal_facts_status, mealSlotCount: factsRow.meal_slot_count,
+        hasWorkoutCompletion: factsRow.has_workout_completion, servedSha256: factsRow.served_sha256,
+        commit: factsRow.commit_sha, updatedAt: factsRow.updated_at,
+      } : null,
+    };
+    if (!pr || !tz || !D) return ok({ ...base, training: { status: !pr ? 'not_opted_in' : 'no_timezone' }, meals: { status: !pr ? 'not_opted_in' : 'no_timezone' } });
+
+    const plan = dailyPlan(pr, (factsRow ?? null) as PlanFacts, D, !fErr && !!factsRow);
+    const keys = [`training_primary:${c.id}:${D}`, `training_followup:${c.id}:${D}`,
+      ...Array.from({ length: MAX_MEAL_SLOTS }, (_, i) => `meal:${c.id}:${D}:${i + 1}`)];
+    const { data: evs } = await admin.from('notification_events')
+      .select('dedupe_key, status, suppression_reason, eligible_at, sent_at, device_count, success_count, context').in('dedupe_key', keys);
+    const byKey = new Map<string, any>((evs ?? []).map((e: any) => [e.dedupe_key, e]));
+    const outcome = (key: string, at: number) => {
+      const e = byKey.get(key);
+      if (e) return { outcome: e.status === 'suppressed' ? e.suppression_reason : e.status, eventStatus: e.status,
+                      sentAt: e.sent_at, devices: e.device_count, delivered: e.success_count, context: e.context ?? null };
+      if (nowMs < at) return { outcome: 'scheduled' };
+      if (nowMs < at + 60 * 60000) return { outcome: 'window_open' };
+      return { outcome: 'not_evaluated' };          // window passed with no decision (outside rollout, opted out, scheduler gap…)
+    };
+    const { start, end } = localDayBounds(D, tz);
+    const { data: done, error: dErr } = await admin.from('workout_completions').select('completed_at')
+      .eq('client_id', c.id).eq('status', 'completed')
+      .gte('completed_at', new Date(start).toISOString()).lt('completed_at', new Date(end).toISOString());
+    const { count: dayTotal } = await admin.from('notification_events').select('id', { count: 'exact', head: true })
+      .eq('client_id', c.id).eq('period_key', D).in('kind', ['training_reminder', 'meal_reminder']).in('status', ['claimed', 'sent', 'partial']);
+    return ok({
+      ...base,
+      training: {
+        status: plan.training.status,
+        completedToday: dErr ? 'unknown' : (done ?? []).length > 0,
+        stages: plan.training.stages.map((x) => ({ stage: x.stage, time: x.time, ...outcome(`training_${x.stage}:${c.id}:${D}`, x.at) })),
+      },
+      meals: {
+        status: plan.meals.status, slotCount: plan.meals.slotCount,
+        slots: plan.meals.slots.map((x) => ({ slot: x.slot, time: x.time, stale: x.stale, ...outcome(`meal:${c.id}:${D}:${x.slot}`, x.at) })),
+      },
+      dailyPushes: { count: dayTotal ?? null, cap: DAILY_CAP },
+    });
+  }
+
   // ── entry ─────────────────────────────────────────────────────────────────
   return async function handle(req: Request): Promise<Response> {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -840,6 +1194,8 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         case 'coachPushSend':   return await coachPushSend(body);
         case 'pushTick':        return await pushTick(req);
         case 'programUpdated':  return await programUpdated(req, body);
+        case 'planFactsSync':   return await planFactsSync(req, body);
+        case 'coachPushExplain': return await coachPushExplain(body);
         default:                return err('unknown_type', 400);
       }
     } catch (e) {

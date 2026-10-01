@@ -1,0 +1,55 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# LOCKED IN — Daily reminders V1: served-shell plan facts sync
+# ══════════════════════════════════════════════════════════════════════════════
+# After a push that changes any client shell, waits until GitHub Pages serves
+# the committed bytes, then records per client (push_plan_facts, via the push
+# function's planFactsSync op): current feed count (or "unavailable" for a
+# variable/unreadable plan), whether the shell has Finish Workout, served hash.
+#
+# Read-only towards shells and prescriptions; sends no notification.
+# Inert until the PUSH_DEPLOY_SECRET repository secret exists.
+#
+# Backfill / re-sync: Run workflow → confirm SYNC.
+
+name: Push — plan facts sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/*/index.html'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type SYNC to read every served shell and record its plan facts'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: push-plan-facts-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify live, then sync facts
+        env:
+          PUSH_DEPLOY_SECRET: ${{ secrets.PUSH_DEPLOY_SECRET }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SHA: ${{ github.sha }}
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: node scripts/push/sync_plan_facts.mjs

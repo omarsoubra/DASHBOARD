@@ -126,15 +126,31 @@ self.addEventListener('push', (event) => {
   }));
 });
 
+// Deep links (daily reminders V1): a notification URL may carry ?li=<section>
+// for one of the shell's EXISTING sections. Anything else is ignored → app home.
+const _LI_SECTIONS = ['training', 'nutrition'];
+function _liSection(url) {
+  try { const s = new URL(url).searchParams.get('li'); return _LI_SECTIONS.includes(s) ? s : null; } catch (_) { return null; }
+}
+const _liPage = (url) => { try { const u = new URL(url); return u.origin + u.pathname; } catch (_) { return ''; } };
+
 // Notification click → focus an open window of this scope, else open one.
+// An already-open window is told which section to show (push-client.js routes
+// it through the shell's own showSection); a cold start reads ?li= from the URL.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const scope = self.registration.scope;
   const target = _liSafeClickUrl(event.notification.data && event.notification.data.url, scope);
+  const section = _liSection(target);
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const c of clients) {
-        if (c.url && c.url.split('#')[0] === target.split('#')[0] && 'focus' in c) return c.focus();
+        if (c.url && _liPage(c.url) === _liPage(target) && 'focus' in c) {
+          return c.focus().then((fc) => {
+            if (section) { try { (fc || c).postMessage({ type: 'li-open', section }); } catch (_) {} }
+            return fc;
+          }, () => self.clients.openWindow(target));
+        }
       }
       return self.clients.openWindow(target);
     })

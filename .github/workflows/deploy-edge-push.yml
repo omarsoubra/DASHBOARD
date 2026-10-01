@@ -79,6 +79,7 @@ jobs:
           node tests/push_proof.test.js
           node tests/push_v1.test.js
           node tests/push_v2.test.js
+          node tests/push_daily.test.js
 
       - name: Install Supabase CLI (pinned)
         uses: supabase/setup-cli@v1
