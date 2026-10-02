@@ -5391,6 +5391,8 @@ const CLIENT_CONFIG = {
     startWeight: 76,
     goalWeight:  74,
     storageKey:  'omar',
+    startDate:   '2026-09-03',   // KO block start (canonical, all devices)
+    activePhase: 4,              // flagship block opens by default
   },
   trainer: {
     recipientEmail: 'strengthbyo@gmail.com',
@@ -5446,22 +5448,115 @@ const CLIENT_TOKEN = (function () {
   return tok;
 })();
 
-// Truthful failure: without a token every cloud write is refused by the
-// backend. Say so rather than letting the client log a month into nothing.
+// ═════════════════════════════════════════════════════════════════════════
+// RELINK SCREEN  —  P0 2026-09-14 (ported to this hand-built shell 2026-10-02)
+// A fresh context (new phone, cleared site data, iOS's eviction of unused-site
+// storage, or an installed Home-Screen app — which on iOS gets its own storage
+// and launches at the token-free URL this shell rewrites the address bar to)
+// has no token. It now locks, and offers the one recovery that is safe here:
+// paste the personal link, or just the code at the end of it. The token is
+// validated against authClient BEFORE it is stored, so a bad token or another
+// client's token leaves the app locked.
+// No token is ever written into a committed file, a manifest, or a start_url.
+// ═════════════════════════════════════════════════════════════════════════
+function _extractToken(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  const m = t.match(/[?&]t=([A-Za-z0-9_\-]+)/);   // full link or ?t= fragment
+  if (m) return m[1];
+  if (/^[A-Za-z0-9_\-]{16,}$/.test(t)) return t; // bare code
+  return '';
+}
+
+async function _validateAndStoreToken(candidate) {
+  const tok = _extractToken(candidate);
+  if (!tok) return { ok: false, error: 'That does not look like your access link.' };
+  if (!CLIENT_CONFIG.sheetsWebhookUrl) return { ok: false, error: 'No cloud endpoint configured.' };
+  let j = null;
+  try {
+    const resp = await fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      cache: 'no-store',
+      body: JSON.stringify({
+        type: 'authClient',
+        client: CLIENT_CONFIG.client.storageKey,
+        storageKey: CLIENT_CONFIG.client.storageKey,
+        token: tok,
+      }),
+    });
+    j = await resp.json();
+  } catch (e) {
+    return { ok: false, error: 'No connection. Check your internet and try again.' };
+  }
+  // The server resolves the token against THIS shell's storageKey, so another
+  // client's token comes back bad_token and stays locked.
+  if (!j || j.ok !== true) return { ok: false, error: 'That link is not valid for this program. Ask Omar for a new one.' };
+  try { localStorage.setItem(CLIENT_CONFIG.client.storageKey + '_access_token', tok); } catch (e) {}
+  return { ok: true, token: tok };
+}
+
+function _showRelinkScreen() {
+  if (document.getElementById('relink-screen')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'relink-screen';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0b0b0d;color:#f2f2f4;'
+    + 'display:flex;align-items:center;justify-content:center;padding:24px;'
+    + 'font:400 15px/1.55 system-ui,-apple-system,sans-serif;overflow-y:auto;';
+  wrap.innerHTML =
+      '<div style="max-width:420px;width:100%;">'
+    +   '<div style="font:700 13px/1 system-ui;letter-spacing:.12em;color:#8a8a92;margin-bottom:10px;">LOCKED IN</div>'
+    +   '<h1 style="font:700 25px/1.2 system-ui;margin:0 0 14px;">Reconnect this device</h1>'
+    +   '<p style="margin:0 0 18px;color:#b9b9c2;">This copy of your program is not linked to your account yet, '
+    +     'so nothing you log here would reach Omar. Paste the personal link he sent you '
+    +     '(or just the code at the end of it) and you are back in.</p>'
+    +   '<input id="relink-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" '
+    +     'spellcheck="false" placeholder="Paste your link or code" '
+    +     'style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:11px;border:1px solid #34343d;'
+    +     'background:#17171c;color:#fff;font:400 15px system-ui;margin-bottom:10px;"/>'
+    +   '<button id="relink-go" style="width:100%;padding:13px 14px;border-radius:11px;border:0;'
+    +     'background:#e8e8ef;color:#111;font:700 15px system-ui;cursor:pointer;">Unlock my program</button>'
+    +   '<div id="relink-msg" role="status" aria-live="polite" style="min-height:22px;margin-top:12px;font-size:13.5px;"></div>'
+    +   '<p style="margin:16px 0 0;color:#7a7a84;font-size:12.5px;">Lost the link? Message Omar and he will send a new one. '
+    +     'Adding this page to your Home Screen does not carry the link across — that is why you are seeing this.</p>'
+    + '</div>';
+  document.body.appendChild(wrap);
+  const input = wrap.querySelector('#relink-input');
+  const btn   = wrap.querySelector('#relink-go');
+  const msg   = wrap.querySelector('#relink-msg');
+  let busy = false;
+  const go = async function () {
+    if (busy) return;
+    busy = true; btn.disabled = true;
+    const label = btn.textContent; btn.textContent = 'Checking…';
+    msg.style.color = '#b9b9c2'; msg.textContent = '';
+    const r = await _validateAndStoreToken(input.value);
+    if (r.ok) {
+      msg.style.color = '#8fe3a6'; msg.textContent = 'Linked. Loading your program…';
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('t');
+        const qs = params.toString();
+        history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+      } catch (e) {}
+      setTimeout(function () { window.location.reload(); }, 350);
+      return;
+    }
+    msg.style.color = '#ff9aa9'; msg.textContent = r.error;
+    busy = false; btn.disabled = false; btn.textContent = label;
+  };
+  btn.addEventListener('click', go);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+  setTimeout(function () { try { input.focus(); } catch (e) {} }, 120);
+}
+
 if (!CLIENT_TOKEN) {
   try {
     console.warn('No access token. Open the link Omar sent you (it ends in ?t=...).');
-    window.addEventListener('DOMContentLoaded', function () {
-      const bar = document.createElement('div');
-      bar.setAttribute('role', 'alert');
-      bar.style.cssText = 'position:sticky;top:0;z-index:9999;padding:0.7rem 1rem;'
-        + 'background:#4a1520;color:#ffd7de;font:500 0.82rem/1.45 system-ui,sans-serif;'
-        + 'border-bottom:1px solid #7a2436;text-align:center;';
-      bar.textContent = 'This page is missing its access code, so nothing you log here '
-        + 'will reach Omar. Open the personal link he sent you (it ends in ?t=...) and '
-        + 'bookmark that one.';
-      document.body.insertBefore(bar, document.body.firstChild);
-    });
+    if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', _showRelinkScreen);
+    else _showRelinkScreen();
   } catch (e) {}
 }
 const LS_KEYS = {
@@ -5975,7 +6070,16 @@ const CODES = { 2: CLIENT_CONFIG.phases[2].unlockCode,    3: CLIENT_CONFIG.phase
 const TIMER_DAYS = { 2: CLIENT_CONFIG.phases[2].unlockAfterDays, 3: CLIENT_CONFIG.phases[3].unlockAfterDays, 4: CLIENT_CONFIG.phases[4].unlockAfterDays };
 
 // Start date is set automatically the first time the page is opened by the client.
-const START_DATE = localStorage.getItem(LS_KEYS.start) || null;
+// CANONICAL PROGRAM START  —  P0 2026-09-14 (ported 2026-10-02)
+// The coach-set start date wins whenever it exists, so a Home-Screen install
+// (its own storage on iOS) does not reset him to Week 1 / Phase 1.
+const CANONICAL_START = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.startDate) || null;
+const START_DATE = CANONICAL_START || localStorage.getItem(LS_KEYS.start) || null;
+try {
+  if (CANONICAL_START && localStorage.getItem(LS_KEYS.start) !== CANONICAL_START) {
+    localStorage.setItem(LS_KEYS.start, CANONICAL_START);
+  }
+} catch (e) {}
 
 let attemptingPhase = null;
 let countdownInterval = null;
@@ -10091,7 +10195,24 @@ function sw3Use(i) {
           in: a code they entered, or a positive unlockAfterDays timer that has
           elapsed (a 0-day timer is no schedule and is ignored here);
        5. Phase 1. */
+  /* OMAR ACTIVE PHASE (2026-10-02): his live programme is Phase 4 (flagship); phases 1-3 are the KO archive.
+     Boot opens the active phase by default instead of the highest phase that has history - unless an OPEN
+     session exists in the phase the standard resolver picked (that is resumed as before). Every phase stays
+     selectable from the chips. */
   function resolvePhase() {
+    var r = _resolvePhaseBase();
+    try {
+      var A = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.activePhase != null) ? String(CLIENT_CONFIG.client.activePhase) : null;
+      if (!A || !phases[A] || phaseLocked(A) || String(r) === A) return r;
+      var L = ledgerLoad(), open = false;
+      Object.keys(L).forEach(function (k) {
+        var m = k.match(/^p([^.]+)\.d(\d+)$/); if (!m || m[1] !== String(r)) return;
+        (L[k] || []).forEach(function (s) { if (s && s.status === 'open') open = true; });
+      });
+      return open ? String(r) : A;
+    } catch (e) { return r; }
+  }
+  function _resolvePhaseBase() {
     var keys = Object.keys(phases);
     function ok(n) { return keys.indexOf(String(n)) >= 0 && !phaseLocked(n); }
     var L; try { L = ledgerLoad(); } catch (e) { L = {}; }
