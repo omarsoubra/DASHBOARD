@@ -327,54 +327,132 @@ export function decideReminder(i: {
 }
 
 // ============================================================================
-// DAILY REMINDERS V1 — TRAINING + MEALS (pure)
+// DAILY REMINDERS V1 — PLAN-SYNCED TRAINING + MEALS (pure)
 //
-// Everything a client is reminded about here was CHOSEN BY THE CLIENT: their
-// training weekdays and time, an optional follow-up time, and one reminder time
-// per ordinal meal slot. Nothing is derived from the programme, the meal names,
-// the printed meal times or the intake notes.
+// The APPROVED COACHING PLAN owns the schedule. It is authored as
+// `schedule` (locked-in.schedule.v1) in the client's prescription / config,
+// compiled into the served shell as `const LI_SCHEDULE = {...};`, read from the
+// verified-live bytes by planFactsSync and stored in push_plan_facts. The client
+// only chooses ON/OFF per category (push_preferences.training_enabled /
+// meals_enabled); it never edits a day or a time.
 //
-//   training  primary   at training_time on a selected weekday
-//             followup  at training_followup_time (optional, >= 60 min later)
-//             Both are suppressed by an explicit Finish Workout during that local
-//             day (the handler's observation). A training reminder means "you
-//             said you train today" — never "you are due session X".
-//   meals     slot k    at meal_times[k-1], every day. Schedule only: there is
-//             no meal-completion signal, so nothing here observes eating.
+// TIMEZONE — ONE runtime authority. Schedule times are LOCAL WALL-CLOCK times
+// with NO timezone of their own (the schema rejects a timezone key). They are
+// always evaluated in push_preferences.timezone, the client's current device
+// timezone captured at opt-in and correctable by the client. "18:30" therefore
+// means 18:30 where the client's phone is set; nothing can pair a Sydney plan
+// with a Bali device and fire at a third instant. No travel logic exists.
+//
+//   training  primary   at days[d].time on each confirmed weekday
+//             follow-up at primary + 2 h (product policy). Suppressed when it
+//             would fall in quiet hours; never exists when it would cross local
+//             midnight; never moved. Both suppressed by an explicit Finish Workout.
+//   meals     feed k    at feeds[k].time every day. Schedule only — no meal
+//             completion is ever inferred.
 //
 // Windows are [time, time + WINDOW) clipped to the next stage/slot and to the
-// end of the local day, so every event belongs to exactly one local date D and
-// at most one training stage and one meal slot are open at any instant.
-// A wall-clock time inside a spring-forward gap opens when the clock jumps past
-// it; a repeated fall-back hour is collapsed by the per-date dedupe key.
+// end of the local day, so each event belongs to exactly one local date D.
 // ============================================================================
 
-export const FOLLOWUP_MIN_GAP = 60;
+export const FOLLOWUP_OFFSET_MINUTES = 120;
 export const MAX_MEAL_SLOTS = 8;
 export const DAILY_CAP = 10;            // automatic training + meal pushes per client per local day
+export const SCHEDULE_SCHEMA = 'locked-in.schedule.v1';
 
-export type DailyPrefs = Prefs & {
-  training_enabled?: boolean | null;
-  training_days?: number | null;
-  training_time?: string | null;
-  training_followup_enabled?: boolean | null;
-  training_followup_time?: string | null;
-  meals_enabled?: boolean | null;
-  meal_times?: Array<string | null> | null;
+export type DailyPrefs = Prefs & { training_enabled?: boolean | null; meals_enabled?: boolean | null };
+
+export type ScheduleV1 = {
+  schema: string;
+  training: { status: 'confirmed' | 'unknown'; source?: string; days?: Array<{ dow: number; time: string; session: string | null }> };
+  meals: { status: 'confirmed' | 'unknown'; source?: string; feeds?: Array<{ slot: number; time: string }> };
 };
 
 export type PlanFacts = {
   meal_facts_status: string;
   meal_slot_count: number | null;
   has_workout_completion: boolean;
+  schedule?: ScheduleV1 | null;
+  training_schedule_status?: string | null;
+  meal_schedule_status?: string | null;
 } | null;
 
-export type TrainingStage = 'primary' | 'followup';
+const SESSION_RE = /^[A-Za-z][A-Za-z0-9 &/+-]{0,29}$/;
+const SOURCES = ['client_confirmed', 'coach_confirmed'];
+const onGrid = (t: unknown) => { const m = parseTime(t); return m !== null && m % 15 === 0 && /^\d{2}:\d{2}$/.test(String(t)) ? m : null; };
 
-/** Is weekday `dow` (0 = Sunday) selected in the client's bitmask? */
-export function trainingDaySelected(mask: unknown, dow: number): boolean {
-  return Number.isInteger(mask) && (mask as number) > 0 && (((mask as number) >> dow) & 1) === 1;
+/**
+ * Validate a locked-in.schedule.v1 object. Pure. Returns per-category status:
+ * 'confirmed' (usable), 'unknown' (declared unknown or absent → unavailable,
+ * never an error) or 'invalid' (malformed → unavailable) with the reasons.
+ * `feedCount` is the served plan's consistent feed count (null = variable/unreadable).
+ */
+export function validateSchedule(raw: unknown, feedCount: number | null):
+    { training: 'confirmed' | 'unknown' | 'invalid'; meals: 'confirmed' | 'unknown' | 'invalid'; errors: string[] } {
+  const errors: string[] = [];
+  if (raw === null || raw === undefined) return { training: 'unknown', meals: 'unknown', errors };
+  const s = raw as any;
+  if (typeof s !== 'object' || Array.isArray(s) || s.schema !== SCHEDULE_SCHEMA) return { training: 'invalid', meals: 'invalid', errors: ['schema'] };
+  const extra = Object.keys(s).filter((k) => !['schema', 'training', 'meals'].includes(k));
+  if (extra.length) return { training: 'invalid', meals: 'invalid', errors: ['unknown_key:' + extra[0]] };   // e.g. a timezone: there is ONE runtime tz
+  const cat = (c: any, name: string, check: (c: any) => string | null): 'confirmed' | 'unknown' | 'invalid' => {
+    if (!c || c.status === 'unknown') return 'unknown';
+    if (c.status !== 'confirmed') { errors.push(name + ':status'); return 'invalid'; }
+    if (!SOURCES.includes(c.source)) { errors.push(name + ':source'); return 'invalid'; }
+    const e = check(c);
+    if (e) { errors.push(name + ':' + e); return 'invalid'; }
+    return 'confirmed';
+  };
+  const training = cat(s.training, 'training', (c) => {
+    if (Object.keys(c).some((k) => !['status', 'source', 'days'].includes(k))) return 'unknown_key';
+    if (!Array.isArray(c.days) || !c.days.length || c.days.length > 7) return 'days';
+    const seen = new Set<number>();
+    for (const d of c.days) {
+      if (!d || typeof d !== 'object' || Object.keys(d).some((k) => !['dow', 'time', 'session'].includes(k))) return 'day_shape';
+      if (!Number.isInteger(d.dow) || d.dow < 0 || d.dow > 6 || seen.has(d.dow)) return 'dow';
+      seen.add(d.dow);
+      if (onGrid(d.time) === null) return 'time';
+      if (d.session !== null && !(typeof d.session === 'string' && SESSION_RE.test(d.session))) return 'session';
+    }
+    return null;
+  });
+  const meals = cat(s.meals, 'meals', (c) => {
+    if (Object.keys(c).some((k) => !['status', 'source', 'feeds'].includes(k))) return 'unknown_key';
+    if (!Array.isArray(c.feeds) || !c.feeds.length || c.feeds.length > MAX_MEAL_SLOTS) return 'feeds';
+    let last = -1;
+    for (let i = 0; i < c.feeds.length; i++) {
+      const f = c.feeds[i];
+      if (!f || typeof f !== 'object' || Object.keys(f).some((k) => !['slot', 'time'].includes(k))) return 'feed_shape';
+      if (f.slot !== i + 1) return 'slot';                       // unique, sequential 1..N
+      const m = onGrid(f.time);
+      if (m === null) return 'time';
+      if (m <= last) return 'order';                             // Meal k is later than Meal k-1
+      last = m;
+    }
+    if (feedCount === null || c.feeds.length !== feedCount) return 'feed_count_mismatch';
+    return null;
+  });
+  return { training, meals, errors };
 }
+
+/** Is the client's local weekday a confirmed training day? Returns that day's entry. */
+export function trainingDayOf(schedule: ScheduleV1 | null | undefined, dow: number) {
+  const days = schedule?.training?.status === 'confirmed' ? schedule.training.days ?? [] : [];
+  return days.find((d) => d.dow === dow) ?? null;
+}
+
+/** Plan-owned stage times for one training day. Follow-up absent when it would cross midnight. */
+export function trainingStages(day: { time: string } | null): { primary: number; followup: number | null } | null {
+  const primary = day ? parseTime(day.time) : null;
+  if (primary === null) return null;
+  const fu = primary + FOLLOWUP_OFFSET_MINUTES;
+  return { primary, followup: fu < MINUTES_PER_DAY ? fu : null };
+}
+
+export const trainingAvailable = (facts: PlanFacts) =>
+  !!facts && facts.has_workout_completion === true && facts.training_schedule_status === 'confirmed' && facts.schedule?.training?.status === 'confirmed';
+export const mealsAvailable = (facts: PlanFacts) =>
+  !!facts && facts.meal_schedule_status === 'confirmed' && facts.meal_facts_status === 'consistent' &&
+  facts.schedule?.meals?.status === 'confirmed' && (facts.schedule.meals.feeds ?? []).length === facts.meal_slot_count;
 
 /** Window [at, min(at + WINDOW, nextAt, end of day)) on the local clock. */
 function inDayWindow(minuteOfDay: number, at: number, nextAt: number | null): boolean {
@@ -382,87 +460,79 @@ function inDayWindow(minuteOfDay: number, at: number, nextAt: number | null): bo
   return minuteOfDay >= at && minuteOfDay < end;
 }
 
-/** The client's training schedule, or null when it is off or incomplete. An invalid follow-up is dropped. */
-export function trainingSchedule(p: DailyPrefs): { primary: number; followup: number | null } | null {
-  if (p.training_enabled !== true) return null;
-  const primary = parseTime(p.training_time);
-  if (primary === null || !Number.isInteger(p.training_days) || (p.training_days as number) <= 0) return null;
-  let followup = p.training_followup_enabled === true ? parseTime(p.training_followup_time) : null;
-  if (followup !== null && followup < primary + FOLLOWUP_MIN_GAP) followup = null;
-  return { primary, followup };
-}
-
+export type TrainingStage = 'primary' | 'followup';
 export type TrainingEvaluation =
   | { due: false }
-  | { due: true; stage: TrainingStage; periodKey: string; eligibleAt: number;
+  | { due: true; stage: TrainingStage; periodKey: string; eligibleAt: number; session: string | null;
       /** [start, end) of local day D — the only span in which a completion counts */
       dayFrom: number; dayTo: number;
-      suppress?: 'disabled' | 'unsupported_workout_completion' | 'quiet_hours' };
+      suppress?: 'disabled' | 'quiet_hours' };
 
 /**
- * Which training stage (if any) is open at `now`. Pure. Reports the suppressions
- * that need no live state (master switch, no Finish Workout on the served shell,
- * quiet hours); completion, eligibility and devices are the handler's job.
+ * Which plan training stage (if any) is open at `now`. Pure. The client's only
+ * input is training_enabled; days, times and the follow-up come from the plan.
  */
 export function evaluateTrainingStage(p: DailyPrefs, nowMs: number, facts: PlanFacts): TrainingEvaluation {
-  if (!isValidTimezone(p.timezone)) return { due: false };
-  const s = trainingSchedule(p);
-  if (!s) return { due: false };
+  if (p.training_enabled !== true || !isValidTimezone(p.timezone) || !trainingAvailable(facts)) return { due: false };
   const now = localParts(nowMs, p.timezone);
-  if (!trainingDaySelected(p.training_days, now.dow)) return { due: false };
+  const day = trainingDayOf(facts!.schedule, now.dow);
+  const st = trainingStages(day);
+  if (!st) return { due: false };
   let stage: TrainingStage, at: number;
-  if (inDayWindow(now.minuteOfDay, s.primary, s.followup)) { stage = 'primary'; at = s.primary; }
-  else if (s.followup !== null && inDayWindow(now.minuteOfDay, s.followup, null)) { stage = 'followup'; at = s.followup; }
+  if (inDayWindow(now.minuteOfDay, st.primary, st.followup)) { stage = 'primary'; at = st.primary; }
+  else if (st.followup !== null && inDayWindow(now.minuteOfDay, st.followup, null)) { stage = 'followup'; at = st.followup; }
   else return { due: false };
   const D = now.date;
   const { start, end } = localDayBounds(D, p.timezone);
-  const ev = { due: true as const, stage, periodKey: D, eligibleAt: zonedTimeToUtc(D, at, p.timezone), dayFrom: start, dayTo: end };
+  const ev = { due: true as const, stage, periodKey: D, eligibleAt: zonedTimeToUtc(D, at, p.timezone),
+               session: day!.session ?? null, dayFrom: start, dayTo: end };
   if (!p.notifications_enabled) return { ...ev, suppress: 'disabled' };
-  if (facts?.has_workout_completion !== true) return { ...ev, suppress: 'unsupported_workout_completion' };
   if (inQuietHours(now.minuteOfDay, parseTime(p.quiet_start) ?? 0, parseTime(p.quiet_end) ?? 0)) return { ...ev, suppress: 'quiet_hours' };
   return ev;
 }
 
-/** Configured meal slots (1-based), in order. A slot that is not strictly later than the previous one is dropped, never reordered. */
-export function mealSlotTimes(p: DailyPrefs): Array<{ slot: number; at: number }> {
-  if (p.meals_enabled !== true || !Array.isArray(p.meal_times)) return [];
-  const out: Array<{ slot: number; at: number }> = [];
-  p.meal_times.slice(0, MAX_MEAL_SLOTS).forEach((t, i) => {
-    const at = parseTime(t);
-    if (at === null) return;
-    if (out.length && at <= out[out.length - 1].at) return;
-    out.push({ slot: i + 1, at });
-  });
-  return out;
+/** Plan feed times (1-based slots). */
+export function mealSlotTimes(facts: PlanFacts): Array<{ slot: number; at: number }> {
+  if (!mealsAvailable(facts)) return [];
+  return (facts!.schedule!.meals.feeds ?? []).map((f) => ({ slot: f.slot, at: parseTime(f.time) as number }));
 }
 
-/** Meal reminders exist only for a plan whose served feed count is one consistent N. */
-export function mealsAvailable(facts: PlanFacts): boolean {
-  return !!facts && facts.meal_facts_status === 'consistent' && Number.isInteger(facts.meal_slot_count) &&
-    (facts.meal_slot_count as number) >= 1 && (facts.meal_slot_count as number) <= MAX_MEAL_SLOTS;
-}
+export type MealSlotEvaluation = { slot: number; periodKey: string; eligibleAt: number; suppress?: 'disabled' | 'quiet_hours' };
 
-export type MealSlotEvaluation = {
-  slot: number; periodKey: string; eligibleAt: number;
-  suppress?: 'no_current_meal_slot' | 'disabled' | 'quiet_hours';
-};
-
-/** Meal slots whose window is open at `now` (at most one). Pure; never looks at eating. */
+/** Plan meal slots whose window is open at `now` (at most one). Pure; never looks at eating. */
 export function evaluateMealSlots(p: DailyPrefs, nowMs: number, facts: PlanFacts): MealSlotEvaluation[] {
-  if (!isValidTimezone(p.timezone) || !mealsAvailable(facts)) return [];
-  const slots = mealSlotTimes(p);
+  if (p.meals_enabled !== true || !isValidTimezone(p.timezone)) return [];
+  const slots = mealSlotTimes(facts);
   const now = localParts(nowMs, p.timezone);
   const out: MealSlotEvaluation[] = [];
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
     if (!inDayWindow(now.minuteOfDay, s.at, i + 1 < slots.length ? slots[i + 1].at : null)) continue;
     const ev = { slot: s.slot, periodKey: now.date, eligibleAt: zonedTimeToUtc(now.date, s.at, p.timezone) };
-    if (s.slot > (facts as { meal_slot_count: number }).meal_slot_count) out.push({ ...ev, suppress: 'no_current_meal_slot' });
-    else if (!p.notifications_enabled) out.push({ ...ev, suppress: 'disabled' });
+    if (!p.notifications_enabled) out.push({ ...ev, suppress: 'disabled' });
     else if (inQuietHours(now.minuteOfDay, parseTime(p.quiet_start) ?? 0, parseTime(p.quiet_end) ?? 0)) out.push({ ...ev, suppress: 'quiet_hours' });
     else out.push(ev);
   }
   return out;
+}
+
+/**
+ * Fail-safe for in-app trainer-mode meal edits (client_overrides meal.wN.dN),
+ * which change a day's meals without a deploy. If ANY active edit's feed count
+ * differs from the synced schedule — or cannot be read — the server can no
+ * longer prove the schedule matches what the client sees: no meal reminder.
+ */
+export function mealOverridesConsistent(rows: Array<{ key: string; value_text: string | null }>, feedCount: number): boolean {
+  for (const r of rows) {
+    if (!/^meal\.w\d+\.d\d+$/.test(r.key)) continue;
+    if (r.value_text === null || r.value_text === '' || r.value_text === 'null') continue;     // a reset, not an edit
+    let v: unknown;
+    try { v = JSON.parse(r.value_text); } catch { return false; }
+    if (!Array.isArray(v)) return false;
+    const n = v.filter((m: any) => m && typeof m === 'object' && m.name && Number(m.cal) > 0).length;
+    if (n !== feedCount) return false;
+  }
+  return true;
 }
 
 /** decideReminder for a pure schedule reminder: there is no observation, so "completed" can never be claimed. */
@@ -472,33 +542,35 @@ export function decideScheduled(i: { due: boolean; eligible: boolean; active: bo
 
 // ── diagnostics (coachPushExplain): what local day D looks like, no live state ─
 export type DailyPlanView = {
-  training: { status: 'disabled' | 'no_configured_day_time' | 'not_training_day' | 'unsupported_workout_completion' | 'scheduled';
+  training: { status: 'disabled' | 'no_confirmed_schedule' | 'unsupported_workout_completion' | 'not_training_day' | 'scheduled';
+              session: string | null; followupPolicy: string | null;
               stages: Array<{ stage: TrainingStage; time: string; at: number }> };
-  meals: { status: 'disabled' | 'no_plan_facts' | 'variable_feed_count' | 'no_configured_time' | 'scheduled';
-           slotCount: number | null; slots: Array<{ slot: number; time: string; at: number; stale: boolean }> };
+  meals: { status: 'disabled' | 'no_plan_facts' | 'no_confirmed_schedule' | 'scheduled';
+           slots: Array<{ slot: number; time: string; at: number }> };
 };
 
-export function dailyPlan(p: DailyPrefs, facts: PlanFacts, D: string, factsKnown: boolean): DailyPlanView {
+export function dailyPlan(p: DailyPrefs, facts: PlanFacts, D: string): DailyPlanView {
   const tz = isValidTimezone(p.timezone) ? p.timezone : null;
   const inst = (m: number) => (tz ? zonedTimeToUtc(D, m, tz) : NaN);
-  const training: DailyPlanView['training'] = { status: 'scheduled', stages: [] };
-  const s = trainingSchedule(p);
-  if (p.training_enabled !== true) training.status = 'disabled';
-  else if (!s) training.status = 'no_configured_day_time';
-  else if (!trainingDaySelected(p.training_days, dowOf(D))) training.status = 'not_training_day';
+  const training: DailyPlanView['training'] = { status: 'scheduled', session: null, followupPolicy: null, stages: [] };
+  if (!facts || facts.training_schedule_status !== 'confirmed') training.status = 'no_confirmed_schedule';
+  else if (facts.has_workout_completion !== true) training.status = 'unsupported_workout_completion';
+  else if (p.training_enabled !== true) training.status = 'disabled';
   else {
-    if (facts?.has_workout_completion !== true) training.status = 'unsupported_workout_completion';
-    training.stages.push({ stage: 'primary', time: formatTime(s.primary), at: inst(s.primary) });
-    if (s.followup !== null) training.stages.push({ stage: 'followup', time: formatTime(s.followup), at: inst(s.followup) });
+    const day = trainingDayOf(facts.schedule, dowOf(D));
+    const st = trainingStages(day);
+    if (!st) training.status = 'not_training_day';
+    else {
+      training.session = day!.session ?? null;
+      training.stages.push({ stage: 'primary', time: formatTime(st.primary), at: inst(st.primary) });
+      if (st.followup !== null) training.stages.push({ stage: 'followup', time: formatTime(st.followup), at: inst(st.followup) });
+      training.followupPolicy = st.followup === null ? 'suppressed_crosses_midnight' : 'primary_plus_2h';
+    }
   }
-  const meals: DailyPlanView['meals'] = { status: 'scheduled', slotCount: facts?.meal_slot_count ?? null, slots: [] };
-  if (!factsKnown || !facts) meals.status = 'no_plan_facts';
-  else if (!mealsAvailable(facts)) meals.status = 'variable_feed_count';
+  const meals: DailyPlanView['meals'] = { status: 'scheduled', slots: [] };
+  if (!facts) meals.status = 'no_plan_facts';
+  else if (!mealsAvailable(facts)) meals.status = 'no_confirmed_schedule';
   else if (p.meals_enabled !== true) meals.status = 'disabled';
-  if (meals.status === 'scheduled') {
-    const slots = mealSlotTimes(p);
-    if (!slots.length) meals.status = 'no_configured_time';
-    for (const x of slots) meals.slots.push({ slot: x.slot, time: formatTime(x.at), at: inst(x.at), stale: x.slot > (facts!.meal_slot_count as number) });
-  }
+  else for (const x of mealSlotTimes(facts)) meals.slots.push({ slot: x.slot, time: formatTime(x.at), at: inst(x.at) });
   return { training, meals };
 }

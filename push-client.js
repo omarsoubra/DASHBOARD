@@ -109,17 +109,6 @@
     return ((h % 12) || 12) + ':' + m + (h < 12 ? ' AM' : ' PM');
   }
 
-  function minutes(hhmm) {
-    var m = /^(\d{2}):(\d{2})/.exec(hhmm || '');
-    return m ? (+m[1]) * 60 + (+m[2]) : null;
-  }
-  // Same rule as the server (schedule.ts inQuietHours): wraps midnight; start === end = none.
-  function inQuiet(hhmm, qs, qe) {
-    var t = minutes(hhmm), s = minutes(qs), e = minutes(qe);
-    if (t === null || s === null || e === null || s === e) return false;
-    return s < e ? (t >= s && t < e) : (t >= s || t < e);
-  }
-
   var TIMES = (function () {
     var out = [];
     for (var m = 0; m < 1440; m += 15) out.push(('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2));
@@ -286,21 +275,12 @@
 
   Push.prototype.saveError = function (code) {
     switch (code) {
-      case 'training_needs_days_and_time': return 'Pick at least one training day and a reminder time first.';
-      case 'followup_needs_time':          return 'Choose a follow-up time first.';
-      case 'followup_too_close':           return 'The follow-up has to be at least 1 hour after your training reminder.';
-      case 'followup_needs_training':      return 'Turn on training reminders first.';
-      case 'meals_need_a_time':            return 'Set at least one meal time first.';
-      case 'meal_times_order':             return 'Each meal time has to be later than the one before it.';
       case 'training_not_available': case 'meals_not_available': case 'daily_not_available':
                                            return 'That reminder isn\'t available for your current plan.';
       case 'network':                      return 'No connection. Check your internet and try again.';
       default:                             return 'Could not save that change. Try again.';
     }
   };
-
-  /** Client-side guard for the daily settings: say why, never send a change the server must refuse. */
-  Push.prototype._hint = function (msg) { this.lastError = msg; this.render(); };
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   Push.prototype.render = function () {
@@ -399,7 +379,7 @@
     }
     row('Weekly check-in', (DAYS[p.checkinDow] || 'Sundays') + ', only if it isn\'t done', p.checkinEnabled ? [sel('checkinTime', 'Check-in reminder time'), sw('checkinEnabled', 'Weekly check-in reminder')] : [sw('checkinEnabled', 'Weekly check-in reminder')]);
     row('Program updates', 'When Omar updates your program', [sw('programUpdatesEnabled', 'Program update notifications')]);
-    if (p.daily && p.daily.available) self._daily(card, row, sw);
+    if (p.daily && p.daily.available) self._daily(row, sw);
     row('Quiet hours', 'Nothing is sent in this window', [sel('quietStart', 'Quiet hours start'), el('span', { class: 'lip-muted' }, '–'), sel('quietEnd', 'Quiet hours end')]);
     var tz = localTimezone();
     if (tz && p.timezone !== tz) {
@@ -411,100 +391,13 @@
     }
   };
 
-  // ── Daily reminders V1: training + meals (every time is the client's own) ──
-  Push.prototype._daily = function (card, row, sw) {
-    var self = this, p = self.prefs, d = p.daily;
-    var SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    function timeSel(value, labelText, onPick, minMinutes) {
-      var s = el('select', { class: 'lip-sel', 'aria-label': labelText });
-      var blank = el('option', { value: '' }, 'Choose…'); if (!value) blank.selected = true; s.appendChild(blank);
-      TIMES.forEach(function (t) {
-        if (minMinutes != null && minutes(t) < minMinutes) return;
-        var o = el('option', { value: t }, label12(t)); if (t === value) o.selected = true; s.appendChild(o);
-      });
-      if (self.saving) s.setAttribute('disabled', 'disabled');
-      s.addEventListener('change', function () { onPick(s.value || null); });
-      return s;
-    }
-    function quietNote(value) {
-      if (value && inQuiet(value, p.quietStart, p.quietEnd)) {
-        card.appendChild(el('p', { class: 'lip-muted' }, label12(value) + ' is inside your quiet hours (' + label12(p.quietStart) + '–' + label12(p.quietEnd) + '), so this reminder won\'t be sent. Pick another time or change your quiet hours.'));
-      }
-    }
-    function toggle(field, labelText, onTurnOn) {
-      var b = el('button', { type: 'button', role: 'switch', class: 'lip-switch', 'aria-checked': String(!!p[field]), 'aria-label': labelText });
-      if (self.saving) b.setAttribute('disabled', 'disabled');
-      b.addEventListener('click', function () {
-        if (!p[field] && onTurnOn && !onTurnOn()) return;
-        self._save(field, !p[field]);
-      });
-      return b;
-    }
-
-    // Training
-    if (!d.trainingAvailable) {
-      row('Training reminders', 'Not available for your current program yet.', []);
-    } else {
-      row('Training reminders', 'On the days you choose. Skipped if you\'ve already finished a workout that day.',
-        [toggle('trainingEnabled', 'Training reminders', function () {
-          if (!p.trainingDays.length || !p.trainingTime) { self._hint('Pick your training days and a reminder time first.'); return false; }
-          return true;
-        })]);
-      var chips = el('div', { class: 'lip-ctrl', role: 'group', 'aria-label': 'Training days' });
-      SHORT.forEach(function (lbl, i) {
-        var on = p.trainingDays.indexOf(i) >= 0;
-        var b = el('button', { type: 'button', class: 'lip-sel', 'aria-pressed': String(on), 'aria-label': LONG[i], style: on ? 'background:var(--accent,#6ea8ff);color:#fff;' : '' }, lbl);
-        if (self.saving) b.setAttribute('disabled', 'disabled');
-        b.addEventListener('click', function () {
-          var next = on ? p.trainingDays.filter(function (x) { return x !== i; }) : p.trainingDays.concat([i]).sort();
-          if (p.trainingEnabled && !next.length) { self._hint('Keep at least one day, or turn training reminders off.'); return; }
-          self._save('trainingDays', next);
-        });
-        chips.appendChild(b);
-      });
-      row('Training days', null, [chips]);
-      row('Reminder time', null, [timeSel(p.trainingTime, 'Training reminder time', function (v) {
-        if (!v && p.trainingEnabled) { self._hint('Turn training reminders off to clear the time.'); return; }
-        if (v && p.trainingFollowupEnabled && minutes(p.trainingFollowupTime) - minutes(v) < 60) { self._hint('The follow-up has to be at least 1 hour after your training reminder. Change the follow-up first.'); return; }
-        self._save('trainingTime', v);
-      })]);
-      quietNote(p.trainingTime);
-      if (p.trainingEnabled) {
-        row('Follow-up', 'One more nudge later that day, only if you haven\'t finished a workout', [toggle('trainingFollowupEnabled', 'Training follow-up', function () {
-          if (!p.trainingFollowupTime) { self._hint('Choose a follow-up time first.'); return false; }
-          return true;
-        })]);
-        row('Follow-up time', null, [timeSel(p.trainingFollowupTime, 'Follow-up time', function (v) {
-          if (!v && p.trainingFollowupEnabled) { self._hint('Turn the follow-up off to clear its time.'); return; }
-          self._save('trainingFollowupTime', v);
-        }, minutes(p.trainingTime) + 60)]);
-        quietNote(p.trainingFollowupTime);
-      }
-    }
-
-    // Meals
-    if (!d.mealsAvailable) {
-      row('Meal reminders', 'Meal reminders aren\'t available for your current plan.', []);
-      return;
-    }
-    var n = d.mealSlotCount, times = [];
-    for (var k = 0; k < n; k++) times.push((p.mealTimes || [])[k] || null);
-    row('Meal reminders', 'A reminder at the times you set. Leave any meal blank to skip it.',
-      [toggle('mealsEnabled', 'Meal reminders', function () {
-        if (!times.some(Boolean)) { self._hint('Set at least one meal time first.'); return false; }
-        return true;
-      })]);
-    times.forEach(function (t, i) {
-      row('Meal ' + (i + 1), null, [timeSel(t, 'Meal ' + (i + 1) + ' reminder time', function (v) {
-        var next = times.slice(); next[i] = v;
-        var last = -1, okOrder = true;
-        next.forEach(function (x) { if (!x) return; if (minutes(x) <= last) okOrder = false; last = minutes(x); });
-        if (!okOrder) { self._hint('Each meal time has to be later than the one before it.'); return; }
-        if (p.mealsEnabled && !next.some(Boolean)) { self._hint('Turn meal reminders off to clear every time.'); return; }
-        self._save('mealTimes', next);
-      })]);
-      quietNote(t);
-    });
+  // ── Plan-synced reminders: the approved plan owns days and times; the client
+  //    only chooses ON/OFF. A row exists only when the server has a confirmed,
+  //    verified-live schedule for that category — otherwise it is not shown at all.
+  Push.prototype._daily = function (row, sw) {
+    var d = this.prefs.daily;
+    if (d.trainingAvailable) row('Training reminders', 'Synced with your training plan', [sw('trainingEnabled', 'Training reminders')]);
+    if (d.mealsAvailable) row('Meal reminders', 'Synced with your meal plan', [sw('mealsEnabled', 'Meal reminders')]);
   };
 
   Push.prototype._emit = function () {

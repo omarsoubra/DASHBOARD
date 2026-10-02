@@ -8,6 +8,7 @@
 //     meal_slot_count,          N when every day of every week has N feeds, else null
 //     meal_plan_sig,            sha256 of the parsed plan (changes whenever the plan does)
 //     has_workout_completion,   all four Finish Workout hooks present
+//     schedule, schedule_sig,   the approved plan's LI_SCHEDULE literal (or null) + its hash
 //   }
 //
 // A FEED is a meal card the shell renders with calories (name set, cal > 0);
@@ -121,6 +122,30 @@ export function parseMealPlan(html) {
 
 const isFeed = (meal) => !!meal && typeof meal === 'object' && !!meal.name && Number(meal.cal) > 0;
 
+/**
+ * The approved plan's schedule: `const LI_SCHEDULE = {…};` emitted by the
+ * generator as a JSON literal. Read with a bracket matcher + JSON.parse —
+ * never executed. Absent → null (schedule unknown → reminders unavailable).
+ * Malformed → { error } so the server records it as invalid, never guessed.
+ */
+export function parseSchedule(html) {
+  const m = /\bconst LI_SCHEDULE\s*=\s*/.exec(html);
+  if (!m) return { schedule: null, raw: null };
+  let i = m.index + m[0].length, d = 0, q = false;
+  if (html[i] !== '{') return { error: 'not_an_object' };
+  const start = i;
+  for (; i < html.length; i++) {
+    const ch = html[i];
+    if (q) { if (ch === '\\') { i++; continue; } if (ch === '"') q = false; continue; }
+    if (ch === '"') { q = true; continue; }
+    if (ch === '{') d++;
+    else if (ch === '}') { d--; if (d === 0) break; }
+  }
+  const raw = html.slice(start, i + 1);
+  if (d !== 0 || raw.length > 4000) return { error: 'unterminated' };
+  try { return { schedule: JSON.parse(raw), raw }; } catch { return { error: 'not_json' }; }
+}
+
 export function planFactsFromShell(bytes) {
   const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
   const html = buf.toString('utf8');
@@ -128,7 +153,12 @@ export function planFactsFromShell(bytes) {
     served_sha256: sha256(buf),
     meal_facts_status: 'unreadable', meal_slot_count: null, meal_plan_sig: null,
     has_workout_completion: WC_HOOKS.every((h) => html.includes(h)),
+    schedule: null, schedule_sig: null,
   };
+  const sch = parseSchedule(html);
+  if (sch.error) facts.schedule = { schema: 'unparseable' };            // server records 'invalid'
+  else if (sch.schedule) facts.schedule = sch.schedule;
+  if (facts.schedule) facts.schedule_sig = sha256(JSON.stringify(facts.schedule));
   let plan;
   try { plan = parseMealPlan(html); } catch (e) { if (e instanceof ParseError) return facts; throw e; }
   facts.meal_plan_sig = sha256(JSON.stringify(plan));

@@ -101,7 +101,7 @@ const srv = http.createServer((req, res) => {
   check('fallback: li removed from URL', !(await ev('location.search')).includes('li='), await ev('location.href'));
   check('every backend request was answered locally (supabase.co only)', backend.length > 0 && backend.every((h) => /\.supabase\.co$/.test(h)), [...new Set(backend)]);
 
-  // ── settings UI (shared push-client.js): rendered with stubbed server answers ─
+  // ── settings UI (shared push-client.js): plan-synced category toggles only ─
   await open('http://127.0.0.1:9941/clients/_no_router/');
   const ui = await ev(`(async () => {
     const box = document.createElement('div'); document.body.appendChild(box);
@@ -110,53 +110,37 @@ const srv = http.createServer((req, res) => {
     const sent = [];
     const base = { optedIn: true, notificationsEnabled: true, timezone: 'Australia/Sydney', weighinAvailable: false, weighinEnabled: true, weighinTime: '07:30',
       checkinEnabled: true, checkinDow: 0, checkinTime: '09:00', programUpdatesEnabled: true, quietStart: '21:00', quietEnd: '07:00',
-      daily: { available: true, trainingAvailable: true, mealsAvailable: true, mealSlotCount: 4 },
-      trainingEnabled: false, trainingDays: [], trainingTime: null, trainingFollowupEnabled: false, trainingFollowupTime: null, mealsEnabled: false, mealTimes: [] };
-    p.api = (type, extra) => { sent.push(extra && extra.prefs); const prefs = Object.assign({}, p.prefs, extra && extra.prefs); return Promise.resolve({ ok: true, prefs }); };
-    const view = (prefs) => { p.prefs = prefs; p.lastError = ''; const c = document.createElement('div'); p._settings(c); return c; };
+      daily: { available: true, trainingAvailable: true, mealsAvailable: true }, trainingEnabled: false, mealsEnabled: false };
+    p.api = (type, extra) => { sent.push(extra && extra.prefs); return Promise.resolve({ ok: true, prefs: Object.assign({}, p.prefs, extra && extra.prefs) }); };
+    const view = (prefs) => { p.prefs = prefs; const c = document.createElement('div'); p._settings(c); return c; };
+    const rows = (c) => [...c.querySelectorAll('.lip-row')].map((r) => r.firstChild.firstChild.textContent);
     const out = {};
     let c = view(base);
-    out.text = c.textContent;
-    out.blankSelects = [...c.querySelectorAll('select')].filter((s) => /Training reminder time|Meal \\d reminder time/.test(s.getAttribute('aria-label'))).every((s) => s.value === '');
-    out.mealRows = [...c.querySelectorAll('select')].filter((s) => /^Meal \\d reminder time$/.test(s.getAttribute('aria-label'))).length;
-    out.dayChips = c.querySelectorAll('[role=group] button').length;
-    out.followupHiddenWhenOff = !/Follow-up time/.test(c.textContent);
-    // switching training on with nothing set → explained, nothing sent
+    out.rowsBoth = rows(c);
+    out.textBoth = c.textContent;
+    out.selects = [...c.querySelectorAll('select')].map((s) => s.getAttribute('aria-label'));
+    out.timeInputsForSchedule = [...c.querySelectorAll('select,input')].filter((x) => /training|meal|follow/i.test(x.getAttribute('aria-label') || '')).length;
+    c = view(Object.assign({}, base, { daily: { available: true, trainingAvailable: false, mealsAvailable: true } }));
+    out.rowsNoTraining = rows(c);
+    c = view(Object.assign({}, base, { daily: { available: true, trainingAvailable: true, mealsAvailable: false } }));
+    out.rowsNoMeals = rows(c);
+    c = view(Object.assign({}, base, { daily: { available: false, trainingAvailable: false, mealsAvailable: false } }));
+    out.rowsOff = rows(c); out.textOff = c.textContent;
+    c = view(base);
     p.render = () => {};
     c.querySelector('[aria-label="Training reminders"]').click();
-    out.hintNoDays = p.lastError; out.sentAfterHint = sent.length;
-    // quiet-hours warning + 3-slot plan + unavailable texts
-    c = view(Object.assign({}, base, { trainingEnabled: true, trainingDays: [1], trainingTime: '22:30', mealTimes: ['08:00', '21:30'], daily: { available: true, trainingAvailable: true, mealsAvailable: true, mealSlotCount: 3 } }));
-    out.quietWarnings = (c.textContent.match(/inside your quiet hours/g) || []).length;
-    out.mealRows3 = [...c.querySelectorAll('select')].filter((s) => /^Meal \\d reminder time$/.test(s.getAttribute('aria-label'))).length;
-    out.followupMin = (() => { const s = [...c.querySelectorAll('select')].find((x) => x.getAttribute('aria-label') === 'Follow-up time'); return s ? s.options[1].value : null; })();
-    // out-of-order meal time refused client-side
-    const m2 = [...c.querySelectorAll('select')].find((s) => s.getAttribute('aria-label') === 'Meal 1 reminder time');
-    m2.value = '23:00'; m2.dispatchEvent(new Event('change'));
-    out.orderHint = p.lastError; out.sentAfterOrder = sent.length;
-    c = view(Object.assign({}, base, { daily: { available: true, trainingAvailable: false, mealsAvailable: false, mealSlotCount: null } }));
-    out.unavailable = c.textContent;
-    c = view(Object.assign({}, base, { daily: { available: false, trainingAvailable: false, mealsAvailable: false, mealSlotCount: null } }));
-    out.hidden = !/Training reminders|Meal reminders/.test(c.textContent);
-    // a valid save goes through as one field
-    c = view(base);
-    const day = c.querySelector('[aria-label="Monday"]'); day.click();
     await new Promise((r) => setTimeout(r, 50));
-    out.lastSent = JSON.stringify(sent[sent.length - 1]);
+    out.sent = JSON.stringify(sent);
     return out;
   })()`);
-  check('ui: training + meal rows shown when available', /Training reminders/.test(ui.text) && /Meal reminders/.test(ui.text) && /Training days/.test(ui.text), ui.text);
-  check('ui: every time field starts blank (Choose…), nothing pre-filled', ui.blankSelects === true, ui);
-  check('ui: one row per current feed (4) and 7 day chips', ui.mealRows === 4 && ui.dayChips === 7, ui);
-  check('ui: follow-up controls hidden while training is off', ui.followupHiddenWhenOff, ui);
-  check('ui: switching training on with no days/time explains and sends nothing', /Pick your training days/.test(ui.hintNoDays) && ui.sentAfterHint === 0, ui);
-  check('ui: quiet-hours warning for a training time and a meal time inside quiet hours', ui.quietWarnings === 2, ui.quietWarnings);
-  check('ui: 3-feed plan shows exactly 3 meal rows', ui.mealRows3 === 3, ui.mealRows3);
-  check('ui: follow-up choices start 60 min after the reminder', ui.followupMin === '23:30', ui.followupMin);
-  check('ui: out-of-order meal time refused before sending', /later than the one before/.test(ui.orderHint) && ui.sentAfterOrder === 0, ui);
-  check('ui: unavailable plan explained in plain words', /Not available for your current program yet/.test(ui.unavailable) && /aren't available for your current plan/.test(ui.unavailable) && !/facts|null|variable|slot/i.test(ui.unavailable.replace(/Meal reminders aren't available for your current plan\./, '')), ui.unavailable);
-  check('ui: outside the rollout nothing new is shown', ui.hidden, ui);
-  check('ui: a day tap saves one field', ui.lastSent === '{"trainingDays":[1]}', ui.lastSent);
+  check('ui: rows are exactly check-in, program updates, training, meals, quiet hours', ui.rowsBoth.join('|') === 'Weekly check-in|Program updates|Training reminders|Meal reminders|Quiet hours', ui.rowsBoth);
+  check('ui: plan-synced wording, no internal schedule shown', /Synced with your training plan/.test(ui.textBoth) && /Synced with your meal plan/.test(ui.textBoth) && !/\d{1,2}:\d{2}\s*(AM|PM)?\s*(Meal|Training)|Meal 1|Training days|Follow-up/.test(ui.textBoth), ui.textBoth);
+  check('ui: no training/meal/follow-up time controls exist', ui.timeInputsForSchedule === 0, ui.selects);
+  check('ui: only quiet-hours (and check-in) time selects remain', ui.selects.every((l) => /Quiet hours|Check-in reminder time/.test(l)), ui.selects);
+  check('ui: unknown training schedule → no Training row', ui.rowsNoTraining.join('|') === 'Weekly check-in|Program updates|Meal reminders|Quiet hours', ui.rowsNoTraining);
+  check('ui: unknown meal schedule → no Meal row', ui.rowsNoMeals.join('|') === 'Weekly check-in|Program updates|Training reminders|Quiet hours', ui.rowsNoMeals);
+  check('ui: outside the rollout → neither row, nothing new shown', ui.rowsOff.join('|') === 'Weekly check-in|Program updates|Quiet hours' && !/Synced/.test(ui.textOff), ui.rowsOff);
+  check('ui: a toggle sends exactly one category switch', ui.sent === '[{"trainingEnabled":true}]', ui.sent);
 
   const pass = checks.filter((c) => c.pass).length;
   for (const c of checks) console.log(`${c.pass ? 'PASS' : 'FAIL'}  ${c.name}${c.pass ? '' : '  ' + JSON.stringify(c.detail)}`);

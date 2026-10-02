@@ -18,8 +18,8 @@
 //     pushTick         scheduler: weigh-in + check-in reminders, deferred events   [x-push-cron-secret]
 //                      (V2: check-in adherence sequence due → followup → final for
 //                       clients in PUSH_CHECKIN_V2_CLIENTS; see schedule.ts)
-//                      (Daily V1: training + meal reminders for clients in
-//                       PUSH_DAILY_V1_CLIENTS; client-chosen days/times only)
+//                      (Daily V1: plan-synced training + meal reminders for clients
+//                       in PUSH_DAILY_V1_CLIENTS; schedule from the approved plan only)
 //     programUpdated   deploy notifier: a verified-live programme update            [x-push-deploy-secret]
 //     planFactsSync    deploy notifier: facts read from a verified-live shell       [x-push-deploy-secret]
 //   none:
@@ -48,7 +48,8 @@ import {
 import {
   DAILY_CAP, MAX_MEAL_SLOTS, dailyPlan, decideReminder, decideScheduled, evaluateCheckin, evaluateCheckinStage,
   evaluateMealSlots, evaluateTrainingStage, evaluateWeighin, formatTime, inQuietHours, isValidTimezone,
-  localDayBounds, localParts, mealsAvailable, nextLocalTime, parseTime, type Observation, type PlanFacts, type Prefs,
+  localDayBounds, localParts, mealOverridesConsistent, mealsAvailable, nextLocalTime, parseTime, trainingAvailable,
+  validateSchedule, type Observation, type PlanFacts, type Prefs,
 } from './schedule.ts';
 
 export type PushEnv = {
@@ -137,33 +138,38 @@ export const TEMPLATES: Record<string, Template> = {
   checkin_due:      { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your weekly check-in is ready. Take a minute to get it done.', url: './', tag: 'li-checkin', ttlSec: 6 * 3600 },
   checkin_followup: { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'Your check-in is still waiting. Get it done tonight so Omar can review your week.', url: './', tag: 'li-checkin', ttlSec: 3 * 3600 },
   checkin_final:    { kind: 'checkin_reminder', title: 'LOCKED IN', body: 'You missed your weekly check-in. Get it done today so your coaching stays on track.', url: './', tag: 'li-checkin', ttlSec: 8 * 3600 },
-  // Daily V1. Generic on purpose: a training day is the CLIENT's chosen weekday,
-  // not a known session, so no session is ever named; a meal reminder is a time
-  // the client set, never a claim about eating. Same tag → the follow-up / next
-  // meal replaces an unread earlier one instead of stacking.
+  // Daily V1 (plan-synced). A session is named ONLY when the approved plan
+  // explicitly binds it to that weekday (trainingTemplate); otherwise generic.
+  // A meal reminder is the plan's feed time, never a claim about eating. Same
+  // tag → the follow-up / next meal replaces an unread earlier one.
   training_primary:  { kind: 'training_reminder', title: 'Training today 💪', body: 'Your session is ready when you are.', url: './?li=training', tag: 'li-training', ttlSec: 3 * 3600 },
   training_followup: { kind: 'training_reminder', title: 'Still training today?', body: "Your session is still there whenever you're ready.", url: './?li=training', tag: 'li-training', ttlSec: 3 * 3600 },
   meal_slot:         { kind: 'meal_reminder', title: 'Meal time 🍽️', body: 'Your next planned meal is ready in LOCKED IN.', url: './?li=nutrition', tag: 'li-meal', ttlSec: 3600 },
 };
 
 /** Meal slot k's lock-screen text: the ordinal only ("Meal 2 time"), never a food, time or amount. */
+/** Primary training copy: the plan-bound session name when the plan states one, else generic. */
+export function trainingTemplate(stage: 'primary' | 'followup', session: string | null): Template {
+  const t = TEMPLATES[`training_${stage}`];
+  return stage === 'primary' && session ? { ...t, title: `${session} session today 💪` } : t;
+}
+
 export function mealTemplate(slot: number): Template {
   return { ...TEMPLATES.meal_slot, title: `Meal ${slot} time 🍽️` };
 }
 
 // Settings: defaults (conservative — nothing is sent until the client opts in).
 const PREF_COLUMNS = 'client_id, notifications_enabled, consent_at, timezone, weighin_available, weighin_enabled, weighin_time, checkin_enabled, checkin_dow, checkin_time, program_updates_enabled, quiet_start, quiet_end, ' +
-  'training_enabled, training_days, training_time, training_followup_enabled, training_followup_time, meals_enabled, meal_times';
-const FACT_COLUMNS = 'client_id, meal_facts_status, meal_slot_count, has_workout_completion, served_sha256, updated_at';
+  'training_enabled, meals_enabled';
+const FACT_COLUMNS = 'client_id, meal_facts_status, meal_slot_count, has_workout_completion, served_sha256, updated_at, ' +
+  'schedule, schedule_sig, training_schedule_status, meal_schedule_status';
 // Scheduler only: + the coach-owned V2 stage schedule (migration 20260930120000).
 const TICK_PREF_COLUMNS = PREF_COLUMNS + ', checkin_followup_time, checkin_final_time, checkin_final_day_offset';
 export const DEFAULT_PREFS = {
   notifications_enabled: false, timezone: null as string | null, weighin_available: false,
   weighin_enabled: true, weighin_time: '07:30', checkin_enabled: true, checkin_dow: 0,
   checkin_time: '09:00', program_updates_enabled: true, quiet_start: '21:00', quiet_end: '07:00',
-  training_enabled: false, training_days: 0, training_time: null as string | null,
-  training_followup_enabled: false, training_followup_time: null as string | null,
-  meals_enabled: false, meal_times: [] as Array<string | null>,
+  training_enabled: false, meals_enabled: false,
 };
 
 // ── http helpers (mirrors `api`) ────────────────────────────────────────────
@@ -229,21 +235,16 @@ function validTimezone(tz: unknown): string | null {
   return isValidTimezone(tz) ? tz : null;
 }
 
-/** What the daily reminders can offer THIS client right now (rollout gate + served-shell facts). */
-type DailyAccess = { available: boolean; trainingAvailable: boolean; mealsAvailable: boolean; mealSlotCount: number | null };
-const NO_DAILY: DailyAccess = { available: false, trainingAvailable: false, mealsAvailable: false, mealSlotCount: null };
+/** What the plan-synced reminders can offer THIS client right now (rollout gate + verified-live plan facts). */
+type DailyAccess = { available: boolean; trainingAvailable: boolean; mealsAvailable: boolean };
+const NO_DAILY: DailyAccess = { available: false, trainingAvailable: false, mealsAvailable: false };
 
 function dailyAccess(inRollout: boolean, facts: PlanFacts): DailyAccess {
   if (!inRollout) return NO_DAILY;
-  const meals = mealsAvailable(facts);
-  return { available: true, trainingAvailable: facts?.has_workout_completion === true, mealsAvailable: meals,
-           mealSlotCount: meals ? (facts!.meal_slot_count as number) : null };
+  return { available: true, trainingAvailable: trainingAvailable(facts), mealsAvailable: mealsAvailable(facts) };
 }
 
-const hhmmOrNull = (v: unknown) => { const m = parseTime(v); return m === null ? null : formatTime(m); };
-const maskToDays = (mask: unknown) => [0, 1, 2, 3, 4, 5, 6].filter((d) => Number.isInteger(mask) && (((mask as number) >> d) & 1) === 1);
-
-/** Client-facing view of a preferences row (camelCase, HH:MM, no internals). */
+/** Client-facing view of a preferences row (camelCase, HH:MM, no internals, no schedule). */
 function publicPrefs(row: any | null, daily: DailyAccess = NO_DAILY) {
   const p = { ...DEFAULT_PREFS, ...(row ?? {}) };
   const t = (v: string) => formatTime(parseTime(v) ?? 0);
@@ -260,15 +261,10 @@ function publicPrefs(row: any | null, daily: DailyAccess = NO_DAILY) {
     programUpdatesEnabled: !!p.program_updates_enabled,
     quietStart: t(p.quiet_start),
     quietEnd: t(p.quiet_end),
-    // Daily reminders V1 — blank unless the client set them.
+    // Plan-synced reminders: availability comes from the approved plan; the client only switches them on/off.
     daily,
     trainingEnabled: !!p.training_enabled,
-    trainingDays: maskToDays(p.training_days),
-    trainingTime: hhmmOrNull(p.training_time),
-    trainingFollowupEnabled: !!p.training_followup_enabled,
-    trainingFollowupTime: hhmmOrNull(p.training_followup_time),
     mealsEnabled: !!p.meals_enabled,
-    mealTimes: (Array.isArray(p.meal_times) ? p.meal_times : []).slice(0, MAX_MEAL_SLOTS).map(hhmmOrNull),
   };
 }
 
@@ -619,74 +615,21 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
       patch.timezone = inp.timezone;
     }
 
-    // ── Daily reminders V1 (training + meals). Only for clients in the rollout. ──
-    const DAILY_FIELDS = ['trainingEnabled', 'trainingDays', 'trainingTime', 'trainingFollowupEnabled', 'trainingFollowupTime', 'mealsEnabled', 'mealTimes'];
+    // ── Plan-synced reminders: the client chooses ON/OFF only. Days and times belong to the plan. ──
+    const DAILY_FIELDS = ['trainingEnabled', 'mealsEnabled'];
     const known = [...bools, ...times].map(([n]) => n).concat('timezone', DAILY_FIELDS);
     const unknown = Object.keys(inp).filter((k) => !known.includes(k));
     if (unknown.length) return err('unknown_field', 400, { field: unknown[0].slice(0, 40) });
-    const touchesDaily = DAILY_FIELDS.some((k) => k in inp);
-    if (touchesDaily) {
+    if (DAILY_FIELDS.some((k) => k in inp)) {
       if (!inDaily(a.storageKey)) return err('daily_not_available', 403);
+      for (const k of DAILY_FIELDS) if (k in inp && typeof inp[k] !== 'boolean') return err('bad_' + k, 400);
       const { facts, error: fErr } = await loadFacts(a.clientId);
       if (fErr) return err('state_unavailable', 503);
       const daily = dailyAccess(true, facts);
-      const optTime = (k: string): string | null | Response => {
-        if (inp[k] === null || inp[k] === '') return null;
-        const m = parseTime(inp[k]);
-        return m === null || m % 15 !== 0 ? err('bad_' + k, 400) : formatTime(m);
-      };
-      for (const k of ['trainingEnabled', 'trainingFollowupEnabled', 'mealsEnabled']) {
-        if (k in inp && typeof inp[k] !== 'boolean') return err('bad_' + k, 400);
-      }
-      if ('trainingDays' in inp) {
-        const d = inp.trainingDays;
-        if (!Array.isArray(d) || d.length > 7 || d.some((x: unknown) => !Number.isInteger(x) || (x as number) < 0 || (x as number) > 6) ||
-            new Set(d).size !== d.length) return err('bad_trainingDays', 400);
-        patch.training_days = d.reduce((m: number, x: number) => m | (1 << x), 0);
-      }
-      for (const [k, col] of [['trainingTime', 'training_time'], ['trainingFollowupTime', 'training_followup_time']]) {
-        if (k in inp) { const v = optTime(k); if (v instanceof Response) return v; patch[col] = v; }
-      }
-      if ('trainingEnabled' in inp) {
-        if (inp.trainingEnabled && !daily.trainingAvailable) return err('training_not_available', 409);
-        patch.training_enabled = inp.trainingEnabled;
-        if (!inp.trainingEnabled) patch.training_followup_enabled = false;   // follow-up never outlives training
-      }
-      if ('trainingFollowupEnabled' in inp) {
-        if (inp.trainingFollowupEnabled && (patch.training_enabled ?? prefs.training_enabled) !== true) return err('followup_needs_training', 409);
-        patch.training_followup_enabled = inp.trainingFollowupEnabled;
-      }
-      if ('mealTimes' in inp) {
-        const mt = inp.mealTimes;
-        if (!daily.mealsAvailable) return err('meals_not_available', 409);
-        if (!Array.isArray(mt) || mt.length > (daily.mealSlotCount as number)) return err('bad_mealTimes', 400);
-        const out: Array<string | null> = [];
-        let last = -1;
-        for (const x of mt) {
-          if (x === null || x === '') { out.push(null); continue; }
-          const m = parseTime(x);
-          if (m === null || m % 15 !== 0) return err('bad_mealTimes', 400);
-          if (m <= last) return err('meal_times_order', 400);         // Meal k is later than Meal k-1
-          last = m; out.push(formatTime(m));
-        }
-        patch.meal_times = out;
-      }
-      if ('mealsEnabled' in inp) {
-        if (inp.mealsEnabled && !daily.mealsAvailable) return err('meals_not_available', 409);
-        patch.meals_enabled = inp.mealsEnabled;
-      }
-      // The row as it would be stored: the same rules as the table constraints,
-      // with a specific reason instead of a generic write failure.
-      const next = { ...prefs, ...patch };
-      const pt = parseTime(next.training_time), ft = parseTime(next.training_followup_time);
-      if (next.training_enabled && (pt === null || !(Number(next.training_days) > 0))) return err('training_needs_days_and_time', 409);
-      if (next.training_followup_enabled) {
-        if (ft === null) return err('followup_needs_time', 409);
-        if (pt === null || ft - pt < 60) return err('followup_too_close', 409);
-      }
-      if (next.meals_enabled && !(Array.isArray(next.meal_times) && next.meal_times.some((x: unknown) => parseTime(x) !== null))) {
-        return err('meals_need_a_time', 409);
-      }
+      if (inp.trainingEnabled === true && !daily.trainingAvailable) return err('training_not_available', 409);
+      if (inp.mealsEnabled === true && !daily.mealsAvailable) return err('meals_not_available', 409);
+      if ('trainingEnabled' in inp) patch.training_enabled = inp.trainingEnabled;
+      if ('mealsEnabled' in inp) patch.meals_enabled = inp.mealsEnabled;
     }
     if (!Object.keys(patch).length) return ok({ prefs: publicPrefs(prefs, await dailyFor(a.clientId, a.storageKey)) });
 
@@ -850,17 +793,17 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
 
     const trainingStep = async (c: any, pr: any, facts: PlanFacts, active: boolean): Promise<void> => {
       const ev = evaluateTrainingStage(pr, nowMs, facts);
-      if (!ev.due) return;                                       // off, incomplete, not a chosen weekday, no window open
+      if (!ev.due) return;                                       // off, no confirmed plan schedule, not a plan day, no window open
       summary.due++;
       const key = `training_${ev.stage}:${c.id}:${ev.periodKey}`;
       const seen = await prior(key);
       if (seen === null) return;
       if (seen) { summary.duplicates++; return; }
-      const tpl = TEMPLATES[`training_${ev.stage}`];
-      const context: Record<string, unknown> = { stage: ev.stage };
+      const tpl = trainingTemplate(ev.stage, ev.session);
+      const context: Record<string, unknown> = { stage: ev.stage, ...(ev.session ? { session: ev.session } : {}) };
       let reason: string | null = null;
-      if (ev.suppress === 'disabled' || ev.suppress === 'unsupported_workout_completion') {
-        reason = ev.suppress;                                    // without Finish Workout nothing could ever suppress it
+      if (ev.suppress === 'disabled') {
+        reason = 'disabled';
       } else {
         // Observation: an explicit, non-revoked Finish Workout during local day D,
         // judged by completed_at in the client's notification timezone.
@@ -901,6 +844,15 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         if (seen === null) continue;
         if (seen) { summary.duplicates++; continue; }
         let reason: string | null = ev.suppress ?? null;
+        if (!reason) {
+          // Fail safe: trainer-mode meal edits change a day without a deploy. If any active
+          // edit no longer matches the synced feed count (or the edits can't be read), the
+          // schedule is unproven → no reminder.
+          const { data: ov, error: oErr } = await admin.from('client_overrides').select('key, value_text')
+            .eq('client_id', c.id).is('valid_to', null).like('key', 'meal.w%');
+          if (oErr || !Array.isArray(ov)) { summary.stateErrors++; log('pushTick', 'overrides_read_failed', oErr?.message ?? 'no_rows'); continue; }
+          if (!mealOverridesConsistent(ov, facts!.meal_slot_count as number)) reason = 'plan_out_of_sync';
+        }
         if (!reason) {
           const d = decideScheduled({ due: true, eligible: true, active, enabled: true, quiet: false, hasDevice: (await activeDeviceCount(c.id)) > 0 });
           reason = d.send ? null : d.reason;
@@ -1065,7 +1017,9 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   // Called ONLY by the deploy notifier, with facts it computed from the bytes
   // GitHub Pages serves (scripts/push/plan_facts.mjs). Writes push_plan_facts
   // and nothing else: no prescription, shell or preference is touched, and
-  // nothing is sent. A stale slot is handled at send time (no_current_meal_slot).
+  // nothing is sent. The plan schedule (LI_SCHEDULE) travels with the same
+  // verified bytes, so a 4 → 3 feed change or a new training week replaces the
+  // old schedule the moment the new shell is live — there is no second copy.
   async function planFactsSync(req: Request, body: any): Promise<Response> {
     if (!(await verifyInternal('deploy', req.headers.get('x-push-deploy-secret')))) return err('unauthorized', 401);
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
@@ -1081,23 +1035,34 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     if (typeof f.has_workout_completion !== 'boolean') return err('bad_has_workout_completion', 400);
     const commit = body?.commit == null ? null : String(body.commit);
     if (commit !== null && !COMMIT_RE.test(commit)) return err('bad_commit', 400);
+    // The plan-owned schedule (LI_SCHEDULE literal of the served shell), or null when the plan has none.
+    const schedule = f.schedule ?? null;
+    if (schedule !== null && (typeof schedule !== 'object' || Array.isArray(schedule) || JSON.stringify(schedule).length > 4000)) return err('bad_schedule', 400);
+    if (schedule !== null && !SHA256_HEX_RE.test(String(f.schedule_sig ?? ''))) return err('bad_schedule_sig', 400);
+    // Re-validated here (the server is the authority): malformed → 'invalid' → unavailable, never guessed.
+    const sv = validateSchedule(schedule, f.meal_facts_status === 'consistent' ? n : null);
 
     const { data: c } = await admin.from('clients').select('id').eq('storage_key', storageKey).maybeSingle();
     if (!c?.id) return err('unknown_client', 404);
     const { data: before, error: bErr } = await admin.from('push_plan_facts')
-      .select('meal_facts_status, meal_slot_count, has_workout_completion, served_sha256').eq('client_id', c.id).maybeSingle();
+      .select('meal_facts_status, meal_slot_count, has_workout_completion, served_sha256, schedule_sig, training_schedule_status, meal_schedule_status')
+      .eq('client_id', c.id).maybeSingle();
     if (bErr) { log('planFactsSync', 'read_failed', bErr.message); return err('state_unavailable', 503); }
     const row = {
       client_id: c.id, storage_key: storageKey, meal_facts_status: f.meal_facts_status, meal_slot_count: n,
       meal_plan_sig: f.meal_plan_sig, has_workout_completion: f.has_workout_completion,
       served_sha256: f.served_sha256, commit_sha: commit, updated_at: new Date(now()).toISOString(),
+      schedule, schedule_sig: schedule === null ? null : f.schedule_sig,
+      training_schedule_status: sv.training, meal_schedule_status: sv.meals,
     };
     const { error } = await admin.from('push_plan_facts').upsert(row, { onConflict: 'client_id' });
     if (error) { log('planFactsSync', 'write_failed', error.message); return err('write_failed', 500); }
     return ok({
       storageKey, changed: !before || before.served_sha256 !== f.served_sha256,
-      previous: before ? { mealSlotCount: before.meal_slot_count, hasWorkoutCompletion: before.has_workout_completion } : null,
-      facts: { mealFactsStatus: f.meal_facts_status, mealSlotCount: n, hasWorkoutCompletion: f.has_workout_completion },
+      previous: before ? { mealSlotCount: before.meal_slot_count, hasWorkoutCompletion: before.has_workout_completion,
+                           scheduleSig: before.schedule_sig ?? null, training: before.training_schedule_status ?? null, meals: before.meal_schedule_status ?? null } : null,
+      facts: { mealFactsStatus: f.meal_facts_status, mealSlotCount: n, hasWorkoutCompletion: f.has_workout_completion,
+               trainingSchedule: sv.training, mealSchedule: sv.meals, scheduleErrors: sv.errors },
     });
   }
 
@@ -1116,6 +1081,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const { data: pr } = await admin.from('push_preferences').select(TICK_PREF_COLUMNS).eq('client_id', c.id).maybeSingle();
     const { data: factsRow, error: fErr } = await admin.from('push_plan_facts')
       .select(FACT_COLUMNS + ', meal_plan_sig, commit_sha').eq('client_id', c.id).maybeSingle();
+    // (explain shows the plan's own schedule times — coach-side data, never shown to the client)
     const tz = pr && isValidTimezone(pr.timezone) ? pr.timezone : null;
     const D = /^\d{4}-\d{2}-\d{2}$/.test(String(body?.date ?? '')) ? String(body.date) : tz ? localParts(nowMs, tz).date : null;
     const base = {
@@ -1127,11 +1093,12 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         mealFactsStatus: factsRow.meal_facts_status, mealSlotCount: factsRow.meal_slot_count,
         hasWorkoutCompletion: factsRow.has_workout_completion, servedSha256: factsRow.served_sha256,
         commit: factsRow.commit_sha, updatedAt: factsRow.updated_at,
+        trainingSchedule: factsRow.training_schedule_status, mealSchedule: factsRow.meal_schedule_status,
       } : null,
     };
     if (!pr || !tz || !D) return ok({ ...base, training: { status: !pr ? 'not_opted_in' : 'no_timezone' }, meals: { status: !pr ? 'not_opted_in' : 'no_timezone' } });
 
-    const plan = dailyPlan(pr, (factsRow ?? null) as PlanFacts, D, !fErr && !!factsRow);
+    const plan = dailyPlan(pr, (fErr ? null : factsRow ?? null) as PlanFacts, D);
     const keys = [`training_primary:${c.id}:${D}`, `training_followup:${c.id}:${D}`,
       ...Array.from({ length: MAX_MEAL_SLOTS }, (_, i) => `meal:${c.id}:${D}:${i + 1}`)];
     const { data: evs } = await admin.from('notification_events')
@@ -1154,13 +1121,13 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return ok({
       ...base,
       training: {
-        status: plan.training.status,
+        status: plan.training.status, session: plan.training.session, followupPolicy: plan.training.followupPolicy,
         completedToday: dErr ? 'unknown' : (done ?? []).length > 0,
         stages: plan.training.stages.map((x) => ({ stage: x.stage, time: x.time, ...outcome(`training_${x.stage}:${c.id}:${D}`, x.at) })),
       },
       meals: {
-        status: plan.meals.status, slotCount: plan.meals.slotCount,
-        slots: plan.meals.slots.map((x) => ({ slot: x.slot, time: x.time, stale: x.stale, ...outcome(`meal:${c.id}:${D}:${x.slot}`, x.at) })),
+        status: plan.meals.status,
+        slots: plan.meals.slots.map((x) => ({ slot: x.slot, time: x.time, ...outcome(`meal:${c.id}:${D}:${x.slot}`, x.at) })),
       },
       dailyPushes: { count: dayTotal ?? null, cap: DAILY_CAP },
     });

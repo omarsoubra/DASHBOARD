@@ -467,9 +467,9 @@ test('S8 no secret, token, endpoint or key in any response or log across a full 
 test('S9 pushPrefs responses expose no internal fields', async () => {
   const w = await pilot();
   const keys = Object.keys((await w.prefsGet()).j.prefs).sort().join(',');
-  eq(keys, 'checkinDow,checkinEnabled,checkinTime,daily,mealTimes,mealsEnabled,notificationsEnabled,optedIn,programUpdatesEnabled,quietEnd,quietStart,timezone,' +
-    'trainingDays,trainingEnabled,trainingFollowupEnabled,trainingFollowupTime,trainingTime,weighinAvailable,weighinEnabled,weighinTime', 'public shape (V1 + daily reminders)');
-  eq(Object.keys((await w.prefsGet()).j.prefs.daily).sort().join(','), 'available,mealSlotCount,mealsAvailable,trainingAvailable', 'daily access shape');
+  eq(keys, 'checkinDow,checkinEnabled,checkinTime,daily,mealsEnabled,notificationsEnabled,optedIn,programUpdatesEnabled,quietEnd,quietStart,timezone,' +
+    'trainingEnabled,weighinAvailable,weighinEnabled,weighinTime', 'public shape (V1 + plan-synced category toggles; no schedule fields)');
+  eq(Object.keys((await w.prefsGet()).j.prefs.daily).sort().join(','), 'available,mealsAvailable,trainingAvailable', 'daily access shape');
 });
 
 test('S10 migration V1 is additive and locked down', async () => {
