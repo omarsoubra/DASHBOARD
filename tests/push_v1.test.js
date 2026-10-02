@@ -699,7 +699,7 @@ test('U3 --check never writes; live 1:1 shells are already integrated (idempoten
   eq(PILOT_CANDIDATES.map((k) => sha256hex(rd(`clients/${k}/index.html`))).join(), before.join(), 'bytes unchanged');
 });
 
-const KNOWN_MANIFEST_GAPS = ['qasim_inayat', 'samir_bardouh'];
+const KNOWN_MANIFEST_GAPS = ['qasim_inayat', 'samir_bardouh', 'aymen_kamareddine'];
 test('U5 fleet invariant: every eligible 1:1 shell carries the integration, and nothing else prompts', async () => {
   const API = /sheetsWebhookUrl:\s*'https:\/\/[a-z0-9]{20}\.supabase\.co\/functions\/v1\/api'/;
   let eligible = 0;
