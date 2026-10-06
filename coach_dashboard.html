@@ -1507,6 +1507,292 @@
     .detail-header h2 { font-size: 1.8rem; }
   }
 </style>
+<style id="ui-v2-css">
+/* ─── UI_V2_SHELL CSS (Phase 1) ──────────────────────────────────────────
+   Every rule is scoped to body.ui-v2 or to #v2-* / .v2-* elements, which only
+   exist visibly when the V2 switch is on (?ui=v2 or the remembered device
+   preference). With the switch off, nothing here matches anything visible. */
+#v2-shell[hidden] { display: none !important; }
+body.ui-v2 {
+  --v2-side-w: 232px;
+  --v2-side-wc: 64px;
+  --v2-side-bg: #0c0d13;
+  --v2-side-line: #1c1d29;
+  --v2-side-text: #c4c6d4;
+  --v2-side-muted: #6b6d85;
+  --v2-ws: #f4f5f7;
+  --v2-card: #ffffff;
+  --v2-line: #e3e5ea;
+  --v2-line2: #eef0f3;
+  --v2-ink: #15161c;
+  --v2-ink2: #4a4d5a;
+  --v2-muted: #7a7e8c;
+  --v2-accent: #00e5a0;          /* LOCKED IN green — accent only */
+  --v2-accent-ink: #00845b;      /* same hue, readable on white */
+  --v2-accent-soft: rgba(0,229,160,0.12);
+  --v2-red: #d0423b;   --v2-red-soft: #fdecea;
+  --v2-amber: #b7790f; --v2-amber-soft: #fdf3e1;
+  --v2-blue: #2f63d1;  --v2-blue-soft: #e8effc;
+  --v2-grey-soft: #eef0f3;
+  background: var(--v2-ws);
+}
+body.ui-v2 #dashboard { max-width: none; margin: 0 0 0 var(--v2-side-w); padding: 0; transition: margin-left .18s ease; }
+body.ui-v2.v2-collapsed #dashboard { margin-left: var(--v2-side-wc); }
+/* Classic header + the classic overview blocks that Today replaces stay in the
+   DOM (they still render every refresh) but are not shown in V2. */
+body.ui-v2 #dashboard > .header,
+body.ui-v2 #dashboard > #cc-summary-row,
+body.ui-v2 #dashboard > #cc-attn-section,
+body.ui-v2 #dashboard > #cc-watch-section,
+body.ui-v2 #dashboard > #cc-dq-details,
+body.ui-v2 #dashboard > #cc-checkin-section,
+body.ui-v2 #dashboard > #cc-roster-section,
+body.ui-v2 #dashboard > #cc-legacy { display: none; }
+
+/* ── Sidebar ── */
+.v2-sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0; width: var(--v2-side-w); z-index: 90;
+  background: var(--v2-side-bg); border-right: 1px solid var(--v2-side-line);
+  display: flex; flex-direction: column; padding: 16px 12px; gap: 2px;
+  font-family: 'Inter', system-ui, sans-serif; color: var(--v2-side-text);
+  transition: width .18s ease, transform .2s ease; overflow-x: hidden; overflow-y: auto;
+}
+.v2-side-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 20px; min-height: 40px; }
+.v2-brand { display: flex; flex-direction: column; line-height: 1; white-space: nowrap; }
+.v2-brand b { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 24px; letter-spacing: .04em; color: #f2f3f7; }
+.v2-brand b span, .v2-topbar-brand span { color: var(--v2-accent); }
+.v2-brand small { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--v2-side-muted); margin-top: 4px; }
+.v2-brand-mini { display: none; font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: #f2f3f7; }
+.v2-brand-mini span { color: var(--v2-accent); }
+.v2-icon-btn {
+  background: transparent; border: 1px solid transparent; color: var(--v2-side-muted); border-radius: 8px;
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.v2-icon-btn:hover { color: #fff; background: #171823; }
+.v2-icon-btn svg { width: 18px; height: 18px; }
+.v2-nav-group { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .14em; color: var(--v2-side-muted); padding: 16px 12px 8px; white-space: nowrap; }
+.v2-nav {
+  display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 8px;
+  color: var(--v2-side-text); text-decoration: none; font-size: 14px; font-weight: 500; white-space: nowrap; position: relative;
+}
+.v2-nav svg { width: 18px; height: 18px; flex: 0 0 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.v2-nav:hover { background: #151621; color: #fff; }
+.v2-nav.active { background: #161a1d; color: #fff; }
+.v2-nav.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--v2-accent); }
+.v2-nav.active svg { color: var(--v2-accent); }
+.v2-nav .v2-badge { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 11px; background: #2a1414; color: #ff8a80; border-radius: 10px; padding: 1px 8px; }
+.v2-nav .v2-badge:empty { display: none; }
+.v2-side-foot { margin-top: auto; border-top: 1px solid var(--v2-side-line); padding: 12px 4px 0; display: flex; flex-direction: column; gap: 4px; }
+.v2-sync { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--v2-side-muted); padding: 4px 8px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-sync.ok { color: #5fd3a8; } .v2-sync.err { color: #ff8a80; }
+.v2-foot-btn {
+  display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 8px; border-radius: 8px; background: transparent; border: 0;
+  color: var(--v2-side-text); font: 500 13px 'Inter', system-ui, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; width: 100%; text-align: left;
+}
+.v2-foot-btn:hover { background: #151621; color: #fff; }
+.v2-foot-btn svg { width: 16px; height: 16px; flex: 0 0 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* collapsed */
+body.v2-collapsed .v2-sidebar { width: var(--v2-side-wc); padding: 16px 8px; }
+body.v2-collapsed .v2-sidebar .v2-label,
+body.v2-collapsed .v2-sidebar .v2-brand,
+body.v2-collapsed .v2-sidebar .v2-sync,
+body.v2-collapsed .v2-sidebar .v2-badge { display: none; }
+body.v2-collapsed .v2-brand-mini { display: block; }
+body.v2-collapsed .v2-side-head { flex-direction: column; gap: 8px; padding: 4px 0 12px; }
+body.v2-collapsed .v2-nav-group { font-size: 0; padding: 12px 0 4px; border-top: 1px solid var(--v2-side-line); margin: 4px 8px 0; }
+body.v2-collapsed .v2-nav-group:first-of-type { border-top: 0; }
+body.v2-collapsed .v2-nav, body.v2-collapsed .v2-foot-btn { justify-content: center; padding: 0; }
+body.v2-collapsed .v2-collapse svg { transform: rotate(180deg); }
+
+/* ── Mobile top bar + drawer ── */
+.v2-topbar { display: none; }
+.v2-backdrop { display: none; }
+
+/* ── Workspace ── */
+.v2-main { font-family: 'Inter', system-ui, sans-serif; color: var(--v2-ink); font-size: 14px; line-height: 1.45; }
+.v2-page { display: none; padding: 32px 32px 48px; max-width: 1280px; }
+.v2-page.active { display: block; }
+.v2-pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.v2-pagehead h1 { font: 600 24px/1.2 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); letter-spacing: -0.01em; }
+.v2-pagehead p { margin: 4px 0 0; color: var(--v2-muted); font-size: 13px; }
+.v2-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.v2-btn {
+  height: 36px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink);
+  font: 500 13px 'Inter', system-ui, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; text-decoration: none;
+}
+.v2-btn:hover { border-color: #c9ccd4; }
+.v2-btn.primary { background: var(--v2-ink); color: #fff; border-color: var(--v2-ink); }
+.v2-btn.primary:hover { background: #2a2c36; }
+.v2-btn.sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+.v2-btn.ghost { background: transparent; border-color: transparent; color: var(--v2-ink2); }
+.v2-btn.ghost:hover { background: var(--v2-line2); }
+.v2-link { color: var(--v2-accent-ink); font-weight: 500; font-size: 13px; text-decoration: none; background: none; border: 0; cursor: pointer; padding: 0; font-family: inherit; }
+.v2-link:hover { text-decoration: underline; }
+
+/* search */
+.v2-search { position: relative; }
+.v2-search input {
+  height: 36px; width: 280px; max-width: 100%; border-radius: 8px; border: 1px solid var(--v2-line); background: var(--v2-card);
+  padding: 0 12px 0 34px; font: 400 13px 'Inter', system-ui, sans-serif; color: var(--v2-ink); outline: none; box-sizing: border-box;
+}
+.v2-search input:focus { border-color: var(--v2-accent-ink); box-shadow: 0 0 0 3px var(--v2-accent-soft); }
+.v2-search svg { position: absolute; left: 11px; top: 10px; width: 16px; height: 16px; stroke: var(--v2-muted); fill: none; stroke-width: 2; }
+.v2-search-results {
+  position: absolute; top: 40px; left: 0; right: 0; min-width: 280px; z-index: 40; background: var(--v2-card); border: 1px solid var(--v2-line);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(20,22,30,.08); padding: 4px; max-height: 360px; overflow: auto;
+}
+.v2-search-results[hidden] { display: none; }
+.v2-sr-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.v2-sr-row:hover, .v2-sr-row.hl { background: var(--v2-line2); }
+.v2-sr-empty { padding: 10px; color: var(--v2-muted); font-size: 13px; }
+
+/* KPI cards */
+.v2-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.v2-kpi {
+  background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 16px; text-align: left;
+  font-family: inherit; color: inherit; cursor: default; box-shadow: 0 1px 2px rgba(20,22,30,.03);
+}
+a.v2-kpi, button.v2-kpi { cursor: pointer; text-decoration: none; }
+a.v2-kpi:hover, button.v2-kpi:hover { border-color: #c9ccd4; }
+.v2-kpi .k-lbl { font-size: 12px; color: var(--v2-muted); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.v2-kpi .k-val { font: 600 28px/1.1 'Inter', system-ui, sans-serif; margin-top: 8px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.v2-kpi .k-val small { font-size: 14px; color: var(--v2-muted); font-weight: 500; }
+.v2-kpi .k-sub { font-size: 12px; color: var(--v2-muted); margin-top: 4px; }
+.v2-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 8px; background: #c4c7cf; }
+.v2-dot.red { background: var(--v2-red); } .v2-dot.amber { background: var(--v2-amber); }
+.v2-dot.green { background: var(--v2-accent); } .v2-dot.blue { background: var(--v2-blue); }
+
+/* Cards / layout */
+.v2-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.v2-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.v2-card { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; box-shadow: 0 1px 2px rgba(20,22,30,.03); min-width: 0; }
+.v2-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 16px 8px; }
+.v2-card-head h2 { font: 600 15px/1.3 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); }
+.v2-card-head .v2-meta { font-size: 12px; color: var(--v2-muted); }
+.v2-card-body { padding: 0 8px 8px; }
+.v2-card-foot { border-top: 1px solid var(--v2-line2); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--v2-muted); }
+.v2-empty { padding: 16px 8px 16px; color: var(--v2-muted); font-size: 13px; text-align: center; }
+
+/* compact rows */
+.v2-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 8px; min-height: 28px; }
+.v2-row + .v2-row { border-top: 1px solid var(--v2-line2); border-radius: 0; }
+.v2-row.click { cursor: pointer; }
+.v2-row.click:hover { background: #fafbfc; }
+.v2-row-main { flex: 1; min-width: 0; }
+.v2-row-title { font-weight: 600; font-size: 14px; color: var(--v2-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-row-title small { font-weight: 400; color: var(--v2-muted); font-size: 12px; margin-left: 6px; }
+.v2-row-sub { font-size: 13px; color: var(--v2-ink2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.v2-row-meta { font-size: 12px; color: var(--v2-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-row-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.v2-time { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--v2-muted); width: 56px; flex: 0 0 56px; white-space: nowrap; }
+
+/* status chips */
+.v2-chip { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; }
+.v2-chip.red { background: var(--v2-red-soft); color: var(--v2-red); }
+.v2-chip.amber { background: var(--v2-amber-soft); color: var(--v2-amber); }
+.v2-chip.green { background: var(--v2-accent-soft); color: var(--v2-accent-ink); }
+.v2-chip.blue { background: var(--v2-blue-soft); color: var(--v2-blue); }
+.v2-chip.grey { background: var(--v2-grey-soft); color: var(--v2-ink2); }
+
+/* This week */
+.v2-stat { padding: 8px 8px 12px; }
+.v2-stat + .v2-stat { border-top: 1px solid var(--v2-line2); padding-top: 12px; }
+.v2-stat-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--v2-ink2); }
+.v2-stat-top b { font-size: 15px; color: var(--v2-ink); font-variant-numeric: tabular-nums; }
+.v2-bar { height: 6px; border-radius: 3px; background: var(--v2-line2); margin-top: 8px; overflow: hidden; }
+.v2-bar i { display: block; height: 100%; background: var(--v2-accent); border-radius: 3px; }
+.v2-bar.low i { background: var(--v2-amber); }
+.v2-stat-note { font-size: 12px; color: var(--v2-muted); margin-top: 6px; }
+
+/* Watch (collapsed) */
+details.v2-card > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+details.v2-card > summary::-webkit-details-marker { display: none; }
+details.v2-card > summary h2 { font: 600 15px/1.3 'Inter', system-ui, sans-serif; margin: 0; display: flex; align-items: center; gap: 8px; }
+details.v2-card > summary .v2-caret { width: 16px; height: 16px; stroke: var(--v2-muted); fill: none; stroke-width: 2; transition: transform .15s; }
+details.v2-card[open] > summary .v2-caret { transform: rotate(90deg); }
+details.v2-card[open] > summary { border-bottom: 1px solid var(--v2-line2); }
+details.v2-card .v2-card-body { padding-top: 4px; }
+
+/* Classic sections shown inside V2 pages (Clients / Check-ins / Admin) — framed
+   in their original dark theme, untouched. Rebuilt in later phases. */
+.v2-classic { background: var(--bg, #0a0a0f); color: var(--text, #e8e8f0); border-radius: 12px; padding: 20px 20px 4px; border: 1px solid #1d1e2b; }
+.v2-note { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--v2-muted); margin: -12px 0 16px; }
+.v2-panel { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.v2-panel h2 { font: 600 15px/1.3 'Inter', system-ui, sans-serif; margin: 0 0 4px; }
+.v2-panel p { margin: 0 0 12px; color: var(--v2-muted); font-size: 13px; }
+.v2-panel-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; flex-wrap: wrap; }
+.v2-panel-row + .v2-panel-row { border-top: 1px solid var(--v2-line2); }
+.v2-admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+details.v2-fallback { background: var(--v2-card); border: 1px dashed #c9ccd4; border-radius: 12px; margin-top: 8px; }
+details.v2-fallback > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--v2-ink2); }
+details.v2-fallback > summary::-webkit-details-marker { display: none; }
+details.v2-fallback > summary .v2-caret { width: 16px; height: 16px; stroke: var(--v2-muted); fill: none; stroke-width: 2; transition: transform .15s; }
+details.v2-fallback[open] > summary .v2-caret { transform: rotate(90deg); }
+details.v2-fallback > .v2-fallback-body { padding: 0 16px 16px; }
+details.v2-fallback > .v2-fallback-body > p { margin: 0 0 12px; color: var(--v2-muted); font-size: 13px; }
+.v2-placeholder { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 32px; text-align: center; color: var(--v2-ink2); }
+.v2-placeholder h2 { font: 600 15px 'Inter', system-ui, sans-serif; margin: 0 0 8px; color: var(--v2-ink); }
+.v2-placeholder p { margin: 0 auto 16px; max-width: 480px; font-size: 13px; color: var(--v2-muted); }
+
+/* ── Desktop/tablet density: compact lists ~12% tighter (phone keeps the base spacing) ── */
+@media (min-width: 768px) {
+  .v2-row { padding: 7px 8px; gap: 12px; }
+  .v2-row-main { line-height: 1.35; }
+  .v2-row-sub, .v2-row-meta { margin-top: 1px; }
+  .v2-card-head { padding: 14px 16px 6px; }
+  .v2-card-foot { padding: 6px 16px; }
+  details.v2-card > summary { padding: 12px 16px; }
+  .v2-stat { padding: 6px 8px 10px; }
+  .v2-stat + .v2-stat { padding-top: 10px; }
+}
+/* ── Tablet: sidebar collapsed by default (handled in JS), tighter padding ── */
+@media (max-width: 1099px) {
+  .v2-page { padding: 24px 24px 40px; }
+  .v2-grid { grid-template-columns: minmax(0, 1fr); }
+  .v2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* ── Phone: drawer navigation + top bar ── */
+@media (max-width: 767px) {
+  body.ui-v2 #dashboard, body.ui-v2.v2-collapsed #dashboard { margin-left: 0; }
+  .v2-sidebar, body.v2-collapsed .v2-sidebar { width: 264px; padding: 16px 12px; transform: translateX(-100%); z-index: 96; box-shadow: none; }
+  body.v2-collapsed .v2-sidebar .v2-label, body.v2-collapsed .v2-sidebar .v2-brand, body.v2-collapsed .v2-sidebar .v2-sync { display: revert; }
+  body.v2-collapsed .v2-sidebar .v2-brand { display: flex; }
+  body.v2-collapsed .v2-sidebar .v2-badge:not(:empty) { display: inline-block; }
+  body.v2-collapsed .v2-brand-mini { display: none; }
+  body.v2-collapsed .v2-side-head { flex-direction: row; padding: 4px 8px 20px; }
+  body.v2-collapsed .v2-nav-group { font-size: 10px; padding: 16px 12px 8px; border-top: 0; margin: 0; }
+  body.v2-collapsed .v2-nav, body.v2-collapsed .v2-foot-btn { justify-content: flex-start; padding: 0 12px; }
+  body.v2-drawer-open .v2-sidebar { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,.35); }
+  .v2-collapse { display: none !important; }
+  .v2-backdrop { display: block; position: fixed; inset: 0; background: rgba(10,11,16,.45); z-index: 95; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  body.v2-drawer-open .v2-backdrop { opacity: 1; pointer-events: auto; }
+  .v2-topbar {
+    display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 80; height: 56px; padding: 0 16px;
+    background: var(--v2-side-bg); color: #fff; font-family: 'Inter', system-ui, sans-serif;
+  }
+  .v2-topbar .v2-icon-btn { color: #fff; border-color: #262838; }
+  .v2-topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: .04em; }
+  .v2-topbar-title { margin-left: auto; font-size: 13px; color: var(--v2-side-text); font-weight: 500; }
+  .v2-page { padding: 16px 16px 40px; }
+  .v2-pagehead { margin-bottom: 16px; }
+  .v2-pagehead h1 { font-size: 20px; }
+  .v2-head-actions, .v2-search, .v2-search input { width: 100%; }
+  .v2-head-actions .v2-btn { flex: 1; justify-content: center; }
+  .v2-kpis { gap: 8px; margin-bottom: 16px; }
+  .v2-kpi { padding: 12px; }
+  .v2-kpi .k-val { font-size: 24px; }
+  .v2-row { flex-wrap: wrap; }
+  .v2-row-actions { width: 100%; justify-content: flex-end; }
+  .v2-row.compact-mobile .v2-row-actions { width: auto; }
+  .v2-admin-grid { grid-template-columns: minmax(0, 1fr); }
+  .v2-classic { padding: 12px 12px 2px; }
+}
+@media print {
+  body.ui-v2 .v2-sidebar, body.ui-v2 .v2-topbar, body.ui-v2 .v2-backdrop { display: none !important; }
+  body.ui-v2 #dashboard { margin-left: 0 !important; }
+}
+/* ─── UI_V2_SHELL CSS END ─── */
+</style>
 </head>
 <body>
 
@@ -1523,6 +1809,124 @@
 
 <!-- MAIN DASHBOARD -->
 <div class="container" id="dashboard" style="display:none;">
+
+  <!-- ─── UI_V2_SHELL_START — Phase 1 navigation shell + Today. Hidden and inert
+       unless the V2 switch is on (?ui=v2, or remembered on this device). ─── -->
+  <div id="v2-shell" hidden>
+    <div class="v2-topbar">
+      <button class="v2-icon-btn" type="button" aria-label="Open navigation" onclick="UIV2.openDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <span class="v2-topbar-brand">STRENGTH<span>BY</span>O</span>
+      <span class="v2-topbar-title" id="v2-topbar-title">Today</span>
+    </div>
+    <div class="v2-backdrop" onclick="UIV2.closeDrawer()"></div>
+    <nav class="v2-sidebar" aria-label="Coach navigation">
+      <div class="v2-side-head">
+        <span class="v2-brand"><b>STRENGTH<span>BY</span>O</b><small>Coach dashboard</small></span>
+        <span class="v2-brand-mini">S<span>O</span></span>
+        <button class="v2-icon-btn v2-collapse" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="UIV2.toggleCollapse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      </div>
+      <div class="v2-nav-group"><span class="v2-label">COACHING</span></div>
+      <a class="v2-nav" href="#/today" data-route="today" title="Today"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span class="v2-label">Today</span><span class="v2-badge" id="v2-badge-today"></span></a>
+      <a class="v2-nav" href="#/clients" data-route="clients" title="Clients"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 010 6.4"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg><span class="v2-label">Clients</span></a>
+      <a class="v2-nav" href="#/check-ins" data-route="check-ins" title="Check-ins"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/></svg><span class="v2-label">Check-ins</span><span class="v2-badge" id="v2-badge-checkins"></span></a>
+      <div class="v2-nav-group"><span class="v2-label">SYSTEM</span></div>
+      <a class="v2-nav" href="#/admin" data-route="admin" title="Admin"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="v2-label">Admin</span></a>
+      <div class="v2-side-foot">
+        <div class="v2-sync" id="v2-sync">⟳ checking…</div>
+        <button class="v2-foot-btn" type="button" onclick="loadAll()" title="Refresh"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span class="v2-label">Refresh</span></button>
+        <button class="v2-foot-btn" type="button" onclick="logout()" title="Exit"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3"/><path d="M10 16l-4-4 4-4"/><path d="M6 12h10"/></svg><span class="v2-label">Exit</span></button>
+      </div>
+    </nav>
+
+    <main class="v2-main" id="v2-main">
+      <!-- TODAY -->
+      <section class="v2-page" id="v2-page-today" data-page="today">
+        <header class="v2-pagehead">
+          <div><h1 id="v2-greet">Today</h1><p id="v2-date"></p></div>
+          <div class="v2-head-actions">
+            <div class="v2-search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input id="v2-search" type="search" placeholder="Search clients…" autocomplete="off" aria-label="Search clients"/>
+              <div class="v2-search-results" id="v2-search-results" hidden></div>
+            </div>
+            <button class="v2-btn primary" type="button" onclick="openClientForm()">+ Add client</button>
+          </div>
+        </header>
+        <div class="v2-kpis" id="v2-kpis"></div>
+        <div class="v2-grid">
+          <div class="v2-col">
+            <section class="v2-card">
+              <div class="v2-card-head"><h2>Needs your attention</h2><span class="v2-meta" id="v2-attn-sub"></span></div>
+              <div class="v2-card-body" id="v2-attn-list"></div>
+            </section>
+            <section class="v2-card">
+              <div class="v2-card-head"><h2>Check-ins to review</h2><a class="v2-link" href="#/check-ins">Open queue →</a></div>
+              <div class="v2-card-body" id="v2-ci-list"></div>
+            </section>
+            <details class="v2-card" id="v2-watch">
+              <summary><h2><svg class="v2-caret" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>Watch <span class="v2-chip amber" id="v2-watch-count">0</span></h2><span class="v2-meta">monitor — not urgent</span></summary>
+              <div class="v2-card-body" id="v2-watch-list"></div>
+            </details>
+          </div>
+          <div class="v2-col">
+            <section class="v2-card">
+              <div class="v2-card-head"><h2>This week</h2><span class="v2-meta">last 7 days</span></div>
+              <div class="v2-card-body" id="v2-week"></div>
+            </section>
+            <section class="v2-card">
+              <div class="v2-card-head"><h2>Recent activity</h2><span class="v2-meta" id="v2-act-sub"></span></div>
+              <div class="v2-card-body" id="v2-activity"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- CLIENTS (Phase 1: the current roster, unchanged) -->
+      <section class="v2-page" id="v2-page-clients" data-page="clients">
+        <header class="v2-pagehead"><div><h1>Clients</h1><p>Current roster view, unchanged — the new Clients page comes in Phase 2.</p></div>
+          <div class="v2-head-actions"><button class="v2-btn primary" type="button" onclick="openClientForm()">+ Add client</button></div></header>
+        <div class="v2-classic" id="v2-slot-clients"></div>
+      </section>
+
+      <!-- CHECK-INS (Phase 1: the current queue, unchanged) -->
+      <section class="v2-page" id="v2-page-check-ins" data-page="check-ins">
+        <header class="v2-pagehead"><div><h1>Check-ins</h1><p>Current check-in queue, unchanged — rebuilt in a later phase.</p></div></header>
+        <div class="v2-classic" id="v2-slot-checkins"></div>
+      </section>
+
+      <!-- ADMIN (Phase 1: sync + this device + data health; legacy tucked away) -->
+      <section class="v2-page" id="v2-page-admin" data-page="admin">
+        <header class="v2-pagehead"><div><h1>Admin</h1><p>Sync, device settings and fallback tools.</p></div></header>
+        <div class="v2-admin-grid">
+          <div class="v2-panel">
+            <h2>Sync</h2>
+            <p>The dashboard refreshes automatically every 30 seconds while open.</p>
+            <div class="v2-panel-row"><span id="v2-admin-sync">—</span><button class="v2-btn sm" type="button" onclick="loadAll()">Refresh now</button></div>
+          </div>
+          <div class="v2-panel">
+            <h2>This device</h2>
+            <p>Settings that only affect this browser.</p>
+            <div class="v2-panel-row"><span>Browser alerts for new client activity</span><button class="v2-btn sm" type="button" id="v2-notif-btn" onclick="toggleNotifications()">—</button></div>
+            <div class="v2-panel-row"><span>Dashboard layout</span><a class="v2-btn sm" href="?ui=classic">Switch to classic layout</a></div>
+          </div>
+        </div>
+        <div class="v2-panel">
+          <h2>Data health</h2>
+          <p>Clients whose data looks incomplete. Never counted as urgent.</p>
+          <div class="v2-classic" id="v2-slot-dq"></div>
+        </div>
+        <details class="v2-fallback" id="v2-fallback">
+          <summary><svg class="v2-caret" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>Legacy / fallback tools</summary>
+          <div class="v2-fallback-body">
+            <p>The previous dashboard view (summary, alerts, digest, activity feed, client cards). Kept for safety until removal is approved.</p>
+            <div class="v2-classic" id="v2-slot-legacy"></div>
+          </div>
+        </details>
+      </section>
+    </main>
+  </div>
+  <!-- ─── UI_V2_SHELL_END ─── -->
+
 
   <div class="header">
     <div class="brand">
@@ -10667,5 +11071,372 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 </script>
 
+<script id="ui-v2-js">
+// ─── UI_V2_SHELL (Phase 1) ─────────────────────────────────────────────────
+// Navigation shell + Today page. Presentation only:
+//   • reads the same in-memory data the Command Centre uses (COACH.clients,
+//     _dashboardData) through the existing pure helpers (computeAttention,
+//     _queueAllRows, weeklyCoverage, checkinsThisWeek, buildActivityFeed,
+//     buildDigestText) — no new network calls, no writes, no new storage of
+//     client data;
+//   • every action button calls an existing function (openDetail,
+//     openAttentionReview, openCheckInReview, openClientForm, loadAll, logout,
+//     toggleNotifications, emailDigestNow);
+//   • inert unless switched on: ?ui=v2 turns it on and remembers it on this
+//     device, ?ui=classic turns it off again. The classic layout is the default.
+(function () {
+  var PREF_KEY = 'coach_ui_layout';          // 'v2' | absent (classic)
+  var SIDE_KEY = 'coach_ui_v2_sidebar';      // 'collapsed' | 'expanded' | absent (auto)
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+
+  var param = null;
+  try { param = new URLSearchParams(location.search).get('ui'); } catch (e) {}
+  if (param === 'v2') lsSet(PREF_KEY, 'v2');
+  else if (param === 'classic' || param === 'v1') lsSet(PREF_KEY, null);
+  var enabled = param === 'v2' || (param !== 'classic' && param !== 'v1' && lsGet(PREF_KEY) === 'v2');
+
+  var UIV2 = window.UIV2 = { enabled: enabled, route: null };
+  if (!enabled) return;                       // classic layout: nothing below runs
+
+  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'admin': 'Admin' };   // Onboarding hidden in Phase 1 (no real page yet)
+  var BASE_TITLE = document.title;
+  var state = { attnAll: false, actAll: false };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ── shell on ──
+  document.body.classList.add('ui-v2');
+  $('v2-shell').hidden = false;
+
+  // Classic sections that V2 pages host. Same nodes, same ids — only their
+  // parent changes, so every existing render function keeps working.
+  [['cc-roster-section', 'v2-slot-clients'], ['cc-checkin-section', 'v2-slot-checkins'],
+   ['cc-dq-details', 'v2-slot-dq'], ['cc-legacy', 'v2-slot-legacy']].forEach(function (p) {
+    var node = $(p[0]), slot = $(p[1]);
+    if (node && slot) slot.appendChild(node);
+  });
+
+  // ── sidebar collapse (desktop / tablet) + drawer (phone) ──
+  function applyCollapse() {
+    var pref = lsGet(SIDE_KEY);
+    var collapsed = pref ? pref === 'collapsed' : window.innerWidth < 1100;   // tablet: collapsed by default
+    document.body.classList.toggle('v2-collapsed', collapsed);
+  }
+  UIV2.toggleCollapse = function () {
+    var collapsed = !document.body.classList.contains('v2-collapsed');
+    lsSet(SIDE_KEY, collapsed ? 'collapsed' : 'expanded');
+    applyCollapse();
+  };
+  UIV2.openDrawer = function () { document.body.classList.add('v2-drawer-open'); };
+  UIV2.closeDrawer = function () { document.body.classList.remove('v2-drawer-open'); };
+  applyCollapse();
+  window.addEventListener('resize', function () {
+    if (!lsGet(SIDE_KEY)) applyCollapse();
+    if (window.innerWidth >= 768) UIV2.closeDrawer();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') UIV2.closeDrawer(); });
+
+  // ── hash router: #/today #/clients #/check-ins #/admin ──
+  function currentRoute() {
+    var h = (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
+    return ROUTES[h] ? h : null;
+  }
+  function applyRoute() {
+    var r = currentRoute();
+    if (!r) {                                  // unknown/empty hash → Today, without adding a history entry
+      r = 'today';
+      try { history.replaceState(null, '', location.pathname + location.search + '#/today'); } catch (e) {}
+    }
+    var changed = r !== UIV2.route;
+    UIV2.route = r;
+    Object.keys(ROUTES).forEach(function (k) {
+      var pg = $('v2-page-' + k); if (pg) pg.classList.toggle('active', k === r);
+      document.body.classList.toggle('v2-r-' + k, k === r);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.v2-nav'), function (a) {
+      var on = a.getAttribute('data-route') === r;
+      a.classList.toggle('active', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    $('v2-topbar-title').textContent = ROUTES[r];
+    document.title = ROUTES[r] + ' · ' + BASE_TITLE;
+    UIV2.closeDrawer();
+    if (changed) window.scrollTo(0, 0);
+    if (r === 'today') safeRenderToday();
+    if (r === 'admin') renderAdminBits();
+  }
+  window.addEventListener('hashchange', applyRoute);
+  UIV2.go = function (r) { if (ROUTES[r]) location.hash = '#/' + r; };
+
+  // ── mirrors of classic header state (sync label, browser-alert toggle) ──
+  function mirrorSync() {
+    var src = $('sync-status'); if (!src) return;
+    var cls = /\berr\b/.test(src.className) ? 'err' : /\bok\b/.test(src.className) ? 'ok' : '';
+    var t = src.textContent;
+    var a = $('v2-sync'); if (a) { a.textContent = t; a.className = 'v2-sync ' + cls; }
+    var b = $('v2-admin-sync'); if (b) b.textContent = t;
+  }
+  function renderAdminBits() {
+    mirrorSync();
+    var n = $('notif-toggle'), b = $('v2-notif-btn');
+    if (n && b) b.textContent = /🔔|ON/.test(n.textContent) ? 'On — turn off' : 'Off — turn on';
+  }
+  try {
+    var mo = new MutationObserver(function () { mirrorSync(); renderAdminBits(); });
+    ['sync-status', 'notif-toggle'].forEach(function (id) {
+      var el = $(id); if (el) mo.observe(el, { childList: true, characterData: true, subtree: true, attributes: true });
+    });
+  } catch (e) {}
+
+  // ── TODAY ──
+  function ago(iso) { try { return fmtAgo(iso); } catch (e) { return ''; } }
+  function shortAgo(ms) {
+    var m = Math.max(0, Math.floor((Date.now() - ms) / 60000));
+    return m < 1 ? 'now' : m < 60 ? m + 'm ago' : Math.floor(m / 60) + 'h ago';
+  }
+  function row(opts) {
+    return '<div class="v2-row' + (opts.click ? ' click' : '') + (opts.cls ? ' ' + opts.cls : '') + '"' +
+      (opts.click ? ' data-act="' + opts.click + '" data-key="' + esc(opts.key) + '"' + (opts.iso ? ' data-iso="' + esc(opts.iso) + '"' : '') : '') + '>' +
+      (opts.lead || '') +
+      '<div class="v2-row-main"><div class="v2-row-title">' + opts.title + '</div>' +
+      (opts.sub ? '<div class="v2-row-sub">' + opts.sub + '</div>' : '') +
+      (opts.meta ? '<div class="v2-row-meta">' + opts.meta + '</div>' : '') + '</div>' +
+      (opts.actions ? '<div class="v2-row-actions">' + opts.actions + '</div>' : '') + '</div>';
+  }
+  function btn(act, key, label, primary, iso) {
+    return '<button type="button" class="v2-btn sm ' + (primary ? '' : 'ghost') + '" data-act="' + act + '" data-key="' + esc(key) + '"' +
+      (iso ? ' data-iso="' + esc(iso) + '"' : '') + '>' + label + '</button>';
+  }
+
+  function renderToday() {
+    var clients = (typeof COACH !== 'undefined' && COACH.clients) || [];
+    var data = (typeof _dashboardData !== 'undefined' && _dashboardData) || {};
+
+    // Greeting + date
+    var h = new Date().getHours();
+    $('v2-greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    $('v2-date').textContent = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) +
+      ' · what needs you today';
+
+    // Same definitions as renderCcSummary / renderCcAttention / renderCcWatch.
+    var onBooks = clients.filter(_isOnBooksClient).length;
+    var onboarding = clients.filter(_isOnboardingClient).length;
+    var actionList = [], watchList = [], infoCount = 0, tasksDue = 0;
+    clients.forEach(function (c) {
+      if (!_isActiveClient(c)) return;
+      var a = computeAttention(c, data[c.storageKey] || {});
+      if (a.tier === CC_TIER.ACTION) actionList.push({ c: c, a: a });
+      else if (a.tier === CC_TIER.WATCH) watchList.push({ c: c, a: a });
+      else if (a.tier === CC_TIER.INFO) infoCount++;
+      if (c.nextCoachAction && c.nextCoachActionDue) {
+        var od = _daysSinceIso(c.nextCoachActionDue);
+        if (od !== null && od >= 0) tasksDue++;
+      }
+    });
+    var qRows = _queueAllRows();
+    var qNew = qRows.filter(function (r) { return r.state === 'new'; });
+    var qOverdue = qRows.filter(function (r) { return r.state === 'overdue'; }).length;
+    var redCount = actionList.filter(function (x) { return x.a.severity === 'red'; }).length;
+
+    // KPI cards (4)
+    $('v2-kpis').innerHTML =
+      '<a class="v2-kpi" href="#/today" data-kpi="attention" onclick="document.getElementById(\'v2-attn-list\').scrollIntoView({behavior:\'smooth\',block:\'center\'});return false;">' +
+        '<div class="k-lbl"><span class="v2-dot ' + (actionList.length ? 'red' : 'green') + '"></span>Needs attention</div>' +
+        '<div class="k-val" data-v="attention">' + actionList.length + '</div>' +
+        '<div class="k-sub">' + (actionList.length ? (redCount ? redCount + ' urgent · ' : '') + watchList.length + ' on watch' : 'nothing on fire · ' + watchList.length + ' on watch') + '</div></a>' +
+      '<a class="v2-kpi" href="#/check-ins" data-kpi="checkins">' +
+        '<div class="k-lbl"><span class="v2-dot ' + (qNew.length ? 'blue' : 'green') + '"></span>Check-ins to review</div>' +
+        '<div class="k-val" data-v="checkins">' + qNew.length + '</div>' +
+        '<div class="k-sub">' + (qOverdue ? qOverdue + ' overdue from clients' : 'none overdue') + '</div></a>' +
+      '<div class="v2-kpi" data-kpi="tasks">' +
+        '<div class="k-lbl"><span class="v2-dot ' + (tasksDue ? 'amber' : 'green') + '"></span>Coach tasks due</div>' +
+        '<div class="k-val" data-v="tasks">' + tasksDue + '</div>' +
+        '<div class="k-sub">next actions due or overdue</div></div>' +
+      '<a class="v2-kpi" href="#/clients" data-kpi="active">' +
+        '<div class="k-lbl"><span class="v2-dot green"></span>Active clients</div>' +
+        '<div class="k-val" data-v="active">' + onBooks + '<small> / ' + clients.length + '</small></div>' +
+        '<div class="k-sub">' + onboarding + ' onboarding · excludes archived</div></a>';
+
+    // Sidebar badges
+    $('v2-badge-today').textContent = actionList.length ? String(actionList.length) : '';
+    $('v2-badge-checkins').textContent = qNew.length ? String(qNew.length) : '';
+
+    // Needs your attention — same sort as renderCcAttention, top 8
+    actionList.sort(function (x, y) {
+      if (_sevRank(y.a.severity) !== _sevRank(x.a.severity)) return _sevRank(y.a.severity) - _sevRank(x.a.severity);
+      if ((y.a.overdueDays || 0) !== (x.a.overdueDays || 0)) return (y.a.overdueDays || 0) - (x.a.overdueDays || 0);
+      return (y.a.evidence || 0) - (x.a.evidence || 0);
+    });
+    $('v2-attn-sub').textContent = actionList.length + ' action now · ' + watchList.length + ' watch · ' + infoCount + ' info';
+    var CAP = 8;
+    var shown = state.attnAll ? actionList : actionList.slice(0, CAP);
+    $('v2-attn-list').innerHTML = !actionList.length
+      ? '<div class="v2-empty">Nothing needs immediate action.' + (watchList.length ? ' ' + watchList.length + ' on the Watch list below.' : '') + '</div>'
+      : shown.map(function (x) {
+          var c = x.c, a = x.a;
+          var primary = a.reasons.filter(function (r) { return r.tier === CC_TIER.ACTION; })[0] || a.reasons[0] || { text: '' };
+          return row({
+            lead: '<span class="v2-dot ' + (a.severity === 'red' ? 'red' : 'amber') + '"></span>',
+            title: esc(c.displayName) + (c.programType ? '<small>' + esc(c.programType) + '</small>' : ''),
+            sub: esc(primary.text), meta: primary.signal ? esc(primary.signal) : '',
+            actions: btn('review', c.storageKey, 'Review', true) + btn('open', c.storageKey, 'Open'),
+          });
+        }).join('') + (actionList.length > CAP
+          ? '<div class="v2-card-foot" style="margin:8px -8px -8px;"><span>' + (state.attnAll ? 'Showing all ' + actionList.length : 'Top ' + CAP + ' of ' + actionList.length) + '</span>' +
+            '<button type="button" class="v2-link" data-act="attn-all">' + (state.attnAll ? 'Show top ' + CAP : 'View all') + '</button></div>' : '');
+
+    // Check-ins to review — NEW queue rows, same priority sort as the queue, top 5
+    qNew.forEach(function (r) {
+      if (!r.gap && !r._ap) {
+        try { r._ap = _apPriority(r.client, r.sum, typeof build30DayMetrics === 'function' ? build30DayMetrics(r.sum) : {}); } catch (e) { r._ap = null; }
+      }
+    });
+    qNew.sort(function (a, b) {
+      var ra = a.gap || !a._ap ? AP_PRIORITY_RANK.REVIEW : (AP_PRIORITY_RANK[a._ap.priority] || 0);
+      var rb = b.gap || !b._ap ? AP_PRIORITY_RANK.REVIEW : (AP_PRIORITY_RANK[b._ap.priority] || 0);
+      if (ra !== rb) return rb - ra;
+      return new Date(b.ci.timestamp) - new Date(a.ci.timestamp);
+    });
+    var PRI_CHIP = { NEEDS_ATTENTION: 'red', REVIEW: 'amber', GREEN: 'green' };
+    $('v2-ci-list').innerHTML = (!qNew.length
+      ? '<div class="v2-empty">No new check-ins waiting on you.</div>'
+      : qNew.slice(0, 5).map(function (r) {
+          var c = r.client, ci = r.ci || {};
+          var chip = r.gap ? '<span class="v2-chip grey">data loading</span>'
+            : r._ap ? '<span class="v2-chip ' + (PRI_CHIP[r._ap.priority] || 'grey') + '">' + esc((AP_PRIORITY_LABEL[r._ap.priority] || r._ap.priority || '').toLowerCase()) + '</span>' : '';
+          return row({
+            title: esc(c.displayName),
+            meta: (ci.week ? 'Week ' + esc(ci.week) + ' · ' : '') + 'submitted ' + esc(ago(ci.timestamp)),
+            actions: chip + (r.gap ? btn('open', c.storageKey, 'Open') : btn('ci', c.storageKey, 'Review', true, ci.timestamp)),
+          });
+        }).join('')) +
+      '<div class="v2-card-foot"><span>' + qNew.length + ' new · ' + qOverdue + ' overdue</span><a class="v2-link" href="#/check-ins">Open queue →</a></div>';
+
+    // This week
+    var cov = weeklyCoverage(), ciw = checkinsThisWeek();
+    var pct = function (n, d) { return d ? Math.round(n / d * 100) : 0; };
+    var dg = null; try { dg = buildDigestText(); } catch (e) {}
+    var plain = function (s) { var t = document.createElement('div'); t.innerHTML = s || ''; return t.textContent || ''; };
+    var quiet = dg ? dg.quietClients : [];
+    $('v2-week').innerHTML =
+      '<div class="v2-stat"><div class="v2-stat-top"><span>Reviews done</span><b>' + cov.reviewed + ' / ' + cov.total + '</b></div>' +
+        '<div class="v2-bar' + (pct(cov.reviewed, cov.total) < 80 ? ' low' : '') + '"><i style="width:' + pct(cov.reviewed, cov.total) + '%"></i></div></div>' +
+      '<div class="v2-stat"><div class="v2-stat-top"><span>Clients checked in</span><b>' + ciw.count + ' / ' + ciw.total + '</b></div>' +
+        '<div class="v2-bar' + (pct(ciw.count, ciw.total) < 80 ? ' low' : '') + '"><i style="width:' + pct(ciw.count, ciw.total) + '%"></i></div></div>' +
+      '<div class="v2-stat"><div class="v2-stat-top"><span>Logged today</span></div>' +
+        '<div class="v2-stat-note" style="color:var(--v2-ink2);font-size:13px;">' + esc(dg ? plain(dg.summary) : '—') + '</div>' +
+        (quiet.length ? '<div class="v2-stat-note">Quiet 3+ days: ' + esc(quiet.slice(0, 4).join(', ')) + (quiet.length > 4 ? ' +' + (quiet.length - 4) + ' more' : '') + '</div>' : '') +
+        '<div style="margin-top:8px;"><button type="button" class="v2-link" onclick="emailDigestNow()">Email me today\'s digest</button></div></div>';
+
+    // Recent activity — last 24h, compact, 10 by default
+    var ev = [];
+    try { ev = buildActivityFeed(); } catch (e) {}
+    $('v2-act-sub').textContent = ev.length + ' in last 24h';
+    var TAG = { workout: ['Lift', 'grey'], meal: ['Meal', 'grey'], weight: ['Weigh-in', 'blue'], pr: ['PR', 'green'], checkin: ['Check-in', 'amber'] };
+    var evShown = state.actAll ? ev.slice(0, 50) : ev.slice(0, 10);
+    $('v2-activity').innerHTML = (!ev.length
+      ? '<div class="v2-empty">No activity in the last 24 hours.</div>'
+      : evShown.map(function (e) {
+          var t = TAG[e.type] || ['Log', 'grey'];
+          return row({
+            click: 'open', key: e.client.storageKey, cls: 'compact-mobile',
+            lead: '<span class="v2-time">' + esc(shortAgo(e.ts)) + '</span>',
+            title: esc(e.client.displayName), meta: esc(e.what),
+            actions: '<span class="v2-chip ' + t[1] + '">' + t[0] + '</span>',
+          });
+        }).join('')) +
+      (ev.length > 10 ? '<div class="v2-card-foot" style="margin:8px -8px -8px;"><span>' + (state.actAll ? 'Showing ' + evShown.length : '10 of ' + ev.length) + '</span>' +
+        '<button type="button" class="v2-link" data-act="act-all">' + (state.actAll ? 'Show fewer' : 'View all') + '</button></div>' : '');
+
+    // Watch — collapsed by default; same sort as renderCcWatch
+    watchList.forEach(function (e) { e._p = _watchProximity(e); });
+    watchList.sort(function (x, y) {
+      if (x._p !== y._p) return x._p - y._p;
+      if ((y.a.overdueDays || 0) !== (x.a.overdueDays || 0)) return (y.a.overdueDays || 0) - (x.a.overdueDays || 0);
+      return (y.a.evidence || 0) - (x.a.evidence || 0);
+    });
+    $('v2-watch-count').textContent = watchList.length;
+    $('v2-watch-list').innerHTML = !watchList.length
+      ? '<div class="v2-empty">Nothing on the watchlist right now.</div>'
+      : watchList.map(function (x) {
+          var p = x.a.reasons.filter(function (r) { return r.tier === CC_TIER.WATCH; })[0] || { text: '' };
+          return row({
+            lead: '<span class="v2-dot amber"></span>',
+            title: esc(x.c.displayName) + (x.c.programType ? '<small>' + esc(x.c.programType) + '</small>' : ''),
+            sub: esc(p.text), meta: p.signal ? esc(p.signal) : '',
+            actions: btn('review', x.c.storageKey, 'Review') + btn('open', x.c.storageKey, 'Open'),
+          });
+        }).join('');
+  }
+  function safeRenderToday() {
+    try { renderToday(); } catch (e) { console.warn('[ui-v2] Today render failed', e); }
+  }
+  UIV2.renderToday = safeRenderToday;
+
+  // Delegated actions on Today — every one is an existing function.
+  $('v2-page-today').addEventListener('click', function (ev) {
+    var el = ev.target.closest('[data-act]'); if (!el) return;
+    var act = el.getAttribute('data-act'), key = el.getAttribute('data-key');
+    if (act === 'attn-all') { state.attnAll = !state.attnAll; return safeRenderToday(); }
+    if (act === 'act-all') { state.actAll = !state.actAll; return safeRenderToday(); }
+    ev.stopPropagation();
+    if (act === 'review') openAttentionReview(key);
+    else if (act === 'open') openDetail(key);
+    else if (act === 'ci') openCheckInReview(key, el.getAttribute('data-iso'));
+  });
+
+  // ── Global client search (Today) — read-only filter over COACH.clients ──
+  var sInput = $('v2-search'), sBox = $('v2-search-results'), sHl = 0, sHits = [];
+  function renderSearch() {
+    var q = (sInput.value || '').trim().toLowerCase();
+    if (!q) { sBox.hidden = true; sBox.innerHTML = ''; return; }
+    var LC = { active: 'green', onboarding: 'blue', paused: 'grey', archived: 'grey' };
+    sHits = ((COACH && COACH.clients) || []).filter(function (c) {
+      return String(c.displayName || '').toLowerCase().indexOf(q) >= 0 || String(c.storageKey || '').toLowerCase().indexOf(q) >= 0;
+    }).slice(0, 8);
+    if (sHl >= sHits.length) sHl = 0;
+    sBox.innerHTML = !sHits.length ? '<div class="v2-sr-empty">No client matches “' + esc(q) + '”</div>'
+      : sHits.map(function (c, i) {
+          var lc = _lifecycleLabel(c);
+          return '<div class="v2-sr-row' + (i === sHl ? ' hl' : '') + '" data-key="' + esc(c.storageKey) + '"><span>' + esc(c.displayName) + '</span>' +
+            '<span class="v2-chip ' + (LC[lc] || 'grey') + '">' + esc(lc) + '</span></div>';
+        }).join('');
+    sBox.hidden = false;
+  }
+  function pick(key) { sBox.hidden = true; sInput.value = ''; if (key) openDetail(key); }
+  sInput.addEventListener('input', function () { sHl = 0; renderSearch(); });
+  sInput.addEventListener('focus', renderSearch);
+  sInput.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!sHits.length) return; e.preventDefault();
+      sHl = (sHl + (e.key === 'ArrowDown' ? 1 : sHits.length - 1)) % sHits.length; renderSearch();
+    } else if (e.key === 'Enter') { if (sHits[sHl]) pick(sHits[sHl].storageKey); }
+    else if (e.key === 'Escape') { sInput.value = ''; renderSearch(); sInput.blur(); }
+  });
+  sBox.addEventListener('mousedown', function (e) {
+    var r = e.target.closest('.v2-sr-row'); if (r) { e.preventDefault(); pick(r.getAttribute('data-key')); }
+  });
+  sInput.addEventListener('blur', function () { setTimeout(function () { sBox.hidden = true; }, 120); });
+
+  // ── Hook: re-render Today whenever the Command Centre re-renders (every
+  // refresh, every review save). Wraps — does not change — the original. ──
+  var _origRenderCommandCentre = window.renderCommandCentre;
+  if (typeof _origRenderCommandCentre === 'function') {
+    window.renderCommandCentre = function () {
+      var out = _origRenderCommandCentre.apply(this, arguments);
+      if (UIV2.route === 'today') safeRenderToday();
+      return out;
+    };
+  }
+
+  applyRoute();
+  mirrorSync(); renderAdminBits();
+})();
+// ─── UI_V2_SHELL END ───────────────────────────────────────────────────────
+</script>
 </body>
 </html>
