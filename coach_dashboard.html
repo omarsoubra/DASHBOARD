@@ -3591,6 +3591,17 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
             <div class="cf-hint" id="cf-access-hint">Active clients can open their program. Revoked or suspended clients are blocked at the backend and cannot open protected data.</div>
           </div>
 
+          <!-- CLIENT-ACCOUNTS-V1: email + password app login (invitation-only) -->
+          <div class="cf-lifecycle-panel cf-access-block" id="cf-account-block" style="margin-top:0.25rem;">
+            <div class="cf-lifecycle-status">App login: <strong id="cf-account-current">—</strong></div>
+            <div class="cf-access-link-row" id="cf-account-link-row" hidden>
+              <div class="cf-access-link-label" id="cf-account-link-label">Invite link</div>
+              <div class="cf-access-link-value" id="cf-account-link-value">—</div>
+            </div>
+            <div class="cf-access-panel" id="cf-account-buttons"></div>
+            <div class="cf-hint" id="cf-account-hint">Send the link yourself (WhatsApp). The client opens it, chooses their email + password, and logs in at the app from then on. Links work once; invites expire after 7 days, reset links after 24 hours. Revoking access above also logs them out on every device.</div>
+          </div>
+
           <div class="cf-field">
             <label for="cf-notes">Coach notes <span class="cf-hint" style="display:inline;">(optional)</span></label>
             <textarea id="cf-notes" rows="3" placeholder="Anything worth remembering about this client…"></textarea>
@@ -5008,6 +5019,7 @@ function _renderInlineLifecycleActions(c) {
   el.innerHTML = parts.join(' ');
 }
 function _renderInlineAccessActions(c) {
+  try { _renderAccountBlock(c); } catch (e) { /* account panel never blocks the access panel */ }
   const el = document.getElementById('cf-access-buttons');
   const label = document.getElementById('cf-access-current');
   const linkRow = document.getElementById('cf-access-link-row');
@@ -5689,6 +5701,90 @@ function _clearCoachToken() { try { localStorage.removeItem(LS_COACH_TOKEN); } c
 
 // coachFetch(type, body?) — POST { coachToken, type, ...body } to webhook.
 // On 401/unauthorized: clears the token and forces re-login.
+// ════════════════════════════════════════════════════════════════════════════
+// CLIENT-ACCOUNTS-V1 — app login panel (invite / reset links, status)
+// ════════════════════════════════════════════════════════════════════════════
+const _ACC = { rows: null, at: 0, lastLink: {} };   // lastLink: storageKey -> {link, purpose, expiresAt} (this session only)
+async function _accLoad(force) {
+  if (!force && _ACC.rows && Date.now() - _ACC.at < 60000) return _ACC.rows;
+  const j = await coachFetch('accountList', {});
+  if (!j || !j.ok) throw new Error((j && j.error) || 'load_failed');
+  _ACC.rows = new Map(j.clients.map((r) => [r.storageKey, r])); _ACC.at = Date.now();
+  return _ACC.rows;
+}
+function _accWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso); return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+function _accStatusText(r) {
+  if (!r) return 'Unknown';
+  if (r.account === 'active') {
+    const dev = r.activeDevices === 1 ? '1 device' : `${r.activeDevices} devices`;
+    return `Active — ${r.email || 'email on file'} · ${dev}${r.lastSeen ? ' · last seen ' + _accWhen(r.lastSeen) : ''}`;
+  }
+  const i = r.invite || {};
+  if (i.status === 'pending') return `Invite sent — expires ${_accWhen(i.expiresAt)}`;
+  if (i.status === 'expired') return 'Invite expired — send a new one';
+  return 'No account yet';
+}
+async function _renderAccountBlock(c) {
+  const el = document.getElementById('cf-account-buttons'), label = document.getElementById('cf-account-current');
+  const row = document.getElementById('cf-account-link-row'), val = document.getElementById('cf-account-link-value'), lab = document.getElementById('cf-account-link-label');
+  if (!el || !label) return;
+  if (!c) { label.textContent = '—'; el.innerHTML = '<span class="cf-hint" style="color:var(--muted);">Available after saving.</span>'; row.hidden = true; return; }
+  const key = c.storageKey;
+  label.textContent = 'Loading…'; el.innerHTML = '';
+  let r = null;
+  try { r = (await _accLoad(false)).get(key) || null; } catch (e) { label.textContent = 'Could not load (' + e.message + ')'; return; }
+  label.textContent = _accStatusText(r);
+  const last = _ACC.lastLink[key];
+  row.hidden = !last;
+  if (last) { lab.textContent = last.purpose === 'reset' ? 'Password reset link (works once, 24 h)' : 'Invite link (works once, 7 days)'; val.textContent = last.link; }
+  const active = _isAccessActive(c);
+  const b = (text, fn, cls) => `<button type="button" class="btn ${cls || ''}" onclick="event.preventDefault(); ${fn}">${text}</button>`;
+  const k = String(key).replace(/'/g, "\\'");
+  const parts = [];
+  if (!active) parts.push('<span class="cf-hint">Restore access above to send login links.</span>');
+  else if (!r || r.account !== 'active') parts.push(b(r && r.invite && r.invite.status !== 'none' ? 'New invite link' : 'Create invite link', `_accIssue('${k}','invite')`, 'generate'));
+  else parts.push(b('Password reset link', `_accIssue('${k}','reset')`, 'rotate-warn'));
+  if (last) parts.push(b('Copy link', `_accCopy('${k}')`), b('Send on WhatsApp', `_accWhatsApp('${k}')`));
+  parts.push(b('Refresh', `_accRefresh('${k}')`));
+  el.innerHTML = parts.join('');
+}
+function _accCurrentClient(key) {
+  try { return loadClients().find((x) => x.storageKey === key) || { storageKey: key }; } catch (e) { return { storageKey: key }; }
+}
+async function _accIssue(key, purpose) {
+  const r = _ACC.rows && _ACC.rows.get(key);
+  const replacing = purpose === 'invite' && r && r.invite && r.invite.status === 'pending';
+  if (replacing && !confirm('This replaces the invite link you already sent. The old link will stop working. Continue?')) return;
+  const j = await coachFetch('accountInviteCreate', { storageKey: key, purpose });
+  if (!j || !j.ok) {
+    const m = { account_exists: 'This client already has an account — use "Password reset link".', no_account: 'No account yet — create an invite link first.', access_not_active: 'Access is suspended or revoked — restore it first.' };
+    alert(m[j && j.error] || 'Could not create the link (' + ((j && j.error) || 'error') + ').'); return;
+  }
+  _ACC.lastLink[key] = { link: j.link, purpose: j.purpose, expiresAt: j.expiresAt };
+  try { await navigator.clipboard.writeText(j.link); _flashToast((purpose === 'reset' ? 'Reset' : 'Invite') + ' link copied ✓'); } catch (e) {}
+  await _accRefresh(key);
+}
+async function _accCopy(key) {
+  const l = _ACC.lastLink[key]; if (!l) return;
+  try { await navigator.clipboard.writeText(l.link); _flashToast('Link copied ✓'); } catch (e) { prompt('Copy this link:', l.link); }
+}
+function _accWhatsApp(key) {
+  const l = _ACC.lastLink[key]; if (!l) return;
+  const c = _accCurrentClient(key); const first = String(c.name || c.displayName || '').split(' ')[0];
+  const text = l.purpose === 'reset'
+    ? `Hey${first ? ' ' + first : ''}, here's your link to set a new password for the Strength by O app (works once, expires in 24 hours): ${l.link}`
+    : `Hey${first ? ' ' + first : ''}, here's your personal link to set up your Strength by O app login. Open it, choose your email and a password, and you're in (works once, expires in 7 days): ${l.link}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+async function _accRefresh(key) {
+  try { await _accLoad(true); } catch (e) {}
+  _renderAccountBlock(_accCurrentClient(key));
+}
+// ═══════════════════════════════════════ END CLIENT-ACCOUNTS-V1
+
 async function coachFetch(type, body) {
   const url = COACH.webhookUrl;
   const payload = Object.assign({ type: type, coachToken: _coachToken() }, body || {});
