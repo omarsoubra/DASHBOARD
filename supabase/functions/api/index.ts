@@ -1172,7 +1172,9 @@ async function weightLog(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
-  const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
+  // A client may only ever read its OWN data: the key is the one its token was verified
+  // against. Only the coach may name another client (body.client).
+  const key = String(isCoach ? (body?.client ?? body?.storageKey ?? '') : (v.storageKey ?? '')).toLowerCase();
   // ENTITLEMENT GATE (coach reads bypass — Omar must be able to inspect a
   // revoked or lapsed client's data).
   if (!isCoach) {
@@ -1194,7 +1196,9 @@ async function photosGet(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
-  const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
+  // A client may only ever read its OWN data: the key is the one its token was verified
+  // against. Only the coach may name another client (body.client).
+  const key = String(isCoach ? (body?.client ?? body?.storageKey ?? '') : (v.storageKey ?? '')).toLowerCase();
   if (!key) return err('bad_storageKey');
   // ENTITLEMENT GATE (coach reads bypass — Omar must be able to inspect a
   // revoked or lapsed client's data).
@@ -1273,7 +1277,9 @@ async function overrideGet(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
   const isCoach = verifyCoachToken(body?.coachToken);
   if (!v.ok && !isCoach) return err(v.reason ?? 'unauthorized');
-  const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
+  // A client may only ever read its OWN data: the key is the one its token was verified
+  // against. Only the coach may name another client (body.client).
+  const key = String(isCoach ? (body?.client ?? body?.storageKey ?? '') : (v.storageKey ?? '')).toLowerCase();
   // ENTITLEMENT GATE (coach reads bypass — Omar must be able to inspect a
   // revoked or lapsed client's data).
   if (!isCoach) {

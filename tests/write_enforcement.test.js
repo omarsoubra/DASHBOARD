@@ -252,6 +252,30 @@ const denied = (r) => r.ok === false && ['forbidden_tier', 'provisioning_incompl
   t('the ungated allow-list is documented in the source file',
     SRC.includes('INTENTIONALLY UNGATED CLIENT-CALLABLE ACTIONS'));
 
+  console.log('\n[A9] CLIENT ISOLATION — a valid token can only read its OWN data (Phase 0, 2026-10-08)');
+  {
+    AUTH_OK = true; COACH_OK = false;
+    DB.weight_logs.push({ client_key: 'legacy_one', logged_at: '2026-10-01', weight_kg: 80, notes: 'mine' },
+                        { client_key: 'victim', logged_at: '2026-10-01', weight_kg: 99, notes: 'secret' });
+    DB.clients.push({ id: 'c_vic', storage_key: 'victim', entitlement_legacy: true });
+    const w = B(await M.weightLog({ token: 'x', storageKey: 'legacy_one', client: 'victim' }));
+    t('weightLog: client:"victim" with my token returns MY rows, never the victim\'s',
+      Array.isArray(w) && w.length === 1 && w[0].weightKg === 80);
+    const o = B(await M.overrideGet({ token: 'x', storageKey: 'legacy_one', client: 'victim' }));
+    t('overrideGet: reads the verified key only', o && o.ok === true);
+    COACH_OK = true;
+    const wc = B(await M.weightLog({ coachToken: 'c', client: 'victim' }));
+    t('coach may still read any client', Array.isArray(wc) && wc.length === 1 && wc[0].weightKg === 99);
+    COACH_OK = false;
+    for (const fn of ['weightLog', 'photosGet', 'overrideGet']) {
+      const body = SRC.slice(SRC.indexOf('async function ' + fn + '('), SRC.indexOf('\n}', SRC.indexOf('async function ' + fn + '(')));
+      t(fn + ': key derives from the verified token unless the caller is the coach',
+        /const key = String\(isCoach \? \(body\?\.client \?\? body\?\.storageKey \?\? ''\) : \(v\.storageKey \?\? ''\)\)/.test(body));
+      t(fn + ': no client-controlled key derivation remains', !/const key = String\(body\?\.client \?\? body\?\.storageKey/.test(body));
+    }
+    COACH_OK = true;
+  }
+
   console.log('\n[B2] STRUCTURAL — no scattered tier checks bypassing the matrix');
   const scattered = [...SRC.matchAll(/tier\s*===\s*'locked_in/g)].length;
   t('no handler compares tier strings directly', scattered === 0);
