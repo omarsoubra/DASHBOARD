@@ -565,7 +565,7 @@ test('G5 migration is additive + locked down', async () => {
   assert(/unique \(endpoint_hash\)/.test(live) && /unique \(dedupe_key\)/.test(live), 'unique constraints');
 });
 
-test('G6 the existing api function and the sw.js cache/fetch logic are untouched', async () => {
+test('G6 push and api stay separate; sw.js cache/fetch logic untouched', async () => {
   // Pinned against the pre-push baseline (f68e464), so this holds after commit
   // and in CI's shallow checkout: sha256 of sw.js up to the push section.
   const SW_PREFIX_SHA256 = 'f108f10d63f32dd37b293eedba1f013a71230e6d39321837bf7937da845c4915';
@@ -573,31 +573,18 @@ test('G6 the existing api function and the sw.js cache/fetch logic are untouched
   const sw = rd('sw.js');
   assert(sw.includes(MARKER), 'push section marker present');
   eq(sha256hex(sw.slice(0, sw.indexOf(MARKER))), SW_PREFIX_SHA256, 'install/activate/fetch section byte-identical to pre-push baseline');
-  // api vs the same baseline — only checkable where that commit exists (not in shallow CI clones).
-  let haveBase = true;
-  try { execSync('git cat-file -e f68e464^{commit}', { cwd: ROOT, stdio: 'ignore' }); } catch { haveBase = false; }
-  if (haveBase) {
-    // The push subsystem never touches the api. The only later api change is the
-    // separately approved WORKOUT-COMPLETION-V1 block (+ its three dispatch lines):
-    // with exactly that removed, the api must still equal the baseline byte for byte.
-    let otherDirty = false;
-    try { execSync('git diff --quiet f68e464 -- supabase/functions/api ":(exclude)supabase/functions/api/index.ts"', { cwd: ROOT, stdio: 'ignore' }); } catch { otherDirty = true; }
-    eq(otherDirty, false, 'no other api file changed since the pre-push baseline');
-    const base = execSync('git show f68e464:supabase/functions/api/index.ts', { cwd: ROOT, maxBuffer: 64 << 20 }).toString();
-    let cur = rd('supabase/functions/api/index.ts');
-    const WC_START = '// ══════════════════════════════════════════════════════════════════════════\n// WORKOUT-COMPLETION-V1';
-    const i = cur.indexOf(WC_START), j = cur.indexOf('async function doWrite(', i);
-    if (i >= 0) { assert(j > i, 'workout completion block is terminated before doWrite'); cur = cur.slice(0, i) + cur.slice(j); }
-    // COACH-WORKOUT-VIEW-V1 (read-only coach op), equally explicit and removed the same way.
-    const CV_START = '// ══════════════════════════════════════════════════════════════════════════\n// COACH-WORKOUT-VIEW-V1';
-    const CV_END = '// ═══════════════════════════════════════ END COACH-WORKOUT-VIEW-V1\n\n';
-    const ci = cur.indexOf(CV_START), cj = cur.indexOf(CV_END, ci);
-    if (ci >= 0) { assert(cj > ci, 'coach workout view block is terminated'); cur = cur.slice(0, ci) + cur.slice(cj + CV_END.length); }
-    cur = cur.replace(/\n      case 'coachWorkoutCompletions': return coachWorkoutCompletions\(body\);/, '');
-    cur = cur.replace(/\n      case 'workoutComplete(?:Undo)?':\s+return workoutComplete(?:Undo)?\(body\);/g, '')
-             .replace(/\n      case 'workoutCompletionsGet': return workoutCompletionsGet\(body\);/, '');
-    eq(sha256hex(cur), sha256hex(base), 'api (minus the WORKOUT-COMPLETION-V1 block) byte-identical to the pre-push baseline');
+  // The api now evolves on its own approved, separately tested work (workout completion,
+  // coach view, Phase 0 isolation fix, client accounts), so freezing its bytes no longer
+  // tests what this guard was for. The invariant that matters is SEPARATION: the push
+  // subsystem never touches the api, and the api never writes push state.
+  const api = rd('supabase/functions/api/index.ts');
+  for (const t of ['push_devices', 'notification_events', 'push_internal_auth', 'push_plan_facts']) {
+    assert(!new RegExp(`from\\('${t}'\\)`).test(api), `api never touches ${t}`);
   }
+  const prefUses = [...api.matchAll(/from\('push_preferences'\)([^;]*)/g)].map((m) => m[1]);
+  assert(prefUses.every((u) => /\.select\(/.test(u) && !/\.(insert|update|upsert|delete)\(/.test(u)), 'api only READS push_preferences (coach view timezone)');
+  const pushSrc = ['handler.ts', 'schedule.ts', 'webpush.ts', 'index.ts'].map((f) => rd('supabase/functions/push/' + f)).join('\n');
+  assert(!/functions\/v1\/api|from '\.\.\/api/.test(pushSrc), 'push never calls or imports the api');
   assert(/const CACHE_NAME = 'strengthbyo-v4-2026-08-30-pwa-refresh';/.test(rd('sw.js')), 'CACHE_NAME not bumped (no forced reload for existing users)');
 });
 
