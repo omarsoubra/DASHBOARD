@@ -2157,6 +2157,91 @@ body.v2-ci-open { overflow: hidden; }
 }
 /* ─── UI_V2 PHASE 3 CSS END ─── */
 </style>
+<style id="ui-v2-p4-css">
+/* ─── UI_V2 PHASE 4 CSS: Admin + Onboarding ─────────────────────────────────
+   Scoped to body.v2-p4 / #v2-admin4 / #v2-page-onboarding (V2 switch on only). */
+body.v2-p4 #v2-page-admin > :not(#v2-admin4) { display: none; }
+
+/* Admin */
+.v2-a-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: start; }
+.v2-a-sec { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(20,22,30,.03); min-width: 0; }
+.v2-a-sec > h2 { margin: 0 0 6px; font: 600 14px 'Inter', system-ui, sans-serif; color: var(--v2-ink); }
+.v2-a-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--v2-line2); }
+.v2-a-rows .v2-a-row:first-child { border-top: 0; }
+.v2-a-row > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.v2-a-row b { font-size: 13px; font-weight: 600; color: var(--v2-ink); }
+.v2-a-row span { font-size: 12px; color: var(--v2-muted); line-height: 1.45; }
+.v2-a-row .v2-btn { flex: 0 0 auto; text-decoration: none; }
+#v2-admin-sync { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--v2-ink2); }
+.v2-a-note { font-size: 12px; color: var(--v2-muted); margin: 6px 0 4px; line-height: 1.45; }
+.v2-a-dq { grid-column: 1 / -1; }
+/* existing Data Quality list, light */
+#v2-admin4 #cc-dq-details { background: none; border: 0; padding: 0; margin: 4px 0 0; color: var(--v2-ink); }
+#v2-admin4 #cc-dq-details > summary { cursor: pointer; font-size: 13px; font-weight: 500; color: var(--v2-ink2); padding: 6px 0; }
+#v2-admin4 .cc-dq-list { display: flex; flex-direction: column; margin-top: 4px; }
+#v2-admin4 .cc-dq-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) auto auto; gap: 10px; align-items: center; padding: 8px 0;
+  border-top: 1px solid var(--v2-line2); font-size: 13px; color: var(--v2-ink2); background: none; }
+#v2-admin4 .cc-dq-row * { color: inherit; }
+#v2-admin4 .cc-dq-row strong, #v2-admin4 .cc-dq-row .dq-name { color: var(--v2-ink); font-weight: 600; }
+#v2-admin4 .dq-tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--v2-grey-soft); color: var(--v2-ink2); border: 0; }
+#v2-admin4 .cc-dq-row .cc-btn { height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink); font: 500 12px 'Inter', system-ui, sans-serif; cursor: pointer; }
+/* folds */
+details.v2-a-fold { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; margin-bottom: 12px; }
+details.v2-a-fold > summary { list-style: none; cursor: pointer; padding: 13px 16px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--v2-ink2); }
+details.v2-a-fold > summary::-webkit-details-marker { display: none; }
+details.v2-a-fold > summary .v2-caret { width: 16px; height: 16px; stroke: var(--v2-muted); fill: none; stroke-width: 2; transition: transform .15s; }
+details.v2-a-fold[open] > summary .v2-caret { transform: rotate(90deg); }
+.v2-a-fold-body { padding: 0 16px 12px; }
+details.v2-a-danger { border-color: #f0c2bf; }
+details.v2-a-danger > summary { color: #b5332c; }
+details.v2-a-danger .v2-a-row { border-top: 1px solid #f7dedc; }
+.v2-btn-danger { background: var(--v2-card); color: #b5332c; border-color: #e7a9a5; }
+.v2-btn-danger:hover { background: var(--v2-red-soft); border-color: #d9827c; }
+#v2-admin4 details.v2-fallback { margin-top: 0; border-style: dashed; }
+
+/* Onboarding */
+.v2-o-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.v2-o-stat { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.v2-o-stat .lbl { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--v2-muted); font-weight: 500; }
+.v2-o-stat b { font: 600 24px/1.15 'Inter', system-ui, sans-serif; color: var(--v2-ink); font-variant-numeric: tabular-nums; }
+.v2-o-stat .sub { font-size: 11px; color: var(--v2-muted); }
+.v2-o-sec { margin-bottom: 16px; }
+.v2-o-head-actions { display: inline-flex; align-items: center; gap: 12px; }
+.v2-o-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--v2-ink2); cursor: pointer; }
+.v2-o-row { display: grid; grid-template-columns: minmax(160px, 1.3fr) minmax(200px, 1.5fr) minmax(120px, 1fr) auto; gap: 12px; align-items: center; padding: 10px 8px; }
+.v2-o-row + .v2-o-row { border-top: 1px solid var(--v2-line2); }
+.v2-o-row .o-who { display: flex; flex-direction: column; min-width: 0; }
+.o-name { font-weight: 600; font-size: 14px; color: var(--v2-ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+a.o-name:hover { text-decoration: underline; }
+.o-sub, .o-data { font-size: 12px; color: var(--v2-muted); }
+.o-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.o-chips a.v2-chip { text-decoration: none; }
+.o-acts { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
+.o-acts .v2-btn { text-decoration: none; }
+.v2-o-task { display: grid; grid-template-columns: 10px minmax(120px, 1fr) minmax(0, 2fr) auto; gap: 10px; align-items: center; padding: 8px; font-size: 13px; color: var(--v2-ink2); }
+.v2-o-task + .v2-o-task { border-top: 1px solid var(--v2-line2); }
+.v2-o-hint { font-size: 12px; color: var(--v2-muted); margin: 8px 8px 4px; }
+.v2-o-foot { font-size: 12px; color: var(--v2-muted); margin: 4px 2px 0; }
+
+@media (max-width: 1099px) {
+  .v2-a-grid { grid-template-columns: minmax(0, 1fr); }
+  .v2-o-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2-o-row { grid-template-columns: minmax(150px, 1.2fr) minmax(0, 1.5fr) auto; }
+  .v2-o-row .o-data { display: none; }
+}
+@media (max-width: 767px) {
+  .v2-a-row { flex-wrap: wrap; }
+  .v2-a-row > div { flex: 1 1 100%; }
+  #v2-admin4 .cc-dq-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .v2-o-strip { gap: 8px; }
+  .v2-o-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px 8px; }
+  .v2-o-row .o-data { display: block; }
+  .o-acts { justify-content: flex-start; }
+  .v2-o-task { grid-template-columns: 10px minmax(0, 1fr) auto; }
+  .v2-o-task .o-task { grid-column: 2 / 4; grid-row: 2; }
+}
+/* ─── UI_V2 PHASE 4 CSS END ─── */
+</style>
 </head>
 <body>
 
@@ -11478,7 +11563,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   var UIV2 = window.UIV2 = { enabled: enabled, route: null };
   if (!enabled) return;                       // classic layout: nothing below runs
 
-  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'admin': 'Admin' };   // Onboarding hidden in Phase 1 (no real page yet)
+  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'onboarding': 'Onboarding', 'admin': 'Admin' };   // Onboarding page rendered by the Phase 4 block
   var BASE_TITLE = document.title;
   var state = { attnAll: false, actAll: false };
   var esc = function (s) {
@@ -12689,6 +12774,261 @@ window.addEventListener('beforeinstallprompt', (e) => {
   onRoute();
 })();
 // ─── UI_V2 PHASE 3 END ─────────────────────────────────────────────────────
+</script>
+<script id="ui-v2-p4-js">
+// ─── UI_V2 PHASE 4: ADMIN + OPERATIONS ─────────────────────────────────────
+// Presentation only. Runs only when the V2 shell is on.
+//   • Admin: re-organises existing tools into sections. Every control is an
+//     existing function or an existing node moved into place (#v2-admin-sync,
+//     #v2-notif-btn, #cc-dq-details, the Phase 1 legacy fallback). Reset roster
+//     goes through the existing typed-RESET wrapper dangerResetClientsToDefault.
+//   • Onboarding: real data only — roster clients in lifecycle "onboarding",
+//     their access state / saved link / program-file flag / first data, plus
+//     intakes from the existing read-only intakeList action. Agent #5 pipeline
+//     states are not available to the dashboard and are not shown.
+//   • Actions are existing functions only (openClientForm, copyAccessLink,
+//     generateAccessLink, importMagicLinksPrompt, toggleNotifications…).
+//     Navigation makes no writes; the intake list is read once per visit
+//     (or on "Reload intakes"), never by the 30 s refresh.
+(function () {
+  var UIV2 = window.UIV2;
+  if (!UIV2 || !UIV2.enabled) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+  var ss = { get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+             set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
+  var enc = encodeURIComponent;
+  var P4 = UIV2.p4 = {};
+  document.body.classList.add('v2-p4');
+  var fmtTime = function (ms) { return ms ? new Date(ms).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'; };
+  var fmtDate = function (iso) { try { return iso ? new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; } catch (e) { return '—'; } };
+
+  // ── sidebar: OPERATIONS › Onboarding (before SYSTEM) ──
+  var sysGroup = Array.prototype.slice.call(document.querySelectorAll('.v2-sidebar .v2-nav-group')).filter(function (g) { return /SYSTEM/.test(g.textContent); })[0];
+  if (sysGroup && !document.querySelector('.v2-nav[data-route="onboarding"]')) {
+    sysGroup.insertAdjacentHTML('beforebegin',
+      '<div class="v2-nav-group"><span class="v2-label">OPERATIONS</span></div>' +
+      '<a class="v2-nav" href="#/onboarding" data-route="onboarding" title="Onboarding"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.8-3.6 3.4-5.5 6.5-5.5 1.4 0 2.7.4 3.8 1.1"/><path d="M18 14v6M15 17h6"/></svg><span class="v2-label">Onboarding</span></a>');
+    var onbLink = document.querySelector('.v2-nav[data-route="onboarding"]');
+    onbLink.addEventListener('click', function () { if (UIV2.closeDrawer) UIV2.closeDrawer(); });
+  }
+
+  // ═══ ADMIN ═══
+  var admin = $('v2-page-admin');
+  var A = document.createElement('div'); A.id = 'v2-admin4';
+  A.innerHTML =
+    '<header class="v2-pagehead"><div><h1>Admin</h1><p>System status, data health, this device and fallback tools.</p></div>' +
+      '<div class="v2-head-actions"><button class="v2-btn" type="button" onclick="loadAll()">Refresh now</button></div></header>' +
+    '<div class="v2-a-grid">' +
+      '<section class="v2-a-sec"><h2>System status</h2><div class="v2-a-rows" id="v2-a-status"></div></section>' +
+      '<section class="v2-a-sec"><h2>This device</h2><div class="v2-a-rows" id="v2-a-device"></div></section>' +
+      '<section class="v2-a-sec"><h2>Access tools</h2><div class="v2-a-rows" id="v2-a-access"></div></section>' +
+      '<section class="v2-a-sec v2-a-dq"><h2>Data health</h2><p class="v2-a-note">Clients with incomplete historical data. Never counted as urgent.</p><div id="v2-a-dq-slot"></div></section>' +
+    '</div>' +
+    '<details class="v2-a-fold v2-a-danger" id="v2-a-danger" data-fold="danger"><summary><svg class="v2-caret" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>Danger zone</summary>' +
+      '<div class="v2-a-fold-body"><div class="v2-a-row"><div><b>Reset roster to built-in defaults</b><span>Replaces every client in this dashboard with the hardcoded default list. Coach notes, review history and lifecycle state on the roster are lost. Logs and check-ins are not affected. Requires typing RESET.</span></div>' +
+      '<button class="v2-btn v2-btn-danger" type="button" onclick="dangerResetClientsToDefault()">Reset roster…</button></div></div></details>' +
+    '<div id="v2-a-legacy-slot"></div>';
+  admin.appendChild(A);
+  // move existing live nodes into place (same ids → Phase 1 keeps updating them)
+  var fallback = $('v2-fallback'); if (fallback) { fallback.dataset.fold = 'legacy'; $('v2-a-legacy-slot').appendChild(fallback); }
+  var dq = $('cc-dq-details'); if (dq) $('v2-a-dq-slot').appendChild(dq);
+  var syncSpan = $('v2-admin-sync'), notifBtn = $('v2-notif-btn');
+
+  function row(label, value, action) {
+    return '<div class="v2-a-row"><div><b>' + label + '</b><span>' + value + '</span></div>' + (action || '') + '</div>';
+  }
+  function installState() {
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+    if (standalone) return { text: 'Running as an installed app.', btn: '' };
+    var offer = Array.prototype.slice.call(document.querySelectorAll('body > button')).filter(function (b) { return /INSTALL DASHBOARD/.test(b.textContent); })[0];
+    if (offer) return { text: 'This browser can install the dashboard as an app.', btn: '<button class="v2-btn sm" type="button" data-a="install">Install dashboard</button>' };
+    return { text: 'Not offered by this browser right now (on iPhone use Share → Add to Home Screen).', btn: '' };
+  }
+  function renderAdmin() {
+    var reg = { ok: 'Loaded', err: 'Failed — using saved roster', missing: 'Not found — using saved roster', idle: 'Not loaded yet' };
+    var regStatus = (typeof _registryFetchStatus !== 'undefined') ? _registryFetchStatus : 'idle';
+    var regMs = (typeof _registryLastFetchMs !== 'undefined') ? _registryLastFetchMs : 0;
+    var rosterSynced = +(localStorage.getItem('coach_clients_v1_synced_ts') || 0);
+    var clients = (COACH.clients || []);
+    var st = $('v2-a-status');
+    st.innerHTML =
+      '<div class="v2-a-row"><div><b>Sync</b><span id="v2-a-sync-slot"></span></div><button class="v2-btn sm" type="button" onclick="loadAll()">Refresh</button></div>' +
+      row('Last successful refresh', esc(_syncStatus === 'ok' ? fmtTime(_lastSyncMs) : (_syncStatus === 'err' ? 'Last attempt failed' : '—'))) +
+      row('Client registry', esc((reg[regStatus] || regStatus) + (regMs ? ' · ' + fmtTime(regMs) : ''))) +
+      row('Roster', esc(clients.length + ' clients' + (rosterSynced ? ' · last cloud sync ' + fmtTime(rosterSynced) : '')));
+    if (syncSpan) $('v2-a-sync-slot').appendChild(syncSpan);
+    var inst = installState();
+    var dev = $('v2-a-device');
+    dev.innerHTML =
+      '<div class="v2-a-row"><div><b>Browser alerts</b><span>Notifies this browser about new client activity while the dashboard is open.</span></div><span id="v2-a-notif-slot"></span></div>' +
+      row('Install dashboard', esc(inst.text), inst.btn) +
+      row('Dashboard layout', 'New layout (V2) is on for this device.', '<a class="v2-btn sm" href="?ui=classic">Switch to classic</a>');
+    if (notifBtn) $('v2-a-notif-slot').appendChild(notifBtn);
+    var links = 0; try { links = Object.keys(_linkCacheAll() || {}).length; } catch (e) {}
+    $('v2-a-access').innerHTML =
+      row('Import link file', 'Paste your magic_links.txt so access links can be copied on this device. Stays on this device; nothing is sent to the server.', '<button class="v2-btn sm" type="button" onclick="importMagicLinksPrompt()">Import…</button>') +
+      row('Links saved on this device', esc(links + ' client' + (links === 1 ? '' : 's'))) +
+      '<p class="v2-a-note">Per-client access controls (copy, generate, rotate, suspend, revoke, restore) are in each client\'s Account tab → lifecycle &amp; access controls.</p>';
+  }
+  P4.renderAdmin = function () { try { renderAdmin(); } catch (e) { console.warn('[ui-v2] admin render failed', e); } };
+  A.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-a="install"]'); if (!b) return;
+    var offer = Array.prototype.slice.call(document.querySelectorAll('body > button')).filter(function (x) { return /INSTALL DASHBOARD/.test(x.textContent); })[0];
+    if (offer) offer.click();                          // the existing install button's own handler
+    setTimeout(P4.renderAdmin, 300);
+  });
+  // remember which folds are open (survives navigation and reload in this tab)
+  function wireFold(el) {
+    if (!el) return;
+    var k = 'v2a_fold_' + (el.dataset.fold || el.id);
+    if (ss.get(k) === '1') el.open = true;
+    el.addEventListener('toggle', function () { ss.set(k, el.open ? '1' : '0'); });
+  }
+  wireFold($('v2-a-danger')); wireFold(fallback); wireFold(dq);
+
+  // ═══ ONBOARDING ═══
+  var main = $('v2-main');
+  var O = document.createElement('section');
+  O.className = 'v2-page'; O.id = 'v2-page-onboarding'; O.dataset.page = 'onboarding';
+  O.innerHTML =
+    '<header class="v2-pagehead"><div><h1>Onboarding</h1><p>New clients and intakes before coaching starts.</p></div>' +
+      '<div class="v2-head-actions"><button class="v2-btn primary" type="button" onclick="openClientForm()">+ Add client</button></div></header>' +
+    '<div class="v2-o-strip" id="v2-o-strip"></div>' +
+    '<section class="v2-card v2-o-sec"><div class="v2-card-head"><h2>Onboarding clients</h2><span class="v2-meta">moves to active automatically after 2 weigh-ins or 1 check-in</span></div><div class="v2-card-body" id="v2-o-clients"></div></section>' +
+    '<section class="v2-card v2-o-sec"><div class="v2-card-head"><h2>Setup tasks</h2><span class="v2-meta" id="v2-o-tasks-sub"></span></div><div class="v2-card-body" id="v2-o-tasks"></div></section>' +
+    '<section class="v2-card v2-o-sec"><div class="v2-card-head"><h2>Intakes</h2><span class="v2-o-head-actions"><label class="v2-o-toggle"><input type="checkbox" id="v2-o-showlinked"/> Show linked</label>' +
+      '<button class="v2-link" type="button" data-o="reload">Reload intakes</button></span></div><div class="v2-card-body" id="v2-o-intakes"></div></section>' +
+    '<p class="v2-o-foot">Pipeline status from the onboarding worker (Agent #5) isn\'t available to this dashboard and isn\'t shown here.</p>';
+  main.appendChild(O);
+  var showLinked = $('v2-o-showlinked');
+  showLinked.checked = ss.get('v2o_showlinked') === '1';
+  var intakes = { state: 'idle', list: [], at: 0, err: '' };
+
+  function loadIntakes() {
+    if (intakes.state === 'loading') return;
+    intakes.state = 'loading'; P4.renderOnboarding();
+    coachFetch('intakeList').then(function (data) {           // existing read-only action (same as the baseline-link control)
+      intakes.list = (data && data.intakes) || []; intakes.state = 'ok'; intakes.at = Date.now();
+      window._cd3Intakes = intakes.list;                        // same cache the baseline-link control uses
+    }).catch(function (e) { intakes.state = 'err'; intakes.err = (e && e.message) || 'failed'; })
+      .then(function () { P4.renderOnboarding(); });
+  }
+  function views(i) {
+    var pv = i.photoViews || [], lv = i.legacyPhotoViews || [];
+    return pv.length ? pv.join(' / ') : (lv.length ? lv.join(' / ') + ' (legacy)' : 'no photos');
+  }
+  function renderOnboarding() {
+    var all = COACH.clients || [];
+    var onb = all.filter(_isOnboardingClient).sort(function (a, b) { return String(b.startDate || '').localeCompare(String(a.startDate || '')); });
+    var linkedKeys = {};
+    (intakes.list || []).forEach(function (i) { if (i.linkedStorageKey) linkedKeys[i.linkedStorageKey] = true; });
+    var noLink = onb.filter(function (c) { return _isAccessActive(c) && !_linkCacheGet(c.storageKey); });
+    var missing = all.filter(function (c) { return _isOnBooksClient(c) && c.programMissing; });
+    var unlinked = (intakes.list || []).filter(function (i) { return !i.linkedClientId; });
+    var stat = function (lbl, val, sub, dot) { return '<div class="v2-o-stat"><span class="lbl"><span class="v2-dot ' + dot + '"></span>' + lbl + '</span><b>' + val + '</b><span class="sub">' + sub + '</span></div>'; };
+    $('v2-o-strip').innerHTML =
+      stat('Onboarding clients', onb.length, 'lifecycle = onboarding', 'blue') +
+      stat('Unlinked intakes', intakes.state === 'ok' ? unlinked.length : '—', intakes.state === 'ok' ? 'not linked to a client' : (intakes.state === 'err' ? 'couldn\'t load' : 'loading…'), 'amber') +
+      stat('No link on this device', noLink.length, 'onboarding · device-local, not link validity', noLink.length ? 'amber' : 'green') +
+      stat('Program file missing', missing.length, 'on the books', missing.length ? 'red' : 'green');
+
+    // A. onboarding clients
+    $('v2-o-clients').innerHTML = !onb.length ? '<div class="v2-empty">No clients are in onboarding.</div>' : onb.map(function (c) {
+      var k = esc(c.storageKey), sum = _dashboardData[c.storageKey] || {};
+      var wi = (sum.weightHistory || []).length, ci = (sum.recentCheckIns || []).length;
+      var acc = _isAccessActive(c) ? '<span class="v2-chip green">access active</span>' : '<span class="v2-chip red">access ' + esc(c.accessStatus) + '</span>';
+      var cached = !!_linkCacheGet(c.storageKey);
+      var link = cached ? '<span class="v2-chip grey">link saved on this device</span>' : '<span class="v2-chip amber">no link saved on this device</span>';
+      var prog = c.programMissing ? '<span class="v2-chip red">program file missing</span>' : '';
+      var acts = (cached && _isAccessActive(c) ? '<button class="v2-btn sm" type="button" data-o="copy" data-key="' + k + '">Copy link</button>'
+                                               : '<button class="v2-btn sm" type="button" data-o="generate" data-key="' + k + '">Generate link…</button>') +
+                 '<a class="v2-btn sm ghost" href="#/clients/' + enc(c.storageKey) + '">Open</a>' +
+                 '<button class="v2-btn sm ghost" type="button" data-o="edit" data-key="' + k + '">Edit</button>';
+      return '<div class="v2-o-row"><div class="o-who"><a class="o-name" href="#/clients/' + enc(c.storageKey) + '">' + esc(c.displayName) + '</a>' +
+        '<span class="o-sub">' + esc(c.programType || '') + (c.startDate ? ' · starts ' + esc(fmtDate(c.startDate)) : '') + '</span></div>' +
+        '<div class="o-chips">' + acc + link + prog + '</div>' +
+        '<div class="o-data">' + wi + ' weigh-in' + (wi === 1 ? '' : 's') + ' · ' + ci + ' check-in' + (ci === 1 ? '' : 's') + '</div>' +
+        '<div class="o-acts">' + acts + '</div></div>';
+    }).join('');
+
+    // B. setup tasks (derived from the same real data)
+    var tasks = [];
+    onb.forEach(function (c) {
+      var k = c.storageKey;
+      if (_isAccessActive(c) && !_linkCacheGet(k)) tasks.push([c, 'No access link saved on this device', 'generate', 'Generate link…']);
+      if (!_isAccessActive(c)) tasks.push([c, 'Access is ' + c.accessStatus, 'edit', 'Access controls']);
+      if (c.programMissing) tasks.push([c, 'Program file missing from the registry', 'edit', 'Edit client']);
+      if (intakes.state === 'ok' && !linkedKeys[k]) tasks.push([c, 'No baseline intake linked', 'baseline', 'Link baseline']);
+    });
+    missing.filter(function (c) { return !_isOnboardingClient(c); }).forEach(function (c) { tasks.push([c, 'Program file missing from the registry', 'edit', 'Edit client']); });
+    $('v2-o-tasks-sub').textContent = tasks.length + ' open' + (intakes.state !== 'ok' ? ' · baseline check waits for intakes' : '');
+    $('v2-o-tasks').innerHTML = !tasks.length ? '<div class="v2-empty">No setup tasks.</div>' : tasks.map(function (t) {
+      return '<div class="v2-o-task"><span class="v2-dot amber"></span><a class="o-name" href="#/clients/' + enc(t[0].storageKey) + '">' + esc(t[0].displayName) + '</a>' +
+        '<span class="o-task">' + esc(t[1]) + '</span><button class="v2-btn sm" type="button" data-o="' + t[2] + '" data-key="' + esc(t[0].storageKey) + '">' + t[3] + '</button></div>';
+    }).join('');
+
+    // C. intakes
+    var box = $('v2-o-intakes');
+    if (intakes.state === 'loading' && !intakes.list.length) box.innerHTML = '<div class="v2-empty">Loading intakes…</div>';
+    else if (intakes.state === 'err') box.innerHTML = '<div class="v2-empty">Couldn\'t load intakes (' + esc(intakes.err) + '). <button class="v2-link" type="button" data-o="reload">Try again</button></div>';
+    else if (intakes.state === 'idle') box.innerHTML = '<div class="v2-empty">Not loaded yet.</div>';
+    else {
+      var nameOf = function (key) { var c = all.find(function (x) { return x.storageKey === key; }); return c ? c.displayName : key; };
+      var list = (showLinked.checked ? intakes.list : unlinked).slice().sort(function (a, b) { return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0); });
+      box.innerHTML = (!list.length ? '<div class="v2-empty">' + (showLinked.checked ? 'No intakes on file.' : 'No unlinked intakes.') + '</div>' : list.map(function (i) {
+        var stuck = i.ingestionState && i.ingestionState !== 'complete';
+        var linkedTo = i.linkedStorageKey ? '<a class="v2-chip green" href="#/clients/' + enc(i.linkedStorageKey) + '">linked · ' + esc(nameOf(i.linkedStorageKey)) + '</a>'
+                     : (i.linkedClientId ? '<span class="v2-chip green">linked</span>' : '<span class="v2-chip amber">not linked</span>');
+        return '<div class="v2-o-row v2-o-intake"><div class="o-who"><span class="o-name">' + esc((i.fullName || '(no name)').trim()) + '</span>' +
+          '<span class="o-sub">submitted ' + esc(fmtDate(i.submittedAt)) + '</span></div>' +
+          '<div class="o-chips">' + linkedTo + (stuck ? '<span class="v2-chip red">upload ' + esc(i.ingestionState) + '</span>' : '') + '</div>' +
+          '<div class="o-data">Photos: ' + esc(views(i)) + '</div><div class="o-acts"></div></div>';
+      }).join('')) +
+      '<p class="v2-o-hint">To link an intake as a client\'s baseline, open the client → Progress → Progress photos (existing control). Loaded ' + esc(fmtTime(intakes.at)) + '.</p>';
+    }
+  }
+  P4.renderOnboarding = function () { try { renderOnboarding(); } catch (e) { console.warn('[ui-v2] onboarding render failed', e); } };
+  O.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-o]'); if (!b) return;
+    var act = b.dataset.o, key = b.dataset.key;
+    if (act === 'reload') return loadIntakes();
+    if (act === 'copy') return copyAccessLink(key);
+    if (act === 'generate') { var p = generateAccessLink(key); if (p && p.then) p.then(P4.renderOnboarding); return; }
+    if (act === 'edit') return openClientForm(key);
+    if (act === 'baseline') { location.hash = '#/clients/' + enc(key) + '/progress'; }
+  });
+  showLinked.addEventListener('change', function () { ss.set('v2o_showlinked', showLinked.checked ? '1' : '0'); P4.renderOnboarding(); });
+
+  // ── routing: Phase 1 owns page switching; this keeps the new page in sync ──
+  function route() { return (location.hash || '').replace(/^#\/?/, '').split('/')[0]; }
+  function onRoute() {
+    var r = route();
+    O.classList.toggle('active', r === 'onboarding');
+    if (r === 'onboarding') {
+      document.querySelectorAll('.v2-nav').forEach(function (a) { var on = a.dataset.route === 'onboarding'; a.classList.toggle('active', on); if (on) a.setAttribute('aria-current', 'page'); });
+      if (intakes.state === 'idle') loadIntakes(); else P4.renderOnboarding();
+    }
+    if (r === 'admin') P4.renderAdmin();
+  }
+  window.addEventListener('hashchange', onRoute);
+  var prevRenderCC = window.renderCommandCentre;
+  window.renderCommandCentre = function () {
+    var out = prevRenderCC.apply(this, arguments);
+    try { var r = route(); if (r === 'onboarding') P4.renderOnboarding(); else if (r === 'admin') P4.renderAdmin(); } catch (e) {}
+    return out;
+  };
+  // keep the status rows fresh while Admin is open (the sync label already ticks every 5 s)
+  try {
+    var ss5 = $('sync-status');
+    if (ss5) new MutationObserver(function () { if (route() === 'admin') P4.renderAdmin(); }).observe(ss5, { childList: true, characterData: true, subtree: true });
+  } catch (e) {}
+  onRoute();
+})();
+// ─── UI_V2 PHASE 4 END ─────────────────────────────────────────────────────
 </script>
 </body>
 </html>
