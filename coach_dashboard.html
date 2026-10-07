@@ -1793,6 +1793,195 @@ details.v2-fallback > .v2-fallback-body > p { margin: 0 0 12px; color: var(--v2-
 }
 /* ─── UI_V2_SHELL CSS END ─── */
 </style>
+<style id="ui-v2-p2-css">
+/* ─── UI_V2 PHASE 2 CSS: Clients + client detail ─────────────────────────────
+   Scoped to body.v2-p2 (set only when the V2 switch is on). Classic untouched. */
+/* Phase 1 hosted the classic roster here; Phase 2 replaces it on this page.
+   The classic section stays in the DOM (still rendered on refresh), just hidden. */
+body.v2-p2 #v2-page-clients > .v2-pagehead,
+body.v2-p2 #v2-slot-clients { display: none; }
+body.v2-p2 #detail-overlay { display: none !important; }
+#v2-cl-list[hidden], #v2-cl-detail[hidden], .v2-cl-menu[hidden] { display: none !important; }
+
+/* ── Clients list ── */
+.v2-cl-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -8px 0 16px; }
+.v2-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--v2-muted); }
+.v2-select {
+  height: 32px; border: 1px solid var(--v2-line); border-radius: 8px; background: var(--v2-card); color: var(--v2-ink);
+  font: 500 13px 'Inter', system-ui, sans-serif; padding: 0 28px 0 10px; cursor: pointer; appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #7a7e8c 50%), linear-gradient(135deg, #7a7e8c 50%, transparent 50%);
+  background-position: calc(100% - 14px) 14px, calc(100% - 10px) 14px; background-size: 4px 4px; background-repeat: no-repeat;
+}
+.v2-select:focus { outline: none; border-color: var(--v2-accent-ink); box-shadow: 0 0 0 3px var(--v2-accent-soft); }
+.v2-cl-count { margin-left: auto; font-size: 12px; color: var(--v2-muted); }
+.v2-cl-table { overflow: hidden; }
+.v2-cl-row {
+  display: grid; grid-template-columns: minmax(150px, 1.5fr) minmax(130px, 1fr) minmax(110px, .9fr) 80px 76px 96px minmax(140px, 1.5fr) 36px;
+  gap: 12px; align-items: center; padding: 8px 12px 8px 16px; font-size: 13px; color: var(--v2-ink2); min-height: 40px;
+}
+.v2-cl-row + .v2-cl-row, #v2-cl-rows .v2-cl-row:first-child { border-top: 1px solid var(--v2-line2); }
+#v2-cl-rows .v2-cl-row { cursor: pointer; }
+#v2-cl-rows .v2-cl-row:hover { background: #fafbfc; }
+#v2-cl-rows .v2-cl-row:focus-visible { outline: 2px solid var(--v2-accent-ink); outline-offset: -2px; }
+.v2-cl-th { font-size: 11px; font-weight: 600; color: var(--v2-muted); text-transform: uppercase; letter-spacing: .04em; min-height: 36px; background: #fafbfc; }
+.v2-cl-row .c-name { display: flex; flex-direction: column; min-width: 0; }
+.v2-cl-row .c-name b { font-size: 14px; color: var(--v2-ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-cl-row .c-name small { font-size: 12px; color: var(--v2-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-cl-row .c-status { display: flex; gap: 4px; flex-wrap: wrap; }
+.v2-cl-row .c-wt { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.v2-cl-row .c-wt b { color: var(--v2-ink); font-weight: 600; }
+.v2-cl-row .c-adh, .v2-cl-row .c-ci, .v2-cl-row .c-rev { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.v2-cl-row i { display: none; font-style: normal; }
+.v2-cl-row .c-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.v2-cl-row .c-more { text-align: right; }
+.v2-kebab { color: var(--v2-muted) !important; font-size: 18px; line-height: 1; }
+.v2-kebab:hover { background: var(--v2-line2) !important; color: var(--v2-ink) !important; }
+.v2-trend { font-size: 12px; }
+.v2-trend.down { color: #2f7d57; } .v2-trend.up { color: var(--v2-amber); } .v2-trend.flat { color: var(--v2-muted); }
+.v2-muted { color: var(--v2-muted); } .v2-amber { color: var(--v2-amber); } .v2-red { color: var(--v2-red); }
+.v2-due { font-size: 11px; font-weight: 600; }
+.v2-cl-menu {
+  position: fixed; z-index: 85; min-width: 180px; background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(20,22,30,.12); padding: 4px; font-family: 'Inter', system-ui, sans-serif;
+}
+.v2-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 8px 12px; border-radius: 6px; font: 500 13px 'Inter', system-ui, sans-serif; color: var(--v2-ink); cursor: pointer; }
+.v2-menu-item:hover { background: var(--v2-line2); }
+
+/* ── Client detail page ── */
+body.v2-p2 #detail-panel {
+  /* the engine's overlay sizing does not apply on a page */
+  display: block; max-width: none; max-height: none; overflow: visible; background: transparent; border: 0;
+  border-radius: 0; padding: 0; margin: 0; box-shadow: none; position: static;
+}
+.v2-cd-top { margin-bottom: 12px; }
+.v2-back { font-size: 13px; color: var(--v2-ink2); text-decoration: none; font-weight: 500; }
+.v2-back:hover { color: var(--v2-ink); }
+.v2-cd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.v2-cd-id { min-width: 0; }
+.v2-cd-name { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.v2-cd-name h1 { font: 600 24px/1.2 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); letter-spacing: -0.01em; }
+.v2-cd-meta { margin-top: 4px; font-size: 13px; color: var(--v2-muted); }
+.v2-cd-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.v2-cd-actions .cd3-more-wrap { position: relative; }
+.v2-cd-actions .cd3-more-btn { width: 36px; padding: 0; justify-content: center; font-size: 18px; }
+.v2-cd-stats {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--v2-line); border: 1px solid var(--v2-line);
+  border-radius: 12px; overflow: hidden; margin-bottom: 16px;
+}
+.v2-cd-stat { background: var(--v2-card); padding: 10px 14px; min-width: 0; }
+.v2-cd-stat > span { display: block; font-size: 11px; color: var(--v2-muted); font-weight: 500; }
+.v2-cd-stat b { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; color: var(--v2-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-cd-stat b .v2-due { display: none; }
+.v2-cd-tabs {
+  position: sticky; top: 0; z-index: 20; display: flex; gap: 4px; background: var(--v2-ws); border-bottom: 1px solid var(--v2-line);
+  margin: 0 -32px 16px; padding: 0 32px; overflow-x: auto; scrollbar-width: none;
+}
+.v2-cd-tabs::-webkit-scrollbar { display: none; }
+.v2-cd-tab { padding: 10px 12px; font-size: 13px; font-weight: 500; color: var(--v2-muted); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; margin-bottom: -1px; }
+.v2-cd-tab:hover { color: var(--v2-ink); }
+.v2-cd-tab.active { color: var(--v2-ink); border-bottom-color: var(--v2-accent); font-weight: 600; }
+.v2-acc-row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--v2-line2); }
+.v2-acc-row > span:first-child { color: var(--v2-muted); }
+.v2-acc-row code { font-family: 'DM Mono', monospace; font-size: 12px; }
+.v2-acc-note { font-size: 12px; color: var(--v2-muted); margin: 10px 0; line-height: 1.5; }
+.v2-acc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.v2-acc-actions a.cd3-btn { text-decoration: none; }
+
+/* ── Light re-theme of the existing detail sections (variables + a few fixed colours) ── */
+body.v2-p2 #v2-cl-detail {
+  --bg: #f4f5f7; --surface: #ffffff; --surface2: #f6f7f9; --border: #e3e5ea; --text: #15161c; --muted: #6b7080;
+  --accent: #2f63d1; --accent3: #00845b; --danger: #c43c3c; --warn: #9a6408;
+  --cc-green: #2f7d57; --cc-amber: #9a6408; --cc-red: #c43c3c; --cc-blue: #2f63d1; --cc-muted: #6b7080; --cc-text: #15161c;
+  --cc-surface: #ffffff; --cc-surface2: #f6f7f9; --cc-border: #e3e5ea; --cc-border-strong: #d3d6dd;
+  color: var(--v2-ink); font-family: 'Inter', system-ui, sans-serif;
+}
+#v2-cl-detail .cd3-panel-body { padding: 0 0 32px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+#v2-cl-detail .cd3-card, #v2-cl-detail .cd3-collapsible, #v2-cl-detail .cd3-decision { min-width: 0; }
+#v2-cl-detail .cd-chart-wrap { max-width: 100%; }
+#v2-cl-detail .cd3-tabpanel { overflow: visible; }
+#v2-cl-detail .cd3-card, #v2-cl-detail .cd3-collapsible {
+  background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; box-shadow: 0 1px 2px rgba(20,22,30,.03);
+}
+#v2-cl-detail .cd3-card { padding: 16px; }
+#v2-cl-detail .cd3-card-h { color: var(--v2-ink); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+#v2-cl-detail .cd3-collapsible { padding: 12px 16px; }
+#v2-cl-detail .cd3-collapsible > summary { color: var(--v2-ink); font-weight: 600; font-size: 13px; }
+#v2-cl-detail [style*="rgba(255,255,255"], #v2-cl-detail .cd3-metric, #v2-cl-detail .cd3-delta { border-color: var(--v2-line2); }
+#v2-cl-detail .cd3-btn, #v2-cl-detail .cd-btn { background: var(--v2-card); color: var(--v2-ink); border: 1px solid var(--v2-line); }
+#v2-cl-detail .cd3-btn:hover, #v2-cl-detail .cd-btn:hover { background: var(--v2-line2); }
+#v2-cl-detail .cd3-btn.primary, #v2-cl-detail .cd-btn.primary { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; }
+#v2-cl-detail .cd3-btn.primary:hover { background: #2a2c36; }
+#v2-cl-detail .cd3-btn.ghost { background: transparent; }
+#v2-cl-detail .cd3-chip-good, #v2-cl-detail .cd-chip-good { background: var(--v2-accent-soft); color: #00704d; border-color: transparent; }
+#v2-cl-detail .cd3-chip-watch, #v2-cl-detail .cd-chip-watch { background: var(--v2-amber-soft); color: #8a5a06; border-color: transparent; }
+#v2-cl-detail .cd3-chip-action, #v2-cl-detail .cd-chip-action { background: var(--v2-red-soft); color: #b5332c; border-color: transparent; }
+#v2-cl-detail .cd3-chip-info, #v2-cl-detail .cd-chip-info { background: var(--v2-blue-soft); color: var(--v2-blue); border-color: transparent; }
+#v2-cl-detail .cd3-chip-muted, #v2-cl-detail .cd-chip-muted { background: var(--v2-grey-soft); color: var(--v2-ink2); border-color: transparent; }
+#v2-cl-detail .cd3-metric-val.ok, #v2-cl-detail .cd3-wt-delta-good, #v2-cl-detail .cd3-delta-val.pos { color: #2f7d57; }
+#v2-cl-detail .cd3-metric-val.warn, #v2-cl-detail .cd3-wt-delta-warn { color: #9a6408; }
+#v2-cl-detail .cd3-delta-val.neg { color: #c43c3c; }
+#v2-cl-detail .cd3-decision { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; }
+#v2-cl-detail .cd3-decision.status-watch { border-color: #ecd3a3; background: #fffbf3; }
+#v2-cl-detail .cd3-decision.status-action { border-color: #f0c2bf; background: #fff8f7; }
+#v2-cl-detail .cd3-dec-status.on-track { background: var(--v2-accent-soft); color: #00704d; }
+#v2-cl-detail .cd3-dec-status.watch { background: var(--v2-amber-soft); color: #8a5a06; }
+#v2-cl-detail .cd3-dec-status.action { background: var(--v2-red-soft); color: #b5332c; }
+#v2-cl-detail .cd3-dec-status.insuff { background: var(--v2-grey-soft); color: var(--v2-ink2); }
+#v2-cl-detail .cd3-dec-ev-item { background: #f6f7f9; color: var(--v2-ink2); }
+#v2-cl-detail .cd3-dec-gaps span, #v2-cl-detail .cd3-access-warn { color: #8a5a06; }
+#v2-cl-detail .cd3-note, #v2-cl-detail .cd3-client-note { border-left-color: var(--v2-blue); }
+#v2-cl-detail .cd3-more-menu { background: var(--v2-card); border: 1px solid var(--v2-line); box-shadow: 0 8px 24px rgba(20,22,30,.12); }
+#v2-cl-detail .cd3-more-item { color: var(--v2-ink); }
+#v2-cl-detail .cd3-more-item:hover { background: var(--v2-line2); }
+#v2-cl-detail input, #v2-cl-detail select, #v2-cl-detail textarea { background: var(--v2-card); color: var(--v2-ink); border-color: var(--v2-line); }
+#v2-cl-detail table th { color: var(--v2-muted); }
+#v2-cl-detail .cd-chart-wrap { background: var(--v2-card); }
+#v2-cl-detail .macro-tally-card .num.c { color: #8a5a06; }
+
+@media (max-width: 1099px) {
+  .v2-cl-row { grid-template-columns: minmax(140px, 1.4fr) minmax(120px, 1fr) minmax(100px, .9fr) 70px 70px 90px 36px; }
+  .v2-cl-row .c-next, .v2-cl-th > span:nth-child(7) { display: none; }
+  .v2-cd-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .v2-cd-tabs { margin: 0 -24px 16px; padding: 0 24px; }
+}
+@media (max-width: 767px) {
+  .v2-cl-controls { margin-top: -4px; }
+  .v2-ctl { flex: 1 1 30%; min-width: 0; }
+  .v2-ctl > span { display: none; }
+  .v2-select { width: 100%; }
+  .v2-cl-count { width: 100%; margin-left: 0; }
+  .v2-cl-th { display: none !important; }
+  .v2-cl-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 32px;
+    grid-template-areas: "name name name more" "status status status status" "wt wt wt wt" "adh ci rev rev" "next next next next";
+    gap: 6px 8px; padding: 12px 12px 12px 16px;
+  }
+  .v2-cl-row .c-name { grid-area: name; } .v2-cl-row .c-more { grid-area: more; } .v2-cl-row .c-status { grid-area: status; }
+  .v2-cl-row .c-wt { grid-area: wt; flex-direction: row; gap: 8px; align-items: baseline; }
+  .v2-cl-row .c-adh { grid-area: adh; } .v2-cl-row .c-ci { grid-area: ci; } .v2-cl-row .c-rev { grid-area: rev; }
+  .v2-cl-row .c-adh, .v2-cl-row .c-ci, .v2-cl-row .c-rev { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v2-cl-row .c-next { display: -webkit-box !important; grid-area: next; font-size: 12px; }
+  .v2-cl-row .c-next:has(> .v2-muted:only-child) { display: none !important; }
+  .v2-cl-row i { display: inline; color: var(--v2-muted); }
+  .v2-cd-head { flex-direction: column; gap: 12px; }
+  .v2-cd-name h1 { font-size: 20px; }
+  .v2-cd-actions { width: 100%; }
+  .v2-cd-actions .v2-btn:not(.cd3-more-btn) { flex: 1; justify-content: center; }
+  .v2-cd-actions .cd3-more-menu { right: 0; left: auto; }
+  .v2-cd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2-cd-tabs { margin: 0 -16px 12px; padding: 0 16px; top: 56px; }
+  #v2-cl-detail .cd3-overview-grid { grid-template-columns: minmax(0, 1fr); }
+  #v2-cl-detail .cd3-card { padding: 12px; }
+  #v2-cl-detail table { display: block; overflow-x: auto; max-width: 100%; }
+  #v2-cl-detail .macro-tally-row { grid-template-columns: minmax(0, 1fr); }
+  #v2-cl-detail .adherence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media print {
+  body.v2-p2 #v2-cl-list, body.v2-p2 .v2-cd-actions, body.v2-p2 .v2-cd-tabs, body.v2-p2 .v2-back { display: none !important; }
+  body.v2-p2 .v2-page { padding: 0 !important; }
+}
+/* ─── UI_V2 PHASE 2 CSS END ─── */
+</style>
 </head>
 <body>
 
@@ -11452,6 +11641,486 @@ window.addEventListener('beforeinstallprompt', (e) => {
   mirrorSync(); renderAdminBits();
 })();
 // ─── UI_V2_SHELL END ───────────────────────────────────────────────────────
+</script>
+<script id="ui-v2-p2-js">
+// ─── UI_V2 PHASE 2: CLIENTS + CLIENT DETAIL ────────────────────────────────
+// Presentation/navigation only. Runs only when the V2 shell is on (UIV2.enabled).
+//   • Clients page: compact roster built from the SAME per-client values the
+//     classic roster computes (computeAttention, _weightTrendKgLast14,
+//     _lastCheckInIso, _daysSinceReview, _reviewClock, nextCoachAction…) and the
+//     SAME filter predicates; adds sort. No writes.
+//   • Client detail as a route (#/clients/<key>[/<tab>]). The existing detail
+//     engine still owns the panel: openDetail / switchDetailTab / closeDetail and
+//     their _cdGen/_cdOwnerKey guards run unchanged. #detail-panel is moved
+//     (same node, same id) out of the overlay into the page, and
+//     renderClientDetailV2 is wrapped so every engine repaint produces the V2
+//     layout. Tab content is composed from the existing section renderers.
+//   • Lifecycle / access actions stay in the existing Edit modal (they reopen it
+//     themselves); the Account tab shows the record and opens that modal.
+(function () {
+  var UIV2 = window.UIV2;
+  if (!UIV2 || !UIV2.enabled) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+  var ss = { get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+             set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
+  var findClient = function (key) { return (COACH.clients || []).find(function (c) { return c.storageKey === key; }) || null; };
+  var P2 = UIV2.p2 = {};
+
+  // V2 tabs → engine tab (CC.detailTab). The engine's async guards only know
+  // 'progress' (weight chart) and 'program' (macro editor, auto-progression);
+  // tabs hosting those sections map to them so the guards keep working.
+  var TABS = [['overview', 'Overview'], ['progress', 'Progress'], ['nutrition', 'Nutrition'], ['training', 'Training'],
+              ['checkins', 'Check-ins'], ['account', 'Account'], ['history', 'History']];
+  var ENGINE = { overview: 'overview', progress: 'progress', nutrition: 'program', training: 'program',
+                 checkins: 'v2-checkins', account: 'v2-account', history: 'history' };
+  var FROM_ENGINE = { overview: 'overview', progress: 'progress', program: 'nutrition', history: 'history',
+                      'v2-checkins': 'checkins', 'v2-account': 'account' };
+  var tabOf = {};            // storageKey → V2 tab
+  var current = null;        // storageKey whose detail is open (mirrors _cdOwnerKey while on a client route)
+  var listScroll = 0;
+
+  // ── page scaffolding (inside the Phase 1 Clients page) ──
+  document.body.classList.add('v2-p2');
+  var page = $('v2-page-clients');
+  var listEl = document.createElement('div'); listEl.id = 'v2-cl-list';
+  var detailEl = document.createElement('div'); detailEl.id = 'v2-cl-detail'; detailEl.hidden = true;
+  page.appendChild(listEl); page.appendChild(detailEl);
+  var panel = $('detail-panel');
+  if (panel) detailEl.appendChild(panel);           // same node, same id — engine keeps writing into it
+
+  var STATUS_OPTS = [['lc_current', 'Current'], ['lc_active', 'Active'], ['lc_onboarding', 'Onboarding'],
+                     ['lc_paused', 'Paused'], ['lc_archived', 'Archived / completed'], ['all', 'All (incl. archived)']];
+  var ATTN_OPTS = [['', 'Any attention'], ['attention', 'Needs attention'], ['watch', 'Watch'], ['ontrack', 'On track'],
+                   ['checkin_overdue', 'Check-in overdue'], ['unreviewed', 'Not reviewed this week']];
+  var SORT_OPTS = [['attention', 'Attention'], ['name', 'Name'], ['checkin', 'Last check-in'], ['review', 'Review age']];
+  var S = { status: ss.get('v2cl_status') || 'lc_current', attn: ss.get('v2cl_attn') || '', sort: ss.get('v2cl_sort') || 'attention' };
+  var sel = function (id, opts, val) {
+    return '<select class="v2-select" id="' + id + '">' + opts.map(function (o) {
+      return '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+  };
+  listEl.innerHTML =
+    '<header class="v2-pagehead"><div><h1>Clients</h1><p id="v2-cl-sub">—</p></div>' +
+      '<div class="v2-head-actions"><div class="v2-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+      '<input id="v2-cl-search" type="search" placeholder="Search clients…" autocomplete="off" aria-label="Search clients"/></div>' +
+      '<button class="v2-btn primary" type="button" onclick="openClientForm()">+ Add client</button></div></header>' +
+    '<div class="v2-cl-controls">' +
+      '<label class="v2-ctl"><span>Status</span>' + sel('v2-cl-status', STATUS_OPTS, S.status) + '</label>' +
+      '<label class="v2-ctl"><span>Attention</span>' + sel('v2-cl-attn', ATTN_OPTS, S.attn) + '</label>' +
+      '<label class="v2-ctl"><span>Sort</span>' + sel('v2-cl-sort', SORT_OPTS, S.sort) + '</label>' +
+      '<span class="v2-cl-count" id="v2-cl-count"></span></div>' +
+    '<div class="v2-card v2-cl-table" id="v2-cl-table" role="table">' +
+      '<div class="v2-cl-row v2-cl-th" role="row"><span>Client</span><span>Status</span><span>Weight · 14d</span><span>Adherence</span>' +
+      '<span>Check-in</span><span>Review</span><span>Next action</span><span></span></div>' +
+      '<div id="v2-cl-rows"></div></div>' +
+    '<div class="v2-cl-menu" id="v2-cl-menu" hidden></div>';
+  var searchEl = $('v2-cl-search');
+  searchEl.value = ss.get('v2cl_q') || '';
+
+  // ── roster values: identical expressions to renderCompactRoster ──
+  function rosterRow(c) {
+    var sum = _dashboardData[c.storageKey] || {};
+    var a = computeAttention(c, sum);
+    var lastCiIso = _lastCheckInIso(sum);
+    var dsc = lastCiIso ? _daysSinceIso(lastCiIso) : null;
+    var rev = _daysSinceReview(c);
+    var rc = _reviewClock(c);
+    var overdueDays = c.nextCoachActionDue ? _daysSinceIso(c.nextCoachActionDue) : null;
+    return { c: c, sum: sum, a: a, cur: sum.latestWeight || null, trend: _weightTrendKgLast14(sum), adh: a.adh,
+             dsc: dsc, rev: rev, rc: rc, overdueDays: overdueDays,
+             statusLabel: c.isPaused ? 'Paused' : (a.severity === 'red' ? 'Action' : (a.severity === 'amber' ? 'Watch' : 'On Track')),
+             lifecycle: _lifecycleLabel(c) };
+  }
+  // counts: same formulas as renderCompactRoster's chip counts
+  function counts(rows) {
+    var n = { all: rows.length, lc_current: 0, attention: 0, watch: 0, ontrack: 0, checkin_overdue: 0, unreviewed: 0,
+              lc_active: 0, lc_onboarding: 0, lc_paused: 0, lc_archived: 0 };
+    rows.forEach(function (r) {
+      var c = r.c, a = r.a;
+      if (a.severity === 'red') n.attention++;
+      else if (a.severity === 'amber') n.watch++;
+      else if (!a.severity && _isActiveClient(c)) n.ontrack++;
+      if (_clientExpectsCheckIns(c) && (r.dsc === null || r.dsc > CC.CHECKIN_STALE_DAYS)) n.checkin_overdue++;
+      if (_isActiveClient(c) && r.rc.days > CC.MEANINGFUL_REVIEW_STALE_DAYS) n.unreviewed++;
+      if (_isArchivedClient(c)) n.lc_archived++;
+      else if (_isPausedClient(c)) n.lc_paused++;
+      else if (_isOnboardingClient(c)) n.lc_onboarding++;
+      else n.lc_active++;
+      if (_isOnBooksClient(c)) n.lc_current++;
+    });
+    return n;
+  }
+  // filter predicates: same expressions as renderCompactRoster (status and attention combined with AND)
+  var STATUS_PRED = {
+    all: function () { return true; },
+    lc_current: function (r) { return _isOnBooksClient(r.c); }, lc_active: function (r) { return _isActiveClient(r.c); },
+    lc_onboarding: function (r) { return _isOnboardingClient(r.c); }, lc_paused: function (r) { return _isPausedClient(r.c); },
+    lc_archived: function (r) { return _isArchivedClient(r.c); },
+  };
+  var ATTN_PRED = {
+    '': function () { return true; },
+    attention: function (r) { return r.a.severity === 'red'; }, watch: function (r) { return r.a.severity === 'amber'; },
+    ontrack: function (r) { return !r.a.severity && _isActiveClient(r.c); },
+    checkin_overdue: function (r) { return r.dsc === null || r.dsc > CC.CHECKIN_STALE_DAYS; },
+    unreviewed: function (r) { return r.rc.days > CC.MEANINGFUL_REVIEW_STALE_DAYS; },
+  };
+  var SORTS = {
+    attention: function (x, y) {
+      if (_sevRank(y.a.severity) !== _sevRank(x.a.severity)) return _sevRank(y.a.severity) - _sevRank(x.a.severity);
+      if ((y.a.overdueDays || 0) !== (x.a.overdueDays || 0)) return (y.a.overdueDays || 0) - (x.a.overdueDays || 0);
+      if ((y.a.evidence || 0) !== (x.a.evidence || 0)) return (y.a.evidence || 0) - (x.a.evidence || 0);
+      return SORTS.name(x, y);
+    },
+    name: function (x, y) { return String(x.c.displayName).localeCompare(String(y.c.displayName)); },
+    checkin: function (x, y) {            // longest since last check-in first; never checked in first
+      var a = x.dsc === null ? Infinity : x.dsc, b = y.dsc === null ? Infinity : y.dsc;
+      return a !== b ? b - a : SORTS.name(x, y);
+    },
+    review: function (x, y) { return y.rc.days !== x.rc.days ? y.rc.days - x.rc.days : SORTS.name(x, y); },
+  };
+
+  // cell formatting — same thresholds/text as the classic cells
+  function trendHtml(t) {
+    if (t === null) return '<span class="v2-muted">—</span>';
+    var cls = t > 0.15 ? 'up' : t < -0.15 ? 'down' : 'flat', arr = t > 0.15 ? '▲' : t < -0.15 ? '▼' : '·';
+    return '<span class="v2-trend ' + cls + '">' + arr + ' ' + Math.abs(t).toFixed(2) + 'kg</span>';
+  }
+  function ciHtml(r) {
+    if (r.dsc === null) return '<span class="v2-muted">—</span>';
+    return r.dsc > CC.CHECKIN_STALE_DAYS ? '<span class="v2-amber">' + r.dsc + 'd</span>' : r.dsc + 'd';
+  }
+  function revHtml(r) {
+    if (r.rev === null) {
+      var stale = r.rc.days > CC.MEANINGFUL_REVIEW_STALE_DAYS;
+      return '<span class="' + (stale ? 'v2-amber' : 'v2-muted') + '" title="No meaningful review recorded since Command Centre rollout (' +
+        esc(CC.ROLLOUT_DATE_ISO) + '). ' + r.rc.days + 'd since rollout.">unknown · ' + r.rc.days + 'd</span>';
+    }
+    return r.rev > CC.MEANINGFUL_REVIEW_STALE_DAYS ? '<span class="v2-amber">' + r.rev + 'd</span>' : r.rev + 'd';
+  }
+  function nextHtml(r) {
+    var c = r.c;
+    if (!c.nextCoachAction) return '<span class="v2-muted">—</span>';
+    var due = '';
+    if (c.nextCoachActionDue && r.overdueDays !== null) {
+      due = r.overdueDays > 0 ? ' <span class="v2-red v2-due">(' + r.overdueDays + 'd overdue)</span>'
+                              : ' <span class="v2-muted v2-due">(due ' + esc(c.nextCoachActionDue) + ')</span>';
+    }
+    return esc(c.nextCoachAction) + due;
+  }
+  var STATUS_CHIP = { Action: 'red', Watch: 'amber', 'On Track': 'green', Paused: 'grey' };
+  var LC_CHIP = { active: 'green', onboarding: 'blue', paused: 'grey', archived: 'grey' };
+
+  function renderList() {
+    var all = (COACH.clients || []).map(rosterRow);
+    var n = counts(all);
+    // keep option labels' counts current (selected values untouched)
+    [['v2-cl-status', STATUS_OPTS], ['v2-cl-attn', ATTN_OPTS]].forEach(function (p) {
+      var el = $(p[0]); if (!el) return;
+      Array.prototype.forEach.call(el.options, function (o, i) {
+        var k = p[1][i][0]; o.textContent = p[1][i][1] + (k && n[k] != null ? ' (' + n[k] + ')' : '');
+      });
+    });
+    var q = (searchEl.value || '').trim().toLowerCase();
+    var list = all.filter(function (r) {
+      if (q && !(String(r.c.displayName).toLowerCase().includes(q) || String(r.c.storageKey).toLowerCase().includes(q) ||
+                 String(r.c.programType || '').toLowerCase().includes(q))) return false;
+      return (STATUS_PRED[S.status] || STATUS_PRED.lc_current)(r) && (ATTN_PRED[S.attn] || ATTN_PRED[''])(r);
+    }).sort(SORTS[S.sort] || SORTS.attention);
+    $('v2-cl-sub').textContent = n.lc_current + ' current · ' + n.lc_onboarding + ' onboarding · ' + n.lc_paused + ' paused · ' + n.lc_archived + ' archived';
+    $('v2-cl-count').textContent = list.length + ' of ' + all.length + ' shown';
+    $('v2-cl-rows').innerHTML = !list.length ? '<div class="v2-empty">No clients match these filters.</div>' : list.map(function (r) {
+      var c = r.c, k = esc(c.storageKey);
+      return '<div class="v2-cl-row" role="row" tabindex="0" data-key="' + k + '">' +
+        '<span class="c-name"><b>' + esc(c.displayName) + '</b><small>' + esc(c.programType || '') + '</small></span>' +
+        '<span class="c-status"><span class="v2-chip ' + (LC_CHIP[r.lifecycle] || 'grey') + '">' + esc(r.lifecycle) + '</span>' +
+          (c.isPaused ? '' : '<span class="v2-chip ' + STATUS_CHIP[r.statusLabel] + '">' + esc(r.statusLabel) + '</span>') + '</span>' +
+        '<span class="c-wt"><b>' + (r.cur === null ? '<span class="v2-muted">—</span>' : esc(r.cur) + 'kg') + '</b>' + trendHtml(r.trend) + '</span>' +
+        '<span class="c-adh"><i>Adherence </i>' + (r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') + '</span>' +
+        '<span class="c-ci"><i>Check-in </i>' + ciHtml(r) + '</span>' +
+        '<span class="c-rev"><i>Review </i>' + revHtml(r) + '</span>' +
+        '<span class="c-next">' + nextHtml(r) + '</span>' +
+        '<span class="c-more"><button type="button" class="v2-icon-btn v2-kebab" data-menu="' + k + '" aria-label="Actions for ' + esc(c.displayName) + '">⋮</button></span>' +
+        '</div>';
+    }).join('');
+  }
+  P2.renderList = function () { try { renderList(); } catch (e) { console.warn('[ui-v2] clients render failed', e); } };
+
+  // list events
+  function saveState() { ss.set('v2cl_status', S.status); ss.set('v2cl_attn', S.attn); ss.set('v2cl_sort', S.sort); ss.set('v2cl_q', searchEl.value || ''); }
+  [['v2-cl-status', 'status'], ['v2-cl-attn', 'attn'], ['v2-cl-sort', 'sort']].forEach(function (p) {
+    $(p[0]).addEventListener('change', function (e) { S[p[1]] = e.target.value; saveState(); P2.renderList(); });
+  });
+  searchEl.addEventListener('input', function () { saveState(); P2.renderList(); });
+  searchEl.addEventListener('keydown', function (e) { if (e.key === 'Escape') { searchEl.value = ''; saveState(); P2.renderList(); } });
+  var menu = $('v2-cl-menu');
+  function closeMenu() { menu.hidden = true; menu.innerHTML = ''; }
+  function openMenu(btn, key) {
+    var c = findClient(key); if (!c) return;
+    var k = esc(key);
+    var items = [['review', 'Review'], ['open', 'Open client'], ['edit', 'Edit client']];
+    if (c.phone) { items.push(['sms', 'SMS'], ['wa', 'WhatsApp']); }
+    if (c.nextCoachAction) items.push(['clear', 'Clear next action']);
+    menu.innerHTML = items.map(function (i) { return '<button type="button" class="v2-menu-item" data-mact="' + i[0] + '" data-key="' + k + '">' + i[1] + '</button>'; }).join('');
+    var r = btn.getBoundingClientRect();
+    menu.hidden = false;
+    var mw = menu.offsetWidth, mh = menu.offsetHeight;
+    menu.style.left = Math.max(8, Math.min(window.innerWidth - mw - 8, r.right - mw)) + 'px';
+    menu.style.top = (r.bottom + mh + 8 > window.innerHeight ? Math.max(8, r.top - mh - 4) : r.bottom + 4) + 'px';
+  }
+  $('v2-cl-rows').addEventListener('click', function (e) {
+    var kb = e.target.closest('[data-menu]');
+    if (kb) { e.stopPropagation(); if (!menu.hidden && menu.dataset.key === kb.dataset.menu) return closeMenu(); menu.dataset.key = kb.dataset.menu; return openMenu(kb, kb.dataset.menu); }
+    var row = e.target.closest('.v2-cl-row[data-key]');
+    if (row) location.hash = '#/clients/' + encodeURIComponent(row.dataset.key);
+  });
+  $('v2-cl-rows').addEventListener('keydown', function (e) {
+    var row = e.target.closest('.v2-cl-row[data-key]');
+    if (row && e.key === 'Enter' && e.target === row) location.hash = '#/clients/' + encodeURIComponent(row.dataset.key);
+  });
+  menu.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-mact]'); if (!b) return;
+    var key = b.dataset.key, c = findClient(key), act = b.dataset.mact; closeMenu();
+    if (act === 'review') openAttentionReview(key);
+    else if (act === 'open') location.hash = '#/clients/' + encodeURIComponent(key);
+    else if (act === 'edit') openClientForm(key);
+    else if (act === 'sms' && c && c.phone) window.location.href = 'sms:' + c.phone;                       // same link as the classic card
+    else if (act === 'wa' && c && c.phone) window.open('https://wa.me/' + c.phone.replace('+', ''), '_blank'); // same link as the classic card
+    else if (act === 'clear') clearNextAction(key);
+  });
+  document.addEventListener('click', function (e) { if (!menu.hidden && !e.target.closest('#v2-cl-menu')) closeMenu(); });
+  window.addEventListener('scroll', function () { if (!menu.hidden) closeMenu(); }, { passive: true });
+
+  // ── client detail: V2 layout from the existing section renderers ──
+  var origOpen = window.openDetail, origClose = window.closeDetail, origSwitch = window.switchDetailTab,
+      origRender = window.renderClientDetailV2, origChart = window.buildWeightChart;
+  function quickStats(c) {
+    var r = rosterRow(c);
+    var item = function (lbl, val) { return '<div class="v2-cd-stat"><span>' + lbl + '</span><b>' + val + '</b></div>'; };
+    return '<div class="v2-cd-stats">' +
+      item('Weight', r.cur === null ? '<span class="v2-muted">—</span>' : esc(r.cur) + 'kg') +
+      item('14-day trend', trendHtml(r.trend)) +
+      item('Adherence', r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') +
+      item('Last check-in', ciHtml(r)) + item('Last review', revHtml(r)) +
+      item('Next action', nextHtml(r)) + '</div>';
+  }
+  function card(title, body) { return '<div class="cd3-card"><div class="cd3-card-h">' + title + '</div>' + body + '</div>'; }
+  function tabBody(tab, c, sum, m30) {
+    var key = c.storageKey;
+    var meals = (sum && sum.recentMeals) || [], workouts = (sum && sum.recentWorkouts) || [];
+    switch (tab) {
+      case 'progress': {
+        var hasHistory = (sum && Array.isArray(sum.weightHistory) && sum.weightHistory.length > 0) || !!(sum && sum.latestWeight);
+        return '<div class="cd3-panel-body">' +
+          card('Weight trend', hasHistory ? '<div class="cd-chart-wrap"><canvas id="detail-chart"></canvas></div>' : _cd3Empty('No weight history yet.')) +
+          card('Adherence — last 30 days', renderAdherenceSection(m30)) +
+          card('Progress photos', renderPhotoTimelineSection(c, sum)) + '</div>';
+      }
+      case 'nutrition':
+        return '<div class="cd3-panel-body">' +
+          card('Current plan', _cd3PlanSummary(c) + '<div style="margin-top:1rem">' + _cd3MacroEditorInline(c) + '</div>') +
+          card("Today's macro tally", renderMacroTallySection(sum)) +
+          '<details class="cd3-collapsible"><summary>Meal logs (' + meals.length + ' recent)</summary><div style="margin-top:0.75rem">' +
+            (meals.length ? renderMealLogTable(meals) : _cd3Empty('No meals logged yet.')) + '</div></details></div>';
+      case 'training':
+        return '<div class="cd3-panel-body">' + _cwvCard(c) +
+          card('Personal records', renderPRSection(sum)) +
+          '<details class="cd3-collapsible"' + (_cd3ProgressionOpen[key] ? ' open' : '') + ' ontoggle="_cd3ProgressionOpen[\'' + esc(key) + '\']=this.open">' +
+            '<summary>Auto-progression</summary><div style="margin-top:0.75rem">' + _cd3PanelProgression(c, sum) + '</div></details>' +
+          '<details class="cd3-collapsible"><summary>Workout logs (' + workouts.length + ' recent)</summary><div style="margin-top:0.75rem">' +
+            (workouts.length ? renderWorkoutLogTable(workouts) : _cd3Empty('No workouts logged yet.')) + '</div></details></div>';
+      case 'checkins': {
+        var latest = _lastCheckInIso(sum);
+        return '<div class="cd3-panel-body">' + card('Check-in comparison', _cd3CheckInTable(sum)) +
+          (latest && Array.isArray(sum.recentCheckIns) && sum.recentCheckIns.length
+            ? '<div><button class="cd3-btn" type="button" onclick="openCheckInReview(\'' + esc(key) + '\',\'' + esc(sum.recentCheckIns[0].timestamp) + '\')">Open latest check-in</button></div>' : '') +
+          '</div>';
+      }
+      case 'account': {
+        var row = function (l, v) { return '<div class="v2-acc-row"><span>' + l + '</span><span>' + (v == null || v === '' ? '<span class="v2-muted">—</span>' : v) + '</span></div>'; };
+        return '<div class="cd3-panel-body">' +
+          card('Client details',
+            row('Name', esc(c.displayName)) + row('Storage key', '<code>' + esc(key) + '</code>') + row('Program', esc(c.programType)) +
+            row('Start date', esc(c.startDate)) + row('Start weight', c.startWeight != null && c.startWeight !== '' ? esc(c.startWeight) + ' kg' : '') +
+            row('Goal weight', c.goalWeight != null && c.goalWeight !== '' ? esc(c.goalWeight) + ' kg' : '') + row('Check-in day', esc(c.checkInDay))) +
+          card('Contact',
+            row('Email', esc(c.email)) + row('Phone', esc(c.phone)) +
+            (c.phone ? '<div class="v2-acc-actions"><a class="cd3-btn" href="sms:' + esc(c.phone) + '">SMS</a>' +
+              '<a class="cd3-btn" href="https://wa.me/' + esc(String(c.phone).replace('+', '')) + '" target="_blank">WhatsApp</a></div>' : '')) +
+          card('Coaching lifecycle &amp; access',
+            row('Lifecycle', _cd3LifecycleChip(c)) + row('Access', _cd3AccessChip(c) || '<span class="v2-muted">—</span>') +
+            '<p class="v2-acc-note">Lifecycle (move to active, pause, resume, complete, archive, restore) and access-link controls (copy, generate, rotate, open, suspend, revoke, restore) are in the client editor.</p>' +
+            '<div class="v2-acc-actions"><button class="cd3-btn primary" type="button" onclick="openClientForm(\'' + esc(key) + '\')">Open lifecycle &amp; access controls</button></div>') +
+          '</div>';
+      }
+      case 'history': return _cd3PanelHistory(c);
+      case 'overview':
+      default: return _cd3PanelOverview(c, sum, m30);
+    }
+  }
+  function detailHtml(c, tab) {
+    var key = c.storageKey, k = esc(key), sum = _dashboardData[key] || {};
+    var m30 = build30DayMetrics(sum);
+    var canOpen = !!(c.programUrl && !c.programMissing);
+    var base = '#/clients/' + encodeURIComponent(key);
+    return '<div class="v2-cd" data-key="' + k + '" data-tab="' + tab + '">' +
+      '<div class="v2-cd-top"><a class="v2-back" href="#/clients">← Clients</a></div>' +
+      _cd3AccessWarn(c) +
+      '<div class="v2-cd-head"><div class="v2-cd-id">' +
+        '<div class="v2-cd-name"><h1>' + esc(c.displayName || key) + '</h1><div class="cd3-chips">' + _cd3LifecycleChip(c) + _cd3WeekBadge(c) + _cd3AccessChip(c) + '</div></div>' +
+        '<div class="v2-cd-meta">' + _cd3MetaRow(c, sum) + '</div></div>' +
+        '<div class="v2-cd-actions">' +
+          (canOpen ? '<a class="v2-btn" href="' + esc(c.programUrl) + '" target="_blank" rel="noopener">Open program ↗</a>'
+                   : '<button class="v2-btn" disabled title="Program pending">Open program</button>') +
+          '<button class="v2-btn primary" type="button" onclick="_cd3OpenCompose(\'' + k + '\',\'\')">Draft response</button>' +
+          '<div class="cd3-more-wrap"><button class="v2-btn cd3-more-btn" type="button" onclick="_cd3ToggleMore(this)" aria-label="More">⋮</button>' +
+            '<div class="cd3-more-menu">' +
+              '<button class="cd3-more-item" onclick="openClientForm(\'' + k + '\');_cd3CloseMoreMenus()">Edit client</button>' +
+              '<button class="cd3-more-item" onclick="window.print();_cd3CloseMoreMenus()">Export PDF</button>' +
+              '<button class="cd3-more-item" onclick="openReviewModal(\'' + k + '\');_cd3CloseMoreMenus()">Log review</button>' +
+            '</div></div></div></div>' +
+      quickStats(c) +
+      '<nav class="v2-cd-tabs" role="tablist">' + TABS.map(function (t) {
+        return '<a role="tab" class="v2-cd-tab' + (t[0] === tab ? ' active' : '') + '" aria-selected="' + (t[0] === tab) + '" href="' +
+          (t[0] === 'overview' ? base : base + '/' + t[0]) + '">' + t[1] + '</a>'; }).join('') + '</nav>' +
+      '<div class="cd3-tabpanel v2-cd-body" role="tabpanel" data-tab="' + ENGINE[tab] + '">' + tabBody(tab, c, sum, m30) + '</div>' +
+    '</div>';
+  }
+  function centerActiveTab() {        // keep the active tab visible in the scrollable tab bar (phone)
+    var bar = detailEl.querySelector('.v2-cd-tabs'), a = bar && bar.querySelector('.v2-cd-tab.active');
+    if (bar && a && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = Math.max(0, a.offsetLeft - (bar.clientWidth - a.offsetWidth) / 2);
+  }
+  // Every engine repaint (open, tab switch, progression/macro callbacks) comes through here.
+  window.renderClientDetailV2 = function (storageKey) {
+    var c = findClient(storageKey); if (!c) return '';
+    var eng = (CC.detailTab && CC.detailTab[storageKey]) || 'overview';
+    var tab = tabOf[storageKey];
+    if (!tab || ENGINE[tab] !== eng) {          // engine moved tab itself (e.g. "Adjust plan" → program)
+      tab = FROM_ENGINE[eng] || 'overview'; tabOf[storageKey] = tab;
+      if (current === storageKey) {
+        var want = '#/clients/' + encodeURIComponent(storageKey) + (tab === 'overview' ? '' : '/' + tab);
+        if (location.hash !== want) setTimeout(function () { history.pushState(null, '', location.pathname + location.search + want); syncChrome(); }, 0);
+      }
+    }
+    P2.rendered = storageKey + '|' + tab + '|' + (_cd3SumMissing(storageKey) ? 'nodata' : 'data');
+    setTimeout(centerActiveTab, 0);
+    try { return detailHtml(c, tab); } catch (e) { console.warn('[ui-v2] detail render failed, falling back', e); return origRender(storageKey); }
+  };
+  // Weight chart: the engine draws with dark-theme colours; recolour the
+  // already-built chart for the light page (presentation only).
+  if (typeof origChart === 'function') {
+    window.buildWeightChart = async function () {
+      var out = await origChart.apply(this, arguments);
+      try {
+        if (typeof _detailChart !== 'undefined' && _detailChart && _detailChart.options) {
+          var o = _detailChart.options;
+          if (o.plugins && o.plugins.legend && o.plugins.legend.labels) o.plugins.legend.labels.color = '#4a4d5a';
+          ['x', 'y'].forEach(function (ax) { if (o.scales && o.scales[ax]) { o.scales[ax].ticks.color = '#7a7e8c'; o.scales[ax].grid.color = 'rgba(20,22,30,0.06)'; } });
+          _detailChart.update('none');
+        }
+      } catch (e) {}
+      return out;
+    };
+  }
+  // Opening a client anywhere in V2 (Today, search, queue, watch, roster…) navigates to its page.
+  window.openDetail = function (storageKey) {
+    if (!findClient(storageKey)) return;
+    var want = '#/clients/' + encodeURIComponent(storageKey);
+    if (current === storageKey && location.hash.indexOf(want) === 0) return;
+    location.hash = want;
+  };
+  window.closeDetail = function () {
+    if (current) { location.hash = '#/clients'; return; }
+    return origClose.apply(this, arguments);
+  };
+
+  function syncChrome() {
+    if (!current) return;
+    var c = findClient(current);
+    document.title = (c ? c.displayName : current) + ' · Clients · ' + document.title.split(' · ').pop();
+    var tb = $('v2-topbar-title'); if (tb && c) tb.textContent = c.displayName;
+  }
+  function showList() {
+    detailEl.hidden = true; listEl.hidden = false;
+    P2.renderList();
+    window.scrollTo(0, listScroll);
+  }
+  function leaveDetail() {
+    if (!current) return;
+    current = null;
+    origClose();                                   // engine close: destroys chart, bumps _cdGen, clears owner
+    document.body.style.overflow = '';
+  }
+  function showNotFound(key) {
+    leaveDetail();
+    listEl.hidden = true; detailEl.hidden = false;
+    if (panel) panel.innerHTML = '<div class="v2-cd"><div class="v2-cd-top"><a class="v2-back" href="#/clients">← Clients</a></div>' +
+      '<div class="v2-placeholder"><h2>Client not found</h2><p>No client with key “' + esc(key) + '” is on the roster.</p></div></div>';
+  }
+  function showDetail(key, tab) {
+    if (!listEl.hidden) listScroll = window.scrollY;
+    listEl.hidden = true; detailEl.hidden = false; closeMenu();
+    tabOf[key] = tab;
+    CC.detailTab = CC.detailTab || {};
+    if (current !== key) {
+      if (current) leaveDetail();
+      CC.detailTab[key] = ENGINE[tab];
+      current = key;
+      origOpen(key);                               // engine open: _cdGen++, owner, render, chart if progress
+      var ov = $('detail-overlay'); if (ov) ov.classList.remove('open');
+      document.body.style.overflow = '';           // page, not modal: never lock scrolling
+      window.scrollTo(0, 0);
+    } else if (CC.detailTab[key] !== ENGINE[tab] || (P2.rendered || '').indexOf(key + '|' + tab + '|') !== 0) {
+      var tabs = detailEl.querySelector('.v2-cd-tabs');
+      var top = tabs ? tabs.getBoundingClientRect().top + window.scrollY - 8 : 0;
+      origSwitch(key, ENGINE[tab]);                // engine tab switch: repaint + chart if progress
+      if (window.scrollY > top) window.scrollTo(0, top);
+    }
+    syncChrome();
+  }
+  function parse() {
+    var p = (location.hash || '').replace(/^#\/?/, '').split('/');
+    if (p[0] !== 'clients') return null;
+    var key = p[1] ? decodeURIComponent(p[1]) : null;
+    return { key: key, tab: p[2] || null };
+  }
+  function onRoute() {
+    var r = parse();
+    if (!r) { leaveDetail(); return; }
+    if (!r.key) { leaveDetail(); showList(); return; }
+    if (!findClient(r.key)) return showNotFound(r.key);
+    var tab = r.tab && ENGINE[r.tab] ? r.tab : 'overview';
+    if (r.tab && (!ENGINE[r.tab] || r.tab === 'overview')) {
+      try { history.replaceState(null, '', location.pathname + location.search + '#/clients/' + encodeURIComponent(r.key) + (tab === 'overview' ? '' : '/' + tab)); } catch (e) {}
+    }
+    showDetail(r.key, tab);
+  }
+  window.addEventListener('hashchange', onRoute);
+  // phone drawer: tapping the nav item for the page you're already on still closes the drawer
+  Array.prototype.forEach.call(document.querySelectorAll('.v2-nav'), function (a) { a.addEventListener('click', function () { if (UIV2.closeDrawer) UIV2.closeDrawer(); }); });
+
+  // Refresh safety: re-render the list on every Command Centre render (state
+  // lives here, inputs are never rebuilt). The open detail is NOT repainted by
+  // refresh (same as classic) — except once, if it was first drawn before this
+  // client's data had loaded (reload straight onto a client route).
+  var prevRenderCC = window.renderCommandCentre;
+  window.renderCommandCentre = function () {
+    var out = prevRenderCC.apply(this, arguments);
+    try {
+      if (parse() && !current) P2.renderList();
+      if (current && /\|nodata$/.test(P2.rendered || '') && !_cd3SumMissing(current)) {
+        origSwitch(current, CC.detailTab[current]);
+      }
+    } catch (e) { console.warn('[ui-v2] clients refresh failed', e); }
+    return out;
+  };
+
+  onRoute();
+  if (parse() && !current) P2.renderList();
+})();
+// ─── UI_V2 PHASE 2 END ─────────────────────────────────────────────────────
 </script>
 </body>
 </html>
