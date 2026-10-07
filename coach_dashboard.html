@@ -9012,9 +9012,11 @@ async function _pgLoadProgram(storageKey) {
   try {
     const res = await coachFetch('clientProgram', { storageKey });
     s.program = res.program || null;
+    s._pgProgramResult = s.program ? 'ok' : 'missing';   // PG-NULL-PROGRAM-V1
   } catch (e) {
     console.warn('progressionTab: could not load program for', storageKey, e);
     s.program = null;
+    s._pgProgramResult = 'error';
   }
   return s.program;
 }
@@ -9062,7 +9064,9 @@ function _pgProgramRx(program, exName, phase, dayIdx) {
 
 function _cdPanelProgression(c, sum) {
   const key   = c.storageKey;
-  const state = window._pgState[key] || {};
+  // PG-NULL-PROGRAM-V1: keep one persistent state object per client so the
+  // load flags below survive the repaint the load itself triggers.
+  const state = window._pgState[key] = window._pgState[key] || {};
   const workouts = (sum && sum.recentWorkouts) || [];
   const exercises = _pgGroupByExercise(workouts);
 
@@ -9123,8 +9127,12 @@ function _cdPanelProgression(c, sum) {
   // Kick off background loads on first render
   // DETAIL-OWNER-V1: token captured at kickoff, checked at resolve-time —
   // CC.detailTab[key]==='program' alone was not sufficient (see _cdStillOwns).
-  if (!state.program && !state._pgProgramLoading) {
+  // PG-NULL-PROGRAM-V1: a missing/failed program used to re-request on every
+  // repaint (hundreds of calls/second). Try once per detail-panel open
+  // (_cdGen); reopening the client retries.
+  if (!state.program && !state._pgProgramLoading && state._pgProgramTriedGen !== _cdGen) {
     state._pgProgramLoading = true;
+    state._pgProgramTriedGen = _cdGen;
     const _cdTok = _cdBeginAsync(key);
     _pgLoadProgram(key).then(() => {
       state._pgProgramLoading = false;
@@ -9144,8 +9152,15 @@ function _cdPanelProgression(c, sum) {
     });
   }
 
+  const programNote = (!state.program && !state._pgProgramLoading && state._pgProgramResult)
+    ? `<p class="pg-program-note" style="margin:0 0 8px;opacity:.7;font-size:12px">${state._pgProgramResult === 'error'
+        ? 'Program data could not be loaded for auto-progression. Reopen the client to retry.'
+        : 'No program data available for auto-progression.'}</p>`
+    : '';
+
   return `
     <div class="cd-panel-body" style="padding:0">
+      ${programNote}
       <div class="cd-section">
         <div class="cd-section-h">Auto-progression history</div>
         <p style="margin:4px 0 8px;opacity:.65;font-size:12px">
