@@ -1982,6 +1982,181 @@ body.v2-p2 #v2-cl-detail {
 }
 /* ─── UI_V2 PHASE 2 CSS END ─── */
 </style>
+<style id="ui-v2-p3-css">
+/* ─── UI_V2 PHASE 3 CSS: Check-ins workspace ─────────────────────────────────
+   Scoped to body.v2-p3 / #v2-ci* (V2 switch on only). Classic untouched. */
+/* Phase 1 hosted the classic dark queue here; Phase 3 replaces it. The classic
+   section stays in the DOM (still rendered on refresh), hidden. */
+body.v2-p3 #v2-page-check-ins > .v2-pagehead,
+body.v2-p3 #v2-slot-checkins { display: none; }
+body.v2-p3 #cc-ci-modal { display: none !important; }
+#v2-ci-review[hidden] { display: none !important; }
+
+/* summary strip + tabs */
+.v2-ci-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.v2-ci-stat {
+  display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--v2-card); border: 1px solid var(--v2-line);
+  border-radius: 12px; cursor: pointer; font: 500 13px 'Inter', system-ui, sans-serif; color: var(--v2-ink2); text-align: left;
+}
+.v2-ci-stat b { margin-left: auto; font-size: 20px; font-weight: 600; color: var(--v2-ink); font-variant-numeric: tabular-nums; }
+.v2-ci-stat:hover { border-color: #c9ccd4; }
+.v2-ci-stat.active { border-color: var(--v2-ink); box-shadow: 0 0 0 1px var(--v2-ink) inset; }
+.v2-ci-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--v2-line); margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+.v2-ci-tabs::-webkit-scrollbar { display: none; }
+.v2-ci-tab {
+  background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 9px 12px; cursor: pointer;
+  font: 500 13px 'Inter', system-ui, sans-serif; color: var(--v2-muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+}
+.v2-ci-tab .cnt { font-size: 11px; background: var(--v2-line2); color: var(--v2-ink2); border-radius: 10px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+.v2-ci-tab:hover { color: var(--v2-ink); }
+.v2-ci-tab.active { color: var(--v2-ink); border-bottom-color: var(--v2-accent); font-weight: 600; }
+
+/* compact rows */
+.v2-ci-list { overflow: hidden; }
+.v2-ci-row {
+  display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(170px, 1.2fr) minmax(150px, 1fr) minmax(200px, 2fr) 84px;
+  gap: 14px; align-items: center; padding: 10px 14px 10px 16px; font-size: 13px; color: var(--v2-ink2); min-height: 44px;
+}
+.v2-ci-row + .v2-ci-row { border-top: 1px solid var(--v2-line2); }
+.v2-ci-row[data-key] { cursor: pointer; }
+.v2-ci-row[data-key]:hover { background: #fafbfc; }
+.v2-ci-row:focus-visible { outline: 2px solid var(--v2-accent-ink); outline-offset: -2px; }
+.v2-ci-row .ci-who { display: flex; flex-direction: column; min-width: 0; }
+.v2-ci-name { font-weight: 600; font-size: 14px; color: var(--v2-ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-ci-name:hover { text-decoration: underline; }
+.ci-when { font-size: 12px; color: var(--v2-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ci-status { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ci-conf { font-size: 11px; color: var(--v2-muted); }
+.v2-chip.outline { background: transparent; box-shadow: inset 0 0 0 1px currentColor; }
+.ci-metrics { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.ci-wt b { color: var(--v2-ink); font-weight: 600; }
+.ci-sub, .ci-adh { font-size: 12px; color: var(--v2-muted); }
+.ci-summary { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ci-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.v2-flag { font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 10px; background: var(--v2-grey-soft); color: var(--v2-ink2); white-space: nowrap; }
+.v2-flag.red { background: var(--v2-red-soft); color: #b5332c; }
+.v2-flag.amber { background: var(--v2-amber-soft); color: #8a5a06; }
+.ci-reason { font-size: 12px; color: var(--v2-ink2); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ci-act { text-align: right; }
+.ci-act .v2-btn { text-decoration: none; }
+
+/* ── review panel (desktop: right side panel; phone: full-screen sheet) ── */
+.v2-ci-backdrop { position: fixed; inset: 0; background: rgba(15,17,24,.32); z-index: 118; }
+.v2-ci-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(1080px, calc(100vw - var(--v2-side-w) - 48px)); z-index: 120;
+  background: var(--v2-ws); box-shadow: -12px 0 40px rgba(15,17,24,.18); overflow-y: auto; font-family: 'Inter', system-ui, sans-serif;
+}
+body.v2-collapsed .v2-ci-panel { width: min(1080px, calc(100vw - var(--v2-side-wc) - 48px)); }
+body.v2-ci-open { overflow: hidden; }
+#v2-ci-panel #cc-ci-modal-body { background: transparent; border: 0; box-shadow: none; padding: 0; margin: 0; max-width: none; max-height: none; width: auto; color: var(--v2-ink); }
+.v2-ci-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 16px 24px 14px; background: var(--v2-card); border-bottom: 1px solid var(--v2-line); }
+.v2-ci-head-top { display: flex; align-items: center; gap: 8px; }
+.v2-ci-head-sub { font-size: 12px; color: var(--v2-muted); }
+.v2-ci-head h2 { margin: 6px 0 2px; font: 600 20px/1.2 'Inter', system-ui, sans-serif; }
+.v2-ci-head h2 a { color: var(--v2-ink); text-decoration: none; }
+.v2-ci-head h2 a:hover { text-decoration: underline; }
+.v2-ci-head-meta { font-size: 13px; color: var(--v2-muted); }
+.v2-ci-x { color: var(--v2-muted) !important; font-size: 16px; }
+.v2-ci-x:hover { background: var(--v2-line2) !important; color: var(--v2-ink) !important; }
+.v2-ci-restore { margin: 12px 24px 0; padding: 8px 12px; border-radius: 8px; background: var(--v2-blue-soft); color: var(--v2-blue); font-size: 12px; }
+.v2-ci-restore[hidden] { display: none; }
+.v2-ci-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px 24px 32px; align-items: start; }
+.v2-ci-main, .v2-ci-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.v2-ci-side { position: sticky; top: 92px; }
+.v2-ci-sec { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(20,22,30,.03); min-width: 0; }
+.v2-ci-sec > h3 { margin: 0 0 10px; font: 600 13px 'Inter', system-ui, sans-serif; color: var(--v2-ink); }
+.v2-ci-none { margin: 0; font-size: 13px; }
+.v2-ci-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; font-size: 12px; color: var(--v2-muted); font-weight: 500; }
+.v2-ci-field em { color: var(--v2-red); font-style: normal; }
+.v2-ci-field select, .v2-ci-field input, .v2-ci-field textarea, #v2-ci-panel textarea.ap-draft {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--v2-line); border-radius: 8px; background: var(--v2-card); color: var(--v2-ink);
+  font: 400 13px/1.45 'Inter', system-ui, sans-serif; padding: 7px 10px; margin: 0;
+}
+.v2-ci-field select { height: 36px; }
+.v2-ci-field textarea { min-height: 64px; resize: vertical; }
+#v2-ci-panel textarea.ap-draft { min-height: 180px; resize: vertical; }
+.v2-ci-field :focus, #v2-ci-panel textarea.ap-draft:focus { outline: none; border-color: var(--v2-accent-ink); box-shadow: 0 0 0 3px var(--v2-accent-soft); }
+.v2-ci-next { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; }
+.v2-ci-compose { margin-top: 10px; }
+.v2-ci-hint { margin: 6px 0 0; font-size: 11px; color: var(--v2-muted); }
+#v2-ci-panel .v2-ci-actions { display: flex; gap: 8px; justify-content: flex-end; margin: 0; padding: 0; }
+#v2-ci-panel .v2-ci-actions .cc-btn { height: 38px; padding: 0 16px; border-radius: 8px; font: 600 13px 'Inter', system-ui, sans-serif; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink); cursor: pointer; }
+#v2-ci-panel .v2-ci-actions .cc-btn.primary { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; flex: 1; }
+
+/* light theme for the engine's review content */
+#v2-ci-panel {
+  --cc-green: #2f7d57; --cc-amber: #9a6408; --cc-red: #c43c3c; --cc-blue: #2f63d1; --cc-muted: #6b7080; --cc-text: #15161c;
+  --cc-surface: #ffffff; --cc-surface2: #f6f7f9; --cc-border: #e3e5ea; --cc-border-strong: #d3d6dd;
+  --bg: #f4f5f7; --surface: #ffffff; --surface2: #f6f7f9; --border: #e3e5ea; --text: #15161c; --muted: #6b7080;
+}
+#v2-ci-panel .cc-ci-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: 10px 0; }
+#v2-ci-panel .cc-ci-col { background: #f9fafb; border: 1px solid var(--v2-line2); border-radius: 10px; padding: 10px 12px; }
+#v2-ci-panel .cc-ci-col .col-title { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--v2-muted); margin-bottom: 6px; }
+#v2-ci-panel .cc-ci-metric { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--v2-line2); }
+#v2-ci-panel .cc-ci-metric:last-child { border-bottom: 0; }
+#v2-ci-panel .cc-ci-metric .m-label { color: var(--v2-muted); }
+#v2-ci-panel .cc-ci-metric .m-value { color: var(--v2-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#v2-ci-panel .cc-ci-delta { font-weight: 600; margin-left: 6px; font-size: 12px; }
+#v2-ci-panel .cc-ci-delta.better { color: #2f7d57; } #v2-ci-panel .cc-ci-delta.worse { color: #c43c3c; } #v2-ci-panel .cc-ci-delta.flat { color: var(--v2-muted); }
+#v2-ci-panel .cc-ci-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin-top: 10px; background: none; border: 0; padding: 0; }
+#v2-ci-panel .cc-ci-context .item { font-size: 13px; color: var(--v2-ink); min-width: 0; }
+#v2-ci-panel .cc-ci-context .lbl { font-size: 11px; color: var(--v2-muted); font-weight: 500; text-transform: none; letter-spacing: 0; margin-bottom: 2px; }
+#v2-ci-panel .cc-ci-flags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 4px; }
+#v2-ci-panel .cc-ci-flags .flag, #v2-ci-panel .flag { background: var(--v2-red-soft); color: #b5332c; border: 0; border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 500; }
+#v2-ci-panel .na { color: var(--v2-muted); }
+#v2-ci-panel .cc-ci-notes { background: #f9fafb; border: 1px solid var(--v2-line2); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--v2-ink); white-space: pre-wrap; margin: 0; }
+#v2-ci-panel .ap-brief { background: none; border: 0; padding: 0; margin: 0; }
+#v2-ci-panel .ap-brief-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+#v2-ci-panel .ap-badge { border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+#v2-ci-panel .ap-pri-attn { background: var(--v2-red-soft); color: #b5332c; border-color: transparent; }
+#v2-ci-panel .ap-pri-review { background: var(--v2-amber-soft); color: #8a5a06; border-color: transparent; }
+#v2-ci-panel .ap-pri-green { background: var(--v2-accent-soft); color: #00704d; border-color: transparent; }
+#v2-ci-panel .ap-dec { background: transparent; }
+#v2-ci-panel .ap-conf { font-size: 12px; color: var(--v2-muted); }
+#v2-ci-panel .ap-reason { font-size: 13px; color: var(--v2-ink2); margin-bottom: 8px; }
+#v2-ci-panel .ap-reason-src { color: var(--v2-muted); font-weight: 600; }
+#v2-ci-panel .ap-brief-section { margin-top: 10px; }
+#v2-ci-panel .ap-brief-h { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--v2-muted); text-transform: uppercase; margin-bottom: 4px; }
+#v2-ci-panel .ap-brief-body { font-size: 13px; color: var(--v2-ink); }
+#v2-ci-panel .ap-brief-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--v2-ink2); }
+#v2-ci-panel .ap-draft-note { color: var(--v2-muted); }
+#v2-ci-panel .sec-draft .ap-brief-section { margin-top: 0; }
+#v2-ci-panel .sec-draft .cc-btn { height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink); font: 500 12px 'Inter', system-ui, sans-serif; cursor: pointer; }
+
+@media (max-width: 1099px) {
+  .v2-ci-row { grid-template-columns: minmax(140px, 1.2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) 84px; }
+  .v2-ci-row .ci-summary { display: none; }
+  .v2-ci-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+@media (max-width: 767px) {
+  .v2-ci-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .v2-ci-stat { padding: 10px 12px; }
+  .v2-ci-row {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who act" "status status" "metrics metrics" "summary summary";
+    gap: 6px 8px; padding: 12px 12px 12px 14px;
+  }
+  .v2-ci-row .ci-who { grid-area: who; } .v2-ci-row .ci-act { grid-area: act; } .v2-ci-row .ci-status { grid-area: status; }
+  .v2-ci-row .ci-metrics { grid-area: metrics; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+  .v2-ci-row .ci-summary { grid-area: summary; display: flex; }
+  .v2-ci-row .ci-summary:empty, .v2-ci-row .ci-status:empty { display: none; }
+  .v2-ci-panel, body.v2-collapsed .v2-ci-panel { width: 100vw; box-shadow: none; }
+  .v2-ci-backdrop { display: none; }
+  .v2-ci-head { padding: 12px 16px; }
+  .v2-ci-head h2 { font-size: 18px; }
+  .v2-ci-restore { margin: 10px 16px 0; }
+  .v2-ci-grid { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 96px; gap: 12px; }
+  .v2-ci-side { position: static; }
+  .v2-ci-next { grid-template-columns: minmax(0, 1fr); }
+  #v2-ci-panel .cc-ci-context { grid-template-columns: minmax(0, 1fr); }
+  #v2-ci-panel .cc-ci-cols { grid-template-columns: minmax(0, 1fr); }
+  #v2-ci-panel .v2-ci-actions {          /* Save / Cancel always reachable */
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--v2-card); border-top: 1px solid var(--v2-line); box-shadow: 0 -4px 16px rgba(15,17,24,.06);
+  }
+}
+/* ─── UI_V2 PHASE 3 CSS END ─── */
+</style>
 </head>
 <body>
 
@@ -12121,6 +12296,399 @@ window.addEventListener('beforeinstallprompt', (e) => {
   if (parse() && !current) P2.renderList();
 })();
 // ─── UI_V2 PHASE 2 END ─────────────────────────────────────────────────────
+</script>
+<script id="ui-v2-p3-js">
+// ─── UI_V2 PHASE 3: CHECK-INS ──────────────────────────────────────────────
+// Presentation/navigation only. Runs only when the V2 shell is on.
+//   • Queue: rows come from the existing _queueAllRows() (same states:
+//     new / reviewed / overdue / historical, same gap handling) and the SAME
+//     ordering as renderCheckInQueue (Autopilot priority for New, overdue days,
+//     then newest first). Row values use the same helpers as _renderQueueRow.
+//   • Review: the existing openCheckInReview() still builds the review (same
+//     comparison, Autopilot brief, draft, outcome, note, next action, ids);
+//     V2 re-arranges those same DOM nodes into a side panel / phone sheet.
+//     submitCheckInReview / closeCheckInReview / _apCopyDraft are unchanged.
+//   • Review is a route (#/check-ins/<key>/<iso>) so Back closes it.
+//   • Unsaved draft/outcome/note/next action are kept per check-in in this
+//     tab's sessionStorage until saved or discarded (draft safety).
+(function () {
+  var UIV2 = window.UIV2;
+  if (!UIV2 || !UIV2.enabled) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+  var ss = { get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+             set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} },
+             del: function (k) { try { sessionStorage.removeItem(k); } catch (e) {} } };
+  var enc = encodeURIComponent;
+  var P3 = UIV2.p3 = {};
+  document.body.classList.add('v2-p3');
+
+  // ── scaffolding inside the Phase 1 Check-ins page ──
+  var page = $('v2-page-check-ins');
+  var root = document.createElement('div'); root.id = 'v2-ci';
+  page.appendChild(root);
+  var TABS = [['new', 'New'], ['overdue', 'Overdue'], ['reviewed', 'Reviewed'], ['historical', 'Historical']];
+  var S = { tab: ss.get('v2ci_tab') || 'new' };
+  if (!TABS.some(function (t) { return t[0] === S.tab; })) S.tab = 'new';
+  root.innerHTML =
+    '<header class="v2-pagehead"><div><h1>Check-ins</h1><p id="v2-ci-sub">—</p></div>' +
+      '<div class="v2-head-actions"><div class="v2-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+      '<input id="v2-ci-search" type="search" placeholder="Search client…" autocomplete="off" aria-label="Search check-ins by client"/></div></div></header>' +
+    '<div class="v2-ci-strip" id="v2-ci-strip"></div>' +
+    '<div class="v2-ci-tabs" id="v2-ci-tabs" role="tablist"></div>' +
+    '<div class="v2-card v2-ci-list" id="v2-ci-rows"></div>';
+  var searchEl = $('v2-ci-search');
+  searchEl.value = ss.get('v2ci_q') || '';
+
+  // review panel (moves the engine's #cc-ci-modal-body node into it)
+  var panelWrap = document.createElement('div'); panelWrap.id = 'v2-ci-review'; panelWrap.hidden = true;
+  panelWrap.innerHTML = '<div class="v2-ci-backdrop" data-close="1"></div><aside class="v2-ci-panel" role="dialog" aria-modal="true" aria-label="Check-in review" id="v2-ci-panel"></aside>';
+  document.body.appendChild(panelWrap);
+  var panel = $('v2-ci-panel');
+  var body = $('cc-ci-modal-body');
+  if (body) panel.appendChild(body);                  // same node, same id
+
+  // ── queue data: identical to renderCheckInQueue ──
+  function queue() {
+    var rows = _queueAllRows();
+    var counts = { new: 0, reviewed: 0, overdue: 0, historical: 0 };
+    rows.forEach(function (r) { counts[r.state]++; });
+    rows.filter(function (r) { return r.state === 'new' && !r.gap; }).forEach(function (r) {
+      var m30 = typeof build30DayMetrics === 'function' ? build30DayMetrics(r.sum) : {};
+      r._ap = _apPriority(r.client, r.sum, m30);
+    });
+    return { rows: rows, counts: counts };
+  }
+  function sorted(rows, tab) {
+    return rows.filter(function (r) { return r.state === tab; }).sort(function (a, b) {
+      if (a.state === 'overdue' || b.state === 'overdue') return (b.overdueDays || 0) - (a.overdueDays || 0);
+      if (a.state === 'new' && b.state === 'new') {
+        var rankA = a.gap ? AP_PRIORITY_RANK.REVIEW : (AP_PRIORITY_RANK[a._ap.priority] || 0);
+        var rankB = b.gap ? AP_PRIORITY_RANK.REVIEW : (AP_PRIORITY_RANK[b._ap.priority] || 0);
+        if (rankA !== rankB) return rankB - rankA;
+      }
+      return new Date(b.ci.timestamp) - new Date(a.ci.timestamp);
+    });
+  }
+  // same flag thresholds as _renderQueueRow
+  function flagsOf(ci) {
+    var f = [];
+    if (ci.sleepHours != null && ci.sleepHours < 6) f.push(['red', 'sleep low (' + ci.sleepHours + 'h)']);
+    if (ci.stress1to10 != null && ci.stress1to10 >= 8) f.push(['red', 'stress high (' + ci.stress1to10 + '/10)']);
+    if (ci.dietAdherence1to10 != null && ci.dietAdherence1to10 <= 4) f.push(['amber', 'nutrition adherence low (' + ci.dietAdherence1to10 + '/10)']);
+    if (ci.trainingAdherence1to10 != null && ci.trainingAdherence1to10 <= 4) f.push(['amber', 'training adherence low (' + ci.trainingAdherence1to10 + '/10)']);
+    return f;
+  }
+  var PRI = { NEEDS_ATTENTION: 'red', REVIEW: 'amber', GREEN: 'green' };
+  var DEC = { ACTION: 'red', WATCH: 'amber', ON_TRACK: 'green', INSUFFICIENT_DATA: 'grey' };
+  var STATE_CHIP = { new: ['blue', 'New'], reviewed: ['green', 'Reviewed'], overdue: ['red', 'Overdue'], historical: ['grey', 'Historical'] };
+  var mute = function (t) { return '<span class="v2-muted">' + (t || '—') + '</span>'; };
+  var clientLink = function (c) {
+    return '<a class="v2-ci-name" href="#/clients/' + enc(c.storageKey) + '/checkins" data-stop="1">' + esc(c.displayName) + '</a>';
+  };
+
+  function rowHtml(r) {
+    var c = r.client, ci = r.ci || {}, k = esc(c.storageKey);
+    if (r.state === 'overdue') {
+      return '<div class="v2-ci-row is-overdue">' +
+        '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">No submitted check-in in this window</span></div>' +
+        '<div class="ci-status"><span class="v2-chip red">Due ' + r.overdueDays + ' days ago</span></div>' +
+        '<div class="ci-metrics"></div><div class="ci-summary"></div>' +
+        '<div class="ci-act"><a class="v2-btn sm" href="#/clients/' + enc(c.storageKey) + '" data-stop="1">Open client</a></div></div>';
+    }
+    if (r.gap) {
+      return '<div class="v2-ci-row">' +
+        '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + (ci.week ? 'wk ' + esc(ci.week) : '') + '</span></div>' +
+        '<div class="ci-status"><span class="v2-chip amber">REVIEW</span></div>' +
+        '<div class="ci-metrics">' + mute('Data unavailable — decision pending') + '</div>' +
+        '<div class="ci-summary">A check-in is on file, but its summary data isn\'t loaded right now.</div>' +
+        '<div class="ci-act"><a class="v2-btn sm" href="#/clients/' + enc(c.storageKey) + '" data-stop="1">Open client</a></div></div>';
+    }
+    var wt = ci.weightKg, chips = '', wtLine = '', summary = '';
+    if (r.state === 'new') {
+      var ap = r._ap;
+      var decPal = AP_DECISION_PALETTE[ap.dec.status] || { icon: 'ℹ', label: ap.dec.status };
+      var prev = _apPrevCheckIn(r.sum, ci.timestamp);
+      var wd = (wt != null && prev && prev.weightKg != null) ? (wt - prev.weightKg) : null;
+      chips = '<span class="v2-chip ' + (PRI[ap.priority] || 'grey') + '">' + esc(AP_PRIORITY_LABEL[ap.priority]) + '</span>' +
+              '<span class="v2-chip ' + (DEC[ap.dec.status] || 'grey') + ' outline">' + esc(decPal.icon + ' ' + decPal.label) + '</span>' +
+              '<span class="ci-conf">Conf: ' + esc(ap.dec.confidence) + '</span>';
+      wtLine = (wt != null ? '<b>' + esc(wt) + 'kg</b>' : mute()) + ' <span class="ci-sub">Δwk ' + (wd === null ? '—' : (wd > 0 ? '+' : '') + wd.toFixed(1) + 'kg') + '</span>';
+      summary = esc(ap.reason || '');
+    } else {
+      var t = _weightTrendKgLast14(r.sum);
+      chips = r.state === 'reviewed' && r.meta ? '<span class="v2-chip green">' + esc(_labelForOutcome(r.meta.outcome)) + '</span>'
+            : r.state === 'historical' ? '<span class="v2-chip grey">Historical · pre-rollout</span>' : '';
+      wtLine = (wt ? '<b>' + esc(wt) + 'kg</b>' : mute()) + ' <span class="ci-sub">Δ14d ' + (t === null ? '—' : (t > 0.15 ? '▲' : t < -0.15 ? '▼' : '·') + ' ' + Math.abs(t).toFixed(2) + 'kg') + '</span>';
+      summary = r.meta && r.meta.note ? esc(r.meta.note) : '';
+    }
+    var fl = flagsOf(ci);
+    var flagsHtml = fl.length ? fl.slice(0, 2).map(function (f) { return '<span class="v2-flag ' + f[0] + '">' + esc(f[1]) + '</span>'; }).join('') +
+      (fl.length > 2 ? '<span class="v2-flag more">+' + (fl.length - 2) + '</span>' : '') : '';
+    return '<div class="v2-ci-row" data-key="' + k + '" data-iso="' + esc(ci.timestamp) + '" tabindex="0">' +
+      '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + esc(_fmtWhen(ci.timestamp)) + (ci.week ? ' · wk ' + esc(ci.week) : '') + '</span></div>' +
+      '<div class="ci-status">' + chips + '</div>' +
+      '<div class="ci-metrics"><span class="ci-wt">' + wtLine + '</span>' +
+        '<span class="ci-adh">Nutr ' + (ci.dietAdherence1to10 ? esc(ci.dietAdherence1to10) + '/10' : '—') + ' · Train ' + (ci.trainingAdherence1to10 ? esc(ci.trainingAdherence1to10) + '/10' : '—') + '</span></div>' +
+      '<div class="ci-summary">' + (flagsHtml ? '<div class="ci-flags">' + flagsHtml + '</div>' : '') + (summary ? '<div class="ci-reason">' + summary + '</div>' : '') + '</div>' +
+      '<div class="ci-act"><button type="button" class="v2-btn sm ' + (r.state === 'new' ? 'primary' : '') + '" data-review="1">' + (r.state === 'new' ? 'Review' : 'View') + '</button></div></div>';
+  }
+
+  function renderQueue() {
+    var q = queue(), n = q.counts;
+    $('v2-ci-sub').textContent = n.new + ' new · ' + n.reviewed + ' reviewed · ' + n.overdue + ' overdue · ' + n.historical + ' historical';
+    $('v2-ci-strip').innerHTML = TABS.map(function (t) {
+      return '<button type="button" class="v2-ci-stat' + (t[0] === S.tab ? ' active' : '') + '" data-tab="' + t[0] + '">' +
+        '<span class="v2-dot ' + STATE_CHIP[t[0]][0] + '"></span><span class="lbl">' + t[1] + '</span><b>' + n[t[0]] + '</b></button>';
+    }).join('');
+    $('v2-ci-tabs').innerHTML = TABS.map(function (t) {
+      return '<button type="button" role="tab" class="v2-ci-tab' + (t[0] === S.tab ? ' active' : '') + '" aria-selected="' + (t[0] === S.tab) + '" data-tab="' + t[0] + '">' +
+        t[1] + '<span class="cnt">' + n[t[0]] + '</span></button>';
+    }).join('');
+    var qtext = (searchEl.value || '').trim().toLowerCase();
+    var list = sorted(q.rows, S.tab).filter(function (r) {
+      return !qtext || String(r.client.displayName).toLowerCase().includes(qtext) || String(r.client.storageKey).toLowerCase().includes(qtext);
+    });
+    var EMPTY = { new: 'No new check-ins waiting on you. Nice.', reviewed: 'No reviewed check-ins in the last 90 days.',
+                  historical: 'No pre-rollout check-ins on file.', overdue: 'No overdue check-ins.' };
+    $('v2-ci-rows').innerHTML = list.length ? list.map(rowHtml).join('')
+      : '<div class="v2-empty">' + (qtext ? 'No check-ins match “' + esc(qtext) + '”.' : EMPTY[S.tab]) + '</div>';
+    P3.lastOrder = list.map(function (r) { return r.client.storageKey + '|' + (r.ci ? r.ci.timestamp : ''); });
+  }
+  P3.renderQueue = function () { try { renderQueue(); } catch (e) { console.warn('[ui-v2] check-ins render failed', e); } };
+  function setTab(t) { S.tab = t; ss.set('v2ci_tab', t); P3.renderQueue(); }
+  root.addEventListener('click', function (e) {
+    var tb = e.target.closest('[data-tab]'); if (tb) return setTab(tb.dataset.tab);
+    if (e.target.closest('[data-stop]')) return;                    // links (client page) navigate themselves
+    var row = e.target.closest('.v2-ci-row[data-key]');
+    if (row) openReviewRoute(row.dataset.key, row.dataset.iso);
+  });
+  root.addEventListener('keydown', function (e) {
+    var row = e.target.closest('.v2-ci-row[data-key]');
+    if (row && e.key === 'Enter' && e.target === row) openReviewRoute(row.dataset.key, row.dataset.iso);
+  });
+  searchEl.addEventListener('input', function () { ss.set('v2ci_q', searchEl.value || ''); P3.renderQueue(); });
+  searchEl.addEventListener('keydown', function (e) { if (e.key === 'Escape') { searchEl.value = ''; ss.set('v2ci_q', ''); P3.renderQueue(); } });
+
+  // ── review panel ──
+  var origOpen = window.openCheckInReview, origClose = window.closeCheckInReview, origSubmit = window.submitCheckInReview;
+  P3._engineOpen = origOpen;   // for the read-only parity test (renders the classic review markup)
+  var shown = null;           // 'key|iso' currently rendered in the panel (may be parked while visiting a client page)
+  var pushed = false;         // the review entry was pushed by us → closing goes Back
+  var draftKey = function (k, i) { return 'v2ci_draft_' + k + '|' + i; };
+
+  function openReviewRoute(key, iso) {
+    var want = '#/check-ins/' + enc(key) + '/' + enc(iso);
+    if (location.hash === want) return onRoute();
+    pushed = true;
+    location.hash = want;
+  }
+  // Opening a check-in anywhere in V2 (Today, client page…) uses the review route.
+  window.openCheckInReview = function (key, iso) { openReviewRoute(key, iso); };
+
+  function closeReview() {
+    if (!shown) return hidePanel();
+    if (pushed) { pushed = false; history.back(); return; }
+    try { history.replaceState(null, '', location.pathname + location.search + '#/check-ins'); } catch (e) {}
+    onRoute();
+  }
+  window.closeCheckInReview = function () {
+    // The engine calls this from Cancel and after a successful save.
+    if (_cc_activeCiKey && shown) return closeReview();
+    return origClose.apply(this, arguments);
+  };
+  window.submitCheckInReview = function () {
+    var k = _cc_activeCiKey, i = _cc_activeCiIso;
+    var metaTs = function () { var c = k && COACH.clients.find(function (x) { return x.storageKey === k; }); var m = c ? _ciReviewMeta(c, i) : null; return m ? m.reviewedTs : null; };
+    var before = metaTs();
+    var out = origSubmit.apply(this, arguments);
+    if (k && metaTs() && metaTs() !== before) ss.del(draftKey(k, i));   // review saved → drop the local draft copy
+    return out;
+  };
+
+  function section(title, inner, cls) { return '<section class="v2-ci-sec' + (cls ? ' ' + cls : '') + '"><h3>' + title + '</h3>' + inner + '</section>'; }
+  // Re-arrange the nodes openCheckInReview just built. Nothing is re-created:
+  // every control keeps its id, value and inline handler.
+  function layout(key, iso) {
+    var c = COACH.clients.find(function (x) { return x.storageKey === key; });
+    var kids = Array.prototype.slice.call(body.children);
+    var pick = function (sel) { var el = body.querySelector(':scope > ' + sel); return el; };
+    var title = pick('h3'), sub = pick('.cc-ci-sub');
+    var flags = pick('.cc-ci-flags'), cols = pick('.cc-ci-cols'), notes = pick('.cc-ci-notes'), brief = pick('.ap-brief');
+    var contexts = kids.filter(function (el) { return el.classList.contains('cc-ci-context'); });
+    var reviewed = contexts.length > 1 ? contexts[0] : (contexts[0] && /Reviewed/.test(contexts[0].textContent) && !/14-day weight trend/.test(contexts[0].textContent) ? contexts[0] : null);
+    var context = contexts.filter(function (el) { return el !== reviewed; })[0] || null;
+    var draftSec = brief ? Array.prototype.slice.call(brief.querySelectorAll('.ap-brief-section')).filter(function (s) { return s.querySelector('textarea.ap-draft'); })[0] : null;
+    var buttons = pick('.cc-modal-buttons');
+    var outcome = $('cc-ci-outcome'), note = $('cc-ci-note'), nextA = $('cc-ci-next-action'), nextD = $('cc-ci-next-due');
+    var meta = c ? _ciReviewMeta(c, iso) : null;
+    var st = meta ? 'reviewed' : 'new';
+    try { var rr = _queueAllRows().find(function (r) { return r.client.storageKey === key && r.ci && r.ci.timestamp === iso; }); if (rr) st = rr.state; } catch (e) {}
+    var chip = STATE_CHIP[st] || STATE_CHIP.new;
+
+    var shell = document.createElement('div'); shell.className = 'v2-ci-shell';
+    shell.innerHTML =
+      '<header class="v2-ci-head"><div class="v2-ci-head-main">' +
+        '<div class="v2-ci-head-top"><span class="v2-chip ' + chip[0] + '">' + chip[1] + '</span><span class="v2-ci-head-sub"></span></div>' +
+        '<h2>' + (c ? '<a href="#/clients/' + enc(key) + '/checkins">' + esc(c.displayName) + '</a>' : esc(key)) + '</h2>' +
+        '<div class="v2-ci-head-meta">Check-in ' + esc(_fmtWhen(iso)) + '</div></div>' +
+        '<button type="button" class="v2-icon-btn v2-ci-x" data-close="1" aria-label="Close review">✕</button></header>' +
+      '<div class="v2-ci-restore" hidden></div>' +
+      '<div class="v2-ci-grid"><div class="v2-ci-main"></div><div class="v2-ci-side"></div></div>';
+    var main = shell.querySelector('.v2-ci-main'), side = shell.querySelector('.v2-ci-side');
+    if (sub) shell.querySelector('.v2-ci-head-sub').textContent = sub.textContent;
+    var weekMatch = title && title.textContent.match(/wk\s*(\d+)/);
+    if (weekMatch) shell.querySelector('.v2-ci-head-meta').textContent += ' · week ' + weekMatch[1];
+
+    // A. What changed
+    var a = document.createElement('div');
+    if (reviewed) a.appendChild(reviewed);
+    if (flags) a.appendChild(flags);
+    if (cols) a.appendChild(cols);
+    if (context) a.appendChild(context);
+    main.insertAdjacentHTML('beforeend', section('What changed', '', 'sec-changed'));
+    main.lastChild.appendChild(a);
+    // B. Autopilot assessment (draft moves to the action panel)
+    if (brief) {
+      if (draftSec) draftSec.parentNode.removeChild(draftSec);
+      var h4 = brief.querySelector('.ap-brief-head h4'); if (h4) h4.remove();
+      main.insertAdjacentHTML('beforeend', section('Autopilot assessment', '', 'sec-ap'));
+      main.lastChild.appendChild(brief);
+    }
+    // C. Client responses
+    main.insertAdjacentHTML('beforeend', section('Client responses', '', 'sec-notes'));
+    if (notes) { var lbl = notes.querySelector('strong'); if (lbl) lbl.remove(); var br = notes.querySelector('br'); if (br) br.remove(); main.lastChild.appendChild(notes); }
+    else main.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted v2-ci-none">No written notes in this check-in.</p>');
+
+    // D. Coach response
+    side.insertAdjacentHTML('beforeend', section('Coach response', '', 'sec-draft'));
+    if (draftSec) {
+      var dh = draftSec.querySelector('.ap-brief-h'); if (dh) dh.textContent = 'Draft (editable — not sent)';
+      side.lastChild.appendChild(draftSec);
+    } else side.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted">No draft available.</p>');
+    side.lastChild.insertAdjacentHTML('beforeend', '<button type="button" class="v2-btn sm v2-ci-compose" data-compose="' + esc(key) + '">Message via WhatsApp / SMS…</button>' +
+      '<p class="v2-ci-hint">Opens the existing message composer (templates · Copy · WhatsApp · SMS).</p>');
+    // E. Outcome + coach note
+    var fld = function (label, el, req) { var w = document.createElement('label'); w.className = 'v2-ci-field'; w.innerHTML = '<span>' + label + (req ? ' <em>*</em>' : '') + '</span>'; if (el) w.appendChild(el); return w; };
+    side.insertAdjacentHTML('beforeend', section('Outcome', '', 'sec-outcome'));
+    side.lastChild.appendChild(fld('Outcome', outcome, true));
+    side.lastChild.appendChild(fld('Coach note (optional)', note));
+    // F. Next action
+    side.insertAdjacentHTML('beforeend', section('Next action', '', 'sec-next'));
+    var rowNA = document.createElement('div'); rowNA.className = 'v2-ci-next';
+    rowNA.appendChild(fld('Next action', nextA)); rowNA.appendChild(fld('Due', nextD));
+    side.lastChild.appendChild(rowNA);
+    // G. Actions (the engine's own Cancel / Save review buttons)
+    if (buttons) { buttons.classList.add('v2-ci-actions'); side.appendChild(buttons); }
+
+    body.innerHTML = ''; body.appendChild(shell);
+    restoreDraft(key, iso);
+  }
+
+  // ── draft safety (per check-in, this tab only) ──
+  function fieldsNow(key) {
+    var d = $('ap-draft-' + key);
+    return { draft: d ? d.value : null, outcome: ($('cc-ci-outcome') || {}).value || '', note: ($('cc-ci-note') || {}).value || '',
+             nextAction: ($('cc-ci-next-action') || {}).value || '', nextDue: ($('cc-ci-next-due') || {}).value || '' };
+  }
+  function restoreDraft(key, iso) {
+    var initial = fieldsNow(key);
+    P3.initial = initial;
+    var saved = null; try { saved = JSON.parse(ss.get(draftKey(key, iso)) || 'null'); } catch (e) {}
+    var bar = body.querySelector('.v2-ci-restore');
+    if (saved && JSON.stringify(saved) !== JSON.stringify(initial)) {
+      var d = $('ap-draft-' + key);
+      if (d && saved.draft != null) d.value = saved.draft;
+      if ($('cc-ci-outcome')) $('cc-ci-outcome').value = saved.outcome;
+      if ($('cc-ci-note')) $('cc-ci-note').value = saved.note;
+      if ($('cc-ci-next-action')) $('cc-ci-next-action').value = saved.nextAction;
+      if ($('cc-ci-next-due')) $('cc-ci-next-due').value = saved.nextDue;
+      if (bar) { bar.hidden = false; bar.innerHTML = 'Restored your unsaved edits for this check-in. <button type="button" class="v2-link" data-discard="1">Discard and reset</button>'; }
+    }
+  }
+  // one listener for all reviews: saves under whichever check-in is shown right now
+  function persistDraft() {
+    if (!shown) return;
+    var parts = shown.split('|'), k = parts[0], i = parts.slice(1).join('|');
+    ss.set(draftKey(k, i), JSON.stringify(fieldsNow(k)));
+  }
+  if (body) { body.addEventListener('input', persistDraft); body.addEventListener('change', persistDraft); }
+
+  panelWrap.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close]')) return closeReview();
+    var cp = e.target.closest('[data-compose]'); if (cp) return _cd3OpenCompose(cp.dataset.compose, '');
+    if (e.target.closest('[data-discard]') && shown) {
+      var parts = shown.split('|'); ss.del(draftKey(parts[0], parts.slice(1).join('|')));
+      shown = null; origOpen(parts[0], parts.slice(1).join('|')); afterOpen(parts[0], parts.slice(1).join('|'));
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !panelWrap.hidden && !document.querySelector('.cc-modal-overlay.open, .cd3-compose-overlay.open, #client-form-overlay.open')) closeReview();
+  });
+
+  function afterOpen(key, iso) {
+    var m = $('cc-ci-modal'); if (m) m.classList.remove('open');      // V2 never shows the old modal
+    layout(key, iso);
+    shown = key + '|' + iso;
+    showPanel();
+  }
+  function showPanel() { panelWrap.hidden = false; document.body.classList.add('v2-ci-open'); }
+  function hidePanel() { panelWrap.hidden = true; document.body.classList.remove('v2-ci-open'); }
+  function discardReview() {        // leaving the review for the queue / another page that isn't a client visit
+    if (shown && _cc_activeCiKey) origClose();
+    shown = null; hidePanel();
+  }
+
+  // ── routes: #/check-ins  and  #/check-ins/<key>/<iso> ──
+  var queueScroll = 0;
+  function parse() {
+    var p = (location.hash || '').replace(/^#\/?/, '').split('/');
+    if (p[0] !== 'check-ins') return null;
+    return { key: p[1] ? decodeURIComponent(p[1]) : null, iso: p[2] ? decodeURIComponent(p.slice(2).join('/')) : null };
+  }
+  var lastRoute = null;
+  function onRoute() {
+    var r = parse();
+    var cameFromCheckins = lastRoute === 'check-ins';
+    if (!r) {
+      // visiting a client page from a review parks it (draft kept); anything else closes it
+      if (shown && !/^#\/clients\//.test(location.hash)) discardReview(); else hidePanel();
+      if (cameFromCheckins) queueScroll = P3.queueScrollAtLeave || 0;
+      lastRoute = 'other';
+      return;
+    }
+    if (lastRoute !== 'check-ins') { P3.renderQueue(); if (lastRoute === 'other') window.scrollTo(0, queueScroll); }
+    lastRoute = 'check-ins';
+    if (!r.key || !r.iso) { if (shown) discardReview(); else hidePanel(); return; }
+    var id = r.key + '|' + r.iso;
+    if (shown === id && body.querySelector('.v2-ci-shell')) { showPanel(); return; }     // parked review: keep draft as typed
+    if (shown) discardReview();
+    origOpen(r.key, r.iso);
+    if (_cc_activeCiKey !== r.key || _cc_activeCiIso !== r.iso) {                         // engine found nothing to open
+      try { history.replaceState(null, '', location.pathname + location.search + '#/check-ins'); } catch (e) {}
+      pushed = false; hidePanel();
+      return;
+    }
+    afterOpen(r.key, r.iso);
+  }
+  window.addEventListener('scroll', function () { if (parse() && panelWrap.hidden) P3.queueScrollAtLeave = window.scrollY; }, { passive: true });
+  window.addEventListener('hashchange', onRoute);
+
+  // Refresh safety: re-render the queue on every Command Centre render; the
+  // open review is never rebuilt by refresh (the engine doesn't, and neither do we).
+  var prevRenderCC = window.renderCommandCentre;
+  window.renderCommandCentre = function () {
+    var out = prevRenderCC.apply(this, arguments);
+    try { if (parse()) P3.renderQueue(); } catch (e) { console.warn('[ui-v2] check-ins refresh failed', e); }
+    return out;
+  };
+
+  onRoute();
+})();
+// ─── UI_V2 PHASE 3 END ─────────────────────────────────────────────────────
 </script>
 </body>
 </html>
