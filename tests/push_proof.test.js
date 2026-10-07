@@ -574,7 +574,7 @@ test('G6 push and api stay separate; sw.js cache/fetch logic untouched', async (
   assert(sw.includes(MARKER), 'push section marker present');
   eq(sha256hex(sw.slice(0, sw.indexOf(MARKER))), SW_PREFIX_SHA256, 'install/activate/fetch section byte-identical to pre-push baseline');
   // The api now evolves on its own approved, separately tested work (workout completion,
-  // coach view, Phase 0 isolation fix, clientWrite hardening), so freezing its bytes no longer
+  // coach view, Phase 0 isolation fix, clientWrite hardening, client accounts), so freezing its bytes no longer
   // tests what this guard was for. The invariant that matters is SEPARATION: the push
   // subsystem never touches the api, and the api never writes push state.
   const api = rd('supabase/functions/api/index.ts');

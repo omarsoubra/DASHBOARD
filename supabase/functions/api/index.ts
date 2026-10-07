@@ -228,8 +228,8 @@ function capabilityDenied(reason: string | undefined) {
 
 // ── INTENTIONALLY UNGATED CLIENT-CALLABLE ACTIONS ───────────────────────────
 //
-// Every other client-callable action is gated. These three are not, and each
-// is safe for a specific reason. Do not add a fourth without a reason of the
+// Every other client-callable action is gated. These are not, and each
+// is safe for a specific reason. Do not add another without a reason of the
 // same kind.
 //
 //   authClient      Bootstrap. Answers "is this token valid for this key, and
@@ -246,6 +246,16 @@ function capabilityDenied(reason: string | undefined) {
 //                   discloses only the caller's own tier and capability flags —
 //                   never program, nutrition, log or photo data — and the
 //                   caller's own token must still verify against the key.
+//
+//   accountInviteInspect / accountClaim   Client accounts V1. Authorised by a
+//                   single-use, time-limited link Omar issued for ONE client
+//                   (only its sha256 is stored). Inspect returns the first name
+//                   and expiry only; claim sets that client's own login and links
+//                   it to that client's profile. Neither returns client data.
+//   accountSession  Exchanges a verified Supabase session for a device key bound
+//                   to the session's OWN client. Returns no programme or log
+//                   data; every data op the key is later used for is gated.
+//   accountSignOut  Revokes the presented device key only; always answers ok.
 //
 //   intakeSubmit    Public pre-client intake form. It has no client auth by
 //                   design: the person filling it in is not a client yet. It
@@ -415,7 +425,17 @@ async function verifyClientToken(token: string | undefined, storageKey: string |
   if (data.access_status === 'revoked')   return { ok: false, reason: 'access_revoked' };
   if (data.access_status === 'suspended') return { ok: false, reason: 'access_suspended' };
   const hash = await sha256(token + (data.salt ?? ''));
-  if (hash !== data.token_hash) return { ok: false, reason: 'bad_token' };
+  if (hash === data.token_hash) return { ok: true, storageKey };
+  // Client accounts V1: a per-device key minted after an email + password login.
+  // Same access_status gate as above; each key expires and can be revoked alone.
+  const { data: dev } = await admin
+    .from('client_device_tokens')
+    .select('id, expires_at, revoked_at')
+    .eq('token_hash', await sha256(token))
+    .eq('storage_key', storageKey.toLowerCase())
+    .maybeSingle();
+  if (!dev || dev.revoked_at || !(Date.parse(dev.expires_at) > Date.now())) return { ok: false, reason: 'bad_token' };
+  await admin.from('client_device_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', dev.id);
   return { ok: true, storageKey };
 }
 async function sha256(s: string): Promise<string> {
@@ -578,6 +598,12 @@ Deno.serve(async (req) => {
       case 'clientCreate':       return clientCreate(body);
       case 'issueClientToken':   return issueClientToken(body);
       case 'setAccessStatus':    return setAccessStatus(body);
+      case 'accountInviteCreate':  return accountInviteCreate(body);
+      case 'accountList':          return accountList(body);
+      case 'accountInviteInspect': return accountInviteInspect(body);
+      case 'accountClaim':         return accountClaim(body);
+      case 'accountSession':       return accountSession(body);
+      case 'accountSignOut':       return accountSignOut(body);
       case 'setClientProgram':   return setClientProgram(body);
       case 'clientProgram':      return clientProgram(body);
       case 'entitlementsGet':    return entitlementsGet(body);
@@ -752,6 +778,219 @@ async function coachWorkoutCompletions(body: any) {
   return ok({ generatedAt: new Date(nowMs).toISOString(), windowDays: CWV_HISTORY_DAYS, clients: out });
 }
 // ═══════════════════════════════════════ END COACH-WORKOUT-VIEW-V1
+
+// ══════════════════════════════════════════════════════════════════════════
+// CLIENT-ACCOUNTS-V1 — individual email + password logins, invitation-only
+// ══════════════════════════════════════════════════════════════════════════
+// Omar issues a single-use link FOR A SPECIFIC CLIENT from his dashboard and
+// sends it himself (no email is sent by LOCKED IN). The client opens it on the
+// shared login page, chooses an email + password, and the account (Supabase
+// Auth) is linked to that client's existing profile — never guessed.
+// After every login the page exchanges the Supabase session for a per-device
+// access key (client_device_tokens), which the client token check accepts
+// exactly like the legacy link token, so every existing client page works unchanged.
+// Only sha256 hashes of invite tokens and device keys are ever stored.
+const ACCOUNT_APP_URL = 'https://omarsoubra.github.io/DASHBOARD/login/';
+const INVITE_TTL_MS = { invite: 7 * 24 * 3600_000, reset: 24 * 3600_000 } as const;
+const DEVICE_TTL_MS = 60 * 24 * 3600_000;
+const MAX_ACTIVE_DEVICES = 10;
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+
+function randomToken(): string {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function passwordProblem(pw: unknown): string | null {
+  if (typeof pw !== 'string') return 'password_required';
+  if (pw.length < 8) return 'password_too_short';
+  if (pw.length > 72) return 'password_too_long';
+  if (/^(.)\1*$/.test(pw)) return 'password_too_weak';
+  return null;
+}
+
+/** Client row + its profile's linked auth account (null when not yet claimed). */
+async function accountTarget(storageKey: string) {
+  const { data: c } = await admin.from('clients')
+    .select('id, storage_key, display_name, profile_id, program_url').eq('storage_key', storageKey).maybeSingle();
+  if (!c?.id) return null;
+  const { data: p } = await admin.from('profiles').select('id, auth_user_id, email').eq('id', c.profile_id).maybeSingle();
+  const { data: s } = await admin.from('client_sessions').select('access_status').eq('storage_key', storageKey).maybeSingle();
+  return { client: c, profile: p ?? null, accessStatus: s ? String(s.access_status ?? 'active') : 'none' };
+}
+
+async function openInvite(token: unknown) {
+  if (typeof token !== 'string' || token.length < 20 || token.length > 100) return { error: 'invite_invalid' as const };
+  const { data: inv } = await admin.from('client_invites')
+    .select('id, client_id, storage_key, purpose, expires_at, used_at, revoked_at')
+    .eq('token_hash', await sha256(token)).maybeSingle();
+  if (!inv) return { error: 'invite_invalid' as const };
+  if (inv.used_at) return { error: 'invite_used' as const };
+  if (inv.revoked_at) return { error: 'invite_replaced' as const };
+  if (!(Date.parse(inv.expires_at) > Date.now())) return { error: 'invite_expired' as const };
+  return { inv };
+}
+
+// coach: issue (or re-issue) a link. A new link revokes the previous open one.
+async function accountInviteCreate(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const storageKey = String(body?.storageKey ?? '').toLowerCase();
+  const purpose = body?.purpose === 'reset' ? 'reset' : 'invite';
+  const t = await accountTarget(storageKey);
+  if (!t) return err('unknown_client');
+  if (t.accessStatus === 'revoked' || t.accessStatus === 'suspended') return err('access_not_active');
+  if (purpose === 'invite' && t.profile?.auth_user_id) return err('account_exists');
+  if (purpose === 'reset' && !t.profile?.auth_user_id) return err('no_account');
+  const nowIso = new Date().toISOString();
+  await admin.from('client_invites').update({ revoked_at: nowIso })
+    .eq('client_id', t.client.id).eq('purpose', purpose).is('used_at', null).is('revoked_at', null);
+  const token = randomToken();
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS[purpose]).toISOString();
+  const { error } = await admin.from('client_invites').insert({
+    client_id: t.client.id, storage_key: storageKey, purpose, token_hash: await sha256(token), expires_at: expiresAt,
+  });
+  if (error) { logEfError('accountInviteCreate', storageKey, 'insert_failed', error.message); return err('write_failed'); }
+  // The token rides in the URL FRAGMENT: never sent to any server, never in access logs.
+  return ok({ storageKey, purpose, expiresAt, link: `${ACCOUNT_APP_URL}#${purpose}=${token}` });
+}
+
+// coach: account / invite / device status for every client (no secrets).
+async function accountList(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const [{ data: clients }, { data: profiles }, { data: invites }, { data: devices }, { data: sessions }] = await Promise.all([
+    admin.from('clients').select('id, storage_key, display_name, profile_id, is_internal'),
+    admin.from('profiles').select('id, auth_user_id, email'),
+    admin.from('client_invites').select('client_id, purpose, created_at, expires_at, used_at, revoked_at').order('created_at', { ascending: false }),
+    admin.from('client_device_tokens').select('client_id, created_at, last_used_at, revoked_at, expires_at'),
+    admin.from('client_sessions').select('storage_key, access_status'),
+  ]);
+  const prof = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  const access = new Map((sessions ?? []).map((s: any) => [s.storage_key, String(s.access_status ?? 'active')]));
+  const nowMs = Date.now();
+  const rows = (clients ?? []).map((c: any) => {
+    const p: any = prof.get(c.profile_id) ?? {};
+    const inv: any = (invites ?? []).find((i: any) => i.client_id === c.id);
+    const inviteStatus = !inv ? 'none' : inv.used_at ? 'accepted' : inv.revoked_at ? 'replaced'
+      : Date.parse(inv.expires_at) > nowMs ? 'pending' : 'expired';
+    const devs = (devices ?? []).filter((d: any) => d.client_id === c.id);
+    const active = devs.filter((d: any) => !d.revoked_at && Date.parse(d.expires_at) > nowMs);
+    const seen = devs.map((d: any) => d.last_used_at ?? d.created_at).filter(Boolean).sort().pop() ?? null;
+    return {
+      storageKey: c.storage_key, name: c.display_name ?? null, internal: !!c.is_internal,
+      account: p.auth_user_id ? 'active' : 'none', email: p.auth_user_id ? (p.email ?? null) : null,
+      accessStatus: access.get(c.storage_key) ?? 'none',
+      invite: { status: inviteStatus, purpose: inv?.purpose ?? null, expiresAt: inv?.expires_at ?? null },
+      activeDevices: active.length, lastSeen: seen,
+    };
+  });
+  return ok({ clients: rows });
+}
+
+// public: what does this link do? (name only — nothing sensitive)
+async function accountInviteInspect(body: any) {
+  const o = await openInvite(body?.token);
+  if ('error' in o) return err(o.error);
+  const { data: c } = await admin.from('clients').select('display_name').eq('id', o.inv.client_id).maybeSingle();
+  const first = String(c?.display_name ?? '').trim().split(/\s+/)[0] || null;
+  return ok({ purpose: o.inv.purpose, firstName: first, expiresAt: o.inv.expires_at });
+}
+
+// public: accept an invite (create the account) or a reset link (new password).
+async function accountClaim(body: any) {
+  const o = await openInvite(body?.token);
+  if ('error' in o) return err(o.error);
+  const pwErr = passwordProblem(body?.password);
+  if (pwErr) return err(pwErr);
+  const t = await accountTarget(o.inv.storage_key);
+  if (!t || !t.profile) return err('unknown_client');
+  if (t.accessStatus === 'revoked' || t.accessStatus === 'suspended') return err('access_not_active');
+  // Claim the link FIRST (single use even under a double tap / race).
+  const nowIso = new Date().toISOString();
+  const { data: took } = await admin.from('client_invites').update({ used_at: nowIso })
+    .eq('id', o.inv.id).is('used_at', null).is('revoked_at', null).select('id');
+  if (!(took ?? []).length) return err('invite_used');
+  const release = () => admin.from('client_invites').update({ used_at: null }).eq('id', o.inv.id);
+
+  if (o.inv.purpose === 'invite') {
+    const email = String(body?.email ?? '').trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) { await release(); return err('bad_email'); }
+    if (t.profile.auth_user_id) { await release(); return err('account_exists'); }
+    const { data: created, error: cErr } = await admin.auth.admin.createUser({
+      email, password: body.password, email_confirm: true, app_metadata: { storage_key: t.client.storage_key },
+    });
+    if (cErr || !created?.user?.id) {
+      await release();
+      return err(/already|registered|exists/i.test(cErr?.message ?? '') ? 'email_in_use' : 'account_create_failed');
+    }
+    const { data: linked, error: lErr } = await admin.from('profiles')
+      .update({ auth_user_id: created.user.id, email, updated_at: nowIso })
+      .eq('id', t.profile.id).is('auth_user_id', null).select('id');
+    if (lErr || !(linked ?? []).length) {
+      await admin.auth.admin.deleteUser(created.user.id);       // never leave an orphan login
+      await release();
+      return err('account_exists');
+    }
+    if (t.accessStatus === 'none') {                            // device keys need an access row
+      const salt = randomToken();
+      await admin.from('client_sessions').insert({
+        client_id: t.client.id, storage_key: t.client.storage_key, token_hash: await sha256(randomToken() + salt),
+        salt, access_status: 'active', rotation_count: 0,
+      });
+    }
+    return ok({ purpose: 'invite', email });
+  }
+  // reset
+  if (!t.profile.auth_user_id) { await release(); return err('no_account'); }
+  const { error: uErr } = await admin.auth.admin.updateUserById(t.profile.auth_user_id, { password: body.password });
+  if (uErr) { await release(); return err('password_update_failed'); }
+  await admin.from('client_device_tokens').update({ revoked_at: nowIso, revoked_reason: 'password_reset' })
+    .eq('client_id', t.client.id).is('revoked_at', null);
+  return ok({ purpose: 'reset', email: t.profile.email ?? null });
+}
+
+// client: exchange a Supabase session (access token) for a per-device key.
+async function accountSession(body: any) {
+  const jwt = typeof body?.accessToken === 'string' ? body.accessToken : '';
+  if (!jwt || jwt.length > 4096) return err('unauthorized');
+  const { data: u, error } = await admin.auth.getUser(jwt);
+  if (error || !u?.user?.id) return err('session_invalid');
+  const { data: p } = await admin.from('profiles').select('id').eq('auth_user_id', u.user.id).maybeSingle();
+  if (!p?.id) return err('no_client_for_account');
+  const { data: c } = await admin.from('clients').select('id, storage_key, display_name, program_url').eq('profile_id', p.id).maybeSingle();
+  if (!c?.id) return err('no_client_for_account');
+  const t = await accountTarget(c.storage_key);
+  if (!t || t.accessStatus !== 'active') return err('access_not_active');
+  const nowMs = Date.now();
+  const { data: live } = await admin.from('client_device_tokens').select('id, created_at')
+    .eq('client_id', c.id).is('revoked_at', null).order('created_at', { ascending: true });
+  const extra = (live ?? []).length - (MAX_ACTIVE_DEVICES - 1);
+  if (extra > 0) {
+    await admin.from('client_device_tokens').update({ revoked_at: new Date(nowMs).toISOString(), revoked_reason: 'superseded' })
+      .in('id', (live ?? []).slice(0, extra).map((d: any) => d.id));
+  }
+  const deviceToken = randomToken();
+  const label = String(body?.deviceLabel ?? '').slice(0, 80) || null;
+  const { error: iErr } = await admin.from('client_device_tokens').insert({
+    client_id: c.id, storage_key: c.storage_key, auth_user_id: u.user.id, token_hash: await sha256(deviceToken),
+    device_label: label, expires_at: new Date(nowMs + DEVICE_TTL_MS).toISOString(),
+  });
+  if (iErr) { logEfError('accountSession', c.storage_key, 'insert_failed', iErr.message); return err('write_failed'); }
+  const first = String(c.display_name ?? '').trim().split(/\s+/)[0] || null;
+  return ok({ storageKey: c.storage_key, deviceToken, firstName: first, pagePath: `clients/${c.storage_key}/` });
+}
+
+// client: log this device out (revokes its key). Always ok — never reveals key validity.
+async function accountSignOut(body: any) {
+  const token = typeof body?.token === 'string' ? body.token : '';
+  const storageKey = String(body?.storageKey ?? '').toLowerCase();
+  if (token && storageKey) {
+    await admin.from('client_device_tokens').update({ revoked_at: new Date().toISOString(), revoked_reason: 'logout' })
+      .eq('token_hash', await sha256(token)).eq('storage_key', storageKey).is('revoked_at', null);
+  }
+  return ok({});
+}
+// ═══════════════════════════════════════ END CLIENT-ACCOUNTS-V1
 
 async function dashboard(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
@@ -994,6 +1233,11 @@ async function setAccessStatus(body: any) {
     revoked_at: status === 'revoked' ? new Date().toISOString() : null,
     restored_at: status === 'active' ? new Date().toISOString() : null,
   }).eq('storage_key', storageKey);
+  if (status === 'revoked') {
+    // Client accounts V1: a revoked client's logged-in devices are signed out for good.
+    await admin.from('client_device_tokens').update({ revoked_at: new Date().toISOString(), revoked_reason: 'deactivated' })
+      .eq('client_id', client.id).is('revoked_at', null);
+  }
   await admin.from('access_log').insert({
     client_id: client.id, client_key: storageKey,
     event: status === 'revoked' ? 'revoked' : status === 'suspended' ? 'suspended' : 'restored',
