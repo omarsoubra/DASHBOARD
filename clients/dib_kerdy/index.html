@@ -3191,6 +3191,165 @@ body.cv2 .cv2-gal{display:flex!important;align-items:center;justify-content:cent
   font-family:inherit!important;font-size:12px!important;font-weight:700!important;letter-spacing:0!important;text-transform:none!important;padding:0 6px!important;}
 body.cv2 .cv2-gal svg{width:14px;height:14px;flex:0 0 auto;}
 
+/* ==========================================================================
+   VISUAL REFRESH (2026-10-08, Omar: "everything blends together")
+   1. Cards lift off a deeper canvas.   2. One dark hero per screen.
+   3. Numbers are the headline, text is the footnote.
+   4. Each area has its own quiet tint so sections read apart.
+   5. Section headings group the page into a rhythm.
+   ========================================================================== */
+body.cv2{
+  --c-bg:#f1eee8; --c-line:#e7e2d9; --c-surface2:#f5f3ef; --c-sunk:#ebe7e0;
+  --c-shadow:0 1px 2px rgba(22,24,28,.05), 0 8px 24px -14px rgba(22,24,28,.18);
+  --c-r:20px;
+  --t-train:#fff0e8; --i-train:#c2431b;
+  --t-food:#e7f3eb;  --i-food:#1d7446;
+  --t-prog:#e8eff9;  --i-prog:#2b5ea8;
+  --t-coach:#efebfa; --i-coach:#5a44a6;
+  --t-neutral:#f1eee8; --i-neutral:#16181c;
+}
+body.cv2 #cv2-top{background:rgba(241,238,232,.94)!important;}
+body.cv2 #section-training{--tv2-bg:var(--c-bg);}
+.cv2-page{gap:12px;}
+.cv2-card{border-color:rgba(22,24,28,.06);padding:18px;}
+.cv2-hello{margin:4px 2px 8px;}
+.cv2-hello h1{font-size:26px!important;}
+
+/* section headings */
+.cv2-seclabel{display:flex;align-items:baseline;justify-content:space-between;margin:18px 4px 0;}
+body.cv2 .cv2-seclabel h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;font-size:18px!important;font-weight:800!important;
+  letter-spacing:-.015em!important;margin:0!important;color:var(--c-text)!important;-webkit-text-fill-color:currentColor!important;}
+.cv2-seclabel small{font-size:13px;color:var(--c-muted);font-weight:600;}
+
+/* card head with a tinted icon chip */
+.cv2-head{display:flex;align-items:center;gap:10px;margin:0 0 14px;}
+.cv2-head .t{font-size:15.5px;font-weight:800;letter-spacing:-.01em;min-width:0;}
+.cv2-head .t small{font-size:12.5px;font-weight:600;color:var(--c-muted);margin-left:6px;}
+.cv2-head > small,.cv2-head > .cv2-btn{margin-left:auto;}
+.cv2-head > small{font-size:12.5px;font-weight:700;color:var(--c-muted);white-space:nowrap;}
+.cv2-tone{flex:0 0 auto;width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;}
+.cv2-tone svg{width:18px;height:18px;}
+.cv2-tone.train{background:var(--t-train);color:var(--i-train);}
+.cv2-tone.food{background:var(--t-food);color:var(--i-food);}
+.cv2-tone.prog{background:var(--t-prog);color:var(--i-prog);}
+.cv2-tone.coach{background:var(--t-coach);color:var(--i-coach);}
+.cv2-tone.neutral{background:var(--t-neutral);color:var(--i-neutral);}
+
+/* the hero: today's training */
+.cv2-hero{background:#1b1d21;color:#fff;border-radius:22px;padding:20px;box-shadow:0 14px 34px -18px rgba(22,24,28,.55);}
+.cv2-hero .lbl{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;}
+body.cv2 .cv2-hero .cv2-h{color:#fff!important;font-size:25px!important;line-height:1.2!important;}
+.cv2-hero .ok{display:inline-flex;vertical-align:middle;color:#7fd9a8;}
+.cv2-hero .ok svg{width:22px;height:22px;}
+.cv2-hero .sub{font-size:14px;line-height:1.5;color:rgba(255,255,255,.72);margin:6px 0 0;}
+.cv2-hero .sub b{color:#fff;}
+.cv2-heromet{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+.cv2-heromet span{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:rgba(255,255,255,.86);
+  background:rgba(255,255,255,.08);border-radius:999px;padding:6px 10px;}
+.cv2-heromet svg{width:14px;height:14px;opacity:.8;}
+.cv2-hero > .cv2-btn{margin-top:18px;min-height:52px;font-size:15.5px!important;}
+body.cv2 .cv2-btn.onhero{background:rgba(255,255,255,.1)!important;color:#fff!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:none!important;}
+.cv2-hero .note{margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13.5px;line-height:1.5;color:#fff;}
+.cv2-hero .note b{display:block;font-size:12px;color:rgba(255,255,255,.6);margin-bottom:3px;}
+
+/* headline figures */
+.cv2-big{margin:2px 0 0;}
+.cv2-big b{display:block;font-size:40px;font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--c-text);}
+.cv2-big b small{font-size:18px;font-weight:700;letter-spacing:0;color:var(--c-muted);}
+.cv2-big > span{display:block;font-size:13.5px;color:var(--c-muted);margin-top:6px;font-weight:600;}
+.cv2-big .cv2-chip{margin-top:10px;}
+.cv2-big.over b{color:var(--c-warn);}
+.cv2-note{font-size:12px;color:var(--c-dim);margin:12px 0 0;}
+
+/* macro tiles */
+.cv2-mtiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
+.cv2-mtiles.two{grid-template-columns:1fr 1fr;}
+.cv2-mtile{background:var(--c-surface2);border-radius:14px;padding:11px 12px 12px;min-width:0;}
+.cv2-mtile > span{display:block;font-size:12px;font-weight:700;color:var(--c-muted);}
+.cv2-mtile b{display:block;font-size:18px;font-weight:800;margin:3px 0 9px;letter-spacing:-.01em;white-space:nowrap;}
+.cv2-mtile b small{font-size:12px;font-weight:600;color:var(--c-dim);}
+.cv2-mtile i{display:block;height:5px;border-radius:99px;background:#e2ddd3;overflow:hidden;}
+.cv2-mtile i u{display:block;height:100%;border-radius:99px;background:var(--i-food);text-decoration:none;transition:width .5s cubic-bezier(.22,1,.36,1);}
+.cv2-mtile em{display:block;font-style:normal;font-size:11.5px;color:var(--c-muted);line-height:1.35;}
+.cv2-mtile.plain b{margin-bottom:4px;}
+
+/* buttons that carry their area's tint */
+body.cv2 .cv2-btn.tint{background:var(--t-food)!important;color:var(--i-food)!important;border:0!important;box-shadow:none!important;}
+body.cv2 .cv2-btn.eat{background:var(--t-food)!important;color:var(--i-food)!important;border:0!important;box-shadow:none!important;}
+body.cv2 .cv2-btn.eat:active{background:#d6ecdf!important;}
+body.cv2 .cv2-btn.ghost.muted{color:var(--c-muted)!important;}
+
+/* week stats */
+.cv2-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cv2-stat{border-radius:14px;padding:12px;min-width:0;}
+.cv2-stat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.05;}
+.cv2-stat b small{font-size:15px;font-weight:700;color:var(--c-muted);letter-spacing:0;}
+.cv2-stat span{display:block;font-size:12px;font-weight:700;margin-top:5px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cv2-stat.train{background:var(--t-train);} .cv2-stat.train b{color:var(--i-train);}
+.cv2-stat.food{background:var(--t-food);} .cv2-stat.food b{color:var(--i-food);}
+.cv2-stat.prog{background:var(--t-prog);} .cv2-stat.prog b{color:var(--i-prog);}
+.cv2-stat.ok{background:var(--t-food);} .cv2-stat.ok b{color:var(--i-food);}
+.cv2-stat.warn{background:var(--c-warn-tint);} .cv2-stat.warn b{color:var(--c-warn);}
+.cv2-dots{margin-top:14px;gap:6px;}
+.cv2-dots i{height:32px;border-radius:10px;}
+.cv2-dots i.m{background:#dcefe3;}
+.cv2-weekmsg{font-size:13.5px;color:var(--c-muted);margin:12px 0 0;line-height:1.45;}
+
+/* coach on Home: one card, coach row + check-in row */
+.cv2-coachrow{appearance:none;width:100%;display:flex;align-items:center;gap:12px;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:48px;}
+.cv2-coachrow .tx{flex:1 1 auto;min-width:0;}
+.cv2-coachrow .tx b{display:block;font-size:16px;font-weight:800;}
+.cv2-coachrow .tx small{display:block;font-size:13px;color:var(--c-muted);margin-top:1px;}
+.cv2-coachrow .chev{color:var(--c-dim);display:inline-flex;}
+.cv2-coachrow .chev svg{width:18px;height:18px;}
+body.cv2 .cv2-coachrow .cv2-av,body.cv2 .cv2-coach-id .cv2-av,body.cv2 .cv2-coachhero .cv2-av{background:var(--i-coach)!important;color:#fff;}
+.cv2-coachrow .cv2-av{width:44px;height:44px;font-size:16px;}
+.cv2-coachcard .cv2-quote{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--t-coach);}
+.cv2-coachcard .cv2-checkin{padding:0;}
+.cv2-checkin .ic{background:var(--t-prog)!important;color:var(--i-prog)!important;}
+.cv2-checkin.overdue .ic{background:#fff!important;color:var(--c-warn)!important;}
+.cv2-checkin.done .ic{background:var(--t-food)!important;color:var(--i-food)!important;}
+
+/* coach page hero */
+.cv2-coachhero{background:var(--t-coach);border:1px solid #e1d9f6;border-radius:22px;padding:18px;}
+.cv2-coachhero .cv2-av{width:56px;height:56px;font-size:20px;}
+.cv2-coachhero .cv2-coach-id b{font-size:19px;}
+.cv2-coachhero .hint{font-size:12.5px;line-height:1.5;color:#5d5672;margin:12px 2px 0;}
+body.cv2 .cv2-btn.onviolet{background:#fff!important;color:var(--i-coach)!important;border:0!important;box-shadow:0 1px 2px rgba(22,24,28,.06)!important;font-size:14px!important;}
+
+/* meals: clear name / numbers / one action */
+.cv2-meal{padding:16px;border-color:rgba(22,24,28,.06);}
+.cv2-meal.is-ate,.cv2-meal.is-swap{border-color:transparent;box-shadow:inset 4px 0 0 var(--i-food), var(--c-shadow);}
+.cv2-meal-h .tx b{font-size:16.5px;}
+.cv2-meal-h .kc{font-size:19px;}
+.cv2-macros{display:flex;gap:14px;font-size:12.5px;color:var(--c-muted);margin-top:6px;}
+.cv2-macros b{color:var(--c-text);font-weight:800;}
+.cv2-meal-a{margin-top:14px;gap:4px;}
+.cv2-meal-a .cv2-btn.eat{flex:0 0 auto;padding:0 16px;}
+.cv2-ing{border-top-color:var(--c-line);margin-top:12px;}
+
+/* progress: headline numbers inside the cards */
+#cv2-progress-top .cv2-big{margin-bottom:6px;}
+#cv2-progress-top .cv2-ins:first-of-type{padding-top:12px;}
+.cv2-ins .ic{background:var(--t-prog);color:var(--i-prog);}
+.cv2-ins.up .ic{background:var(--t-food);color:var(--i-food);}
+
+@media (max-width:360px){
+  .cv2-big b{font-size:34px;}
+  .cv2-stat b{font-size:22px;}
+  .cv2-mtile{padding:10px;}
+  .cv2-mtile b{font-size:16px;}
+}
+.cv2-head .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;}
+.cv2-head > .cv2-btn{flex:0 0 auto;white-space:nowrap;}
+/* orange is for primary actions only; in-card secondary actions stay neutral */
+.cv2-ing summary{color:var(--c-muted)!important;}
+body.cv2 .cv2-meal .cv2-btn.ghost{color:var(--c-text)!important;}
+body.cv2 .cv2-meal .cv2-btn.ghost.muted{color:var(--c-muted)!important;}
+.cv2-formhead{margin-top:22px;align-items:flex-start;}
+.cv2-formsub{font-size:13px;color:var(--c-muted);margin:3px 0 0;line-height:1.45;}
+.cv2-formsub.warn{color:var(--c-warn);font-weight:700;}
+
 </style>
 <!-- CV2:CSS:END -->
 </head>
@@ -11520,55 +11679,56 @@ window.CV2_DEFAULT = 'v2';
     return '';
   }
 
+  /* ---- shared visual helpers ------------------------------------------ */
+  function secLabel(t, right) { return '<div class="cv2-seclabel"><h2>' + esc(t) + '</h2>' + (right || '') + '</div>'; }
+  function cardHead(icon, tone, title, right) {
+    return '<div class="cv2-head"><span class="cv2-tone ' + tone + '">' + I(icon) + '</span><span class="t">' + title + '</span>' + (right || '') + '</div>';
+  }
+
+  /* ---- today's training: the one dark hero card on Home ---------------- */
   function todayCard() {
     var n = D.next(), ti = D.todayIdx(), dt = D.dayType(ti), wk = D.week();
     var todayY = ymd(), fin = D.finished();
     var doneToday = fin.filter(function (f) { return ymd(f.date) === todayY; });
     var coach = D.coach();
     var note = coach.note ? '<div class="note"><b>Note from ' + esc(COACH) + '</b>' + esc(coach.note) + '</div>' : '';
-    if (!n) {
-      return '<div class="cv2-card cv2-today"><p class="cv2-eyebrow">' + I('train') + 'Today\'s training</p><h2 class="cv2-h">Your training plan</h2>' +
-        '<p class="cv2-p">Open Train to see your sessions.</p><button type="button" class="cv2-btn primary block" onclick="cv2Go(\'training\')">Open training</button></div>';
+    function hero(label, title, sub, meta, actions) {
+      return '<div class="cv2-hero"><div class="lbl">' + label + '</div><h2 class="cv2-h">' + title + '</h2>' +
+        (sub ? '<p class="sub">' + sub + '</p>' : '') + (meta || '') + note + actions + '</div>';
     }
+    if (!n) return hero('Training', 'Your training plan', 'Open Train to see your sessions.', '',
+      '<button type="button" class="cv2-btn primary block" onclick="cv2Go(\'training\')">Open training</button>');
     var label = D.cleanLabel(n.label) || n.label;
     var badge = call(function () { return phases[n.phase].days[n.day].badge; }) || '';
     var badgeRaw = badge;
     if (/^(mandatory|optional|required|rest)$/i.test(String(badge).trim())) badge = '';   // session kind, not a focus
     if (badge && String(n.label || '').toLowerCase().indexOf(String(badge).trim().toLowerCase()) >= 0) badge = '';   // repeats the title
-    var meta = '<div class="cv2-meta"><span>' + I('list') + n.exercises + ' exercises</span>' +
+    var meta = '<div class="cv2-heromet"><span>' + I('list') + n.exercises + ' exercises</span>' +
       (n.est && n.est.known ? '<span>' + I('clock') + '~' + n.est.min + ' min</span>' : '') +
-      '<span>' + I('cal') + 'Phase ' + esc(n.phase) + (wk.canonical ? ' · Week ' + wk.week : '') + '</span></div>';
+      '<span>' + I('cal') + 'Phase ' + esc(n.phase) + (wk.canonical ? ' · Wk ' + wk.week : '') + '</span></div>';
     var startJs = "cv2Start('" + esc(n.phase) + "'," + Number(n.day) + ")";
     if (n.open) {
       var os = D.openSession(n.phase, n.day), since = '';
       if (os && os.startedAt) { var sd = new Date(os.startedAt); if (ymd(sd) !== todayY) since = 'Started ' + fmtWD(sd) + ' — pick up where you left off.'; }
-      return '<div class="cv2-card cv2-today"><p class="cv2-eyebrow">' + I('train') + 'Workout in progress</p><h2 class="cv2-h">' + esc(label) + '</h2>' +
-        (since ? '<p class="focus">' + esc(since) + '</p>' : (badge ? '<p class="focus">' + esc(badge) + '</p>' : '')) + meta + note +
-        '<button type="button" class="cv2-btn primary block" onclick="' + startJs + '">' + I('play') + 'Continue workout</button></div>';
+      return hero('Workout in progress', esc(label), esc(since || badge), meta,
+        '<button type="button" class="cv2-btn primary block" onclick="' + startJs + '">' + I('play') + 'Continue workout</button>');
     }
     if (doneToday.length) {
       var d0 = D.cleanLabel(doneToday[doneToday.length - 1].label);
-      return '<div class="cv2-card cv2-today"><p class="cv2-eyebrow">' + I('train') + 'Today\'s training</p><h2 class="cv2-h">' + esc(d0 || 'Session') + ' done</h2>' +
-        '<div class="done-row">' + I('check') + 'Finished and saved</div>' +
-        '<p class="cv2-p">Next up: <b style="color:var(--c-text)">' + esc(label) + '</b> · ' + n.exercises + ' exercises</p>' + note +
-        '<button type="button" class="cv2-btn secondary block" onclick="cv2Go(\'training\')">View training</button></div>';
+      return hero('Today · done', esc(d0 || 'Session') + ' <span class="ok">' + I('check') + '</span>', 'Finished and saved. Next up: ' + esc(label) + ' · ' + n.exercises + ' exercises.', '',
+        '<button type="button" class="cv2-btn onhero block" onclick="cv2Go(\'training\')">View training</button>');
     }
     if (D.isRest(dt)) {
       var prep = /meal prep/i.test(dt);
-      return '<div class="cv2-card cv2-today"><p class="cv2-eyebrow">' + I('moon') + 'Today · ' + esc(WDL[new Date().getDay()]) + '</p>' +
-        '<h2 class="cv2-h">Rest day' + (prep ? ' · meal prep' : '') + '</h2>' +
-        '<p class="cv2-p">' + (prep ? 'No training scheduled. Today\'s plan includes a meal-prep block — see Nutrition.' : 'No training scheduled today. ') +
-        ' ' + esc(COACH) + '\'s recovery guidance is in Lifestyle &amp; recovery.</p>' + note +
-        '<div class="cv2-divider"></div><p class="cv2-eyebrow" style="margin:0">Next session</p>' +
-        '<p style="margin:4px 0 0;font-weight:800;font-size:16px">' + esc(label) + '</p>' + meta +
-        '<div class="cv2-twocol" style="margin-top:14px"><button type="button" class="cv2-btn secondary" onclick="cv2Go(\'lifestyle\')">Recovery guide</button>' +
-        '<button type="button" class="cv2-btn secondary" onclick="' + startJs + '">Preview session</button></div></div>';
+      return hero('Today · ' + esc(WDL[new Date().getDay()]), 'Rest day' + (prep ? ' · meal prep' : ''),
+        (prep ? 'No training today — your plan has a meal-prep block in Nutrition.' : 'No training today.') + ' Next: <b>' + esc(label) + '</b>', meta,
+        '<div class="cv2-twocol" style="margin-top:16px"><button type="button" class="cv2-btn onhero" onclick="cv2Go(\'lifestyle\')">Recovery guide</button>' +
+        '<button type="button" class="cv2-btn onhero" onclick="' + startJs + '">Preview session</button></div>');
     }
     var opt = /optional/i.test(n.label || '') || /optional/i.test(badgeRaw || '');
     if (opt && /optional/i.test(badge)) badge = 'Optional — skip it freely if the week is busy';
-    return '<div class="cv2-card cv2-today"><p class="cv2-eyebrow">' + I('train') + (opt ? 'Next session · optional' : 'Next session') + '</p>' +
-      '<h2 class="cv2-h">' + esc(label) + '</h2>' + (badge ? '<p class="focus">' + esc(badge) + '</p>' : '') + meta + note +
-      '<button type="button" class="cv2-btn primary block" onclick="' + startJs + '">' + I('play') + 'Start workout</button></div>';
+    return hero(opt ? 'Next session · optional' : 'Next session', esc(label), esc(badge), meta,
+      '<button type="button" class="cv2-btn primary block" onclick="' + startJs + '">' + I('play') + 'Start workout</button>');
   }
   window.cv2Start = function (ph, day) {
     go('training');
@@ -11582,23 +11742,32 @@ window.CV2_DEFAULT = 'v2';
     return '<div class="cv2-bar ' + cls + (over ? ' over' : '') + '"><div class="l"><b>' + label + '</b><span><strong>' + int(actual) + '</strong> / ' + int(target) + ' ' + unit + '</span></div>' +
       '<div class="track" role="progressbar" aria-label="' + label + ' logged" aria-valuemin="0" aria-valuemax="' + Math.round(target) + '" aria-valuenow="' + Math.round(actual) + '"><div class="fill" style="width:' + pct + '%"></div></div></div>';
   }
-  function nutritionCard(compact) {
+  /* Big "kcal left" figure. Missing logs read as "nothing logged", never as 0 eaten. */
+  function kcalFigure(actual, target, logged) {
+    if (!(target > 0)) return '';
+    if (!logged) return '<div class="cv2-big"><b class="cv2-num">' + int(target) + '</b><span>kcal target today</span></div>';
+    var left = target - actual;
+    return left >= 0
+      ? '<div class="cv2-big"><b class="cv2-num">' + int(left) + '</b><span>kcal left · ' + int(actual) + ' of ' + int(target) + ' logged</span></div>'
+      : '<div class="cv2-big over"><b class="cv2-num">' + int(-left) + '</b><span>kcal over · ' + int(actual) + ' of ' + int(target) + ' logged</span></div>';
+  }
+  function macroTile(label, actual, target, logged) {
+    if (!(target > 0)) return '';
+    var pct = Math.min(100, Math.round(actual / target * 100));
+    return '<div class="cv2-mtile"><span>' + label + '</span><b class="cv2-num">' + (logged ? int(actual) : '–') + '<small> / ' + int(target) + ' g</small></b>' +
+      '<i role="progressbar" aria-label="' + label + ' logged" aria-valuemin="0" aria-valuemax="' + Math.round(target) + '" aria-valuenow="' + Math.round(actual) + '"><u style="width:' + pct + '%"></u></i></div>';
+  }
+  function nutritionCard() {
     var n = D.nutrition();
     if (!n.planned && !(n.target.cal > 0)) {
-      return '<div class="cv2-card"><p class="cv2-eyebrow">' + I('food') + 'Nutrition today</p><div class="cv2-empty">' + I('info') + '<span>Your meal plan isn\'t available on this phone yet.</span></div></div>';
+      return '<div class="cv2-card">' + cardHead('food', 'food', 'Nutrition') + '<div class="cv2-empty">' + I('info') + '<span>Your meal plan isn\'t available on this phone yet.</span></div></div>';
     }
-    var none = n.logged === 0;
-    var head = '<p class="cv2-eyebrow">' + I('food') + 'Nutrition today' + (n.dayType ? ' · ' + esc(D.isRest(n.dayType) ? 'Rest day' : n.dayType) : '') + '</p>';
-    var status = none
-      ? '<p class="cv2-p" style="margin:0 0 12px">No meals logged yet today.' + (n.skipped ? ' ' + n.skipped + ' marked as skipped.' : '') + '</p>'
-      : '<p class="cv2-p" style="margin:0 0 12px">' + n.logged + ' of ' + n.planned + ' planned meals logged' + (n.skipped ? ', ' + n.skipped + ' skipped' : '') + '.</p>';
-    var bars = '<div class="cv2-bars">' + bar('kcal', 'Calories', n.actual.cal, n.target.cal, 'kcal') + bar('p', 'Protein', n.actual.p, n.target.p, 'g') +
-      (compact ? '' : '<div class="cv2-twocol">' + bar('c', 'Carbs', n.actual.c, n.target.c, 'g') + bar('f', 'Fat', n.actual.f, n.target.f, 'g') + '</div>') + '</div>';
-    var btn = n.nextIdx >= 0
-      ? '<button type="button" class="cv2-btn primary" onclick="cv2LogMeal()">' + I('plus') + 'Log meal</button>'
-      : '<button type="button" class="cv2-btn secondary" onclick="cv2LogMeal()">View today\'s meals</button>';
-    return '<div class="cv2-card">' + head + status + bars +
-      '<div class="cv2-foot"><small>Logged intake vs ' + esc(COACH) + '\'s target</small>' + btn + '</div></div>';
+    var btn = '<button type="button" class="cv2-btn tint sm" onclick="cv2LogMeal()">' + (n.nextIdx >= 0 ? I('plus') + 'Log meal' : 'Meals') + '</button>';
+    var sub = !n.logged ? 'None logged yet' : n.skipped ? n.skipped + ' skipped' : (n.logged >= n.planned ? 'All logged' : (n.planned - n.logged) + ' to go');
+    return '<div class="cv2-card">' + cardHead('food', 'food', 'Nutrition' + (D.isRest(n.dayType) ? ' <small>Rest day</small>' : ''), btn) +
+      kcalFigure(n.actual.cal, n.target.cal, n.logged) +
+      '<div class="cv2-mtiles two">' + macroTile('Protein', n.actual.p, n.target.p, n.logged) +
+      '<div class="cv2-mtile plain"><span>Meals</span><b class="cv2-num">' + n.logged + '<small> / ' + n.planned + '</small></b><em>' + esc(sub) + '</em></div></div></div>';
   }
   function weekCard() {
     var mon = mondayOf(new Date()), todayD = startOfDay(new Date());
@@ -11612,26 +11781,25 @@ window.CV2_DEFAULT = 'v2';
       var d = new Date(mon); d.setDate(mon.getDate() + i);
       var k = ymd(d), w = doneW.some(function (f) { return ymd(f.date) === k; }), m = !!mealDays[k];
       if (d <= todayD) { elapsed++; if (m) mealCount++; }
-      dots += '<i class="' + (w ? 'w ' : '') + (m ? 'm ' : '') + (k === ymd(todayD) ? 't' : '') + '" title="' + esc(fmtWD(d)) + (w ? ' · workout finished' : '') + (m ? ' · meals logged' : '') + '">' + 'MTWTFSS'[i] + '</i>';
+      dots += '<i class="' + (w ? 'w ' : '') + (m ? 'm ' : '') + (k === ymd(todayD) ? 't' : '') + '" title="' + esc(fmtWD(d)) + (w ? ' · workout finished' : '') + (m ? ' · meals logged' : '') + '"><span>' + 'MTWTFSS'[i] + '</span></i>';
     }
-    var c = D.checkin(), ck;
-    if (c.sent && c.sent.ts >= mon.getTime()) ck = '<div class="v" style="font-size:16px;padding-top:3px">Sent</div><div class="k">' + esc(fmtWD(new Date(c.sent.ts))) + '</div>';
-    else if (c.last != null && c.last >= mon.getTime()) ck = '<div class="v" style="font-size:16px;padding-top:3px">Sent</div><div class="k">' + esc(fmtWD(new Date(c.last))) + '</div>';
-    else if (c.kind === 'overdue' || c.kind === 'first_due') ck = '<div class="v" style="font-size:16px;padding-top:3px;color:var(--c-warn)">Overdue</div><div class="k">Check-in</div>';
-    else ck = '<div class="v" style="font-size:16px;padding-top:3px">' + (c.due ? esc(WD[c.due.getDay()]) : 'Not yet') + '</div><div class="k">' + (c.due ? 'Check-in due ' + esc(fmtD(c.due)) : 'Weekly check-in') + '</div>';
-    var msg;
-    var left = sched - doneMand, nextLabel = n ? D.cleanLabel(n.label) : '';
+    var c = D.checkin(), ckV, ckK, ckCls = '';
+    if (c.sent && c.sent.ts >= mon.getTime()) { ckV = 'Sent'; ckK = fmtWD(new Date(c.sent.ts)); ckCls = 'ok'; }
+    else if (c.last != null && c.last >= mon.getTime()) { ckV = 'Sent'; ckK = fmtWD(new Date(c.last)); ckCls = 'ok'; }
+    else if (c.kind === 'overdue' || c.kind === 'first_due') { ckV = 'Due'; ckK = 'Overdue'; ckCls = 'warn'; }
+    else { ckV = c.due ? WD[c.due.getDay()] : '—'; ckK = c.due ? 'Due ' + fmtD(c.due) : 'Not yet'; }
+    var msg, left = sched - doneMand, nextLabel = n ? D.cleanLabel(n.label) : '';
     if (sched && doneMand >= sched) msg = 'Every scheduled session is done this week.';
-    else if (doneMand > 0) msg = doneMand + ' down, ' + left + ' to go this week' + (nextLabel ? ' — next up is ' + nextLabel + '.' : '.');
-    else msg = nextLabel ? 'Your first session this week is ' + nextLabel + '.' : 'Your week is ready to start.';
-    return '<div class="cv2-card"><p class="cv2-eyebrow">' + I('cal') + 'This week · from ' + esc(fmtD(mon)) + '</p>' +
-      '<p style="margin:0 0 14px;font-size:14.5px;font-weight:700;line-height:1.45">' + esc(msg) + '</p>' +
-      '<div class="cv2-week">' +
-      '<div><div class="v">' + doneMand + '<small> / ' + (sched || '—') + '</small></div><div class="k">Sessions finished</div></div>' +
-      '<div><div class="v">' + mealCount + '<small> / ' + elapsed + '</small></div><div class="k">Days with meals logged</div></div>' +
-      '<div>' + ck + '</div></div>' +
+    else if (doneMand > 0) msg = left + ' to go' + (nextLabel ? ' — next up is ' + nextLabel : '') + '.';
+    else msg = nextLabel ? 'First up this week: ' + nextLabel + '.' : 'Your week is ready to start.';
+    return '<div class="cv2-card">' +
+      '<div class="cv2-stats">' +
+      '<div class="cv2-stat train"><b class="cv2-num">' + doneMand + '<small>/' + (sched || '—') + '</small></b><span>Sessions</span></div>' +
+      '<div class="cv2-stat food"><b class="cv2-num">' + mealCount + '<small>/' + elapsed + '</small></b><span>Meal days</span></div>' +
+      '<div class="cv2-stat ' + (ckCls || 'prog') + '"><b>' + esc(ckV) + '</b><span>' + esc(ckK) + '</span></div></div>' +
       '<div class="cv2-dots" aria-hidden="true">' + dots + '</div>' +
-      '<div class="cv2-legend"><span><i style="background:var(--c-text)"></i>Workout finished</span><span><i style="background:var(--c-ok-tint);border:1px solid var(--c-ok-edge)"></i>Meals logged</span></div></div>';
+      '<p class="cv2-weekmsg">' + esc(msg) + '</p>' +
+      '<div class="cv2-legend"><span><i style="background:var(--c-text)"></i>Workout</span><span><i style="background:#cfe6da"></i>Meals logged</span></div></div>';
   }
 
   function insightsHtml(list, max) {
@@ -11640,28 +11808,22 @@ window.CV2_DEFAULT = 'v2';
         '<span class="tx"><b>' + esc(x.title) + '</b><p>' + esc(x.text) + '</p>' + (x.per ? '<div class="per">' + esc(x.per) + '</div>' : '') + '</span></div>';
     }).join('');
   }
-  function progressCard() {
-    var list = D.insights();
-    var pick = []; ['strength', 'weight', 'done'].forEach(function (k) { var x = list.filter(function (y) { return y.kind === k; })[0]; if (x && pick.length < 2) pick.push(x); });
-    var body = list.length ? insightsHtml(pick, 2)
-      : '<div class="cv2-empty">' + I('progress') + '<span>Log a few sessions and your weekly check-in to see your strength and weight trends here.</span></div>';
-    return '<div class="cv2-sechead"><h2>Your progress</h2><button type="button" class="cv2-link" onclick="cv2Go(\'tracker\')">See all' + I('chev') + '</button></div>' +
-      '<div class="cv2-card">' + body + '</div>';
-  }
+  /* One card: coach, latest word from him, and the check-in. */
   function coachTeaser() {
     var c = D.coach();
     var txt = c.focus || c.feedback;
-    var ck = checkinCard();
+    var st = D.checkin(), ck = checkinCard();
     if (!ck) {
-      var st = D.checkin();
-      ck = '<div class="cv2-card cv2-checkin flat"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Weekly check-in</b><small>' +
+      ck = '<div class="cv2-checkin"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Weekly check-in</b><small>' +
         (st.last != null ? 'Last sent ' + esc(fmtWD(new Date(st.last))) : 'Not sent yet') + (st.due ? ' · next due ' + esc(fmtWD(st.due)) : '') + '</small></span>' +
-        '<button type="button" class="cv2-btn secondary" onclick="scrollToCheckin()">Open</button></div>';
+        '<button type="button" class="cv2-btn secondary sm" onclick="scrollToCheckin()">Open</button></div>';
     }
-    return '<div class="cv2-sechead"><h2>Coach &amp; check-in</h2><button type="button" class="cv2-link" onclick="cv2Go(\'cv2coach\')">Coach' + I('chev') + '</button></div>' +
-      '<div class="cv2-card"><div class="cv2-coach-id"><span class="cv2-av">' + esc(initials(COACH)) + '</span><span><b>' + esc(COACH) + '</b><small>Your coach</small></span></div>' +
-      (txt ? '<p class="cv2-eyebrow" style="margin-top:14px">' + (c.focus ? 'This week\'s focus' : 'Latest feedback') + '</p><p class="cv2-quote">' + esc(txt) + '</p>'
-           : '<p class="cv2-p" style="margin-top:12px">' + esc(COACH) + ' replies to your check-ins by message. Your phase focus and program guidance are on the Coach page.</p>') + '</div>' + ck;
+    ck = ck.replace('cv2-card cv2-checkin', 'cv2-checkin');
+    return '<div class="cv2-card cv2-coachcard">' +
+      '<button type="button" class="cv2-coachrow" onclick="cv2Go(\'cv2coach\')"><span class="cv2-av">' + esc(initials(COACH)) + '</span>' +
+      '<span class="tx"><b>' + esc(COACH) + '</b><small>' + (txt ? (c.focus ? 'This week\'s focus' : 'Latest feedback') : 'Your coach · replies by message') + '</small></span><span class="chev">' + I('chev') + '</span></button>' +
+      (txt ? '<p class="cv2-quote">' + esc(txt) + '</p>' : '') +
+      '<div class="cv2-divider"></div>' + ck + '</div>';
   }
 
   function renderHome() {
@@ -11670,7 +11832,9 @@ window.CV2_DEFAULT = 'v2';
     var sub = (wk.canonical ? (wk.started ? (wk.over ? 'Program complete · ' : 'Week ' + wk.week + ' of ' + wk.total + ' · ') : 'Starts soon · ') : '') + 'Coached by ' + COACH;
     el.innerHTML =
       '<div class="cv2-hello"><div class="tx"><h1>' + esc(greeting()) + ', ' + esc(firstName()) + '</h1><div class="sub">' + esc(sub) + '</div></div></div>' +
-      todayCard() + nutritionCard(true) + weekCard() + coachTeaser();
+      todayCard() + nutritionCard() +
+      secLabel('This week', '<small>from ' + esc(fmtD(mondayOf(new Date()))) + '</small>') + weekCard() +
+      secLabel('Your coach') + coachTeaser();
     if (_serverWeights === null) D.fetchWeights().then(function (w) { if (w && w.length && current === 'cv2home') renderHome(); });
   }
 
@@ -11681,8 +11845,7 @@ window.CV2_DEFAULT = 'v2';
     var desc = String(p.desc || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     var first = (desc.match(/[^.!?]+[.!?]+/g) || [desc]).slice(0, 2).join(' ').trim();
     var chips = (p.info || []).slice(0, 4).map(function (x) { return '<span class="cv2-chip">' + esc(x.label) + ': ' + esc(x.val) + '</span>'; }).join(' ');
-    return '<div class="cv2-card"><p class="cv2-eyebrow">' + I('target') + 'Current phase</p><h2 class="cv2-h">' + esc(p.label || ('Phase ' + ph)) + '</h2>' +
-      (p.weeks ? '<p class="cv2-p" style="margin-top:2px">' + esc(p.weeks) + '</p>' : '') +
+    return '<div class="cv2-card">' + cardHead('target', 'train', 'Current phase') + '<h2 class="cv2-h">' + esc(p.label || ('Phase ' + ph)) + '</h2>' +
       (first ? '<p class="cv2-quote" style="color:var(--c-muted)">' + esc(first) + '</p>' : '') +
       (chips ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">' + chips + '</div>' : '') +
       (typeof window.tv2Guide === 'function' ? '<button type="button" class="cv2-btn secondary block" style="margin-top:14px" onclick="cv2OpenGuide()">' + I('book') + 'Read the program guide</button>' : '') + '</div>';
@@ -11692,7 +11855,7 @@ window.CV2_DEFAULT = 'v2';
     var c = D.coach(), ck = D.checkin();
     var lastTxt = ck.last != null ? 'Your last check-in was ' + fmtWD(new Date(ck.last)) + '.' : 'You haven\'t sent a check-in yet.';
     var focus = c.focus
-      ? '<div class="cv2-card"><p class="cv2-eyebrow">' + I('target') + 'This week\'s focus' + (c.focusAt ? ' · ' + esc(c.focusAt) : '') + '</p><p class="cv2-quote">' + esc(c.focus) + '</p></div>' : '';
+      ? '<div class="cv2-card">' + cardHead('target', 'coach', 'This week\'s focus', c.focusAt ? '<small>' + esc(c.focusAt) + '</small>' : '') + '<p class="cv2-quote">' + esc(c.focus) + '</p></div>' : '';
     var fb = c.feedback
       ? '<p class="cv2-quote">' + esc(c.feedback) + '</p>' + (c.feedbackAt ? '<p class="cv2-p" style="font-size:12px">' + esc(c.feedbackAt) + '</p>' : '')
       : '<div class="cv2-empty">' + I('info') + '<span>' + esc(COACH) + ' reviews every check-in and sends feedback by message. ' + esc(lastTxt) + '</span></div>';
@@ -11700,14 +11863,14 @@ window.CV2_DEFAULT = 'v2';
       ? '<a class="cv2-btn primary block" href="https://wa.me/' + esc(String(COACH_WA).replace(/[^\d]/g, '')) + '" target="_blank" rel="noopener">' + I('coach') + 'Message ' + esc(COACH) + ' on WhatsApp</a>'
       : '<p class="cv2-p" style="margin:0 0 12px">Message ' + esc(COACH) + ' the way you normally do. In-app messaging isn\'t available yet.</p>';
     el.innerHTML =
-      '<div class="section-header"><h2 class="section-title">Coach</h2><p class="section-desc">What ' + esc(COACH) + ' wants you to focus on, and how to reach him.</p></div>' +
-      '<div class="cv2-card"><div class="cv2-coach-id"><span class="cv2-av">' + esc(initials(COACH)) + '</span><span><b>' + esc(COACH) + '</b><small>Your coach · LOCKED IN</small></span></div></div>' +
+      '<div class="section-header"><h2 class="section-title">Coach</h2></div>' +
+      '<div class="cv2-coachhero"><div class="cv2-coach-id"><span class="cv2-av">' + esc(initials(COACH)) + '</span><span><b>' + esc(COACH) + '</b><small>Your coach · LOCKED IN</small></span></div>' +
+      '<div class="cv2-twocol" style="margin-top:16px"><button type="button" class="cv2-btn onviolet" onclick="cv2NoteToCoach()">' + I('note') + 'Add a note</button>' +
+      '<button type="button" class="cv2-btn onviolet" onclick="scrollToCheckin()">' + I('clip') + 'Check-in</button></div>' +
+      (COACH_WA ? '<div style="margin-top:10px">' + contact + '</div>' : '<p class="hint">Message ' + esc(COACH) + ' the way you normally do — in-app messaging isn\'t available yet. Notes go to him with your weekly check-in.</p>') + '</div>' +
       focus +
-      '<div class="cv2-card"><p class="cv2-eyebrow">' + I('coach') + 'Latest feedback</p>' + fb + '</div>' +
+      '<div class="cv2-card">' + cardHead('coach', 'coach', 'Latest feedback') + fb + '</div>' +
       phaseFocus() +
-      '<div class="cv2-card"><p class="cv2-eyebrow">' + I('note') + 'Get in touch</p>' + contact +
-      '<button type="button" class="cv2-btn secondary block" style="margin-top:' + (COACH_WA ? '10px' : '0') + '" onclick="cv2NoteToCoach()">' + I('note') + 'Add a note to your next check-in</button>' +
-      '<p class="cv2-p" style="font-size:12.5px">Notes are sent to ' + esc(COACH) + ' with your weekly check-in.</p></div>' +
       coachCheckins() +
       '<div class="cv2-card" style="padding:4px 16px"><div class="cv2-rows">' +
       row('moon', 'Lifestyle & recovery', 'Sleep, stress and recovery guidance', "cv2Go('lifestyle')") +
@@ -11722,7 +11885,7 @@ window.CV2_DEFAULT = 'v2';
     var rows = list.length ? list.map(function (c) {
       return '<div class="cv2-hist flat"><div class="tx"><b>Week ' + esc(c.week) + '</b><small>' + esc(fmtWD(new Date(c.t))) + ' · sent to ' + esc(COACH) + '</small></div><div class="kg cv2-num">' + (c.kg > 0 ? n1(c.kg) + ' kg' : '') + '</div></div>';
     }).join('') : '<div class="cv2-empty">' + I('clip') + '<span>No check-ins yet.</span></div>';
-    return '<div class="cv2-card"><p class="cv2-eyebrow">' + I('clip') + 'Check-ins</p>' + nxt.replace('cv2-card cv2-checkin', 'cv2-checkin') + '<div class="cv2-divider"></div>' + rows +
+    return '<div class="cv2-card">' + cardHead('clip', 'prog', 'Check-ins') + nxt.replace('cv2-card cv2-checkin', 'cv2-checkin') + '<div class="cv2-divider"></div>' + rows +
       (list.length ? '<button type="button" class="cv2-link" onclick="cv2Go(\'tracker\');setTimeout(function(){var h=document.querySelector(\'.checkin-history\');if(h)h.scrollIntoView({block:\'start\'})},250)">All check-ins' + I('chev') + '</button>' : '') + '</div>';
   }
   window.cv2NoteToCoach = function () {
@@ -11752,6 +11915,13 @@ window.CV2_DEFAULT = 'v2';
       '<text class="ax" x="0" y="9">kg</text>' + g + dots + '<path class="avg" d="' + path + '"/>' + pts + xl + '</svg>' +
       '<div class="cv2-legend"><span><i style="background:var(--c-text);border-radius:50%"></i>Weekly average</span><span><i style="background:var(--c-line2);border-radius:50%"></i>Single weigh-in</span></div></div>';
   }
+  function weightBig(w) {
+    if (w.kind !== 'trend') return '';
+    var d = w.cur.avg - w.prev.avg;
+    var chip = Math.abs(d) < 0.05 ? '<span class="cv2-chip">Level with last week</span>'
+      : '<span class="cv2-chip ' + (towardGoal(d) ? 'ok' : '') + '">' + (d < 0 ? '−' : '+') + n1(Math.abs(d)) + ' kg vs last week</span>';
+    return '<div class="cv2-big"><b class="cv2-num">' + n1(w.cur.avg) + '<small> kg</small></b><span>weekly average</span>' + chip + '</div>';
+  }
   function renderProgressTop() {
     var sec = $('section-tracker'); if (!sec) return;
     var hdr = sec.querySelector('.section-header');
@@ -11767,7 +11937,7 @@ window.CV2_DEFAULT = 'v2';
       var grid = sec.querySelector('.tracker-grid');
       if (grid) {
         var fh = document.createElement('div'); fh.className = 'cv2-formhead'; fh.id = 'cv2-checkin-anchor';
-        fh.innerHTML = '<h2>Weekly check-in</h2><span class="cv2-unsaved" id="cv2-unsaved"><i></i>Not sent yet</span>';
+        fh.innerHTML = '<div><h2>Weekly check-in</h2><p class="cv2-formsub" id="cv2-checkin-status"></p></div><span class="cv2-unsaved" id="cv2-unsaved"><i></i>Not sent yet</span>';
         grid.parentNode.insertBefore(fh, grid);
       }
     }
@@ -11786,12 +11956,12 @@ window.CV2_DEFAULT = 'v2';
       return '<button type="button" aria-pressed="' + (PERIOD.weeks === x[0]) + '" onclick="cv2Period(' + x[0] + ')">' + x[1] + '</button>'; }).join('');
     top.innerHTML =
       '<div class="cv2-seg2 wide" role="group" aria-label="Period">' + per + '</div>' +
-      '<div class="cv2-card"><p class="cv2-eyebrow">' + I('train') + 'Training consistency</p>' + done + '</div>' +
-      '<div class="cv2-card"><p class="cv2-eyebrow">' + I('progress') + 'Strength</p>' + strength + '</div>' +
-      '<div class="cv2-card"><p class="cv2-eyebrow">' + I('scale') + 'Body weight</p>' + weight + '</div>' +
-      '<div class="cv2-card"><p class="cv2-eyebrow">' + I('target') + 'Body measurements</p><div class="cv2-empty">' + I('info') + '<span>Measurements (waist, hips, etc.) aren\'t recorded in the app yet. Progress photos go in with your check-in.</span></div></div>' +
-      '<div class="cv2-card cv2-checkin' + (C.checkinFailed || ck.kind === 'overdue' || ck.kind === 'first_due' ? ' overdue' : '') + '"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Weekly check-in</b><small>' + esc(ckLine) + ' About 3 min.</small></span>' +
-      '<button type="button" class="cv2-btn secondary" onclick="cv2ScrollToForm()">Go to form</button></div>';
+      '<div class="cv2-card">' + cardHead('train', 'train', 'Training consistency') + done + '</div>' +
+      '<div class="cv2-card">' + cardHead('progress', 'prog', 'Strength', st.length ? '<small>' + st.filter(function (x) { return x.pct > 0.005; }).length + ' of ' + st.length + ' lifts up</small>' : '') + strength + '</div>' +
+      '<div class="cv2-card">' + cardHead('scale', 'prog', 'Body weight') + weightBig(w) + weight + '</div>' +
+      '<div class="cv2-card">' + cardHead('target', 'neutral', 'Body measurements') + '<div class="cv2-empty">' + I('info') + '<span>Measurements (waist, hips, etc.) aren\'t recorded in the app yet. Progress photos go in with your check-in.</span></div></div>' +
+''; 
+    var fhs = $('cv2-checkin-status'); if (fhs) { fhs.textContent = ckLine; fhs.className = 'cv2-formsub' + (C.checkinFailed || ck.kind === 'overdue' || ck.kind === 'first_due' ? ' warn' : ''); }
     var btn = $('log-btn'); if (btn && !btn.disabled) btn.textContent = C.checkinFailed ? 'Send again' : 'Send check-in to ' + COACH;
     var wkIn = $('input-week'), wk = D.week();
     if (wkIn && !wkIn.value && wk.canonical && wk.started) wkIn.value = wk.week;
@@ -11871,7 +12041,7 @@ window.CV2_DEFAULT = 'v2';
     var y = H - B - (H - B - T) * sched / max;
     var line = sched ? '<line x1="22" x2="' + W + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="var(--c-accent)" stroke-dasharray="4 4" stroke-width="1.2"/><text class="ax" x="0" y="' + (y + 3).toFixed(1) + '">' + sched + '</text>' : '';
     var tot = weeks.reduce(function (s, w) { return s + w.n; }, 0), full = weeks.filter(function (w) { return sched && w.n >= sched; }).length;
-    return '<p style="margin:0 0 4px;font-weight:800;font-size:15px">' + tot + ' scheduled session' + (tot === 1 ? '' : 's') + ' finished over ' + weeks.length + ' week' + (weeks.length === 1 ? '' : 's') + '</p>' +
+    return '<div class="cv2-big"><b class="cv2-num">' + tot + '</b><span>scheduled session' + (tot === 1 ? '' : 's') + ' finished · ' + weeks.length + ' week' + (weeks.length === 1 ? '' : 's') + '</span></div>' +
       '<p class="cv2-p" style="margin:0">' + (sched ? 'All ' + sched + ' done in ' + full + ' of those weeks. ' : '') + 'Only sessions finished in the app are counted.</p>' +
       '<div class="cv2-chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Sessions finished per week from ' + fmtD(weeks[0].m) + '">' + line + bars + '</svg>' +
       '<div class="cv2-legend"><span><i style="background:var(--c-text)"></i>Scheduled sessions</span><span><i style="background:var(--c-line2)"></i>Optional</span>' + (sched ? '<span><i style="background:none;border-top:2px dashed var(--c-accent);height:0;border-radius:0"></i>Weekly target</span>' : '') + '</div></div>';
@@ -12094,12 +12264,12 @@ window.CV2_DEFAULT = 'v2';
         ? '<div class="cv2-meal-a">' + status + (st === 'swap' && e.swapDesc ? '<small class="sw">' + esc(e.swapDesc) + '</small>' : '') +
           '<button type="button" class="cv2-btn ghost sm" onclick="cv2Meal(\'undo\',' + i + ')">Undo</button></div>'
         : '<div class="cv2-meal-a">' +
-          '<button type="button" class="cv2-btn primary sm" onclick="cv2Meal(\'ate\',' + i + ')">' + I('check') + 'Ate it</button>' +
-          '<button type="button" class="cv2-btn secondary sm" aria-label="Swap — log what you ate instead" onclick="cv2Meal(\'swap\',' + i + ')">' + I('swap') + 'Swap</button>' +
-          '<button type="button" class="cv2-btn ghost sm" onclick="cv2Meal(\'skip\',' + i + ')">Skip</button></div>';
+          '<button type="button" class="cv2-btn eat sm" onclick="cv2Meal(\'ate\',' + i + ')">' + I('check') + 'Ate it</button>' +
+          '<button type="button" class="cv2-btn ghost sm" aria-label="Swap — log what you ate instead" onclick="cv2Meal(\'swap\',' + i + ')">' + I('swap') + 'Swap</button>' +
+          '<button type="button" class="cv2-btn ghost sm muted" onclick="cv2Meal(\'skip\',' + i + ')">Skip</button></div>';
       return '<div class="cv2-meal' + (st ? ' is-' + st : '') + '"><div class="cv2-meal-h"><span class="tx">' +
         '<small class="when">' + esc(m.time || '') + '</small><b>' + esc(m.name) + '</b></span><span class="kc cv2-num">' + int(m.cal) + '<small> kcal</small></span></div>' +
-        '<div class="cv2-macros cv2-num">P ' + int(m.p) + ' g · C ' + int(m.c) + ' g · F ' + int(m.f) + ' g</div>' +
+        '<div class="cv2-macros cv2-num"><span>P <b>' + int(m.p) + '</b> g</span><span>C <b>' + int(m.c) + '</b> g</span><span>F <b>' + int(m.f) + '</b> g</span></div>' +
         '<details class="cv2-ing"><summary>Ingredients' + (how ? ' &amp; method' : '') + '</summary><p>' + esc(m.desc || '') + '</p>' + how + '</details>' +
         actions + '</div>';
     }).join('');
@@ -12122,11 +12292,11 @@ window.CV2_DEFAULT = 'v2';
       '<button type="button" class="cv2-icon-btn" aria-label="Next week" ' + (nextOk ? 'onclick="cv2NutriWeek(1)"' : 'disabled') + '>' + I('chev') + '</button></div>' +
       '<div class="cv2-days" role="group" aria-label="Day">' + days + '</div>' +
       (week !== cal ? '<p class="cv2-p cv2-unlock" style="margin:-4px 2px 0">Phase ' + (call(function () { return getPhaseForWeek(cal); }) || '') + ' meals open when that phase is unlocked, so this week uses your Week ' + week + ' plan.</p>' : '') +
-      '<div class="cv2-card"><div class="cv2-eyebrow">' + I('target') + esc(dayLabel) + (kind ? ' · ' + kind : '') + '</div>' +
-      (logged ? '<p class="cv2-p" style="margin:0 0 12px">' + logged + ' of ' + planned + ' planned meals logged.</p>' : '<p class="cv2-p" style="margin:0 0 12px">No meals logged for this day yet. Targets are set by ' + esc(COACH) + '.</p>') +
-      '<div class="cv2-bars">' + bar('kcal', 'Calories', a.cal, +targ.cal, 'kcal') + bar('p', 'Protein', a.p, +targ.p, 'g') +
-      '<div class="cv2-twocol">' + bar('c', 'Carbs', a.c, +targ.c, 'g') + bar('f', 'Fat', a.f, +targ.f, 'g') + '</div></div>' +
-      '<div class="cv2-foot"><small>Bar = logged · right number = ' + esc(COACH) + '\'s daily target</small></div></div>' +
+      '<div class="cv2-card">' + cardHead('food', 'food', esc(dayLabel) + (kind ? ' <small>' + kind + '</small>' : ''), '<small>' + logged + '/' + planned + ' meals</small>') +
+      kcalFigure(a.cal, +targ.cal, logged) +
+      '<div class="cv2-mtiles">' + macroTile('Protein', a.p, +targ.p, logged) + macroTile('Carbs', a.c, +targ.c, logged) + macroTile('Fat', a.f, +targ.f, logged) + '</div>' +
+      '<p class="cv2-note">Targets set by ' + esc(COACH) + ' · bars fill as you log</p></div>' +
+      secLabel('Meals') +
       '<div class="cv2-meals">' + (mealRows || '<div class="cv2-card"><div class="cv2-empty">' + I('info') + '<span>No meals are planned for this day.</span></div></div>') + '</div>' +
       aboutPlan(phase) +
       '<p class="cv2-p" style="font-size:12px;text-align:center">Meals you tick on another phone don\'t appear here yet.</p>';
@@ -12363,7 +12533,7 @@ window.CV2_DEFAULT = 'v2';
     box.innerHTML =
       '<div class="cv2-pagehead"><h2 class="section-title">Lifestyle &amp; recovery</h2></div>' +
       '<p class="cv2-p" style="margin-top:-6px">The habits in your plan, and ' + esc(COACH) + '\'s guidance on recovery.</p>' +
-      '<div class="cv2-card"><div class="cv2-eyebrow">' + I('cal') + 'This week\'s habits</div>' +
+      '<div class="cv2-card">' + cardHead('cal', 'food', 'This week\'s habits') +
       habit('train', 'Training sessions', (sched || '—') + ' a week', 'This week: <b class="cv2-num">' + fin + '</b> done') +
       habit('food', 'Follow your meal plan', 'log meals daily', 'This week: meals logged on <b class="cv2-num">' + mealDays + ' of ' + elapsed + '</b> days') +
       habit('run', 'Rest-day walk', '20–30 min, optional', 'Not tracked in the app', '<button type="button" class="cv2-link" onclick="cv2Go(\'cardio\')">Plan' + I('chev') + '</button>') +
