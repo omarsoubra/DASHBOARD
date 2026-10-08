@@ -82,8 +82,8 @@ const isKnownActiveRosterKey = async () => ROSTER_ACTIVE;
 // is under test is purely WHETHER the write is permitted to happen.
 let DID_WRITE = [];
 const doWrite = async (kind, body, silent) => { DID_WRITE.push(kind + ':' + body.client); return silent ? { weight_id: 'w1', checkin_id: 'k1' } : ok({ tab: kind }); };
-let QUEUED = [];
-const queueInsert = async (kind) => { QUEUED.push(kind); return { id: 'q1' }; };
+let QUEUED = [], QUEUED_BODIES = [];
+const queueInsert = async (kind, body) => { QUEUED.push(kind); QUEUED_BODIES.push(body); return { id: 'q1' }; };
 
 const M = {};
 new Function('admin','ok','err','json','logEfError','verifyClientToken','verifyCoachToken','isKnownActiveRosterKey','doWrite','queueInsert','exports',
@@ -192,18 +192,31 @@ const denied = (r) => r.ok === false && ['forbidden_tier', 'provisioning_incompl
   t('coach reads program of a denied client', B(await M.clientProgram({ coachToken: 'k', storageKey: KEY })).ok === true);
   t('coach reads overrides of a denied client', B(await M.overrideGet({ coachToken: 'k', storageKey: KEY })).ok === true);
 
-  console.log('\n[A8] LEGACY QUARANTINE PATH — canonical mirror is gated too');
+  console.log('\n[A8] UNAUTHENTICATED WRITES — quarantine only, never canonical');
   // Legacy Apps Script callers identify with `client`, not `storageKey`, and
-  // carry no valid token — that is exactly the shape this path exists for.
+  // carry no valid token. Naming a client is not identity: the attempt may be
+  // queued for coach review, but nothing is written to the client's real data.
   DID_WRITE = []; QUEUED = []; AUTH_OK = false; ROSTER_ACTIVE = true;
   await M.clientWrite('weight', { token: 'bad', client: KEY, weightKg: 80 });
   t('attempt is quarantined in the queue', QUEUED.length === 1);
-  t('canonical mirror BLOCKED for an unentitled key', DID_WRITE.length === 0);
+  t('no canonical write for an unentitled key', DID_WRITE.length === 0);
   DID_WRITE = []; QUEUED = [];
-  await M.clientWrite('weight', { token: 'bad', client: 'legacy_one', weightKg: 80 });
-  t('attempt is quarantined in the queue', QUEUED.length === 1);
-  t('canonical mirror still works for an entitled legacy key', DID_WRITE.length === 1);
-  AUTH_OK = true; ROSTER_ACTIVE = false;
+  for (const k of ['weight', 'checkin']) {
+    const r = B(await M.clientWrite(k, { token: 'bad', client: 'legacy_one', weightKg: 80, week: 1 }));
+    t(`${k}: refused with the token error`, r.ok === false && r.error === 'bad_token');
+  }
+  t('both attempts quarantined', QUEUED.length === 2);
+  t('NO canonical write even for an entitled, active client', DID_WRITE.length === 0);
+  t('the presented token is not stored with the attempt', QUEUED_BODIES.every(b => !('token' in b)));
+  t('no queue row is marked promoted', !(DB.legacy_intake_queue || []).length);
+  DID_WRITE = []; QUEUED = [];
+  for (const k of ['meal', 'workout', 'workoutCorrect', 'photoUpload'])
+    await M.clientWrite(k, { token: 'bad', client: 'legacy_one' });
+  t('meal/workout/photo attempts: not queued, not written', QUEUED.length === 0 && DID_WRITE.length === 0);
+  ROSTER_ACTIVE = false;
+  await M.clientWrite('checkin', { token: 'bad', client: 'legacy_one', week: 1 });
+  t('inactive roster key: not queued, not written', QUEUED.length === 0 && DID_WRITE.length === 0);
+  AUTH_OK = true;
 
   console.log('\n[A9] WRITE MAP COMPLETENESS');
   t('every dispatched client write kind is mapped',

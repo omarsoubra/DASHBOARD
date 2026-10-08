@@ -1417,13 +1417,19 @@ async function clientRestoreGet(clientKey: string) {
   });
 }
 
-// Client writes (weight/checkin/meal/workout/photoUpload) with FULL Sprint 6.3
-// legacy allow-list parity. If token is valid → write direct. If token missing
-// but client is a known active roster entry → capture to legacy_intake_queue
-// AND auto-promote (same behavior as v5-secure Sprint 6.3).
+// Client writes (weight/checkin/meal/workout/photoUpload). Identity comes ONLY
+// from a verified client token: a valid token writes to the canonical tables
+// for the token's own key, behind the entitlement gate.
+//
+// An UNAUTHENTICATED write never reaches a canonical table (security,
+// 2026-10-08). The old Sprint 6.3 path auto-promoted a token-less check-in or
+// weigh-in into real client data whenever the caller merely NAMED an active
+// client in body.client, so anyone could write as any client. Such an attempt
+// is now only kept as a PENDING legacy_intake_queue row for the coach to review
+// (legacyQueuePromote / legacyQueueReject). The named client is a label on that
+// row, never an identity, and the presented token is not stored.
 async function clientWrite(kind: string, body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
-  const storageKey = String((v.ok ? body.storageKey : body?.client) ?? '').toLowerCase();
 
   if (v.ok) {
     // ENTITLEMENT GATE. A valid token proves identity, not entitlement. A
@@ -1435,23 +1441,11 @@ async function clientWrite(kind: string, body: any) {
     if (!gate.ok) return capabilityDenied(gate.reason);
     return doWrite(kind, { ...body, client: v.storageKey! });
   }
-  // Legacy quarantine path — write to queue AND (if known-active) mirror to canonical table.
-  const active = await isKnownActiveRosterKey(storageKey);
-  if (['checkin','weight'].includes(kind) && active) {
-    const queueRow = await queueInsert(kind, body, v.reason ?? 'unauthorized');
-    // The queue row records an ATTEMPT and is written regardless — that is the
-    // whole point of a quarantine. The canonical mirror is real client data and
-    // is therefore held to the same capability gate as an authenticated write.
-    const qGate = await requireCapability(storageKey, CLIENT_WRITE_CAPABILITY[kind]);
-    if (!qGate.ok) return err(v.reason ?? 'unauthorized');
-    const canonical = await doWrite(kind, { ...body, client: storageKey }, /*silent=*/true);
-    // Mark queue row as promoted
-    await admin.from('legacy_intake_queue').update({
-      status: 'promoted', promoted_at: new Date().toISOString(),
-      promoted_by: 'canary:auto',
-      promoted_to_checkin_id: canonical.checkin_id ?? null,
-      promoted_to_weight_id:  canonical.weight_id  ?? null,
-    }).eq('id', queueRow.id);
+  // Quarantine only: record the attempt for coach review, write nothing canonical.
+  const claimed = String(body?.client ?? '').toLowerCase();
+  if (['checkin','weight'].includes(kind) && await isKnownActiveRosterKey(claimed)) {
+    const { token: _notStored, ...attempt } = body ?? {};
+    await queueInsert(kind, attempt, v.reason ?? 'unauthorized');
   }
   return err(v.reason ?? 'unauthorized'); // same opaque response as Apps Script (mode:no-cors clients don't read it)
 }
