@@ -4,6 +4,6 @@
 // "Publishable key".
 window.LI_AUTH_CONFIG = {
   supabaseUrl: 'https://cwrrxieahrcustjvpqsk.supabase.co',
-  anonKey: 'PUBLISHABLE_KEY_SET_AT_DEPLOY',
+  anonKey: 'sb_publishable_K59kG7431SGi8J3BP3SjBw_zHzuJ-JE',   // Supabase publishable key: browser-safe by design
   apiUrl: 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api',
 };
