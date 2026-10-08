@@ -11657,10 +11657,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
 //   • every action button calls an existing function (openDetail,
 //     openAttentionReview, openCheckInReview, openClientForm, loadAll, logout,
 //     toggleNotifications, emailDigestNow);
-//   • inert unless switched on: ?ui=v2 turns it on and remembers it on this
-//     device, ?ui=classic turns it off again. The classic layout is the default.
+//   • on by default (Omar 2026-10-08: an iPhone Home Screen app has its own
+//     storage, so an opt-in never reached it). ?ui=classic turns it off and
+//     remembers that on this device; ?ui=v2 turns it back on.
 (function () {
-  var PREF_KEY = 'coach_ui_layout';          // 'v2' | absent (classic)
+  var PREF_KEY = 'coach_ui_layout';          // 'classic' = this device chose classic; 'v2' | absent = V2
   var SIDE_KEY = 'coach_ui_v2_sidebar';      // 'collapsed' | 'expanded' | absent (auto)
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
@@ -11668,8 +11669,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
   var param = null;
   try { param = new URLSearchParams(location.search).get('ui'); } catch (e) {}
   if (param === 'v2') lsSet(PREF_KEY, 'v2');
-  else if (param === 'classic' || param === 'v1') lsSet(PREF_KEY, null);
-  var enabled = param === 'v2' || (param !== 'classic' && param !== 'v1' && lsGet(PREF_KEY) === 'v2');
+  else if (param === 'classic' || param === 'v1') lsSet(PREF_KEY, 'classic');
+  var enabled = param === 'v2' || (param !== 'classic' && param !== 'v1' && lsGet(PREF_KEY) !== 'classic');
 
   var UIV2 = window.UIV2 = { enabled: enabled, route: null };
   if (!enabled) return;                       // classic layout: nothing below runs
