@@ -61,7 +61,7 @@ function wcCheck(r) {
 // ── strict stand-in ────────────────────────────────────────────────────────
 let DB, seq, FAIL_READ;
 function reset() {
-  DB = { clients: [], client_sessions: [], client_entitlements: [], products: [], workout_completions: [], workout_log_entries: [], client_device_tokens: [] };
+  DB = { clients: [], client_sessions: [], client_entitlements: [], products: [], workout_completions: [], workout_log_entries: [] };
   seq = 0; FAIL_READ = null;
 }
 const norm = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v) ? Date.parse(v) : v);

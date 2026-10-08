@@ -223,10 +223,6 @@ const denied = (r) => r.ok === false && ['forbidden_tier', 'provisioning_incompl
     intakeSubmit:    'public pre-client form; allow-listed insert into the intakes queue only',
     intake:          'legacy alias of intakeSubmit',
     ping:            'liveness probe, no auth, no data',
-    accountInviteInspect: 'single-use coach-issued link; first name + expiry only',
-    accountClaim:         'single-use coach-issued link; sets that client\'s own login, returns no data',
-    accountSession:       'verified Supabase session -> device key for its OWN client; no data returned',
-    accountSignOut:       'revokes the presented device key only',
   };
   const dispatch = [...SRC.matchAll(/case '(\w+)':\s*return (?:(\w+)\(|clientWrite\('(\w+)')/g)]
     .map(m => ({ action: m[1], handler: m[2] || 'clientWrite' }));
