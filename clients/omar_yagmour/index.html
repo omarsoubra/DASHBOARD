@@ -2553,6 +2553,787 @@ body.tv2-sub-open .fab{display:none!important;}
 .tv2-cta-top{margin-top:.9rem;margin-bottom:.4rem;}
 .tv2-phases-top{margin-top:.9rem;padding-right:0;}
 </style>
+
+<!-- CV2:CSS:BEGIN -->
+<style id="cv2-css">
+/* ==========================================================================
+   CLIENT UI V2 — LOCKED IN client experience
+   Scoped to body.cv2. When the layer is off (classic), none of this applies.
+   Extends the Training V2 palette so Train, Home, Nutrition, Progress and Coach
+   read as one product: warm off-white canvas, white cards, charcoal type, one
+   controlled orange for primary actions and selected states, green only for
+   "done". Light only, like Training V2.
+   ========================================================================== */
+body.cv2{
+  --c-bg:#faf9f6; --c-surface:#ffffff; --c-surface2:#f4f2ee; --c-sunk:#efece6;
+  --c-line:#e8e3db; --c-line2:#d9d2c7;
+  --c-text:#16181c; --c-muted:#5d636b; --c-dim:#8a8d93;
+  --c-accent:#e8542e; --c-accent-hi:#ff5c33; --c-ink:#b23d17; --c-tint:#fff3ed; --c-edge:#fbd5c5;
+  --c-ok:#0f7a48; --c-ok-tint:#edf6f1; --c-ok-edge:#cfe6da;
+  --c-warn:#9a5b00; --c-warn-tint:#fff7e6; --c-warn-edge:#f3dcae;
+  --c-err:#b3261e; --c-err-tint:#fdeeed; --c-err-edge:#f3c9c6;
+  --c-shadow:0 1px 2px rgba(22,24,28,.04), 0 8px 20px -16px rgba(22,24,28,.22);
+  --c-r:16px; --c-r-sm:12px;
+  --c-nav-h:64px;
+  --c-nav-total:calc(var(--c-nav-h) + env(safe-area-inset-bottom,0px));
+  --c-top:env(safe-area-inset-top,0px);
+  background:var(--c-bg)!important; color:var(--c-text);
+  font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif!important;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(var(--c-nav-total) + 12px)!important;
+}
+body.cv2 *{-webkit-tap-highlight-color:transparent;}
+body.cv2 :focus-visible{outline:2px solid var(--c-accent);outline-offset:2px;border-radius:8px;}
+body.cv2 .cv2-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}
+
+/* ---- chrome the redesign replaces ------------------------------------- */
+body.cv2 .tmobile-header,
+body.cv2 #hero,
+body.cv2 nav.nav,
+body.cv2 .bottom-nav,
+body.cv2 #sunday-checkin-reminder,
+body.cv2 #sync-status-badge,
+body.cv2 #trainer-btn,
+body.cv2 .fab,
+body.cv2 #quick-fab,
+body.cv2 .home-wrap,
+body.cv2 .celebration,
+body.cv2 .confetti-layer,
+body.cv2 #cardio-jump-link,
+body.cv2 .theme-toggle{display:none!important;}
+/* trainer-only affordances never show in the client experience */
+body.cv2 a[href^="javascript:trainerLogin"],
+body.cv2 .trainer-reset-btn,
+body.cv2 .meal-edit-pencil{display:none!important;}
+
+/* ---- sections: one canvas, one gutter --------------------------------- */
+body.cv2 .section{background:var(--c-bg)!important;color:var(--c-text);
+  padding:calc(64px + var(--c-top)) 16px 24px!important;max-width:640px;margin:0 auto;}
+body.cv2 #section-training{padding-top:calc(56px + var(--c-top))!important;}
+body.cv2 .section-header{margin:6px 0 18px!important;padding:0!important;text-align:left!important;}
+body.cv2 .section-tag{display:none!important;}
+body.cv2 .section-title{font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;
+  font-size:24px!important;font-weight:800!important;letter-spacing:-.02em!important;line-height:1.2!important;
+  color:var(--c-text)!important;-webkit-text-fill-color:currentColor!important;background:none!important;
+  text-transform:none!important;margin:0 0 6px!important;}
+body.cv2 .section-desc{font-size:14px!important;line-height:1.55!important;color:var(--c-muted)!important;max-width:none!important;}
+
+/* generic card + control refinement for the classic sections we keep */
+body.cv2 .info-card,
+body.cv2 .tracker-card,
+body.cv2 .checkin-item,
+body.cv2 .shop-cat,
+body.cv2 .meal-card,
+body.cv2 .tmeal,
+body.cv2 .lifestyle-card,
+body.cv2 .cardio-card{background:var(--c-surface)!important;border:1px solid var(--c-line)!important;
+  border-radius:var(--c-r)!important;box-shadow:var(--c-shadow)!important;color:var(--c-text)!important;
+  background-image:none!important;}
+body.cv2 .section *{text-shadow:none!important;}
+body.cv2 .section [style*="linear-gradient"]{background-image:none!important;}
+body.cv2 .phase-tab,
+body.cv2 .shop-pill,
+body.cv2 .day-tab{background:var(--c-surface)!important;border:1px solid var(--c-line2)!important;
+  color:var(--c-muted)!important;border-radius:999px!important;box-shadow:none!important;
+  font-family:inherit!important;font-weight:700!important;letter-spacing:0!important;min-height:40px;}
+body.cv2 .phase-tab.active,
+body.cv2 .shop-pill.active,
+body.cv2 .day-tab.active{background:var(--c-text)!important;border-color:var(--c-text)!important;color:#fff!important;}
+body.cv2 .save-btn{background:var(--c-accent)!important;color:#fff!important;border:0!important;
+  border-radius:var(--c-r-sm)!important;font-family:inherit!important;font-weight:800!important;
+  letter-spacing:0!important;text-transform:none!important;font-size:15px!important;min-height:52px;
+  box-shadow:none!important;background-image:none!important;}
+body.cv2 .save-btn:disabled{opacity:.55;}
+body.cv2 .tracker-input,
+body.cv2 #input-notes,
+body.cv2 .section input[type="text"],
+body.cv2 .section input[type="number"],
+body.cv2 .section textarea{background:var(--c-surface)!important;border:1px solid var(--c-line2)!important;
+  color:var(--c-text)!important;border-radius:var(--c-r-sm)!important;font-family:inherit!important;font-size:16px!important;}
+body.cv2 .tracker-label,
+body.cv2 .checkin-history-title{font-family:inherit!important;letter-spacing:0!important;text-transform:none!important;
+  font-weight:700!important;color:var(--c-text)!important;font-size:14px!important;}
+body.cv2 .tracker-unit{color:var(--c-dim)!important;}
+body.cv2 .progress-bar-bg{background:var(--c-sunk)!important;border-radius:99px!important;height:8px!important;}
+body.cv2 .progress-bar{background:var(--c-accent)!important;border-radius:99px!important;box-shadow:none!important;}
+
+/* ---- top bar ------------------------------------------------------------ */
+#cv2-top{display:none;}
+body.cv2 #cv2-top{display:flex;position:fixed;left:0;right:0;top:0;z-index:240;
+  align-items:center;gap:10px;padding:calc(10px + var(--c-top)) 16px 10px;
+  background:rgba(250,249,246,.94);-webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid transparent;transition:border-color .2s;}
+body.cv2 #cv2-top.scrolled{border-bottom-color:var(--c-line);}
+#cv2-top .t{flex:1 1 auto;min-width:0;font-size:17px;font-weight:800;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#cv2-top .brand{display:flex;align-items:center;gap:8px;}
+#cv2-top .brand img{width:26px;height:26px;border-radius:7px;display:block;}
+.cv2-av{flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:var(--c-text);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;letter-spacing:.02em;
+  border:0;cursor:pointer;overflow:hidden;padding:0;}
+.cv2-av img{width:100%;height:100%;object-fit:cover;}
+
+/* connection status pill */
+.cv2-conn{display:none;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;
+  font-size:12px;font-weight:700;border:1px solid var(--c-line);background:var(--c-surface);color:var(--c-muted);
+  cursor:pointer;white-space:nowrap;min-height:32px;}
+.cv2-conn.show{display:inline-flex;}
+.cv2-conn .d{width:7px;height:7px;border-radius:50%;background:currentColor;}
+.cv2-conn.pending{color:var(--c-muted);}
+.cv2-conn.err{color:var(--c-err);border-color:var(--c-err-edge);background:var(--c-err-tint);}
+.cv2-conn.warn{color:var(--c-warn);border-color:var(--c-warn-edge);background:var(--c-warn-tint);}
+
+/* ---- bottom navigation -------------------------------------------------- */
+#cv2-nav{display:none;}
+body.cv2 #cv2-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:245;
+  height:var(--c-nav-total);padding:0 4px env(safe-area-inset-bottom,0px);
+  background:rgba(255,255,255,.97);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border-top:1px solid var(--c-line);}
+#cv2-nav button{appearance:none;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;color:var(--c-dim);font:inherit;font-size:11px;font-weight:700;cursor:pointer;
+  min-height:48px;padding:6px 0;position:relative;}
+#cv2-nav button svg{width:23px;height:23px;}
+#cv2-nav button[aria-current="page"]{color:var(--c-accent);}
+#cv2-nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:2px;
+  border-radius:0 0 2px 2px;background:var(--c-accent);}
+#cv2-nav .badge{position:absolute;top:8px;left:calc(50% + 7px);width:8px;height:8px;border-radius:50%;
+  background:var(--c-accent);box-shadow:0 0 0 2px #fff;}
+
+/* ---- toast (replaces #sync-indicator placement) ------------------------- */
+body.cv2 #sync-indicator{display:none!important;}
+#cv2-toast{display:none;}
+body.cv2 #cv2-toast{display:flex;position:fixed;left:16px;right:16px;bottom:calc(var(--c-nav-total) + 12px);z-index:330;
+  max-width:480px;margin:0 auto;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;
+  background:var(--c-text);color:#fff;font-size:14px;font-weight:600;line-height:1.35;
+  box-shadow:0 12px 30px -12px rgba(22,24,28,.5);transform:translateY(16px);opacity:0;pointer-events:none;
+  transition:opacity .2s, transform .2s;}
+body.cv2 #cv2-toast.show{opacity:1;transform:none;pointer-events:auto;}
+#cv2-toast .m{flex:1 1 auto;min-width:0;}
+#cv2-toast button{flex:0 0 auto;border:0;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-weight:800;
+  font-size:13px;padding:8px 12px;border-radius:10px;cursor:pointer;min-height:36px;}
+#cv2-toast.err{background:#3a1512;}
+#cv2-toast.ok .ic{color:#7fd9a8;}
+
+/* ---- sheet (More menu, confirmations) ----------------------------------- */
+#cv2-sheet{position:fixed;inset:0;z-index:1000;display:none;}
+#cv2-sheet.open{display:block;}
+#cv2-sheet .scrim{position:absolute;inset:0;background:rgba(22,24,28,.38);}
+#cv2-sheet .panel{position:absolute;left:0;right:0;bottom:0;max-height:86vh;overflow-y:auto;background:var(--c-surface);
+  border-radius:20px 20px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -18px 40px -24px rgba(22,24,28,.4);max-width:640px;margin:0 auto;}
+#cv2-sheet .grip{width:36px;height:4px;border-radius:2px;background:var(--c-line2);margin:4px auto 14px;}
+#cv2-sheet h3{font-size:18px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em;}
+#cv2-sheet .sub{font-size:13px;color:var(--c-muted);margin:0 0 14px;}
+
+/* ---- primitives --------------------------------------------------------- */
+.cv2-page{display:flex;flex-direction:column;gap:14px;}
+.cv2-card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:var(--c-r);box-shadow:var(--c-shadow);
+  padding:16px;}
+.cv2-card.flat{box-shadow:none;}
+.cv2-eyebrow{font-size:12px;font-weight:700;color:var(--c-muted);letter-spacing:.01em;margin:0 0 6px;
+  display:flex;align-items:center;gap:6px;}
+.cv2-eyebrow svg{width:15px;height:15px;}
+.cv2-h{font-size:20px;font-weight:800;letter-spacing:-.015em;line-height:1.25;margin:0;}
+.cv2-display{font-family:'Bebas Neue','Plus Jakarta Sans',sans-serif;font-weight:400;letter-spacing:.01em;line-height:1;}
+.cv2-p{font-size:14px;line-height:1.55;color:var(--c-muted);margin:6px 0 0;}
+.cv2-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--c-muted);margin-top:8px;}
+.cv2-meta span{display:inline-flex;align-items:center;gap:5px;}
+.cv2-meta svg{width:15px;height:15px;color:var(--c-dim);}
+.cv2-sechead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:10px 2px -2px;}
+.cv2-sechead h2{font-size:16px;font-weight:800;margin:0;letter-spacing:-.01em;}
+.cv2-link{appearance:none;border:0;background:none;color:var(--c-ink);font:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;padding:8px 0;min-height:36px;display:inline-flex;align-items:center;gap:4px;}
+.cv2-link svg{width:15px;height:15px;}
+.cv2-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--c-r-sm);
+  font:inherit;font-size:15px;font-weight:800;min-height:48px;padding:0 18px;cursor:pointer;border:1px solid transparent;
+  text-decoration:none;}
+.cv2-btn svg{width:18px;height:18px;}
+.cv2-btn.primary{background:var(--c-accent);color:#fff;}
+.cv2-btn.primary:active{background:var(--c-ink);}
+.cv2-btn.secondary{background:var(--c-surface);color:var(--c-text);border-color:var(--c-line2);}
+.cv2-btn.secondary:active{background:var(--c-surface2);}
+.cv2-btn.ghost{background:transparent;color:var(--c-ink);padding:0 10px;}
+.cv2-btn.block{width:100%;}
+.cv2-btn[disabled]{opacity:.5;cursor:default;}
+.cv2-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;border-radius:999px;padding:4px 9px;
+  background:var(--c-surface2);color:var(--c-muted);border:1px solid var(--c-line);white-space:nowrap;}
+.cv2-chip.ok{background:var(--c-ok-tint);color:var(--c-ok);border-color:var(--c-ok-edge);}
+.cv2-chip.warn{background:var(--c-warn-tint);color:var(--c-warn);border-color:var(--c-warn-edge);}
+.cv2-chip.accent{background:var(--c-tint);color:var(--c-ink);border-color:var(--c-edge);}
+.cv2-chip svg{width:13px;height:13px;}
+.cv2-empty{font-size:14px;color:var(--c-muted);line-height:1.5;display:flex;gap:10px;align-items:flex-start;}
+.cv2-empty svg{flex:0 0 auto;width:20px;height:20px;color:var(--c-dim);margin-top:1px;}
+.cv2-divider{height:1px;background:var(--c-line);margin:14px 0;}
+.cv2-demo{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-warn);}
+
+/* list rows (More menu, coach links) */
+.cv2-rows{display:flex;flex-direction:column;}
+.cv2-row{appearance:none;width:100%;display:flex;align-items:center;gap:12px;border:0;background:none;text-align:left;
+  font:inherit;color:var(--c-text);padding:13px 2px;border-bottom:1px solid var(--c-line);cursor:pointer;min-height:56px;}
+.cv2-row:last-child{border-bottom:0;}
+.cv2-row .ic{flex:0 0 auto;width:36px;height:36px;border-radius:10px;background:var(--c-surface2);color:var(--c-text);
+  display:inline-flex;align-items:center;justify-content:center;}
+.cv2-row .ic svg{width:19px;height:19px;}
+.cv2-row .tx{flex:1 1 auto;min-width:0;}
+.cv2-row .tx b{display:block;font-size:15px;font-weight:700;}
+.cv2-row .tx small{display:block;font-size:12.5px;color:var(--c-muted);margin-top:2px;line-height:1.4;}
+.cv2-row .chev{flex:0 0 auto;color:var(--c-dim);width:18px;height:18px;}
+
+/* ---- home --------------------------------------------------------------- */
+#section-cv2home,#section-cv2coach{display:none;}
+body.cv2 #section-cv2home.active,body.cv2 #section-cv2coach.active{display:block;}
+.cv2-hello{display:flex;align-items:center;gap:12px;margin:2px 2px 4px;}
+.cv2-hello .tx{flex:1 1 auto;min-width:0;}
+.cv2-hello h1{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:0;
+  color:var(--c-text);-webkit-text-fill-color:currentColor;font-family:inherit;}
+.cv2-hello .sub{font-size:13.5px;color:var(--c-muted);margin-top:3px;}
+.cv2-hello .cv2-av{width:44px;height:44px;font-size:15px;}
+
+/* check-in strip */
+.cv2-checkin{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+.cv2-checkin .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:var(--c-surface2);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--c-text);}
+.cv2-checkin .ic svg{width:20px;height:20px;}
+.cv2-checkin .tx{flex:1 1 auto;min-width:0;}
+.cv2-checkin .tx b{display:block;font-size:14.5px;font-weight:800;}
+.cv2-checkin .tx small{display:block;font-size:12.5px;color:var(--c-muted);margin-top:2px;}
+.cv2-checkin .cv2-btn{min-height:40px;font-size:13.5px;padding:0 12px;}
+.cv2-checkin.overdue{border-color:var(--c-warn-edge);background:var(--c-warn-tint);}
+.cv2-checkin.overdue .ic{background:#fff;color:var(--c-warn);}
+.cv2-checkin.done .ic{background:var(--c-ok-tint);color:var(--c-ok);}
+
+/* today's training */
+.cv2-today{padding:18px;}
+.cv2-today .cv2-h{font-size:22px;}
+.cv2-today .focus{font-size:14px;color:var(--c-muted);margin-top:4px;}
+.cv2-today .cv2-btn{margin-top:16px;}
+.cv2-today .note{margin-top:14px;padding:12px;border-radius:12px;background:var(--c-surface2);font-size:13.5px;line-height:1.5;color:var(--c-text);}
+.cv2-today .note b{display:block;font-size:12px;color:var(--c-muted);margin-bottom:3px;}
+.cv2-today .done-row{display:flex;align-items:center;gap:8px;margin-top:14px;color:var(--c-ok);font-size:14px;font-weight:700;}
+.cv2-today .done-row svg{width:18px;height:18px;}
+
+/* quick actions */
+.cv2-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cv2-quick button{appearance:none;border:1px solid var(--c-line);background:var(--c-surface);border-radius:14px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;font:inherit;color:var(--c-text);
+  cursor:pointer;min-height:76px;text-align:left;}
+.cv2-quick button svg{width:20px;height:20px;color:var(--c-accent);}
+.cv2-quick button span{font-size:13px;font-weight:700;line-height:1.25;}
+.cv2-quick button:active{background:var(--c-surface2);}
+
+/* macro bars */
+.cv2-bars{display:flex;flex-direction:column;gap:12px;margin-top:4px;}
+.cv2-bar .l{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13.5px;}
+.cv2-bar .l b{font-weight:700;}
+.cv2-bar .l span{color:var(--c-muted);font-variant-numeric:tabular-nums;}
+.cv2-bar .l span strong{color:var(--c-text);font-weight:800;}
+.cv2-bar .track{height:8px;border-radius:99px;background:var(--c-sunk);margin-top:6px;overflow:hidden;}
+.cv2-bar .fill{height:100%;border-radius:99px;background:var(--c-text);width:0;transition:width .5s cubic-bezier(.22,1,.36,1);}
+.cv2-bar.kcal .fill{background:var(--c-accent);}
+.cv2-bar.over .fill{background:var(--c-warn);}
+.cv2-bars.small .cv2-bar .track{height:6px;}
+.cv2-twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.cv2-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.cv2-foot small{font-size:12px;color:var(--c-dim);}
+
+/* week at a glance */
+.cv2-week{display:grid;grid-template-columns:repeat(3,1fr);gap:0;}
+.cv2-week > div{padding:2px 10px;border-left:1px solid var(--c-line);}
+.cv2-week > div:first-child{border-left:0;padding-left:0;}
+.cv2-week .v{font-size:20px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+.cv2-week .v small{font-size:13px;font-weight:700;color:var(--c-dim);}
+.cv2-week .k{font-size:12px;color:var(--c-muted);margin-top:2px;line-height:1.35;}
+.cv2-dots{display:flex;gap:5px;margin-top:14px;}
+.cv2-dots i{flex:1 1 0;height:28px;border-radius:8px;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:11px;font-weight:700;color:var(--c-dim);border:1px solid transparent;}
+.cv2-dots i.t{border-color:var(--c-text);color:var(--c-text);}
+.cv2-dots i.w{background:var(--c-text);color:#fff;}
+.cv2-dots i.m{background:var(--c-ok-tint);color:var(--c-ok);}
+.cv2-dots i.w.m{background:var(--c-text);color:#fff;box-shadow:inset 0 -3px 0 var(--c-ok);}
+.cv2-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--c-muted);}
+.cv2-legend span{display:inline-flex;align-items:center;gap:5px;}
+.cv2-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+
+/* insights */
+.cv2-ins{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--c-line);}
+.cv2-ins:first-of-type{padding-top:2px;}
+.cv2-ins:last-child{border-bottom:0;padding-bottom:0;}
+.cv2-ins .ic{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--c-surface2);color:var(--c-text);
+  display:inline-flex;align-items:center;justify-content:center;}
+.cv2-ins .ic svg{width:18px;height:18px;}
+.cv2-ins.up .ic{background:var(--c-ok-tint);color:var(--c-ok);}
+.cv2-ins .tx{flex:1 1 auto;min-width:0;}
+.cv2-ins .tx b{display:block;font-size:14.5px;font-weight:800;line-height:1.35;}
+.cv2-ins .tx p{font-size:13px;color:var(--c-muted);line-height:1.5;margin:3px 0 0;}
+.cv2-ins .tx .per{font-size:11.5px;color:var(--c-dim);margin-top:4px;}
+
+/* weight chart */
+.cv2-chart{margin-top:10px;}
+.cv2-chart svg{width:100%;height:auto;display:block;overflow:visible;}
+.cv2-chart .ax{font-size:10.5px;fill:var(--c-dim);font-family:inherit;}
+.cv2-chart .grid{stroke:var(--c-line);stroke-width:1;}
+.cv2-chart .raw{fill:var(--c-line2);}
+.cv2-chart .avg{fill:none;stroke:var(--c-text);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+.cv2-chart .avgpt{fill:var(--c-surface);stroke:var(--c-text);stroke-width:2;}
+.cv2-chart .lbl{font-size:11px;font-weight:700;fill:var(--c-text);font-family:inherit;}
+
+/* coach */
+.cv2-coach-id{display:flex;align-items:center;gap:12px;}
+.cv2-coach-id .cv2-av{width:48px;height:48px;background:var(--c-accent);font-size:17px;}
+.cv2-coach-id b{display:block;font-size:17px;font-weight:800;}
+.cv2-coach-id small{display:block;font-size:13px;color:var(--c-muted);margin-top:2px;}
+.cv2-quote{font-size:14.5px;line-height:1.6;color:var(--c-text);white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;}
+.cv2-guidance{max-height:none;}
+.cv2-guidance.clamp{max-height:9.5em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent);}
+
+/* progress page header injected above the classic tracker */
+#cv2-progress-top{display:flex;flex-direction:column;gap:14px;margin-bottom:18px;}
+body.cv2 #section-tracker .tracker-grid{gap:10px!important;}
+body.cv2 #section-tracker .tracker-card{padding:14px!important;}
+body.cv2 #cv2-checkin-anchor{scroll-margin-top:calc(72px + var(--c-top));}
+.cv2-formhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 2px 12px;}
+.cv2-formhead h2{font-size:18px;font-weight:800;margin:0;}
+.cv2-unsaved{display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--c-warn);}
+.cv2-unsaved.show{display:inline-flex;}
+.cv2-unsaved i{width:7px;height:7px;border-radius:50%;background:currentColor;}
+body.cv2 #send-status{border-radius:12px!important;font-family:inherit!important;letter-spacing:0!important;font-size:14px!important;}
+
+/* nutrition page summary injected above the classic plan */
+#cv2-nutri-top{margin-bottom:16px;}
+
+@media (max-width:360px){
+  .cv2-quick button span{font-size:12px;}
+  .cv2-week .v{font-size:18px;}
+  .cv2-hello h1{font-size:22px;}
+  #cv2-nav button{font-size:10.5px;}
+}
+@media (min-width:700px){
+  body.cv2 #cv2-nav{left:50%;right:auto;width:640px;transform:translateX(-50%);border-left:1px solid var(--c-line);border-right:1px solid var(--c-line);}
+}
+@media (prefers-reduced-motion:reduce){
+  body.cv2 *{transition:none!important;animation:none!important;}
+}
+
+/* ---- coexistence with the page's own floating layers ------------------- */
+/* Modals (320), the How-to sheet (9500) and the swap sheet (9000) stay above
+   the bar and nav; the toast (330) stays above modals so a save result is seen. */
+body.cv2 #tv2-rest{bottom:var(--c-nav-total)!important;z-index:244;}
+body.cv2 .tv2-whead{top:0!important;}  /* #section-training is the sticky container (overflow-x:hidden) */
+body.cv2 .tv2-subsheet{padding-bottom:calc(var(--c-nav-total) + 10px)!important;}
+body.cv2 #tv2-sheet .panel{padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))!important;}
+/* install prompts (created inline by the page) sit above the nav, not on it */
+body.cv2 > button[style*="position:fixed"][style*="bottom:60px"],
+body.cv2 > div[style*="position:fixed"][style*="bottom:14px"]{bottom:calc(var(--c-nav-total) + 12px)!important;
+  background:var(--c-text)!important;color:#fff!important;font-family:inherit!important;border-radius:12px!important;}
+body.cv2.cv2-sheet-open{overflow:hidden;}
+
+/* ---- shield the layer from the page's global element rules -------------- */
+/* The shell sets `h2,h3{font-family:Bebas!important;font-size:2rem!important}`
+   and `button.primary{background:var(--accent-grad)!important}`. */
+body.cv2 .cv2-h,body.cv2 .cv2-sechead h2,body.cv2 .cv2-formhead h2,body.cv2 #cv2-sheet h3{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;letter-spacing:-.015em!important;
+  color:var(--c-text)!important;-webkit-text-fill-color:currentColor!important;text-transform:none!important;}
+body.cv2 .cv2-h{font-size:20px!important;}
+body.cv2 .cv2-today .cv2-h{font-size:22px!important;}
+body.cv2 .cv2-sechead h2{font-size:16px!important;}
+body.cv2 .cv2-formhead h2{font-size:18px!important;}
+body.cv2 #cv2-sheet h3{font-size:18px!important;}
+body.cv2 .cv2-btn.primary{background:var(--c-accent)!important;background-image:none!important;box-shadow:none!important;color:#fff!important;border:1px solid transparent!important;}
+body.cv2 .cv2-btn.primary:active{background:var(--c-ink)!important;}
+body.cv2 .cv2-btn.secondary{background:var(--c-surface)!important;color:var(--c-text)!important;border:1px solid var(--c-line2)!important;box-shadow:none!important;}
+body.cv2 .cv2-btn{border-radius:var(--c-r-sm)!important;}
+
+/* ---- large titles: main tabs carry their own heading; the bar shows it once scrolled */
+#cv2-top.lt .t{opacity:0;transition:opacity .15s;}
+#cv2-top.lt.past .t{opacity:1;}
+body.cv2 #chart-section{display:none!important;}            /* replaced by the weekly-average chart */
+body.cv2 #section-cv2coach .section-header{margin-bottom:4px!important;}
+
+/* ---- check-in form: compact two-column grid -------------------------- */
+body.cv2 #section-tracker .tracker-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;margin-top:10px!important;}
+body.cv2 #section-tracker .tracker-card{padding:12px!important;text-align:left!important;box-shadow:none!important;}
+body.cv2 #section-tracker .tracker-label{font-size:13px!important;margin-bottom:6px!important;}
+body.cv2 #section-tracker .tracker-input{text-align:left!important;font-size:18px!important;font-weight:700!important;padding:10px 12px!important;min-height:46px;width:100%;}
+body.cv2 #section-tracker .tracker-unit{font-size:11.5px!important;margin-top:4px!important;}
+body.cv2 #input-notes{min-height:96px;padding:12px!important;line-height:1.5;}
+body.cv2 .cv2-photos{background:var(--c-surface)!important;border:1px solid var(--c-line)!important;border-radius:var(--c-r)!important;padding:14px!important;}
+body.cv2 .cv2-photos > div:first-child{font-family:inherit!important;font-size:14px!important;font-weight:800!important;letter-spacing:0!important;color:var(--c-text)!important;}
+body.cv2 .cv2-photos > div:nth-child(2){font-size:13px!important;color:var(--c-muted)!important;}
+body.cv2 [id^="photo-btn-"]{background:var(--c-surface2)!important;border:1.5px dashed var(--c-line2)!important;color:var(--c-muted)!important;
+  font-family:inherit!important;border-radius:12px!important;display:flex!important;align-items:center;justify-content:center;}
+body.cv2 [id^="photo-prompt-"]{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;}
+body.cv2 [id^="photo-prompt-"] svg{width:20px;height:20px;}
+body.cv2 [id^="photo-prompt-"] b{color:var(--c-text);font-size:13px;}
+body.cv2 #photo-upload-status{font-family:inherit!important;}
+body.cv2 .progress-label{font-family:inherit!important;letter-spacing:0!important;text-transform:none!important;font-size:13.5px!important;}
+body.cv2 #weight-lost-display{background:var(--c-surface)!important;border:1px solid var(--c-line)!important;border-radius:var(--c-r)!important;}
+body.cv2 #weight-lost-display [style*="Bebas"]{font-family:inherit!important;font-size:22px!important;font-weight:800!important;color:var(--c-text)!important;}
+.cv2-hist{display:flex;gap:12px;align-items:flex-start;background:var(--c-surface);border:1px solid var(--c-line);border-radius:14px;padding:12px 14px;margin-top:8px;}
+.cv2-hist .tx{flex:1 1 auto;min-width:0;}
+.cv2-hist b{font-size:14.5px;font-weight:800;}
+.cv2-hist small{display:block;font-size:12.5px;color:var(--c-muted);margin-top:2px;line-height:1.45;}
+.cv2-hist p{font-size:13px;color:var(--c-text);margin:6px 0 0;line-height:1.5;overflow-wrap:anywhere;}
+.cv2-hist .kg{flex:0 0 auto;font-size:16px;font-weight:800;}
+
+/* ==========================================================================
+   ONE TYPE SYSTEM — Plus Jakarta Sans everywhere in the client experience.
+   The shell mixes Bebas Neue, DM Mono and spaced uppercase labels; v2 drops
+   all three. Numbers use tabular figures instead of a monospace face.
+   ========================================================================== */
+body.cv2 *:not(svg):not(svg *){font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif!important;}
+body.cv2 [style*="DM Mono"],body.cv2 [style*="Bebas"],
+body.cv2 .tv2-wk,body.cv2 .tv2-pct,body.cv2 .tv2-sec,body.cv2 .tv2-eyebrow,body.cv2 .tv2-mono,
+body.cv2 .tday-btn,body.cv2 .shop-cat-header,body.cv2 .cardio-card-phase,body.cv2 .section-tag{
+  letter-spacing:0!important;text-transform:none!important;}
+body.cv2 .section-title{font-size:22px!important;}
+body.cv2 h1,body.cv2 h2,body.cv2 h3{letter-spacing:-.015em!important;}
+
+/* page heads */
+.cv2-pagehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 0;}
+.cv2-pagehead .section-title{margin:0!important;}
+body.cv2 .cv2-btn.sm{min-height:40px;font-size:13.5px!important;padding:0 12px;gap:6px;}
+body.cv2 .cv2-btn.sm svg{width:16px;height:16px;}
+body.cv2 .cv2-btn.ghost{background:transparent!important;color:var(--c-ink)!important;border:0!important;box-shadow:none!important;}
+.cv2-icon-btn{appearance:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--c-line2);background:var(--c-surface);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--c-text);cursor:pointer;padding:0;}
+.cv2-icon-btn svg{width:18px;height:18px;}
+.cv2-icon-btn[disabled]{opacity:.35;cursor:default;}
+.cv2-conn.ok{display:inline-flex;color:var(--c-ok);border-color:var(--c-ok-edge);background:var(--c-ok-tint);}
+.cv2-conn svg{width:13px;height:13px;}
+
+/* hide the classic bodies the new views replace (nodes stay in the DOM, so
+   the page's own scripts and modals keep working) */
+body.cv2 #section-nutrition > :not(#cv2-nutri),
+body.cv2 #section-shop > :not(#cv2-shop),
+body.cv2 #section-lifestyle > :not(#cv2-life){display:none!important;}
+body.cv2 #section-tracker #weight-lost-display,
+body.cv2 #section-tracker .progress-wrap{display:none!important;}
+
+/* segmented controls */
+.cv2-seg2{display:inline-flex;background:var(--c-sunk);border-radius:12px;padding:3px;gap:2px;}
+.cv2-seg2.wide{display:flex;}
+.cv2-seg2 button{appearance:none;flex:1 1 auto;border:0;background:transparent;font:inherit;font-size:13px;font-weight:700;color:var(--c-muted);
+  border-radius:9px;padding:0 12px;min-height:36px;cursor:pointer;white-space:nowrap;}
+.cv2-seg2 button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);box-shadow:0 1px 2px rgba(22,24,28,.12);}
+.cv2-seg2 button[disabled]{opacity:.4;cursor:default;}
+
+/* nutrition */
+.cv2-weeknav{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cv2-weeknav b{font-size:14.5px;font-weight:800;text-align:center;}
+.cv2-days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cv2-day{appearance:none;position:relative;border:1px solid var(--c-line);background:var(--c-surface);border-radius:12px;padding:7px 0 8px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;color:var(--c-muted);cursor:pointer;min-height:54px;}
+.cv2-day span{font-size:11px;font-weight:700;}
+.cv2-day b{font-size:16px;font-weight:800;color:var(--c-text);}
+.cv2-day.today{border-color:var(--c-text);}
+.cv2-day.on{background:var(--c-text);border-color:var(--c-text);color:#fff;}
+.cv2-day.on b{color:#fff;}
+.cv2-day i{position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--c-ok);}
+.cv2-day.on i{background:#7fd9a8;}
+.cv2-meals{display:flex;flex-direction:column;gap:10px;}
+.cv2-meal{background:var(--c-surface);border:1px solid var(--c-line);border-radius:var(--c-r);padding:14px;box-shadow:var(--c-shadow);}
+.cv2-meal.is-ate,.cv2-meal.is-swap{border-color:var(--c-ok-edge);}
+.cv2-meal.is-skip{opacity:.75;}
+.cv2-meal.note{box-shadow:none;background:var(--c-surface2);border-style:dashed;}
+.cv2-meal-h{display:flex;gap:10px;align-items:flex-start;}
+.cv2-meal-h .ic{flex:0 0 auto;color:var(--c-muted);}
+.cv2-meal-h .ic svg{width:18px;height:18px;}
+.cv2-meal-h .tx{flex:1 1 auto;min-width:0;}
+.cv2-meal-h .tx b{display:block;font-size:15.5px;font-weight:800;line-height:1.3;}
+.cv2-meal-h .tx small{display:block;font-size:13px;color:var(--c-muted);line-height:1.45;margin-top:2px;}
+.cv2-meal-h .when{font-size:12px!important;font-weight:700;color:var(--c-muted)!important;margin:0 0 2px!important;}
+.cv2-meal-h .kc{flex:0 0 auto;font-size:17px;font-weight:800;}
+.cv2-meal-h .kc small{font-size:11.5px;font-weight:700;color:var(--c-dim);}
+.cv2-macros{font-size:12.5px;color:var(--c-muted);margin-top:4px;}
+.cv2-ing{margin-top:10px;border-top:1px solid var(--c-line);padding-top:8px;}
+.cv2-ing summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--c-ink);list-style:none;min-height:32px;display:flex;align-items:center;}
+.cv2-ing summary::-webkit-details-marker{display:none;}
+.cv2-ing summary::after{content:"";width:7px;height:7px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg);margin-left:8px;margin-top:-3px;}
+.cv2-ing[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
+.cv2-ing p{font-size:13.5px;line-height:1.6;color:var(--c-text);margin:4px 0 0;overflow-wrap:anywhere;}
+body.cv2 .cv2-ing .tmeal-howto{margin-top:10px;background:var(--c-surface2);border-radius:12px;padding:10px 12px;}
+body.cv2 .cv2-ing .tmeal-howto summary{font-size:13px;font-weight:700;color:var(--c-text);}
+body.cv2 .cv2-ing .tmeal-howto ol{margin:8px 0 0 18px;font-size:13.5px;line-height:1.6;}
+body.cv2 .cv2-ing .howto-batch,body.cv2 .cv2-ing .howto-weigh{font-size:12.5px;color:var(--c-muted);margin-top:8px;line-height:1.5;}
+.cv2-meal-a{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;}
+.cv2-meal-a .sw{flex:1 1 100%;font-size:12.5px;color:var(--c-muted);order:3;}
+.cv2-about summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;font-weight:800;font-size:15px;min-height:28px;}
+.cv2-about summary::-webkit-details-marker{display:none;}
+.cv2-about summary span{display:inline-flex;align-items:center;gap:8px;}
+.cv2-about summary svg{width:18px;height:18px;transition:transform .2s;}
+.cv2-about[open] summary > svg{transform:rotate(90deg);}
+.cv2-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
+.cv2-table th{font-size:11.5px;font-weight:700;color:var(--c-muted);text-align:right;padding:6px 4px;border-bottom:1px solid var(--c-line);}
+.cv2-table td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--c-line);}
+.cv2-table td:first-child,.cv2-table th:first-child{text-align:left;font-weight:700;}
+.cv2-list{margin:10px 0 0 18px;padding:0;font-size:14px;line-height:1.6;color:var(--c-text);}
+.cv2-list li{margin:4px 0;}
+
+/* shopping list */
+.cv2-shopbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.cv2-shopbar select{flex:1 1 200px;min-height:42px;border:1px solid var(--c-line2);border-radius:12px;background:var(--c-surface);
+  font:inherit;font-size:14.5px;font-weight:700;color:var(--c-text);padding:0 12px;}
+.cv2-shopsum{display:flex;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:700;color:var(--c-muted);margin:-2px 2px -4px;}
+.cv2-shopcat{padding:6px 14px;}
+.cv2-shopcat h3{font-size:13px!important;font-weight:800!important;color:var(--c-muted)!important;margin:8px 0 2px!important;}
+.cv2-shopitem{display:flex;align-items:center;gap:12px;min-height:52px;border-bottom:1px solid var(--c-line);cursor:pointer;}
+.cv2-shopitem:last-child{border-bottom:0;}
+.cv2-shopitem input{position:absolute;opacity:0;width:1px;height:1px;}
+.cv2-shopitem .box{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:1.6px solid var(--c-line2);display:inline-flex;align-items:center;justify-content:center;color:transparent;background:#fff;}
+.cv2-shopitem .box svg{width:16px;height:16px;}
+.cv2-shopitem input:focus-visible + .box{outline:2px solid var(--c-accent);outline-offset:2px;}
+.cv2-shopitem.on .box{background:var(--c-text);border-color:var(--c-text);color:#fff;}
+.cv2-shopitem .nm{flex:1 1 auto;min-width:0;font-size:14.5px;line-height:1.35;}
+.cv2-shopitem .q{flex:0 0 auto;font-size:13.5px;font-weight:700;color:var(--c-muted);text-align:right;max-width:46%;}
+.cv2-shopitem.on .nm{color:var(--c-dim);text-decoration:line-through;}
+
+/* lifestyle */
+.cv2-habit{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--c-line);}
+.cv2-habit:last-of-type{border-bottom:0;}
+.cv2-habit .ic{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--c-surface2);display:inline-flex;align-items:center;justify-content:center;}
+.cv2-habit .ic svg{width:18px;height:18px;}
+.cv2-habit .tx{flex:1 1 auto;min-width:0;}
+.cv2-habit .tx b{display:block;font-size:14.5px;font-weight:800;}
+.cv2-habit .tx small{display:block;font-size:12.5px;color:var(--c-muted);}
+.cv2-habit .rs{flex:0 0 auto;text-align:right;font-size:13px;color:var(--c-muted);}
+.cv2-habit .rs b{font-size:16px;color:var(--c-text);}
+.cv2-habit .cv2-link{padding:0 0 0 4px;}
+
+/* cardio (classic markup, restyled) */
+body.cv2 .cardio-cards{display:flex!important;flex-direction:column;gap:10px;}
+body.cv2 .cardio-card{padding:14px!important;filter:none!important;pointer-events:auto!important;user-select:auto!important;}
+body.cv2 .cardio-card-phase{font-size:12px!important;color:var(--c-muted)!important;font-weight:700!important;}
+body.cv2 .cardio-card-title{font-size:16px!important;font-weight:800!important;color:var(--c-text)!important;margin:2px 0 6px!important;}
+body.cv2 .cardio-card-detail{font-size:13.5px!important;line-height:1.55!important;color:var(--c-muted)!important;}
+body.cv2 .cardio-card.cv2-locked .cardio-card-detail{opacity:.55;}
+.cv2-lockline{display:flex;gap:6px;align-items:flex-start;font-size:12.5px;color:var(--c-muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--c-line);}
+.cv2-lockline svg{flex:0 0 auto;width:15px;height:15px;margin-top:1px;}
+
+/* train (TV2 home, re-laid out) */
+.cv2-trhead{margin:4px 0 12px;}
+.cv2-trhead .section-title{margin:0 0 4px!important;}
+body.cv2 #section-training .tv2-h1{font-size:22px!important;}
+body.cv2 #section-training .tv2-h2{font-size:21px!important;letter-spacing:-.015em!important;}
+body.cv2 #section-training .tv2-eyebrow{font-size:12px!important;font-weight:700!important;color:var(--c-muted)!important;}
+body.cv2 #section-training .tv2-eyebrow::before{display:none!important;}
+body.cv2 #section-training .tv2-sec{font-size:13px!important;font-weight:800!important;color:var(--c-muted)!important;}
+body.cv2 #section-training .tv2-next{border-radius:var(--c-r)!important;box-shadow:var(--c-shadow)!important;padding:16px!important;}
+body.cv2 #section-training .tv2-cta{background:var(--c-accent)!important;box-shadow:none!important;text-transform:none!important;letter-spacing:0!important;
+  font-size:15px!important;font-weight:800!important;border-radius:var(--c-r-sm)!important;min-height:50px;background-image:none!important;}
+body.cv2 #section-training .tv2-facts{font-size:13px!important;color:var(--c-muted)!important;gap:4px 12px!important;flex-wrap:wrap;}
+body.cv2 #section-training .tv2-facts .cv2-load{flex:1 1 100%;font-size:12.5px;color:var(--c-muted);}
+.cv2-seg{display:flex!important;background:var(--c-sunk);border-radius:12px;padding:3px!important;gap:2px!important;margin:4px 0 6px!important;}
+body.cv2 .cv2-seg .tv2-pchip{flex:1 1 0;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--c-muted)!important;
+  font-size:13px!important;font-weight:700!important;min-height:36px!important;padding:0 8px!important;border-radius:9px!important;display:inline-flex;align-items:center;justify-content:center;gap:5px;}
+body.cv2 .cv2-seg .tv2-pchip svg{width:13px;height:13px;}
+body.cv2 .cv2-seg .tv2-pchip.is-active{background:var(--c-surface)!important;color:var(--c-text)!important;box-shadow:0 1px 2px rgba(22,24,28,.12)!important;}
+.cv2-unlock{font-size:12.5px!important;margin:0 2px 12px!important;}
+body.cv2 #section-training .tv2-state{font-size:12.5px!important;}
+body.cv2 #section-training .tv2-link{font-size:14.5px!important;}
+
+/* hist rows inside cards */
+.cv2-hist.flat{border:0;padding:8px 0;margin:0;border-bottom:1px solid var(--c-line);border-radius:0;}
+.cv2-hist.flat:last-of-type{border-bottom:0;}
+
+/* larger text settings: let rows wrap instead of clipping */
+@media (min-resolution:1dppx){ .cv2-meal-h .tx b,.cv2-shopitem .nm,.cv2-habit .tx b{overflow-wrap:anywhere;} }
+
+/* train: workout view under the single type system */
+body.cv2 #section-training .tv2-pchip,body.cv2 #section-training button,body.cv2 #section-training .tv2-slhead,
+body.cv2 #section-training .tv2-count,body.cv2 #section-training .tv2-rir .l{text-transform:none!important;letter-spacing:0!important;}
+body.cv2 .tv2-whead{padding-top:6px!important;margin-top:0!important;z-index:41;}
+body.cv2 #section-training{padding-top:calc(58px + var(--c-top))!important;}
+body.cv2 .tv2-up > button.tv2-up{flex-wrap:wrap!important;row-gap:2px;align-items:baseline!important;}
+body.cv2 .tv2-up .n{flex:1 1 auto!important;min-width:0!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;font-size:14.5px!important;font-weight:700!important;}
+body.cv2 .tv2-up .p{flex:1 1 100%!important;order:3;padding-left:1.6rem;white-space:normal!important;font-size:12.5px!important;color:var(--c-muted)!important;}
+body.cv2 .tv2-up .i{flex:0 0 1.6rem!important;}
+body.cv2 .tv2-pres{font-size:13.5px!important;line-height:1.5!important;color:var(--c-muted)!important;}
+body.cv2 .tv2-exname{font-size:19px!important;}
+body.cv2 .tv2-up .p{text-align:left!important;}
+body.cv2 .tv2-pres{text-transform:none!important;}
+body.cv2 .cv2-table th{text-transform:none!important;letter-spacing:0!important;background:none!important;}
+body.cv2 .cv2-table tr,body.cv2 .cv2-table td{background:none!important;}
+body.cv2 .cv2-table th,body.cv2 .cv2-table td{padding:7px 3px!important;white-space:nowrap;}
+body.cv2 .cv2-table td:first-child{white-space:normal;}
+.cv2-habit .tx small.rs{color:var(--c-text);margin-top:3px;font-size:13px;text-align:left;}
+.cv2-habit .tx small.rs b{font-size:13px;}
+.cv2-habit .tx small.rs b{display:inline!important;}
+body.cv2 .cardio-card{border-top:1px solid var(--c-line)!important;}body.cv2 .cardio-card::before{display:none!important;}
+.cv2-seg2.wide button{flex:1 1 0;min-width:0;white-space:normal;padding:4px 6px;line-height:1.2;}
+.cv2-seg2{max-width:100%;}
+.cv2-seg2 button{min-width:0;}
+.cv2-shopbar .cv2-seg2{flex:0 1 auto;}
+body.cv2.cv2-typing #cv2-nav{display:none!important;} body.cv2.cv2-typing #tv2-rest{bottom:0!important;} body.cv2.cv2-typing #cv2-toast{bottom:12px;}
+.cv2-about summary{min-height:44px!important;}
+body.cv2 .cv2-gal{display:flex!important;align-items:center;justify-content:center;gap:5px;width:100%;min-height:38px!important;margin-top:6px!important;
+  background:var(--c-surface)!important;border:1px solid var(--c-line2)!important;border-radius:10px!important;color:var(--c-text)!important;
+  font-family:inherit!important;font-size:12px!important;font-weight:700!important;letter-spacing:0!important;text-transform:none!important;padding:0 6px!important;}
+body.cv2 .cv2-gal svg{width:14px;height:14px;flex:0 0 auto;}
+
+/* ==========================================================================
+   VISUAL REFRESH (2026-10-08, Omar: "everything blends together")
+   1. Cards lift off a deeper canvas.   2. One dark hero per screen.
+   3. Numbers are the headline, text is the footnote.
+   4. Each area has its own quiet tint so sections read apart.
+   5. Section headings group the page into a rhythm.
+   ========================================================================== */
+body.cv2{
+  --c-bg:#f1eee8; --c-line:#e7e2d9; --c-surface2:#f5f3ef; --c-sunk:#ebe7e0;
+  --c-shadow:0 1px 2px rgba(22,24,28,.05), 0 8px 24px -14px rgba(22,24,28,.18);
+  --c-r:20px;
+  --t-train:#fff0e8; --i-train:#c2431b;
+  --t-food:#e7f3eb;  --i-food:#1d7446;
+  --t-prog:#e8eff9;  --i-prog:#2b5ea8;
+  --t-coach:#efebfa; --i-coach:#5a44a6;
+  --t-neutral:#f1eee8; --i-neutral:#16181c;
+}
+body.cv2 #cv2-top{background:rgba(241,238,232,.94)!important;}
+body.cv2 #section-training{--tv2-bg:var(--c-bg);}
+.cv2-page{gap:12px;}
+.cv2-card{border-color:rgba(22,24,28,.06);padding:18px;}
+.cv2-hello{margin:4px 2px 8px;}
+.cv2-hello h1{font-size:26px!important;}
+
+/* section headings */
+.cv2-seclabel{display:flex;align-items:baseline;justify-content:space-between;margin:18px 4px 0;}
+body.cv2 .cv2-seclabel h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;font-size:18px!important;font-weight:800!important;
+  letter-spacing:-.015em!important;margin:0!important;color:var(--c-text)!important;-webkit-text-fill-color:currentColor!important;}
+.cv2-seclabel small{font-size:13px;color:var(--c-muted);font-weight:600;}
+
+/* card head with a tinted icon chip */
+.cv2-head{display:flex;align-items:center;gap:10px;margin:0 0 14px;}
+.cv2-head .t{font-size:15.5px;font-weight:800;letter-spacing:-.01em;min-width:0;}
+.cv2-head .t small{font-size:12.5px;font-weight:600;color:var(--c-muted);margin-left:6px;}
+.cv2-head > small,.cv2-head > .cv2-btn{margin-left:auto;}
+.cv2-head > small{font-size:12.5px;font-weight:700;color:var(--c-muted);white-space:nowrap;}
+.cv2-tone{flex:0 0 auto;width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;}
+.cv2-tone svg{width:18px;height:18px;}
+.cv2-tone.train{background:var(--t-train);color:var(--i-train);}
+.cv2-tone.food{background:var(--t-food);color:var(--i-food);}
+.cv2-tone.prog{background:var(--t-prog);color:var(--i-prog);}
+.cv2-tone.coach{background:var(--t-coach);color:var(--i-coach);}
+.cv2-tone.neutral{background:var(--t-neutral);color:var(--i-neutral);}
+
+/* the hero: today's training */
+.cv2-hero{background:#1b1d21;color:#fff;border-radius:22px;padding:20px;box-shadow:0 14px 34px -18px rgba(22,24,28,.55);}
+.cv2-hero .lbl{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;}
+body.cv2 .cv2-hero .cv2-h{color:#fff!important;font-size:25px!important;line-height:1.2!important;}
+.cv2-hero .ok{display:inline-flex;vertical-align:middle;color:#7fd9a8;}
+.cv2-hero .ok svg{width:22px;height:22px;}
+.cv2-hero .sub{font-size:14px;line-height:1.5;color:rgba(255,255,255,.72);margin:6px 0 0;}
+.cv2-hero .sub b{color:#fff;}
+.cv2-heromet{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+.cv2-heromet span{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:rgba(255,255,255,.86);
+  background:rgba(255,255,255,.08);border-radius:999px;padding:6px 10px;}
+.cv2-heromet svg{width:14px;height:14px;opacity:.8;}
+.cv2-hero > .cv2-btn{margin-top:18px;min-height:52px;font-size:15.5px!important;}
+body.cv2 .cv2-btn.onhero{background:rgba(255,255,255,.1)!important;color:#fff!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:none!important;}
+.cv2-hero .note{margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13.5px;line-height:1.5;color:#fff;}
+.cv2-hero .note b{display:block;font-size:12px;color:rgba(255,255,255,.6);margin-bottom:3px;}
+
+/* headline figures */
+.cv2-big{margin:2px 0 0;}
+.cv2-big b{display:block;font-size:40px;font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--c-text);}
+.cv2-big b small{font-size:18px;font-weight:700;letter-spacing:0;color:var(--c-muted);}
+.cv2-big > span{display:block;font-size:13.5px;color:var(--c-muted);margin-top:6px;font-weight:600;}
+.cv2-big .cv2-chip{margin-top:10px;}
+.cv2-big.over b{color:var(--c-warn);}
+.cv2-note{font-size:12px;color:var(--c-dim);margin:12px 0 0;}
+
+/* macro tiles */
+.cv2-mtiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
+.cv2-mtiles.two{grid-template-columns:1fr 1fr;}
+.cv2-mtile{background:var(--c-surface2);border-radius:14px;padding:11px 12px 12px;min-width:0;}
+.cv2-mtile > span{display:block;font-size:12px;font-weight:700;color:var(--c-muted);}
+.cv2-mtile b{display:block;font-size:18px;font-weight:800;margin:3px 0 9px;letter-spacing:-.01em;white-space:nowrap;}
+.cv2-mtile b small{font-size:12px;font-weight:600;color:var(--c-dim);}
+.cv2-mtile i{display:block;height:5px;border-radius:99px;background:#e2ddd3;overflow:hidden;}
+.cv2-mtile i u{display:block;height:100%;border-radius:99px;background:var(--i-food);text-decoration:none;transition:width .5s cubic-bezier(.22,1,.36,1);}
+.cv2-mtile em{display:block;font-style:normal;font-size:11.5px;color:var(--c-muted);line-height:1.35;}
+.cv2-mtile.plain b{margin-bottom:4px;}
+
+/* buttons that carry their area's tint */
+body.cv2 .cv2-btn.tint{background:var(--t-food)!important;color:var(--i-food)!important;border:0!important;box-shadow:none!important;}
+body.cv2 .cv2-btn.eat{background:var(--t-food)!important;color:var(--i-food)!important;border:0!important;box-shadow:none!important;}
+body.cv2 .cv2-btn.eat:active{background:#d6ecdf!important;}
+body.cv2 .cv2-btn.ghost.muted{color:var(--c-muted)!important;}
+
+/* week stats */
+.cv2-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cv2-stat{border-radius:14px;padding:12px;min-width:0;}
+.cv2-stat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.05;}
+.cv2-stat b small{font-size:15px;font-weight:700;color:var(--c-muted);letter-spacing:0;}
+.cv2-stat span{display:block;font-size:12px;font-weight:700;margin-top:5px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cv2-stat.train{background:var(--t-train);} .cv2-stat.train b{color:var(--i-train);}
+.cv2-stat.food{background:var(--t-food);} .cv2-stat.food b{color:var(--i-food);}
+.cv2-stat.prog{background:var(--t-prog);} .cv2-stat.prog b{color:var(--i-prog);}
+.cv2-stat.ok{background:var(--t-food);} .cv2-stat.ok b{color:var(--i-food);}
+.cv2-stat.warn{background:var(--c-warn-tint);} .cv2-stat.warn b{color:var(--c-warn);}
+.cv2-dots{margin-top:14px;gap:6px;}
+.cv2-dots i{height:32px;border-radius:10px;}
+.cv2-dots i.m{background:#dcefe3;}
+.cv2-weekmsg{font-size:13.5px;color:var(--c-muted);margin:12px 0 0;line-height:1.45;}
+
+/* coach on Home: one card, coach row + check-in row */
+.cv2-coachrow{appearance:none;width:100%;display:flex;align-items:center;gap:12px;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:48px;}
+.cv2-coachrow .tx{flex:1 1 auto;min-width:0;}
+.cv2-coachrow .tx b{display:block;font-size:16px;font-weight:800;}
+.cv2-coachrow .tx small{display:block;font-size:13px;color:var(--c-muted);margin-top:1px;}
+.cv2-coachrow .chev{color:var(--c-dim);display:inline-flex;}
+.cv2-coachrow .chev svg{width:18px;height:18px;}
+body.cv2 .cv2-coachrow .cv2-av,body.cv2 .cv2-coach-id .cv2-av,body.cv2 .cv2-coachhero .cv2-av{background:var(--i-coach)!important;color:#fff;}
+.cv2-coachrow .cv2-av{width:44px;height:44px;font-size:16px;}
+.cv2-coachcard .cv2-quote{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--t-coach);}
+.cv2-coachcard .cv2-checkin{padding:0;}
+.cv2-checkin .ic{background:var(--t-prog)!important;color:var(--i-prog)!important;}
+.cv2-checkin.overdue .ic{background:#fff!important;color:var(--c-warn)!important;}
+.cv2-checkin.done .ic{background:var(--t-food)!important;color:var(--i-food)!important;}
+
+/* coach page hero */
+.cv2-coachhero{background:var(--t-coach);border:1px solid #e1d9f6;border-radius:22px;padding:18px;}
+.cv2-coachhero .cv2-av{width:56px;height:56px;font-size:20px;}
+.cv2-coachhero .cv2-coach-id b{font-size:19px;}
+.cv2-coachhero .hint{font-size:12.5px;line-height:1.5;color:#5d5672;margin:12px 2px 0;}
+body.cv2 .cv2-btn.onviolet{background:#fff!important;color:var(--i-coach)!important;border:0!important;box-shadow:0 1px 2px rgba(22,24,28,.06)!important;font-size:14px!important;}
+
+/* meals: clear name / numbers / one action */
+.cv2-meal{padding:16px;border-color:rgba(22,24,28,.06);}
+.cv2-meal.is-ate,.cv2-meal.is-swap{border-color:transparent;box-shadow:inset 4px 0 0 var(--i-food), var(--c-shadow);}
+.cv2-meal-h .tx b{font-size:16.5px;}
+.cv2-meal-h .kc{font-size:19px;}
+.cv2-macros{display:flex;gap:14px;font-size:12.5px;color:var(--c-muted);margin-top:6px;}
+.cv2-macros b{color:var(--c-text);font-weight:800;}
+.cv2-meal-a{margin-top:14px;gap:4px;}
+.cv2-meal-a .cv2-btn.eat{flex:0 0 auto;padding:0 16px;}
+.cv2-ing{border-top-color:var(--c-line);margin-top:12px;}
+
+/* progress: headline numbers inside the cards */
+#cv2-progress-top .cv2-big{margin-bottom:6px;}
+#cv2-progress-top .cv2-ins:first-of-type{padding-top:12px;}
+.cv2-ins .ic{background:var(--t-prog);color:var(--i-prog);}
+.cv2-ins.up .ic{background:var(--t-food);color:var(--i-food);}
+
+@media (max-width:360px){
+  .cv2-big b{font-size:34px;}
+  .cv2-stat b{font-size:22px;}
+  .cv2-mtile{padding:10px;}
+  .cv2-mtile b{font-size:16px;}
+}
+.cv2-head .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;}
+.cv2-head > .cv2-btn{flex:0 0 auto;white-space:nowrap;}
+/* orange is for primary actions only; in-card secondary actions stay neutral */
+.cv2-ing summary{color:var(--c-muted)!important;}
+body.cv2 .cv2-meal .cv2-btn.ghost{color:var(--c-text)!important;}
+body.cv2 .cv2-meal .cv2-btn.ghost.muted{color:var(--c-muted)!important;}
+.cv2-formhead{margin-top:22px;align-items:flex-start;}
+.cv2-formsub{font-size:13px;color:var(--c-muted);margin:3px 0 0;line-height:1.45;}
+.cv2-formsub.warn{color:var(--c-warn);font-weight:700;}
+body.cv2 .cv2-notecard{background:var(--c-surface)!important;border:1px solid rgba(22,24,28,.06)!important;border-radius:var(--c-r)!important;
+  box-shadow:var(--c-shadow)!important;padding:16px!important;}
+body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:var(--c-text)!important;letter-spacing:0!important;margin-bottom:6px!important;}
+
+</style>
+<!-- CV2:CSS:END -->
 </head>
 
 <body>
@@ -10086,6 +10867,1660 @@ function sw3Use(i) {
   }
 })();
 </script>
+
+<!-- CV2:JS:BEGIN -->
+<script id="cv2-js">
+window.CV2_DEFAULT = 'v2';
+/* ==========================================================================
+   CLIENT UI V2 — LOCKED IN client experience (pure insertion layer)
+
+   Rules this layer keeps:
+   - It never writes to the backend itself. Every save still goes through the
+     page's own functions (logMealQuick, openSwapModal, saveCheckin, TV2), so
+     payloads the coach dashboard reads are unchanged.
+   - It shows only what the page can actually read. Missing data gets an
+     empty state, never a made-up number. No "online" claims, no fake send.
+   - Opt-in: ?ui=v2 turns it on for this device, ?ui=classic turns it off.
+     window.CV2_DEFAULT = 'v2' (set before this script) makes v2 the default.
+   ========================================================================== */
+(function cv2Layer() {
+  'use strict';
+
+  /* ------------------------------------------------------------ gate ---- */
+  var MODE_KEY = 'client_ui_layout';
+  var mode = null;
+  try {
+    var u = new URLSearchParams(location.search).get('ui');
+    if (u === 'v2' || u === 'classic') localStorage.setItem(MODE_KEY, u);
+    mode = localStorage.getItem(MODE_KEY);
+  } catch (e) {}
+  mode = mode || window.CV2_DEFAULT || 'classic';
+  if (mode !== 'v2') return;
+  if (typeof CLIENT_CONFIG === 'undefined') return;
+  document.body.classList.add('cv2');
+
+  /* --------------------------------------------------------- helpers ---- */
+  var SK = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.storageKey) || 'client';
+  var COACH = (CLIENT_CONFIG.coach && CLIENT_CONFIG.coach.name) || 'Omar';
+  var COACH_WA = (CLIENT_CONFIG.coach && CLIENT_CONFIG.coach.whatsapp) || window.CV2_COACH_WHATSAPP || '';
+  var DAY_MS = 86400000;
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  function $(id) { return document.getElementById(id); }
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function ymd(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function parseYmd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+  /* Calendar-day arithmetic. Adding n×24 h breaks across daylight-saving changes
+     (Sydney moves its clocks in October and April). */
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function mondayOf(d) { var x = startOfDay(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+  function fmtD(d) { return d.getDate() + ' ' + MON[d.getMonth()]; }
+  function fmtWD(d) { return WD[d.getDay()] + ' ' + fmtD(d); }
+  function n1(x) { return (Math.round(x * 10) / 10).toFixed(1); }
+  function int(x) { return Math.round(Number(x) || 0).toLocaleString('en-AU'); }
+  function firstName() {
+    var f = (CLIENT_CONFIG.client.firstName || '').trim();
+    return f.split(/\s+/)[0] || 'there';
+  }
+  function initials(s) {
+    var p = String(s || '').trim().split(/\s+/).filter(Boolean);
+    if (!p.length) return '?';
+    return (p.length > 1 ? p[0][0] + p[1][0] : p[0][0]).toUpperCase();
+  }
+  function call(fn) { try { return fn(); } catch (e) { try { console.warn('[cv2]', e); } catch (e2) {} return undefined; } }
+
+  /* ----------------------------------------------------------- icons ---- */
+  var P = {
+    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/>',
+    train: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
+    food: '<path d="M7 3v8M4.5 3v5a2.5 2.5 0 0 0 5 0V3M7 11v10"/><path d="M17 21V3c-2.2 1.2-3.5 3.6-3.5 7v3H17"/>',
+    progress: '<path d="M3 20h18"/><path d="m4 15 5-5 4 3 7-7"/><path d="M16 6h4v4"/>',
+    coach: '<path d="M21 12a8.5 8.5 0 0 1-12.4 7.5L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14.5h4"/>',
+    clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="m9 13 2 2 4-4"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    chev: '<path d="m9 5 7 7-7 7"/>',
+    back: '<path d="m15 5-7 7 7 7"/>',
+    cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.4"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>',
+    moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+    run: '<path d="M4 12h3.5l2.5-5 4 10 2.5-5H20"/>',
+    book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+    refresh: '<path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"/><path d="M4 3.5V8h4.5"/><path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"/><path d="M20 20.5V16h-4.5"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
+    up: '<path d="M7 17 17 7M9 7h8v8"/>',
+    flat: '<path d="M5 12h14M14 7l5 5-5 5"/>',
+    scale: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0l-2.5 2.5"/>',
+    note: '<path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/>',
+    target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',
+    off: '<path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 4-2.4M19 12.9a10 10 0 0 0-2.3-1.6M2 9.4a15 15 0 0 1 4.2-2.6M22 9.4A15 15 0 0 0 11 5.6"/><path d="M12 20h.01"/>',
+    grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    play: '<path d="M8 5.5v13l10.5-6.5Z"/>',
+    swap: '<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/>',
+    lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    out: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'
+  };
+  function I(name) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (P[name] || '') + '</svg>';
+  }
+
+  /* ============================================================ DATA ==== */
+  var D = {};
+
+  /* Program week: shown only when the coach roster gave a real start date.
+     A device-local first-open date is not the client's coaching week. */
+  D.week = function () {
+    var total = (CLIENT_CONFIG.client && CLIENT_CONFIG.client.durationWeeks) || 12;
+    var canonical = (typeof CANONICAL_START !== 'undefined' && CANONICAL_START) ? CANONICAL_START : null;
+    var src = canonical || ((typeof START_DATE !== 'undefined' && START_DATE) ? START_DATE : null);
+    var wk = 1, started = true;
+    if (src) {
+      var s = parseYmd(src) || new Date(src);
+      if (!isNaN(s)) {
+        var diff = startOfDay(new Date()) - startOfDay(s);
+        started = diff >= 0;
+        wk = Math.floor(diff / (7 * DAY_MS)) + 1;
+      }
+    }
+    return { week: Math.min(Math.max(wk, 1), total), total: total, canonical: !!canonical, started: started, over: wk > total };
+  };
+  D.todayIdx = function () { return (new Date().getDay() + 6) % 7; };   // Monday = 0, like DAY_NAMES
+  D.dayType = function (i) { try { return (typeof DAY_TYPES !== 'undefined' && DAY_TYPES[i]) || ''; } catch (e) { return ''; } };
+  D.isRest = function (t) { return /^rest/i.test(t || ''); };
+
+  /* Per-occurrence training ledger written by Training V2. */
+  D.sessions = function () {
+    var raw = lsGet(SK + '_workout_sessions', {}) || {};
+    var out = [];
+    Object.keys(raw).forEach(function (k) {
+      var m = /^p(\w+)\.d(\d+)$/.exec(k);
+      (Array.isArray(raw[k]) ? raw[k] : []).forEach(function (s) {
+        if (s && typeof s === 'object') out.push({ key: k, phase: m ? m[1] : '1', day: m ? +m[2] : 0, s: s });
+      });
+    });
+    return out;
+  };
+  /* A session counts as finished when the client finished it in the app and it
+     was not undone. Abandoned or still-open sessions are not counted. */
+  D.finished = function () {
+    return D.sessions().filter(function (x) {
+      var s = x.s;
+      if (s.wc && s.wc.revoked) return false;
+      return s.status === 'complete' || (s.wc && s.wc.state !== undefined) || s.status === 'partial' && !!s.wc;
+    }).map(function (x) {
+      var s = x.s;
+      var d = (s.wc && s.wc.localDate && parseYmd(s.wc.localDate)) || (s.completedAt && new Date(s.completedAt)) || (s.startedAt && new Date(s.startedAt));
+      var label = s.wc && s.wc.snap && s.wc.snap.dayLabel;
+      if (!label) call(function () { label = phases[x.phase].days[x.day].label; });
+      var optional = (s.wc && s.wc.snap && s.wc.snap.sessionKind === 'optional') || /optional/i.test(label || '');
+      return { date: d && !isNaN(d) ? startOfDay(d) : null, phase: x.phase, day: x.day, label: label || '', optional: optional, s: s };
+    }).filter(function (x) { return !!x.date; });
+  };
+  D.openSession = function (ph, day) {
+    var list = lsGet(SK + '_workout_sessions', {})['p' + ph + '.d' + day] || [];
+    for (var i = list.length - 1; i >= 0; i--) if (list[i] && list[i].status === 'open') return list[i];
+    return null;
+  };
+  /* Mandatory app sessions per week in a phase (rest and optional days excluded). */
+  D.scheduledPerWeek = function (ph) {
+    var n = 0;
+    call(function () {
+      (phases[ph] || phases[1]).days.forEach(function (d, i) {
+        var exs = (typeof getDayExercises === 'function') ? getDayExercises(ph, i) : d.exercises;
+        if (!exs || !exs.length) return;
+        if (/optional|rest|off/i.test(d.label || '') || /optional/i.test(d.badge || '')) return;
+        n++;
+      });
+    });
+    return n;
+  };
+  D.next = function () { return call(function () { return typeof window.tv2NextSession === 'function' ? window.tv2NextSession() : null; }) || null; };
+  D.cleanLabel = function (l) { return String(l || '').replace(/^Day\s+\d+\s*[-—–:]\s*/i, '').trim(); };
+
+  /* Nutrition for today: the meal plan day the Nutrition tab would show. */
+  D.nutrition = function () {
+    var wk = D.week();
+    var week = wk.week, phase = call(function () { return getPhaseForWeek(week); }) || 1;
+    var unlocked = call(function () { return getUnlocked(); }) || [1];
+    if (phase > 1 && unlocked.indexOf(phase) < 0) {
+      var allowed = unlocked.filter(function (p) { return p < phase; });
+      var shown = allowed.length ? Math.max.apply(null, allowed) : 1;
+      week = shown * 4; phase = shown;
+    }
+    var day = D.todayIdx();
+    var meals = call(function () { return getMealDay(week, day); }) || [];
+    var t = call(function () { return getPhaseTargets(phase); }) || {};
+    var logs = call(function () { return loadMealLogs(); }) || {};
+    var a = { cal: 0, p: 0, c: 0, f: 0 }, planned = 0, logged = 0, skipped = 0, nextIdx = -1;
+    meals.forEach(function (m, i) {
+      if (!m || !m.name || !(Number(m.cal) > 0)) return;      // prep-note cards carry no calories
+      planned++;
+      var e = logs[call(function () { return _mealLogId(week, day, i); }) || ('w' + week + '.d' + day + '.m' + i)];
+      if (e && (e.status === 'ate' || e.status === 'swap')) {
+        logged++; a.cal += +e.cal || 0; a.p += +e.p || 0; a.c += +e.c || 0; a.f += +e.f || 0;
+      } else if (e && e.status === 'skip') { skipped++; }
+      else if (nextIdx < 0) nextIdx = i;
+    });
+    return { week: week, phase: phase, day: day, planned: planned, logged: logged, skipped: skipped, actual: a,
+             target: { cal: +t.cal || 0, p: +t.p || 0, c: +t.c || 0, f: +t.f || 0 }, nextIdx: nextIdx, dayType: D.dayType(day) };
+  };
+  /* Days (local dates) on which at least one meal was ticked. */
+  D.mealDays = function () {
+    var logs = call(function () { return loadMealLogs(); }) || {}, set = {};
+    Object.keys(logs).forEach(function (k) {
+      var e = logs[k];
+      if (e && e.ts && (e.status === 'ate' || e.status === 'swap')) { var d = new Date(e.ts); if (!isNaN(d)) set[ymd(d)] = 1; }
+    });
+    return set;
+  };
+
+  /* Check-ins: local + restored, normalised oldest -> newest. */
+  D.checkins = function () {
+    var arr = lsGet(SK + '_checkins', []) || [];
+    return arr.map(function (c) {
+      var t = Date.parse(c.ts || '') || Date.parse(c.date || '') || NaN;
+      return { t: t, week: c.week, kg: parseFloat(c.weight || c.weightKg), notes: c.notes };
+    }).filter(function (c) { return !isNaN(c.t); }).sort(function (a, b) { return a.t - b.t; });
+  };
+  D.lastCheckinTs = function () {
+    var v = call(function () { return typeof _lastCheckinTs === 'function' ? _lastCheckinTs() : null; });
+    if (v != null) return v;
+    var c = D.checkins(); return c.length ? c[c.length - 1].t : null;
+  };
+  /* Mirrors the page's own CHECKIN-BANNER-V2 rules (Sunday check-ins), and adds
+     the date the next one is due so the card can say it plainly. */
+  D.checkin = function () {
+    var st = call(function () { return typeof _checkinBannerState === 'function' ? _checkinBannerState() : null; }) || { kind: 'none' };
+    var last = D.lastCheckinTs();
+    var ref = last != null ? addDays(new Date(last), 6) : null;
+    if (ref == null) {
+      var ps = call(function () { return typeof _programStartTs === 'function' ? _programStartTs() : null; });
+      if (ps != null) ref = addDays(new Date(ps), 6);
+    }
+    var due = null;
+    if (ref) { due = startOfDay(ref); while (due.getDay() !== 0) due.setDate(due.getDate() + 1); }
+    var sent = lsGet(SK + '_cv2_checkin_sent', null);
+    return { kind: st.kind, overdueDays: st.days || 0, last: last, due: due, sent: sent };
+  };
+
+  /* Weights from check-ins plus the server weight log when it can be read. */
+  var _serverWeights = null, _serverWeightsAt = 0;
+  D.fetchWeights = function () {
+    if (!CLIENT_CONFIG.sheetsWebhookUrl || typeof CLIENT_TOKEN === 'undefined' || !CLIENT_TOKEN) return Promise.resolve(null);
+    if (_serverWeights && Date.now() - _serverWeightsAt < 120000) return Promise.resolve(_serverWeights);
+    return fetch(CLIENT_CONFIG.sheetsWebhookUrl, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, cache: 'no-store',
+      body: JSON.stringify({ type: 'weightLog', client: SK, storageKey: SK, token: CLIENT_TOKEN })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (Array.isArray(j)) { _serverWeights = j; _serverWeightsAt = Date.now(); }
+      return _serverWeights;
+    }).catch(function () { return null; });
+  };
+  D.weights = function () {
+    var pts = [];
+    D.checkins().forEach(function (c) { if (c.kg > 0) pts.push({ t: c.t, kg: c.kg }); });
+    (_serverWeights || []).forEach(function (w) { var t = Date.parse(w.timestamp), kg = parseFloat(w.weightKg); if (!isNaN(t) && kg > 0) pts.push({ t: t, kg: kg }); });
+    // One check-in writes the same weight twice (weight + checkin rows) and also
+    // exists locally: collapse same-day, same-value readings into one.
+    var seen = {}, out = [];
+    pts.sort(function (a, b) { return a.t - b.t; }).forEach(function (p) {
+      var k = ymd(new Date(p.t)) + '|' + n1(p.kg);
+      if (!seen[k]) { seen[k] = 1; out.push(p); }
+    });
+    return out;
+  };
+
+  /* Coach-authored text that can reach the page through the existing override
+     pull (coach dashboard writes overrides; the client already polls them).
+     Nothing in the dashboard writes these keys yet — until it does, the Coach
+     page shows honest empty states. */
+  D.coach = function () {
+    var o = call(function () { return loadOverrides(); }) || {};
+    function txt(k) { var v = o[k]; return (typeof v === 'string' && v.trim()) ? v.trim() : ''; }
+    return { focus: txt('coach.focus'), focusAt: txt('coach.focusAt'), feedback: txt('coach.feedback'),
+             feedbackAt: txt('coach.feedbackAt'), note: txt('coach.note') };
+  };
+
+  /* ===================================================== INSIGHTS ======= */
+  function parseKg(w) {
+    var s = String(w == null ? '' : w).toLowerCase();
+    if (!s || /bw|body/.test(s) && !/\+/.test(s)) return NaN;
+    var m = s.match(/(\d+(?:\.\d+)?)/);
+    if (!m) return NaN;
+    var v = parseFloat(m[1]);
+    return /lb/.test(s) ? v * 0.4536 : v;
+  }
+  function bestSet(entry) {
+    var sets = [];
+    if (entry && Array.isArray(entry.setLog)) entry.setLog.forEach(function (x) { sets.push({ w: parseKg(x.w), r: parseInt(x.r, 10) }); });
+    if (!sets.length && entry) {
+      var ws = String(entry.weight || '').split(','), r = parseInt(entry.reps, 10);
+      ws.forEach(function (w) { sets.push({ w: parseKg(w), r: r }); });
+    }
+    var best = null;
+    sets.forEach(function (x) {
+      if (!(x.w > 0) || !(x.r > 0) || x.r > 30) return;
+      var e = x.w * (1 + x.r / 30);
+      if (!best || e > best.e) best = { w: x.w, r: x.r, e: e };
+    });
+    return best;
+  }
+  var PERIOD = { weeks: 8 };
+  D.strength = function () {
+    var by = {}, since = PERIOD.weeks ? Date.now() - PERIOD.weeks * 7 * DAY_MS : 0;
+    D.sessions().forEach(function (x) {
+      var s = x.s, t = Date.parse(s.completedAt || s.startedAt || '');
+      if (isNaN(t) || t < since || s.status === 'abandoned' && !s.entries) return;
+      Object.keys(s.entries || {}).forEach(function (name) {
+        var b = bestSet(s.entries[name]);
+        if (!b) return;
+        (by[name] = by[name] || []).push({ t: t, day: ymd(new Date(t)), b: b });
+      });
+    });
+    var res = [];
+    Object.keys(by).forEach(function (name) {
+      var list = by[name].sort(function (a, b) { return a.t - b.t; });
+      var days = {}; list.forEach(function (x) { days[x.day] = 1; });
+      if (Object.keys(days).length < 2) return;
+      var a = list[0], z = list[list.length - 1];
+      if (a.day === z.day) return;
+      res.push({ name: name, from: a, to: z, n: Object.keys(days).length, pct: (z.b.e - a.b.e) / a.b.e });
+    });
+    res.sort(function (a, b) { return b.pct - a.pct; });
+    return res;
+  };
+  function setTxt(b) { return (Math.round(b.w * 4) / 4).toString().replace(/\.0+$/, '') + ' kg × ' + b.r; }
+  function strengthLine(x) {
+    var a = x.from.b, z = x.to.b, what;
+    if (z.w > a.w && z.r >= a.r) what = 'Top set up from ' + setTxt(a) + ' to ' + setTxt(z) + '.';
+    else if (Math.abs(z.w - a.w) < 0.01 && z.r > a.r) what = (z.r - a.r) + ' more rep' + (z.r - a.r > 1 ? 's' : '') + ' at ' + setTxt(z).split(' ×')[0] + ' (' + a.r + ' → ' + z.r + ').';
+    else if (x.pct > 0.005) what = 'Best set went from ' + setTxt(a) + ' to ' + setTxt(z) + ' — about ' + Math.round(x.pct * 100) + '% stronger on estimated strength.';
+    else if (x.pct < -0.005) what = 'Best set went from ' + setTxt(a) + ' to ' + setTxt(z) + '. Normal session-to-session variation — worth mentioning at check-in if it continues.';
+    else what = 'Holding steady at ' + setTxt(z) + '.';
+    return {
+      up: x.pct > 0.005, title: x.name, text: what,
+      per: 'Same exercise, ' + fmtD(new Date(x.from.t)) + ' → ' + fmtD(new Date(x.to.t)) + ' · ' + x.n + ' sessions logged'
+    };
+  }
+  D.weightTrend = function () {
+    var pts = D.weights();
+    if (!pts.length) return { kind: 'none' };
+    var weeks = {};
+    pts.forEach(function (p) { var k = ymd(mondayOf(new Date(p.t))); (weeks[k] = weeks[k] || []).push(p.kg); });
+    var keys = Object.keys(weeks).sort();
+    var avgs = keys.map(function (k) { var a = weeks[k]; return { k: k, d: parseYmd(k), n: a.length, avg: a.reduce(function (s, v) { return s + v; }, 0) / a.length }; });
+    if (PERIOD.weeks) { var cut = ymd(addDays(mondayOf(new Date()), -(PERIOD.weeks - 1) * 7)); avgs = avgs.filter(function (a) { return a.k >= cut; }); }
+    if (!avgs.length) return { kind: 'none' };
+    if (avgs.length < 2) return { kind: 'one', last: pts[pts.length - 1], pts: pts };
+    var cur = avgs[avgs.length - 1], prev = avgs[avgs.length - 2], first = avgs[0];
+    var perWeek = pts.length / avgs.length;
+    return { kind: 'trend', avgs: avgs, pts: pts, cur: cur, prev: prev, first: first, single: perWeek < 1.5 };
+  };
+  function towardGoal(delta) {
+    var s = +CLIENT_CONFIG.client.startWeight, g = +CLIENT_CONFIG.client.goalWeight;
+    if (!(s > 0) || !(g > 0) || Math.abs(s - g) < 0.5 || Math.abs(delta) < 0.05) return '';
+    return (g < s) === (delta < 0) ? ' — in the direction of your goal' : '';
+  }
+  function weightLine(w) {
+    if (w.kind === 'none') return null;
+    if (w.kind === 'one') return { title: 'Latest weigh-in: ' + n1(w.last.kg) + ' kg', text: 'Logged ' + fmtWD(new Date(w.last.t)) + '. Weigh in again next week to start seeing a weekly average.', per: '' };
+    var d = w.cur.avg - w.prev.avg;
+    var dir = Math.abs(d) < 0.05 ? 'level with' : (d < 0 ? 'down ' + n1(-d) + ' kg on' : 'up ' + n1(d) + ' kg on');
+    var span = w.avgs.length;
+    var tot = w.cur.avg - w.avgs[0].avg;
+    var text = 'This week\'s average is ' + dir + ' last week' + towardGoal(d) + '.';
+    if (span >= 3) text += ' Over ' + span + ' weeks you\'re ' + (Math.abs(tot) < 0.05 ? 'level' : (tot < 0 ? 'down ' : 'up ') + n1(Math.abs(tot)) + ' kg') + '.';
+    if (w.single) text += ' Based on about one weigh-in a week — a few more each week gives a steadier average.';
+    return { title: 'Weekly average ' + n1(w.cur.avg) + ' kg', text: text, up: false,
+             per: 'Weekly averages, w/c ' + fmtD(w.avgs[0].d) + ' → w/c ' + fmtD(w.cur.d) };
+  }
+  D.completions = function () {
+    var fin = D.finished(), since = startOfDay(new Date(Date.now() - 27 * DAY_MS));
+    var recent = fin.filter(function (f) { return f.date >= since; });
+    if (!fin.length) return null;
+    var firstD = fin.reduce(function (m, f) { return f.date < m ? f.date : m; }, fin[0].date);
+    var from = firstD > since ? firstD : since;
+    var mand = recent.filter(function (f) { return !f.optional; }).length;
+    return { count: recent.length, mand: mand, from: from };
+  };
+  function completionLine(c) {
+    if (!c) return null;
+    var weeks = Math.max(1, Math.round((startOfDay(new Date()) - c.from) / (7 * DAY_MS)) || 1);
+    var opt = c.count - c.mand;
+    return {
+      title: c.count + ' session' + (c.count === 1 ? '' : 's') + ' finished' + (weeks >= 4 ? ' in the last 4 weeks' : ' since ' + fmtD(c.from)),
+      text: (opt > 0 ? 'Including ' + opt + ' optional. ' : '') + 'Counts sessions finished in the app — a workout you did but didn\'t log won\'t show here, and that\'s fine.',
+      per: fmtD(c.from) + ' → today', up: false
+    };
+  }
+  D.insights = function () {
+    var list = [];
+    var st = D.strength();
+    st.slice(0, 3).forEach(function (x) { if (x.pct > 0.005 || list.length === 0) list.push(Object.assign({ kind: 'strength' }, strengthLine(x))); });
+    var w = weightLine(D.weightTrend()); if (w) list.push(Object.assign({ kind: 'weight' }, w));
+    var c = completionLine(D.completions()); if (c) list.push(Object.assign({ kind: 'done' }, c));
+    return list;
+  };
+
+  /* ============================================== CONNECTION STATUS ===== */
+  var C = { lastErr: null, failedTypes: {}, checkinFailed: false };
+  var READS = { workoutCompletionsGet: 1, authClient: 1, clientProgram: 1, weightLog: 1, photosGet: 1 };
+  if (typeof window.cloudWrite === 'function') {
+    var _cw = window.cloudWrite;
+    window.cloudWrite = function (type) {
+      var p = _cw.apply(this, arguments);
+      if (p && typeof p.then === 'function') p.then(function (r) {
+        if (READS[type] || !r) return;
+        if (r.ok) { delete C.failedTypes[type]; if (!Object.keys(C.failedTypes).length) C.lastErr = null; C.auth = null; }
+        else { C.failedTypes[type] = r.error || 'error'; C.lastErr = r.error || 'error'; if (!retryable(r.error)) diagnose(true); }
+        if (C.capture) C.capture.push({ type: type, ok: !!r.ok, error: r.error });
+        renderConn();
+      });
+      return p;
+    };
+  }
+  function errText(e) {
+    if (e === 'no_token') return 'This phone isn\'t linked to your account. Reopen your personal link to save.';
+    if (e === 'bad_token' || e === 'unauthorized') return 'Your link has expired. Ask ' + COACH + ' for a new one — your entries are kept on this phone.';
+    if (e === 'no_endpoint') return 'Saving is not set up for this program. Your entries are kept on this phone.';
+    return 'Couldn\'t reach the server. Your entries are kept on this phone.';
+  }
+  function retryable(e) { return !(e === 'no_token' || e === 'bad_token' || e === 'unauthorized' || e === 'no_endpoint'); }
+  function unsyncedCount() {
+    var n = 0;
+    var meals = call(function () { return loadMealLogs(); }) || {};
+    Object.keys(meals).forEach(function (k) { if (meals[k] && meals[k].synced === false) n++; });
+    var wl = lsGet(SK + '_workout_log', {}) || {};
+    Object.keys(wl).forEach(function (k) { if (wl[k] && wl[k].syncErr) n++; });
+    D.sessions().forEach(function (x) { if (x.s.wc && (x.s.wc.state === 'pending' || x.s.wc.state === 'error') && !x.s.wc.revoked) n++; });
+    return n;
+  }
+  /* "sync failed" used to be every failure at once. The override pull throws
+     the server's reason away, so a revoked or replaced link, an unknown
+     client and a dropped connection all looked the same and "retry" could
+     never fix the first three. Ask the same endpoint again and read the
+     answer. Read-only; throttled. */
+  var _diagAt = 0;
+  function diagnose(force) {
+    if (!force && Date.now() - _diagAt < 60000) return;
+    _diagAt = Date.now();
+    if (!CLIENT_CONFIG.sheetsWebhookUrl) { C.auth = 'no_endpoint'; renderConn(); return; }
+    if (typeof CLIENT_TOKEN === 'undefined' || !CLIENT_TOKEN) { C.auth = 'no_token'; renderConn(); return; }
+    var u = CLIENT_CONFIG.sheetsWebhookUrl + (CLIENT_CONFIG.sheetsWebhookUrl.indexOf('?') >= 0 ? '&' : '?') + 'client=' + encodeURIComponent(SK) + '&token=' + encodeURIComponent(CLIENT_TOKEN) + '&_=' + Date.now();
+    fetch(u, { cache: 'no-store' }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.ok) { C.auth = null; C.net = true; }
+        else if (r.status === 401 || r.status === 403 || r.status === 404) { C.auth = (j && j.error) || ('http_' + r.status); C.net = true; }
+        else { C.auth = null; C.net = false; C.httpErr = r.status; }
+        renderConn();
+      });
+    }).catch(function () { C.auth = null; C.net = false; renderConn(); });
+  }
+  var AUTH_TXT = {
+    bad_token: ['Link replaced', 'This phone is using an old link. Open the newest link ' + COACH + ' sent you — your logs on this phone are kept.'],
+    access_revoked: ['Access ended', 'Your access has ended, so new entries can\'t be saved. Message ' + COACH + ' if this is unexpected.'],
+    access_suspended: ['Access paused', 'Your access is paused, so new entries can\'t be saved right now. Message ' + COACH + ' if this is unexpected.'],
+    unknown_client: ['Account not found', 'Your program isn\'t connected to an account yet. Message ' + COACH + ' — your logs on this phone are kept.'],
+    no_token: ['Not linked', 'This phone isn\'t linked to your account. Reopen your personal link to start saving.'],
+    no_endpoint: ['Saving off', 'Saving isn\'t set up for this program.']
+  };
+  window.cv2ConnTap = function () {
+    var a = C.auth && (AUTH_TXT[C.auth] || ['Can\'t save', 'The server refused this phone\'s link (' + C.auth + '). Message ' + COACH + '.']);
+    if (a) { openSheet('<h3 id="cv2-sheet-h">' + esc(a[0]) + '</h3><p class="sub">' + esc(a[1]) + '</p><button type="button" class="cv2-btn secondary block" onclick="cv2CloseSheet()">OK</button>'); return; }
+    window.cv2Retry();
+  };
+  function renderConn() {
+    var el = $('cv2-conn'); if (!el) return;
+    if (C.auth) {
+      el.className = 'cv2-conn show err';
+      el.innerHTML = '<span class="d"></span>' + esc((AUTH_TXT[C.auth] || ['Can\'t save'])[0]);
+      el.setAttribute('aria-label', (AUTH_TXT[C.auth] || ['Can\'t save'])[0] + '. Tap for details');
+      return;
+    }
+    if (C.flash && Date.now() < C.flash.until) {
+      el.className = 'cv2-conn show ' + (C.flash.kind === 'ok' ? 'ok' : 'pending');
+      el.innerHTML = (C.flash.kind === 'ok' ? I('check') : '<span class="d"></span>') + esc(C.flash.label);
+      el.setAttribute('aria-label', C.flash.label);
+      return;
+    }
+    var offline = navigator.onLine === false;
+    var pullErr = (typeof _lastSyncStatus !== 'undefined' && _lastSyncStatus === 'err');
+    var pending = unsyncedCount();
+    var cls = '', label = '';
+    if (C.retrying) { cls = 'pending'; label = 'Retrying…'; }
+    else if (offline) { cls = 'err'; label = 'Offline'; }
+    else if (C.lastErr || C.checkinFailed) { cls = 'err'; label = 'Not saved · Retry'; }
+    else if (pending) { cls = 'warn'; label = pending + ' to sync · Retry'; }
+    else if (pullErr) { cls = 'warn'; label = 'Can\'t refresh · Retry'; diagnose(); }
+    if (!pullErr && !C.lastErr) C.net = true;
+    el.className = 'cv2-conn' + (cls ? ' show ' + cls : '');
+    el.innerHTML = cls ? '<span class="d"></span>' + esc(label) : '';
+    el.setAttribute('aria-label', cls ? label.replace(' · ', '. ') : 'All changes saved');
+  }
+  window.cv2Retry = function () {
+    if (C.retrying) return;
+    C.retrying = true; C.auth = null; renderConn(); diagnose(true);
+    var jobs = [];
+    if (typeof retryUnsyncedMeals === 'function') jobs.push(call(function () { return retryUnsyncedMeals(); }));
+    if (typeof pullOverrides === 'function') jobs.push(call(function () { return pullOverrides(); }));
+    call(function () { window.dispatchEvent(new Event('online')); });   // Training V2 flushes pending completions on 'online'
+    Promise.all(jobs.map(function (p) { return Promise.resolve(p).catch(function () {}); })).then(function () {
+      return new Promise(function (r) { setTimeout(r, 900); });
+    }).then(function () {
+      C.retrying = false;
+      var stillMeals = 0, meals = call(function () { return loadMealLogs(); }) || {};
+      Object.keys(meals).forEach(function (k) { if (meals[k] && meals[k].synced === false) stillMeals++; });
+      if (!stillMeals) { delete C.failedTypes.meal; }
+      if (!Object.keys(C.failedTypes).length) C.lastErr = null;
+      renderConn();
+      if (C.checkinFailed) toast('Your check-in still needs sending. Open it and tap Send.', 'err', { label: 'Open', fn: function () { go('tracker'); setTimeout(scrollToForm, 250); } });
+      else if (C.lastErr || navigator.onLine === false) toast(errText(C.lastErr || 'network'), 'err', retryable(C.lastErr) ? { label: 'Retry', fn: window.cv2Retry } : null);
+      else toast('All changes saved.', 'ok');
+    });
+  };
+  window.addEventListener('online', function () { renderConn(); });
+  /* While a field has focus the on-screen keyboard is up: take the nav (and the
+     rest bar's offset) out of the way so it can't sit on top of the field. */
+  document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('input:not([type=checkbox]):not([type=file]), textarea, select')) document.body.classList.add('cv2-typing'); });
+  document.addEventListener('focusout', function () { setTimeout(function () { var a = document.activeElement; if (!(a && a.matches && a.matches('input, textarea, select'))) document.body.classList.remove('cv2-typing'); }, 60); });
+  window.addEventListener('offline', function () { renderConn(); });
+
+  /* Replace the debug-style flash messages with readable toasts. */
+  var _toastT = null;
+  function toast(msg, kind, action) {
+    var el = $('cv2-toast'); if (!el) return;
+    el.className = (kind || '') + ' show';
+    el.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+    el.innerHTML = '<span class="m">' + esc(msg) + '</span>' + (action ? '<button type="button">' + esc(action.label) + '</button>' : '');
+    if (action) el.querySelector('button').onclick = function () { el.classList.remove('show'); action.fn(); };
+    clearTimeout(_toastT);
+    _toastT = setTimeout(function () { el.classList.remove('show'); }, kind === 'err' ? 8000 : 2600);
+  }
+  if (typeof window.showSyncMsg === 'function') {
+    window.showSyncMsg = function (text, cls) {
+      var t = String(text || '');
+      if (cls === 'pending') { C.flash = { kind: 'pending', label: 'Saving…', until: Date.now() + 15000 }; renderConn(); return; }
+      if (cls === 'ok') {
+        if (/updated from cloud/i.test(t)) toast('Your plan has been updated.', 'ok');
+        else if (/check-in/i.test(t)) { /* the check-in form reports its own result */ }
+        C.flash = { kind: 'ok', label: 'Saved', until: Date.now() + 1800 };
+        renderConn(); setTimeout(renderConn, 1900); return;
+      }
+      if (cls === 'warn') { toast(/device only/i.test(t) ? 'Saved on this phone only.' : t.replace(/^[✓✗⚠]\s*/, ''), 'warn'); return; }
+      if (cls === 'err') {
+        C.flash = null;
+        var e = C.lastErr || (/expired/.test(t) ? 'bad_token' : /reopen/.test(t) ? 'no_token' : 'network');
+        toast(errText(e), 'err', retryable(e) ? { label: 'Retry', fn: window.cv2Retry } : null);
+        renderConn(); return;
+      }
+    };
+  }
+  if (typeof window.updateSyncBadge === 'function') {
+    var _usb = window.updateSyncBadge;
+    window.updateSyncBadge = function () { var r = _usb.apply(this, arguments); renderConn(); return r; };
+  }
+
+  /* ===================================================== CHROME ========= */
+  var NAV = [
+    { id: 'cv2home', label: 'Home', icon: 'home' },
+    { id: 'training', label: 'Train', icon: 'train' },
+    { id: 'nutrition', label: 'Nutrition', icon: 'food' },
+    { id: 'tracker', label: 'Progress', icon: 'progress' },
+    { id: 'cv2coach', label: 'Coach', icon: 'coach' }
+  ];
+  var PARENT = { shop: 'nutrition', cardio: 'training', lifestyle: 'cv2coach', home: 'cv2home' };
+  var TITLES = { training: 'Train', nutrition: 'Nutrition', tracker: 'Progress', cv2coach: 'Coach',
+                 shop: 'Shopping list', lifestyle: 'Lifestyle & recovery', cardio: 'Cardio plan' };
+  var current = 'cv2home';
+  var BIGTITLE = { nutrition: 1, tracker: 1, cv2coach: 1 };
+
+  function buildChrome() {
+    var brandIcon = '';
+    var l = document.querySelector('link[rel="apple-touch-icon"]');
+    if (l && l.getAttribute('href')) brandIcon = '<img src="' + esc(l.getAttribute('href')) + '" alt="" onerror="this.remove()">';
+    var top = document.createElement('header');
+    top.id = 'cv2-top';
+    top.innerHTML =
+      '<div class="t" id="cv2-title"></div>' +
+      '<button type="button" class="cv2-conn" id="cv2-conn" onclick="cv2ConnTap()" aria-live="polite"></button>' +
+      '<button type="button" class="cv2-av" id="cv2-me" aria-label="Your profile and more options" onclick="cv2More()">' + esc(initials(CLIENT_CONFIG.client.firstName)) + '</button>';
+    top.dataset.brand = brandIcon;
+    document.body.appendChild(top);
+
+    var nav = document.createElement('nav');
+    nav.id = 'cv2-nav'; nav.setAttribute('aria-label', 'Primary');
+    nav.innerHTML = NAV.map(function (n) {
+      return '<button type="button" data-id="' + n.id + '" onclick="cv2Go(\'' + n.id + '\')">' + I(n.icon) + '<span>' + n.label + '</span></button>';
+    }).join('');
+    document.body.appendChild(nav);
+
+    var t = document.createElement('div'); t.id = 'cv2-toast'; t.setAttribute('aria-live', 'polite'); document.body.appendChild(t);
+    var sh = document.createElement('div'); sh.id = 'cv2-sheet'; sh.innerHTML = '<div class="scrim" onclick="cv2CloseSheet()"></div><div class="panel" role="dialog" aria-modal="true" aria-labelledby="cv2-sheet-h"></div>';
+    document.body.appendChild(sh);
+
+    var anchor = $('section-home') || document.querySelector('.section');
+    ['cv2home', 'cv2coach'].forEach(function (id) {
+      var s = document.createElement('section');
+      s.className = 'section'; s.id = 'section-' + id;
+      s.innerHTML = '<div class="cv2-page" id="cv2-' + id + '-page"></div>';
+      anchor.parentNode.insertBefore(s, anchor);
+    });
+    window.addEventListener('scroll', function () { top.classList.toggle('scrolled', window.scrollY > 4); top.classList.toggle('past', window.scrollY > 56); }, { passive: true });
+  }
+
+  function navBadge() {
+    var b = document.querySelector('#cv2-nav button[data-id="tracker"]'); if (!b) return;
+    var c = D.checkin();
+    var need = C.checkinFailed || c.kind === 'due_today' || c.kind === 'overdue' || c.kind === 'first_due';
+    var dot = b.querySelector('.badge');
+    if (need && !dot) { dot = document.createElement('i'); dot.className = 'badge'; b.appendChild(dot); }
+    if (!need && dot) dot.remove();
+    b.setAttribute('aria-label', 'Progress' + (need ? ', check-in due' : ''));
+  }
+  function setChrome(id) {
+    current = id; call(navBadge);
+    var navId = PARENT[id] || id;
+    document.querySelectorAll('#cv2-nav button').forEach(function (b) {
+      if (b.dataset.id === navId) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    var t = $('cv2-title'); if (!t) return;
+    if (id === 'cv2home') t.innerHTML = '<span class="brand">' + ($('cv2-top').dataset.brand || '') + '<span>LOCKED IN</span></span>';
+    else if (PARENT[id] && id !== 'home') t.innerHTML = '<button type="button" class="cv2-link" style="font-size:17px;color:var(--c-text);font-weight:800" onclick="cv2Go(\'' + PARENT[id] + '\')">' + I('back') + esc(TITLES[id]) + '</button>';
+    else t.textContent = TITLES[id] || '';
+    $('cv2-top').classList.toggle('lt', !!BIGTITLE[id]);
+    renderConn();
+  }
+
+  function go(id) { call(function () { showSection(id); }); }
+  /* Never navigate to a section this page doesn't have (older shells lack some). */
+  window.cv2Go = function (id) { if (id !== 'home' && !$('section-' + id)) return; go(id); };
+
+  /* showSection: 'home' now means the new home. Wrap last so every earlier
+     wrapper (elite UX, shop, Training V2) still runs. */
+  var _show = window.showSection;
+  window.showSection = function (id) {
+    if (id === 'home') id = 'cv2home';
+    var r = _show.call(this, id);
+    setChrome(id);
+    if (id === 'cv2home') call(renderHome);
+    if (id === 'cv2coach') call(renderCoach);
+    if (id === 'tracker') call(renderProgressTop);
+    window.scrollTo(0, 0);
+    return r;
+  };
+  if (typeof window.updateBottomNav === 'function') {
+    var _ubn = window.updateBottomNav;
+    window.updateBottomNav = function (id) { var r = _ubn.apply(this, arguments); if (id === 'home') id = 'cv2home'; setChrome(id); return r; };
+  }
+  if (typeof window.renderHome === 'function') {
+    var _rh = window.renderHome;
+    window.renderHome = function () { var r = _rh.apply(this, arguments); if (current === 'cv2home') call(renderHome); return r; };
+  }
+  window.scrollToCheckin = function () { go('tracker'); setTimeout(scrollToForm, 250); };
+
+  /* ---------------------------------------------------------- sheet ---- */
+  window.cv2CloseSheet = function () { var s = $('cv2-sheet'); s.classList.remove('open'); };
+  function openSheet(html) {
+    var s = $('cv2-sheet'); s.querySelector('.panel').innerHTML = '<div class="grip"></div>' + html;
+    s.classList.add('open');
+    var f = s.querySelector('button'); if (f) f.focus({ preventScroll: true });
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') window.cv2CloseSheet(); });
+  function row(icon, title, sub, onclick) {
+    return '<button type="button" class="cv2-row" onclick="' + onclick + '"><span class="ic">' + I(icon) + '</span><span class="tx"><b>' + esc(title) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><span class="chev">' + I('chev') + '</span></button>';
+  }
+  window.cv2Then = function (fn) { window.cv2CloseSheet(); setTimeout(fn, 60); };
+  window.cv2More = function () {
+    var pushBox = $('li-push-settings');
+    var hasPush = !!(pushBox && pushBox.children.length);
+    openSheet(
+      '<div class="cv2-coach-id" style="margin-bottom:10px"><span class="cv2-av" style="background:var(--c-text)">' + esc(initials(CLIENT_CONFIG.client.firstName)) + '</span>' +
+      '<span><b id="cv2-sheet-h">' + esc(CLIENT_CONFIG.client.firstName || '') + '</b><small>Client · coached by ' + esc(COACH) + '</small></span></div>' +
+      '<div class="cv2-rows">' +
+      ($('section-shop') ? row('cart', 'Shopping list', 'Built from your meal plan', "cv2Then(function(){cv2Go('shop')})") : '') +
+      row('run', 'Cardio plan', 'Your cardio for each phase', "cv2Then(function(){cv2Go('cardio')})") +
+      row('moon', 'Lifestyle & recovery', 'Sleep, stress and recovery guidance', "cv2Then(function(){cv2Go('lifestyle')})") +
+      (typeof window.tv2Guide === 'function' ? row('book', 'Program guide', 'How your training works', "cv2Then(cv2OpenGuide)") : '') +
+      row('clip', 'Check-in history', 'Your past weekly check-ins', "cv2Then(function(){cv2Go('tracker');setTimeout(function(){var h=document.querySelector('.checkin-history');if(h)h.scrollIntoView({block:'start'})},250)})") +
+      (hasPush ? row('bell', 'Notifications', 'Reminders on this phone', "cv2Then(function(){cv2Go('tracker');setTimeout(function(){var h=document.getElementById('li-push-settings');if(h)h.scrollIntoView({block:'center'})},250)})") : '') +
+      row('grid', 'Switch to classic layout', 'The previous design, on this phone', "location.href=location.pathname+'?ui=classic'") +
+      '</div>');
+  };
+  window.cv2OpenGuide = function () { go('training'); setTimeout(function () { call(function () { window.tv2Guide(); }); }, 120); };
+
+  /* ======================================================== HOME ======== */
+  function greeting() {
+    var h = new Date().getHours();
+    return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  }
+
+  function checkinCard() {
+    var c = D.checkin();
+    var sent = c.sent && (Date.now() - c.sent.ts < 3 * DAY_MS) ? c.sent : null;
+    if (C.checkinFailed) {
+      return '<div class="cv2-card cv2-checkin overdue"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Check-in not sent yet</b><small>Your answers are saved in the form.</small></span>' +
+        '<button type="button" class="cv2-btn primary" onclick="scrollToCheckin()">Send now</button></div>';
+    }
+    if (sent) {
+      return '<div class="cv2-card cv2-checkin done"><span class="ic">' + I('check') + '</span><span class="tx"><b>Check-in sent ' + esc(fmtWD(new Date(sent.ts))) + '</b>' +
+        '<small>' + esc(COACH) + ' reviews it and replies by message.</small></span></div>';
+    }
+    var due = c.due, today = startOfDay(new Date());
+    if (c.kind === 'overdue' || c.kind === 'first_due') {
+      return '<div class="cv2-card cv2-checkin overdue"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Weekly check-in overdue</b>' +
+        '<small>' + (due ? 'Was due ' + esc(fmtWD(due)) + ' · ' : '') + 'About 3 min</small></span>' +
+        '<button type="button" class="cv2-btn primary" onclick="scrollToCheckin()">Complete check-in</button></div>';
+    }
+    if (c.kind === 'due_today') {
+      return '<div class="cv2-card cv2-checkin"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Weekly check-in due today</b><small>About 3 min · weight, energy, sleep, notes</small></span>' +
+        '<button type="button" class="cv2-btn primary" onclick="scrollToCheckin()">Complete check-in</button></div>';
+    }
+    if (due && due - today <= 2 * DAY_MS && due >= today) {
+      return '<div class="cv2-card cv2-checkin"><span class="ic">' + I('cal') + '</span><span class="tx"><b>Check-in due ' + esc(fmtWD(due)) + '</b><small>About 3 min</small></span>' +
+        '<button type="button" class="cv2-btn secondary" onclick="scrollToCheckin()">Start</button></div>';
+    }
+    return '';
+  }
+
+  /* ---- shared visual helpers ------------------------------------------ */
+  function secLabel(t, right) { return '<div class="cv2-seclabel"><h2>' + esc(t) + '</h2>' + (right || '') + '</div>'; }
+  function cardHead(icon, tone, title, right) {
+    return '<div class="cv2-head"><span class="cv2-tone ' + tone + '">' + I(icon) + '</span><span class="t">' + title + '</span>' + (right || '') + '</div>';
+  }
+
+  /* ---- today's training: the one dark hero card on Home ---------------- */
+  function todayCard() {
+    var n = D.next(), ti = D.todayIdx(), dt = D.dayType(ti), wk = D.week();
+    var todayY = ymd(), fin = D.finished();
+    var doneToday = fin.filter(function (f) { return ymd(f.date) === todayY; });
+    var coach = D.coach();
+    var note = coach.note ? '<div class="note"><b>Note from ' + esc(COACH) + '</b>' + esc(coach.note) + '</div>' : '';
+    function hero(label, title, sub, meta, actions) {
+      return '<div class="cv2-hero"><div class="lbl">' + label + '</div><h2 class="cv2-h">' + title + '</h2>' +
+        (sub ? '<p class="sub">' + sub + '</p>' : '') + (meta || '') + note + actions + '</div>';
+    }
+    if (!n) return hero('Training', 'Your training plan', 'Open Train to see your sessions.', '',
+      '<button type="button" class="cv2-btn primary block" onclick="cv2Go(\'training\')">Open training</button>');
+    var label = D.cleanLabel(n.label) || n.label;
+    var badge = call(function () { return phases[n.phase].days[n.day].badge; }) || '';
+    var badgeRaw = badge;
+    if (/^(mandatory|optional|required|rest)$/i.test(String(badge).trim())) badge = '';   // session kind, not a focus
+    if (badge && String(n.label || '').toLowerCase().indexOf(String(badge).trim().toLowerCase()) >= 0) badge = '';   // repeats the title
+    var meta = '<div class="cv2-heromet"><span>' + I('list') + n.exercises + ' exercises</span>' +
+      (n.est && n.est.known ? '<span>' + I('clock') + '~' + n.est.min + ' min</span>' : '') +
+      '<span>' + I('cal') + 'Phase ' + esc(n.phase) + (wk.canonical ? ' · Wk ' + wk.week : '') + '</span></div>';
+    var startJs = "cv2Start('" + esc(n.phase) + "'," + Number(n.day) + ")";
+    if (n.open) {
+      var os = D.openSession(n.phase, n.day), since = '';
+      if (os && os.startedAt) { var sd = new Date(os.startedAt); if (ymd(sd) !== todayY) since = 'Started ' + fmtWD(sd) + ' — pick up where you left off.'; }
+      return hero('Workout in progress', esc(label), esc(since || badge), meta,
+        '<button type="button" class="cv2-btn primary block" onclick="' + startJs + '">' + I('play') + 'Continue workout</button>');
+    }
+    if (doneToday.length) {
+      var d0 = D.cleanLabel(doneToday[doneToday.length - 1].label);
+      return hero('Today · done', esc(d0 || 'Session') + ' <span class="ok">' + I('check') + '</span>', 'Finished and saved. Next up: ' + esc(label) + ' · ' + n.exercises + ' exercises.', '',
+        '<button type="button" class="cv2-btn onhero block" onclick="cv2Go(\'training\')">View training</button>');
+    }
+    if (D.isRest(dt)) {
+      var prep = /meal prep/i.test(dt);
+      return hero('Today · ' + esc(WDL[new Date().getDay()]), 'Rest day' + (prep ? ' · meal prep' : ''),
+        (prep ? 'No training today — your plan has a meal-prep block in Nutrition.' : 'No training today.') + ' Next: <b>' + esc(label) + '</b>', meta,
+        '<div class="cv2-twocol" style="margin-top:16px"><button type="button" class="cv2-btn onhero" onclick="cv2Go(\'lifestyle\')">Recovery guide</button>' +
+        '<button type="button" class="cv2-btn onhero" onclick="' + startJs + '">Preview session</button></div>');
+    }
+    var opt = /optional/i.test(n.label || '') || /optional/i.test(badgeRaw || '');
+    if (opt && /optional/i.test(badge)) badge = 'Optional — skip it freely if the week is busy';
+    return hero(opt ? 'Next session · optional' : 'Next session', esc(label), esc(badge), meta,
+      '<button type="button" class="cv2-btn primary block" onclick="' + startJs + '">' + I('play') + 'Start workout</button>');
+  }
+  window.cv2Start = function (ph, day) {
+    go('training');
+    setTimeout(function () { call(function () { if (typeof window.tv2StartFrom === 'function') window.tv2StartFrom(ph, Number(day)); }); }, 60);
+  };
+
+  function bar(cls, label, actual, target, unit) {
+    if (!(target > 0)) return '';
+    var pct = Math.min(100, Math.round(actual / target * 100));
+    var over = actual > target * 1.05;
+    return '<div class="cv2-bar ' + cls + (over ? ' over' : '') + '"><div class="l"><b>' + label + '</b><span><strong>' + int(actual) + '</strong> / ' + int(target) + ' ' + unit + '</span></div>' +
+      '<div class="track" role="progressbar" aria-label="' + label + ' logged" aria-valuemin="0" aria-valuemax="' + Math.round(target) + '" aria-valuenow="' + Math.round(actual) + '"><div class="fill" style="width:' + pct + '%"></div></div></div>';
+  }
+  /* Big "kcal left" figure. Missing logs read as "nothing logged", never as 0 eaten. */
+  function kcalFigure(actual, target, logged) {
+    if (!(target > 0)) return '';
+    if (!logged) return '<div class="cv2-big"><b class="cv2-num">' + int(target) + '</b><span>kcal target today</span></div>';
+    var left = target - actual;
+    return left >= 0
+      ? '<div class="cv2-big"><b class="cv2-num">' + int(left) + '</b><span>kcal left · ' + int(actual) + ' of ' + int(target) + ' logged</span></div>'
+      : '<div class="cv2-big over"><b class="cv2-num">' + int(-left) + '</b><span>kcal over · ' + int(actual) + ' of ' + int(target) + ' logged</span></div>';
+  }
+  function macroTile(label, actual, target, logged) {
+    if (!(target > 0)) return '';
+    var pct = Math.min(100, Math.round(actual / target * 100));
+    return '<div class="cv2-mtile"><span>' + label + '</span><b class="cv2-num">' + (logged ? int(actual) : '–') + '<small> / ' + int(target) + ' g</small></b>' +
+      '<i role="progressbar" aria-label="' + label + ' logged" aria-valuemin="0" aria-valuemax="' + Math.round(target) + '" aria-valuenow="' + Math.round(actual) + '"><u style="width:' + pct + '%"></u></i></div>';
+  }
+  function nutritionCard() {
+    var n = D.nutrition();
+    if (!n.planned && !(n.target.cal > 0)) {
+      return '<div class="cv2-card">' + cardHead('food', 'food', 'Nutrition') + '<div class="cv2-empty">' + I('info') + '<span>Your meal plan isn\'t available on this phone yet.</span></div></div>';
+    }
+    var btn = '<button type="button" class="cv2-btn tint sm" onclick="cv2LogMeal()">' + (n.nextIdx >= 0 ? I('plus') + 'Log meal' : 'Meals') + '</button>';
+    var sub = !n.logged ? 'None logged yet' : n.skipped ? n.skipped + ' skipped' : (n.logged >= n.planned ? 'All logged' : (n.planned - n.logged) + ' to go');
+    return '<div class="cv2-card">' + cardHead('food', 'food', 'Nutrition' + (D.isRest(n.dayType) ? ' <small>Rest day</small>' : ''), btn) +
+      kcalFigure(n.actual.cal, n.target.cal, n.logged) +
+      '<div class="cv2-mtiles two">' + macroTile('Protein', n.actual.p, n.target.p, n.logged) +
+      '<div class="cv2-mtile plain"><span>Meals</span><b class="cv2-num">' + n.logged + '<small> / ' + n.planned + '</small></b><em>' + esc(sub) + '</em></div></div></div>';
+  }
+  function weekCard() {
+    var mon = mondayOf(new Date()), todayD = startOfDay(new Date());
+    var fin = D.finished(), mealDays = D.mealDays();
+    var n = D.next(), ph = (n && n.phase) || 1;
+    var sched = D.scheduledPerWeek(ph);
+    var doneW = fin.filter(function (f) { return f.date >= mon; });
+    var doneMand = doneW.filter(function (f) { return !f.optional; }).length;
+    var dots = '', mealCount = 0, elapsed = 0;
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(mon); d.setDate(mon.getDate() + i);
+      var k = ymd(d), w = doneW.some(function (f) { return ymd(f.date) === k; }), m = !!mealDays[k];
+      if (d <= todayD) { elapsed++; if (m) mealCount++; }
+      dots += '<i class="' + (w ? 'w ' : '') + (m ? 'm ' : '') + (k === ymd(todayD) ? 't' : '') + '" title="' + esc(fmtWD(d)) + (w ? ' · workout finished' : '') + (m ? ' · meals logged' : '') + '"><span>' + 'MTWTFSS'[i] + '</span></i>';
+    }
+    var c = D.checkin(), ckV, ckK, ckCls = '';
+    if (c.sent && c.sent.ts >= mon.getTime()) { ckV = 'Sent'; ckK = fmtWD(new Date(c.sent.ts)); ckCls = 'ok'; }
+    else if (c.last != null && c.last >= mon.getTime()) { ckV = 'Sent'; ckK = fmtWD(new Date(c.last)); ckCls = 'ok'; }
+    else if (c.kind === 'overdue' || c.kind === 'first_due') { ckV = 'Due'; ckK = 'Overdue'; ckCls = 'warn'; }
+    else { ckV = c.due ? WD[c.due.getDay()] : '—'; ckK = c.due ? 'Due ' + fmtD(c.due) : 'Not yet'; }
+    var msg, left = sched - doneMand, nextLabel = n ? D.cleanLabel(n.label) : '';
+    if (sched && doneMand >= sched) msg = 'Every scheduled session is done this week.';
+    else if (doneMand > 0) msg = left + ' to go' + (nextLabel ? ' — next up is ' + nextLabel : '') + '.';
+    else msg = nextLabel ? 'First up this week: ' + nextLabel + '.' : 'Your week is ready to start.';
+    return '<div class="cv2-card">' +
+      '<div class="cv2-stats">' +
+      '<div class="cv2-stat train"><b class="cv2-num">' + doneMand + '<small>/' + (sched || '—') + '</small></b><span>Sessions</span></div>' +
+      '<div class="cv2-stat food"><b class="cv2-num">' + mealCount + '<small>/' + elapsed + '</small></b><span>Meal days</span></div>' +
+      '<div class="cv2-stat ' + (ckCls || 'prog') + '"><b>' + esc(ckV) + '</b><span>' + esc(ckK) + '</span></div></div>' +
+      '<div class="cv2-dots" aria-hidden="true">' + dots + '</div>' +
+      '<p class="cv2-weekmsg">' + esc(msg) + '</p>' +
+      '<div class="cv2-legend"><span><i style="background:var(--c-text)"></i>Workout</span><span><i style="background:#cfe6da"></i>Meals logged</span></div></div>';
+  }
+
+  function insightsHtml(list, max) {
+    return list.slice(0, max).map(function (x) {
+      return '<div class="cv2-ins' + (x.up ? ' up' : '') + '"><span class="ic">' + I(x.kind === 'weight' ? 'scale' : x.kind === 'done' ? 'check' : (x.up ? 'up' : 'flat')) + '</span>' +
+        '<span class="tx"><b>' + esc(x.title) + '</b><p>' + esc(x.text) + '</p>' + (x.per ? '<div class="per">' + esc(x.per) + '</div>' : '') + '</span></div>';
+    }).join('');
+  }
+  /* One card: coach, latest word from him, and the check-in. */
+  function coachTeaser() {
+    var c = D.coach();
+    var txt = c.focus || c.feedback;
+    var st = D.checkin(), ck = checkinCard();
+    if (!ck) {
+      ck = '<div class="cv2-checkin"><span class="ic">' + I('clip') + '</span><span class="tx"><b>Weekly check-in</b><small>' +
+        (st.last != null ? 'Last sent ' + esc(fmtWD(new Date(st.last))) : 'Not sent yet') + (st.due ? ' · next due ' + esc(fmtWD(st.due)) : '') + '</small></span>' +
+        '<button type="button" class="cv2-btn secondary sm" onclick="scrollToCheckin()">Open</button></div>';
+    }
+    ck = ck.replace('cv2-card cv2-checkin', 'cv2-checkin');
+    return '<div class="cv2-card cv2-coachcard">' +
+      '<button type="button" class="cv2-coachrow" onclick="cv2Go(\'cv2coach\')"><span class="cv2-av">' + esc(initials(COACH)) + '</span>' +
+      '<span class="tx"><b>' + esc(COACH) + '</b><small>' + (txt ? (c.focus ? 'This week\'s focus' : 'Latest feedback') : 'Your coach · replies by message') + '</small></span><span class="chev">' + I('chev') + '</span></button>' +
+      (txt ? '<p class="cv2-quote">' + esc(txt) + '</p>' : '') +
+      '<div class="cv2-divider"></div>' + ck + '</div>';
+  }
+
+  function renderHome() {
+    var el = $('cv2-cv2home-page'); if (!el) return;
+    var wk = D.week();
+    var sub = (wk.canonical ? (wk.started ? (wk.over ? 'Program complete · ' : 'Week ' + wk.week + ' of ' + wk.total + ' · ') : 'Starts soon · ') : '') + 'Coached by ' + COACH;
+    el.innerHTML =
+      '<div class="cv2-hello"><div class="tx"><h1>' + esc(greeting()) + ', ' + esc(firstName()) + '</h1><div class="sub">' + esc(sub) + '</div></div></div>' +
+      todayCard() + nutritionCard() +
+      secLabel('This week', '<small>from ' + esc(fmtD(mondayOf(new Date()))) + '</small>') + weekCard() +
+      secLabel('Your coach') + coachTeaser();
+    if (_serverWeights === null) D.fetchWeights().then(function (w) { if (w && w.length && current === 'cv2home') renderHome(); });
+  }
+
+  /* ======================================================= COACH ======== */
+  function phaseFocus() {
+    var n = D.next(), ph = (n && n.phase) || 1, p = call(function () { return phases[ph]; });
+    if (!p) return '';
+    var desc = String(p.desc || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    var first = (desc.match(/[^.!?]+[.!?]+/g) || [desc]).slice(0, 2).join(' ').trim();
+    var chips = (p.info || []).slice(0, 4).map(function (x) { return '<span class="cv2-chip">' + esc(x.label) + ': ' + esc(x.val) + '</span>'; }).join(' ');
+    return '<div class="cv2-card">' + cardHead('target', 'train', 'Current phase') + '<h2 class="cv2-h">' + esc(p.label || ('Phase ' + ph)) + '</h2>' +
+      (first ? '<p class="cv2-quote" style="color:var(--c-muted)">' + esc(first) + '</p>' : '') +
+      (chips ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">' + chips + '</div>' : '') +
+      (typeof window.tv2Guide === 'function' ? '<button type="button" class="cv2-btn secondary block" style="margin-top:14px" onclick="cv2OpenGuide()">' + I('book') + 'Read the program guide</button>' : '') + '</div>';
+  }
+  function renderCoach() {
+    var el = $('cv2-cv2coach-page'); if (!el) return;
+    var c = D.coach(), ck = D.checkin();
+    var lastTxt = ck.last != null ? 'Your last check-in was ' + fmtWD(new Date(ck.last)) + '.' : 'You haven\'t sent a check-in yet.';
+    var focus = c.focus
+      ? '<div class="cv2-card">' + cardHead('target', 'coach', 'This week\'s focus', c.focusAt ? '<small>' + esc(c.focusAt) + '</small>' : '') + '<p class="cv2-quote">' + esc(c.focus) + '</p></div>' : '';
+    var fb = c.feedback
+      ? '<p class="cv2-quote">' + esc(c.feedback) + '</p>' + (c.feedbackAt ? '<p class="cv2-p" style="font-size:12px">' + esc(c.feedbackAt) + '</p>' : '')
+      : '<div class="cv2-empty">' + I('info') + '<span>' + esc(COACH) + ' reviews every check-in and sends feedback by message. ' + esc(lastTxt) + '</span></div>';
+    var contact = COACH_WA
+      ? '<a class="cv2-btn primary block" href="https://wa.me/' + esc(String(COACH_WA).replace(/[^\d]/g, '')) + '" target="_blank" rel="noopener">' + I('coach') + 'Message ' + esc(COACH) + ' on WhatsApp</a>'
+      : '<p class="cv2-p" style="margin:0 0 12px">Message ' + esc(COACH) + ' the way you normally do. In-app messaging isn\'t available yet.</p>';
+    el.innerHTML =
+      '<div class="section-header"><h2 class="section-title">Coach</h2></div>' +
+      '<div class="cv2-coachhero"><div class="cv2-coach-id"><span class="cv2-av">' + esc(initials(COACH)) + '</span><span><b>' + esc(COACH) + '</b><small>Your coach · LOCKED IN</small></span></div>' +
+      '<div class="cv2-twocol" style="margin-top:16px"><button type="button" class="cv2-btn onviolet" onclick="cv2NoteToCoach()">' + I('note') + 'Add a note</button>' +
+      '<button type="button" class="cv2-btn onviolet" onclick="scrollToCheckin()">' + I('clip') + 'Check-in</button></div>' +
+      (COACH_WA ? '<div style="margin-top:10px">' + contact + '</div>' : '<p class="hint">Message ' + esc(COACH) + ' the way you normally do — in-app messaging isn\'t available yet. Notes go to him with your weekly check-in.</p>') + '</div>' +
+      focus +
+      '<div class="cv2-card">' + cardHead('coach', 'coach', 'Latest feedback') + fb + '</div>' +
+      phaseFocus() +
+      coachCheckins() +
+      '<div class="cv2-card" style="padding:4px 16px"><div class="cv2-rows">' +
+      row('moon', 'Lifestyle & recovery', 'Sleep, stress and recovery guidance', "cv2Go('lifestyle')") +
+      row('run', 'Cardio plan', 'Your cardio for each phase', "cv2Go('cardio')") +
+      '</div></div>';
+  }
+  function coachCheckins() {
+    var list = D.checkins().slice().reverse().slice(0, 4);
+    var nxt = checkinCard() || ('<div class="cv2-checkin" style="padding:0"><span class="ic">' + I('cal') + '</span><span class="tx"><b>Next check-in</b><small>' +
+      (D.checkin().due ? 'Due ' + esc(fmtWD(D.checkin().due)) + ' · about 3 min' : 'Every Sunday · about 3 min') + '</small></span>' +
+      '<button type="button" class="cv2-btn secondary" onclick="scrollToCheckin()">Open</button></div>');
+    var rows = list.length ? list.map(function (c) {
+      return '<div class="cv2-hist flat"><div class="tx"><b>Week ' + esc(c.week) + '</b><small>' + esc(fmtWD(new Date(c.t))) + ' · sent to ' + esc(COACH) + '</small></div><div class="kg cv2-num">' + (c.kg > 0 ? n1(c.kg) + ' kg' : '') + '</div></div>';
+    }).join('') : '<div class="cv2-empty">' + I('clip') + '<span>No check-ins yet.</span></div>';
+    return '<div class="cv2-card">' + cardHead('clip', 'prog', 'Check-ins') + nxt.replace('cv2-card cv2-checkin', 'cv2-checkin') + '<div class="cv2-divider"></div>' + rows +
+      (list.length ? '<button type="button" class="cv2-link" onclick="cv2Go(\'tracker\');setTimeout(function(){var h=document.querySelector(\'.checkin-history\');if(h)h.scrollIntoView({block:\'start\'})},250)">All check-ins' + I('chev') + '</button>' : '') + '</div>';
+  }
+  window.cv2NoteToCoach = function () {
+    go('tracker');
+    setTimeout(function () { var t = $('input-notes'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.focus({ preventScroll: true }); } }, 250);
+  };
+
+  /* ===================================================== PROGRESS ======= */
+  function weightChart(w) {
+    if (w.kind !== 'trend') return '';
+    var avgs = w.avgs, first = avgs[0].d.getTime(), lastD = addDays(avgs[avgs.length - 1].d, 6).getTime();
+    var raw = w.pts.filter(function (p) { return p.t >= first; });
+    var vals = raw.map(function (p) { return p.kg; }).concat(avgs.map(function (a) { return a.avg; }));
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    var pad = Math.max(0.3, (hi - lo) * 0.15); lo -= pad; hi += pad;
+    var W = 320, H = 160, L = 36, R = 8, T = 22, B = 24;
+    function X(t) { return L + (t - first) / Math.max(1, lastD - first) * (W - L - R); }
+    function Y(v) { return T + (hi - v) / (hi - lo) * (H - T - B); }
+    var g = '', ticks = 3;
+    for (var i = 0; i <= ticks; i++) { var v = lo + (hi - lo) * i / ticks; g += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text class="ax" x="' + (L - 6) + '" y="' + (Y(v) + 3.5).toFixed(1) + '" text-anchor="end">' + n1(v) + '</text>'; }
+    var dots = raw.map(function (p) { return '<circle class="raw" cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.kg).toFixed(1) + '" r="2.6"/>'; }).join('');
+    var mid = function (a) { return a.d.getTime() + 3.5 * DAY_MS; };
+    var path = avgs.map(function (a, i) { return (i ? 'L' : 'M') + X(mid(a)).toFixed(1) + ',' + Y(a.avg).toFixed(1); }).join(' ');
+    var pts = avgs.map(function (a) { return '<circle class="avgpt" cx="' + X(mid(a)).toFixed(1) + '" cy="' + Y(a.avg).toFixed(1) + '" r="3.4"><title>w/c ' + fmtD(a.d) + ': ' + n1(a.avg) + ' kg (' + a.n + ' weigh-in' + (a.n > 1 ? 's' : '') + ')</title></circle>'; }).join('');
+    var xl = '<text class="ax" x="' + L + '" y="' + (H - 6) + '">' + fmtD(avgs[0].d) + '</text><text class="ax" x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + fmtD(new Date(lastD)) + '</text>';
+    return '<div class="cv2-chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Weekly average body weight in kilograms, ' + fmtD(avgs[0].d) + ' to ' + fmtD(new Date(lastD)) + '">' +
+      '<text class="ax" x="0" y="9">kg</text>' + g + dots + '<path class="avg" d="' + path + '"/>' + pts + xl + '</svg>' +
+      '<div class="cv2-legend"><span><i style="background:var(--c-text);border-radius:50%"></i>Weekly average</span><span><i style="background:var(--c-line2);border-radius:50%"></i>Single weigh-in</span></div></div>';
+  }
+  function weightBig(w) {
+    if (w.kind !== 'trend') return '';
+    var d = w.cur.avg - w.prev.avg;
+    var chip = Math.abs(d) < 0.05 ? '<span class="cv2-chip">Level with last week</span>'
+      : '<span class="cv2-chip ' + (towardGoal(d) ? 'ok' : '') + '">' + (d < 0 ? '−' : '+') + n1(Math.abs(d)) + ' kg vs last week</span>';
+    return '<div class="cv2-big"><b class="cv2-num">' + n1(w.cur.avg) + '<small> kg</small></b><span>weekly average</span>' + chip + '</div>';
+  }
+  function renderProgressTop() {
+    var sec = $('section-tracker'); if (!sec) return;
+    var hdr = sec.querySelector('.section-header');
+    if (hdr && !hdr.dataset.cv2) {
+      hdr.dataset.cv2 = '1';
+      var t = hdr.querySelector('.section-title'); if (t) t.textContent = 'Progress';
+      var d = hdr.querySelector('.section-desc'); if (d) d.textContent = 'Your trends, and the weekly check-in ' + COACH + ' reviews.';
+    }
+    var top = $('cv2-progress-top');
+    if (!top) {
+      top = document.createElement('div'); top.id = 'cv2-progress-top';
+      if (hdr) hdr.parentNode.insertBefore(top, hdr.nextSibling); else sec.insertBefore(top, sec.firstChild);
+      var grid = sec.querySelector('.tracker-grid');
+      if (grid) {
+        var fh = document.createElement('div'); fh.className = 'cv2-formhead'; fh.id = 'cv2-checkin-anchor';
+        fh.innerHTML = '<div><h2>Weekly check-in</h2><p class="cv2-formsub" id="cv2-checkin-status"></p></div><span class="cv2-unsaved" id="cv2-unsaved"><i></i>Not sent yet</span>';
+        grid.parentNode.insertBefore(fh, grid);
+      }
+    }
+    var st = D.strength();
+    var strength = st.length ? insightsHtml(st.slice(0, 4).map(function (x) { return Object.assign({ kind: 'strength' }, strengthLine(x)); }), 4)
+      : '<div class="cv2-empty">' + I('train') + '<span>Log a few sessions to see your strength trend. Each exercise is only ever compared with itself.</span></div>';
+    var w = D.weightTrend(), wl = weightLine(w);
+    var weight = wl ? insightsHtml([Object.assign({ kind: 'weight' }, wl)], 1) + weightChart(w)
+      : '<div class="cv2-empty">' + I('scale') + '<span>No weigh-ins yet. Your weight goes in with the weekly check-in below.</span></div>';
+    var done = consistency();
+    var ck = D.checkin();
+    var ckLine = C.checkinFailed ? 'Not sent yet — your answers are still in the form below.'
+      : ck.last != null ? 'Last sent ' + fmtWD(new Date(ck.last)) + (ck.due ? ' · next due ' + fmtWD(ck.due) : '') + '.'
+      : (ck.due ? 'First check-in due ' + fmtWD(ck.due) + '.' : 'Send your first check-in whenever you\'re ready.');
+    var per = [[4, '4 weeks'], [8, '8 weeks'], [12, '12 weeks'], [0, 'All']].map(function (x) {
+      return '<button type="button" aria-pressed="' + (PERIOD.weeks === x[0]) + '" onclick="cv2Period(' + x[0] + ')">' + x[1] + '</button>'; }).join('');
+    top.innerHTML =
+      '<div class="cv2-seg2 wide" role="group" aria-label="Period">' + per + '</div>' +
+      '<div class="cv2-card">' + cardHead('train', 'train', 'Training consistency') + done + '</div>' +
+      '<div class="cv2-card">' + cardHead('progress', 'prog', 'Strength', st.length ? '<small>' + st.filter(function (x) { return x.pct > 0.005; }).length + ' of ' + st.length + ' lifts up</small>' : '') + strength + '</div>' +
+      '<div class="cv2-card">' + cardHead('scale', 'prog', 'Body weight') + weightBig(w) + weight + '</div>' +
+      '<div class="cv2-card">' + cardHead('target', 'neutral', 'Body measurements') + '<div class="cv2-empty">' + I('info') + '<span>Measurements (waist, hips, etc.) aren\'t recorded in the app yet. Progress photos go in with your check-in.</span></div></div>' +
+''; 
+    var fhs = $('cv2-checkin-status'); if (fhs) { fhs.textContent = ckLine; fhs.className = 'cv2-formsub' + (C.checkinFailed || ck.kind === 'overdue' || ck.kind === 'first_due' ? ' warn' : ''); }
+    var btn = $('log-btn'); if (btn && !btn.disabled) btn.textContent = C.checkinFailed ? 'Send again' : 'Send check-in to ' + COACH;
+    var wkIn = $('input-week'), wk = D.week();
+    if (wkIn && !wkIn.value && wk.canonical && wk.started) wkIn.value = wk.week;
+    restoreDraft(); tidyTracker(); call(function () { renderCheckins(); });
+    if (_serverWeights === null) D.fetchWeights().then(function (x) { if (x && x.length && current === 'tracker') renderProgressTop(); });
+  }
+  function tidyTracker() {
+    var sec = $('section-tracker'); if (!sec) return;
+    var notes = $('input-notes'); if (notes) notes.placeholder = 'Anything ' + COACH + ' should know this week? Injuries, schedule changes, how training felt…';
+    var ph = $('photo-btn-front'), box = ph && ph.closest('div[style*="dashed"]');
+    if (box) {
+      box.classList.add('cv2-photos');
+      var h = box.firstElementChild; if (h && /PHOTOS/i.test(h.textContent)) h.textContent = 'Progress photos (optional)';
+      var d = h && h.nextElementSibling; if (d) d.textContent = 'Front, side and back. Tap a slot to choose a photo — they upload when you send your check-in, and only ' + COACH + ' can see them.';
+    }
+    ['front', 'side', 'back'].forEach(function (v) {
+      var gal = $('input-photo-' + v + '-gallery');            // newer shells: camera slot + separate library picker
+      var sp = $('photo-prompt-' + v);
+      if (sp && /📷/.test(sp.textContent)) sp.innerHTML = I('plus') + '<b>' + v[0].toUpperCase() + v.slice(1) + '</b><small>' + (gal ? 'Take photo' : 'Add photo') + '</small>';
+      if (gal) {
+        document.querySelectorAll('#section-tracker button').forEach(function (bt) {
+          var oc = bt.getAttribute('onclick') || '';
+          if (oc.indexOf('input-photo-' + v + '-gallery') >= 0 && !bt.classList.contains('cv2-gal')) {
+            bt.classList.add('cv2-gal');
+            bt.innerHTML = I('grid') + 'From library';
+            bt.setAttribute('aria-label', 'Choose ' + v + ' photo from your library');
+          }
+        });
+      }
+    });
+  }
+  /* History: newest first, readable dates, no device-only delete (the coach's
+     copy is unaffected by it and it comes back on the next restore). */
+  if (typeof window.renderCheckins === 'function') {
+    var _rc = window.renderCheckins;
+    window.renderCheckins = function () {
+      var r = _rc.apply(this, arguments);
+      var el = $('checkin-list'); if (!el) return r;
+      var list = [];
+      call(function () { list = checkins.slice(); });
+      if (!list.length) { el.innerHTML = '<div class="cv2-empty" style="padding:4px 2px">' + I('clip') + '<span>No check-ins yet. Your first one goes in the form above.</span></div>'; return r; }
+      list = list.map(function (c, i) { return { c: c, t: Date.parse(c.ts || '') || Date.parse(c.date || '') || 0, i: i }; })
+        .sort(function (a, b) { return (b.t - a.t) || ((+b.c.week || 0) - (+a.c.week || 0)); });
+      el.innerHTML = list.map(function (x) {
+        var c = x.c, m = [];
+        if (c.energy) m.push('Energy ' + c.energy); if (c.sleep) m.push('Sleep ' + c.sleep); if (c.stress) m.push('Stress ' + c.stress); if (c.feeling) m.push('Overall ' + c.feeling);
+        var note = String(c.notes || '').replace(/\[PHOTO_[A-Z]+:wk\d+\]/g, '').trim();
+        return '<div class="cv2-hist"><div class="tx"><b>Week ' + esc(c.week) + '</b><small>' + (x.t ? esc(fmtWD(new Date(x.t))) : esc(c.date || '')) + (m.length ? ' · ' + esc(m.join(' · ')) + ' /10' : '') + '</small>' +
+          (note && note !== '—' ? '<p>' + esc(note) + '</p>' : '') + '</div><div class="kg cv2-num">' + esc(c.weight) + ' kg</div></div>';
+      }).join('');
+      return r;
+    };
+  }
+  window.cv2Period = function (w) { PERIOD.weeks = w; renderProgressTop(); };
+  /* Sessions finished per calendar week, against the sessions scheduled. A
+     week with nothing logged shows as empty — it is not called a failure. */
+  function consistency() {
+    var fin = D.finished(); if (!fin.length) return '<div class="cv2-empty">' + I('check') + '<span>Finish a workout in the app and it will count here.</span></div>';
+    var n = D.next(), sched = D.scheduledPerWeek((n && n.phase) || 1);
+    var nW = PERIOD.weeks || Math.min(26, Math.max(1, Math.ceil((Date.now() - fin.reduce(function (m, f) { return Math.min(m, f.date.getTime()); }, Date.now())) / (7 * DAY_MS)) + 1));
+    var thisMon = mondayOf(new Date()), weeks = [];
+    for (var i = nW - 1; i >= 0; i--) {
+      var m = addDays(thisMon, -i * 7), e = addDays(m, 7);
+      var f = fin.filter(function (x) { return x.date >= m && x.date < e; });
+      weeks.push({ m: m, n: f.filter(function (x) { return !x.optional; }).length, opt: f.filter(function (x) { return x.optional; }).length });
+    }
+    var wk = D.week(); if (wk.canonical) { var st = parseYmd(CANONICAL_START); if (st) weeks = weeks.filter(function (w) { return addDays(w.m, 7) > st; }); }
+    var max = Math.max(sched || 1, Math.max.apply(null, weeks.map(function (w) { return w.n + w.opt; })));
+    var W = 320, H = 120, B = 20, T = 14, bw = Math.min(26, (W - 30) / weeks.length * 0.6);
+    var bars = weeks.map(function (w, i) {
+      var x = 24 + (i + 0.5) * (W - 30) / weeks.length;
+      var h1 = (H - B - T) * w.n / max, h2 = (H - B - T) * w.opt / max;
+      return '<rect x="' + (x - bw / 2).toFixed(1) + '" y="' + (H - B - h1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h1.toFixed(1) + '" rx="3" fill="var(--c-text)"><title>w/c ' + fmtD(w.m) + ': ' + w.n + ' scheduled sessions finished' + (w.opt ? ', ' + w.opt + ' optional' : '') + '</title></rect>' +
+        (w.opt ? '<rect x="' + (x - bw / 2).toFixed(1) + '" y="' + (H - B - h1 - h2).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h2.toFixed(1) + '" rx="3" fill="var(--c-line2)"/>' : '') +
+        (i === 0 || i === weeks.length - 1 ? '<text class="ax" x="' + x.toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle">' + fmtD(w.m) + '</text>' : '');
+    }).join('');
+    var y = H - B - (H - B - T) * sched / max;
+    var line = sched ? '<line x1="22" x2="' + W + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="var(--c-accent)" stroke-dasharray="4 4" stroke-width="1.2"/><text class="ax" x="0" y="' + (y + 3).toFixed(1) + '">' + sched + '</text>' : '';
+    var tot = weeks.reduce(function (s, w) { return s + w.n; }, 0), full = weeks.filter(function (w) { return sched && w.n >= sched; }).length;
+    return '<div class="cv2-big"><b class="cv2-num">' + tot + '</b><span>scheduled session' + (tot === 1 ? '' : 's') + ' finished · ' + weeks.length + ' week' + (weeks.length === 1 ? '' : 's') + '</span></div>' +
+      '<p class="cv2-p" style="margin:0">' + (sched ? 'All ' + sched + ' done in ' + full + ' of those weeks. ' : '') + 'Only sessions finished in the app are counted.</p>' +
+      '<div class="cv2-chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Sessions finished per week from ' + fmtD(weeks[0].m) + '">' + line + bars + '</svg>' +
+      '<div class="cv2-legend"><span><i style="background:var(--c-text)"></i>Scheduled sessions</span><span><i style="background:var(--c-line2)"></i>Optional</span>' + (sched ? '<span><i style="background:none;border-top:2px dashed var(--c-accent);height:0;border-radius:0"></i>Weekly target</span>' : '') + '</div></div>';
+  }
+  function scrollToForm() { var a = $('cv2-checkin-anchor') || $('input-weight'); if (a) a.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  window.cv2ScrollToForm = scrollToForm;
+
+  /* ---- check-in draft + failed-send protection ------------------------- */
+  var FIELDS = ['input-weight', 'input-week', 'input-energy', 'input-sleep', 'input-stress', 'input-feeling', 'input-notes'];
+  var DRAFT = SK + '_cv2_checkin_draft';
+  function readForm() { var o = {}; FIELDS.forEach(function (id) { var e = $(id); if (e && e.value !== '') o[id] = e.value; }); return o; }
+  function writeForm(o) { FIELDS.forEach(function (id) { var e = $(id); if (e && o[id] != null) e.value = o[id]; }); }
+  function markUnsaved() {
+    var any = Object.keys(readForm()).filter(function (k) { return k !== 'input-week'; }).length > 0;
+    var u = $('cv2-unsaved'); if (u) u.classList.toggle('show', any || C.checkinFailed);
+  }
+  function saveDraft() { var f = readForm(); if (Object.keys(f).length) lsSet(DRAFT, f); else try { localStorage.removeItem(DRAFT); } catch (e) {} markUnsaved(); }
+  var _draftRestored = false;
+  function restoreDraft() {
+    if (!_draftRestored) {
+      _draftRestored = true;
+      var d = lsGet(DRAFT, null);
+      if (d) FIELDS.forEach(function (id) { var e = $(id); if (e && !e.value && d[id] != null) e.value = d[id]; });
+      FIELDS.forEach(function (id) { var e = $(id); if (e) e.addEventListener('input', saveDraft); });
+    }
+    markUnsaved();
+  }
+  if (typeof window.saveCheckin === 'function') {
+    var _sc = window.saveCheckin;
+    window.saveCheckin = async function () {
+      var form = readForm();
+      var photos = null; call(function () { photos = Object.assign({}, _photoBase64); });
+      var prevTs = null; try { prevTs = localStorage.getItem(SK + '_last_checkin_ts'); } catch (e) {}
+      var before = (typeof checkins !== 'undefined' && checkins) ? checkins.length : 0;
+      C.capture = [];
+      try { await _sc.apply(this, arguments); } finally {
+        var cap = C.capture; C.capture = null;
+        var ci = cap.filter(function (x) { return x.type === 'checkin'; });
+        var attempted = ci.length > 0;
+        var ok = attempted && ci.every(function (x) { return x.ok; });
+        var st = $('send-status');
+        if (!attempted && !form['input-weight']) { /* validation stopped it; page shows its own message */ }
+        else if (ok) {
+          C.checkinFailed = false;
+          lsSet(SK + '_cv2_checkin_sent', { ts: Date.now(), week: form['input-week'] || null });
+          try { localStorage.removeItem(DRAFT); } catch (e) {}
+          if (st) { st.style.display = 'block'; st.style.borderColor = 'var(--c-ok-edge)'; st.style.color = 'var(--c-ok)'; st.style.background = 'var(--c-ok-tint)';
+                    st.textContent = 'Check-in sent. ' + COACH + ' will review it and reply by message.'; }
+          toast('Check-in sent to ' + COACH + '.', 'ok');
+        } else if (attempted) {
+          /* Not accepted by the server: put the answers back, keep the photos,
+             and undo the local-only copy so sending again does not duplicate it. */
+          C.checkinFailed = true;
+          writeForm(form); lsSet(DRAFT, form);
+          call(function () { if (photos) _photoBase64 = photos; ['front', 'side', 'back'].forEach(function (v) { if (photos && photos[v]) { var b = $('photo-btn-' + v); if (b) b.innerHTML = '<span>Photo ready<br><small>' + v + '</small></span>'; } }); });
+          call(function () {
+            if (checkins.length > before) { checkins.shift(); localStorage.setItem(LS_KEYS.checkins, JSON.stringify(checkins)); }
+            if (prevTs == null) localStorage.removeItem(SK + '_last_checkin_ts'); else localStorage.setItem(SK + '_last_checkin_ts', prevTs);
+            renderCheckins();
+          });
+          var err = (ci.filter(function (x) { return !x.ok; })[0] || {}).error;
+          if (st) { st.style.display = 'block'; st.style.borderColor = 'var(--c-err-edge)'; st.style.color = 'var(--c-err)'; st.style.background = 'var(--c-err-tint)';
+                    st.textContent = 'Not sent — ' + errText(err).replace(/ Your entries are kept on this phone\./, '') + ' Your answers are still in the form; tap Send again.'; }
+        }
+        var btn = $('log-btn'); if (btn) { btn.disabled = false; btn.textContent = C.checkinFailed ? 'Send again' : 'Send check-in to ' + COACH; }
+        markUnsaved(); renderConn(); tidyTracker();
+        if (current === 'tracker') call(renderProgressTop);
+      }
+    };
+  }
+  if (typeof window.showStatus === 'function') {
+    var _ss = window.showStatus;
+    window.showStatus = function (msg) {
+      if (/^✅ Logged!/.test(String(msg))) return;          // replaced by the result line above
+      return _ss.apply(this, arguments);
+    };
+  }
+
+  /* ======================================================================
+     PAGES — Train, Nutrition, Shopping list, Lifestyle, Cardio
+     Inserted into cv2.js at the PAGES marker by build_cv2.py, so it shares the
+     helpers above (D, I, esc, call, go, toast, row …). Each page renders from
+     the same plan data the classic page uses and calls the page's own action
+     functions for every save, so what reaches the backend is unchanged.
+     ====================================================================== */
+
+  /* ------------------------------------------------------------ TRAIN --- */
+  function unlockText(n) {
+    var days = call(function () { return TIMER_DAYS[n]; });
+    var src = (typeof START_DATE !== 'undefined' && START_DATE) ? START_DATE : null;
+    var s = src ? (parseYmd(src) || new Date(src)) : null;
+    var when = (s && !isNaN(s) && days) ? addDays(startOfDay(s), days) : null;
+    return 'Phase ' + n + (when ? ' opens ' + fmtWD(when) : days ? ' opens after ' + days + ' days on the program' : ' opens later in the program') +
+      ', or sooner with a code from ' + COACH + '.';
+  }
+  function trainTransform() {
+    var home = $('tv2-home'); if (!home || home.dataset.cv2 === home.innerHTML.length + '') return;
+    var top = home.querySelector('.tv2-top');
+    if (top) {
+      var wk = D.week(), fin = D.finished();
+      var phLine = home.querySelector('.tv2-phasename');
+      var phTxt = phLine ? phLine.textContent : '';
+      var head = document.createElement('div');
+      head.className = 'cv2-trhead';
+      head.innerHTML = '<h2 class="section-title">Training</h2>' +
+        '<p class="cv2-p" style="margin:0;color:var(--c-text);font-weight:700">' + (wk.canonical && wk.started ? 'Week ' + wk.week + ' of ' + wk.total + ' · ' : '') + esc(phTxt) + '</p>' +
+        '<p class="cv2-p" style="margin:2px 0 0;font-size:13px">' + (fin.length ? fin.length + ' session' + (fin.length === 1 ? '' : 's') + ' finished so far' : 'No sessions finished yet') + '</p>';
+      top.parentNode.insertBefore(head, top);
+      ['.tv2-top', '.tv2-phaseline', '.tv2-bar'].forEach(function (s) { var e = home.querySelector(s); if (e) e.remove(); });
+    }
+    /* one compact phase selector, with the unlock rule spelled out */
+    var groups = home.querySelectorAll('.tv2-phases');
+    if (groups.length) {
+      var g = groups[0], notes = [];
+      g.classList.add('cv2-seg');
+      g.querySelectorAll('.tv2-pchip').forEach(function (b) {
+        var n = (b.textContent.match(/\d+/) || [''])[0];
+        var locked = b.classList.contains('is-locked');
+        b.innerHTML = (locked ? I('lock') : '') + 'Phase ' + n;
+        if (b.classList.contains('is-active')) b.setAttribute('aria-pressed', 'true');
+        if (locked) { b.setAttribute('aria-label', 'Phase ' + n + ', locked'); notes.push(unlockText(n)); }
+      });
+      if (notes.length) { var p = document.createElement('p'); p.className = 'cv2-p cv2-unlock'; p.textContent = notes.join(' '); g.after(p); }
+      for (var i = 1; i < groups.length; i++) groups[i].remove();
+    }
+    /* next session facts: label the loading cue so a bare figure means something */
+    home.querySelectorAll('.tv2-facts span').forEach(function (sp, i) {
+      if (i < 1 || /exercises|min$/.test(sp.textContent)) return;
+      var t = sp.textContent.trim();
+      sp.className = 'cv2-load';
+      sp.textContent = (/^\d+(\.\d+)?\s*kg$/i.test(t) ? 'Starting load: ' : 'Loads: ') + t.replace(/\bWk\b/g, 'Week').replace(/find load/i, 'find your working weight').replace(/your logged load/i, 'build on what you logged');
+    });
+    var again = home.querySelector('.tv2-again'); if (again) again.textContent = 'Doing a different session today? Pick it from the list below.';
+    home.querySelectorAll('.tv2-state').forEach(function (s) {
+      var t = s.textContent;
+      if (t === 'Upcoming') s.textContent = 'Scheduled';
+      else if (t === 'Up next') s.textContent = 'Next';
+      else if (/^Not finished/.test(t)) s.textContent = t.replace(/ · tap to start$/, '');
+    });
+    var sec = home.querySelector('.tv2-sec'); if (sec) sec.textContent = 'Sessions this phase';
+    var links = home.querySelectorAll('.tv2-link');
+    if (links.length && !home.querySelector('.cv2-cardio-link')) {
+      var c = document.createElement('button'); c.className = 'tv2-link cv2-cardio-link'; c.setAttribute('onclick', "cv2Go('cardio')");
+      c.innerHTML = 'Cardio plan<span>›</span>'; links[links.length - 1].after(c);
+    }
+    home.dataset.cv2 = home.innerHTML.length + '';
+  }
+  function loadCue(t) {
+    return String(t).replace(/Wk\s*(\d+):\s*find load\s*·\s*Wk\s*(\d+)\s*[–-]\s*(\d+):\s*your logged load/g, 'find your weight in week $1, then build on your log')
+      .replace(/\bWk\s*(\d+)/g, 'week $1').replace(/LAST\s+([\d.]+)\s*KG/g, 'last time $1 kg');
+  }
+  function workoutTransform() {
+    var w = $('tv2-workout'); if (!w || w.dataset.cv2 === w.innerHTML.length + '') return;
+    w.querySelectorAll('.tv2-pres, .tv2-up .p').forEach(function (el) {
+      if (el.children.length) { el.childNodes.forEach(function (n) { if (n.nodeType === 3 && /Wk\s*\d|LAST\s+[\d.]+\s*KG/.test(n.nodeValue)) n.nodeValue = loadCue(n.nodeValue); }); }
+      else if (/Wk\s*\d|LAST\s+[\d.]+\s*KG/.test(el.textContent)) el.textContent = loadCue(el.textContent);
+    });
+    w.dataset.cv2 = w.innerHTML.length + '';
+  }
+  var _trObs = null;
+  function trainBoot() {
+    var home = $('tv2-home'); if (!home || _trObs) return;
+    _trObs = new MutationObserver(function () { call(trainTransform); });
+    _trObs.observe(home, { childList: true });
+    var wo = $('tv2-workout');
+    if (wo) new MutationObserver(function () { call(workoutTransform); }).observe(wo, { childList: true });
+    call(trainTransform); call(workoutTransform);
+  }
+
+  /* -------------------------------------------------------- NUTRITION --- */
+  var NV = null;   // { week, day } the view is showing
+  function maxPlanWeek() { var m = 0; call(function () { for (var w = 1; w <= 60; w++) if (mealPlan[w]) m = w; }); return m || 12; }
+  function weekAllowed(w) {
+    var ph = call(function () { return getPhaseForWeek(w); }) || 1;
+    var u = call(function () { return getUnlocked(); }) || [1];
+    return ph === 1 || u.indexOf(ph) >= 0;
+  }
+  function totalWeeks() { return (CLIENT_CONFIG.client && CLIENT_CONFIG.client.durationWeeks) || 12; }
+  function planWeekFor(cal) {
+    var ph = call(function () { return getPhaseForWeek(cal); }) || 1;
+    var u = call(function () { return getUnlocked(); }) || [1];
+    if (ph === 1 || u.indexOf(ph) >= 0) return Math.min(cal, maxPlanWeek());
+    var allowed = u.filter(function (p) { return p < ph; });
+    return Math.min((allowed.length ? Math.max.apply(null, allowed) : 1) * 4, maxPlanWeek());
+  }
+  function weekStartDate(w) {
+    var src = (typeof START_DATE !== 'undefined' && START_DATE) ? START_DATE : null;
+    var s = src ? (parseYmd(src) || new Date(src)) : null;
+    if (!s || isNaN(s)) return null;
+    return mondayOf(addDays(startOfDay(s), (w - 1) * 7));
+  }
+  function nutriRender() {
+    var sec = $('section-nutrition'); if (!sec) return;
+    var box = $('cv2-nutri');
+    if (!box) { box = document.createElement('div'); box.id = 'cv2-nutri'; box.className = 'cv2-page'; sec.insertBefore(box, sec.firstChild); }
+    if (!NV) { NV = { cal: D.week().week, day: D.todayIdx() }; }
+    var cal = NV.cal, week = planWeekFor(cal), day = NV.day;
+    NV.week = week;
+    var phase = call(function () { return getPhaseForWeek(week); }) || 1;
+    var targ = call(function () { return getPhaseTargets(phase); }) || {};
+    var meals = call(function () { return getMealDay(week, day); }) || [];
+    var logs = call(function () { return loadMealLogs(); }) || {};
+    var dt = D.dayType(day), ws = weekStartDate(cal), nowCal = D.week().week;
+    var a = { cal: 0, p: 0, c: 0, f: 0 }, planned = 0, logged = 0;
+    var mealRows = meals.map(function (m, i) {
+      if (!m || !m.name) return '';
+      if (!(Number(m.cal) > 0)) {
+        return '<div class="cv2-meal note"><div class="cv2-meal-h"><span class="ic">' + I('note') + '</span><span class="tx"><b>' + esc(String(m.name).replace(/^[^\w]+/, '')) + '</b>' +
+          (m.desc ? '<small>' + esc(m.desc) + '</small>' : '') + '</span></div></div>';
+      }
+      planned++;
+      var e = logs[call(function () { return _mealLogId(week, day, i); })] || null;
+      var st = e && e.status;
+      if (st === 'ate' || st === 'swap') { logged++; a.cal += +e.cal || 0; a.p += +e.p || 0; a.c += +e.c || 0; a.f += +e.f || 0; }
+      var how = call(function () { currentNutritionDay = day; currentNutritionWeek = week; return mealHowToHtml(m, week); }) || '';
+      var status = st === 'ate' ? '<span class="cv2-chip ok">' + I('check') + 'Eaten · ' + int(e.cal || m.cal) + ' kcal</span>'
+        : st === 'swap' ? '<span class="cv2-chip accent">' + I('swap') + 'Swapped · ' + int(e.cal) + ' kcal</span>'
+        : st === 'skip' ? '<span class="cv2-chip">Skipped</span>' : '';
+      var actions = st
+        ? '<div class="cv2-meal-a">' + status + (st === 'swap' && e.swapDesc ? '<small class="sw">' + esc(e.swapDesc) + '</small>' : '') +
+          '<button type="button" class="cv2-btn ghost sm" onclick="cv2Meal(\'undo\',' + i + ')">Undo</button></div>'
+        : '<div class="cv2-meal-a">' +
+          '<button type="button" class="cv2-btn eat sm" onclick="cv2Meal(\'ate\',' + i + ')">' + I('check') + 'Ate it</button>' +
+          '<button type="button" class="cv2-btn ghost sm" aria-label="Swap — log what you ate instead" onclick="cv2Meal(\'swap\',' + i + ')">' + I('swap') + 'Swap</button>' +
+          '<button type="button" class="cv2-btn ghost sm muted" onclick="cv2Meal(\'skip\',' + i + ')">Skip</button></div>';
+      return '<div class="cv2-meal' + (st ? ' is-' + st : '') + '"><div class="cv2-meal-h"><span class="tx">' +
+        '<small class="when">' + esc(m.time || '') + '</small><b>' + esc(m.name) + '</b></span><span class="kc cv2-num">' + int(m.cal) + '<small> kcal</small></span></div>' +
+        '<div class="cv2-macros cv2-num"><span>P <b>' + int(m.p) + '</b> g</span><span>C <b>' + int(m.c) + '</b> g</span><span>F <b>' + int(m.f) + '</b> g</span></div>' +
+        '<details class="cv2-ing"><summary>Ingredients' + (how ? ' &amp; method' : '') + '</summary><p>' + esc(m.desc || '') + '</p>' + how + '</details>' +
+        actions + '</div>';
+    }).join('');
+    var days = '';
+    for (var d = 0; d < 7; d++) {
+      var dd = ws ? addDays(ws, d) : null;
+      var hasLog = false;
+      call(function () { (getMealDay(week, d) || []).forEach(function (m, i) { var e = logs[_mealLogId(week, d, i)]; if (e && (e.status === 'ate' || e.status === 'swap')) hasLog = true; }); });
+      var isToday = cal === nowCal && d === D.todayIdx();
+      days += '<button type="button" class="cv2-day' + (d === day ? ' on' : '') + (isToday ? ' today' : '') + '" aria-pressed="' + (d === day) + '" onclick="cv2NutriDay(' + d + ')">' +
+        '<span>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d] + '</span><b class="cv2-num">' + (dd ? dd.getDate() : d + 1) + '</b>' + (hasLog ? '<i></i>' : '') + '</button>';
+    }
+    var prevOk = cal > 1, nextOk = cal < totalWeeks();
+    var dayLabel = (cal === nowCal && day === D.todayIdx()) ? 'Today' : (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day] + (ws ? ' ' + fmtD(addDays(ws, day)) : ''));
+    var kind = D.isRest(dt) ? 'Rest day' : /^optional/i.test(dt) ? 'Optional training day' : dt ? 'Training day' : '';
+    box.innerHTML =
+      '<div class="cv2-pagehead"><h2 class="section-title">Nutrition</h2>' + ($('section-shop') ? '<button type="button" class="cv2-btn secondary sm" onclick="cv2Go(\'shop\')">' + I('cart') + 'Shopping list</button>' : '') + '</div>' +
+      '<div class="cv2-weeknav"><button type="button" class="cv2-icon-btn" aria-label="Previous week" ' + (prevOk ? 'onclick="cv2NutriWeek(-1)"' : 'disabled') + '>' + I('back') + '</button>' +
+      '<b>Week ' + cal + (ws ? ' · ' + fmtD(ws) + ' – ' + fmtD(addDays(ws, 6)) : '') + '</b>' +
+      '<button type="button" class="cv2-icon-btn" aria-label="Next week" ' + (nextOk ? 'onclick="cv2NutriWeek(1)"' : 'disabled') + '>' + I('chev') + '</button></div>' +
+      '<div class="cv2-days" role="group" aria-label="Day">' + days + '</div>' +
+      (week !== cal ? '<p class="cv2-p cv2-unlock" style="margin:-4px 2px 0">Phase ' + (call(function () { return getPhaseForWeek(cal); }) || '') + ' meals open when that phase is unlocked, so this week uses your Week ' + week + ' plan.</p>' : '') +
+      '<div class="cv2-card">' + cardHead('food', 'food', esc(dayLabel) + (kind ? ' <small>' + kind + '</small>' : ''), '<small>' + logged + '/' + planned + ' meals</small>') +
+      kcalFigure(a.cal, +targ.cal, logged) +
+      '<div class="cv2-mtiles">' + macroTile('Protein', a.p, +targ.p, logged) + macroTile('Carbs', a.c, +targ.c, logged) + macroTile('Fat', a.f, +targ.f, logged) + '</div>' +
+      '<p class="cv2-note">Targets set by ' + esc(COACH) + ' · bars fill as you log</p></div>' +
+      secLabel('Meals') +
+      '<div class="cv2-meals">' + (mealRows || '<div class="cv2-card"><div class="cv2-empty">' + I('info') + '<span>No meals are planned for this day.</span></div></div>') + '</div>' +
+      aboutPlan(phase) +
+      '<p class="cv2-p" style="font-size:12px;text-align:center">Meals you tick on another phone don\'t appear here yet.</p>';
+  }
+  function aboutPlan(phase) {
+    var rows = '', vals = [];
+    [1, 2, 3].forEach(function (n) {
+      var t = call(function () { return getPhaseTargets(n); }); if (!t) return;
+      vals.push(t.cal + '|' + t.p);
+      rows += '<tr><td>Phase ' + n + (n === phase ? ' <span class="cv2-chip accent" style="padding:1px 6px">now</span>' : '') + '</td><td class="cv2-num">' + int(t.cal) + '</td><td class="cv2-num">' + int(t.p) + ' g</td><td class="cv2-num">' + int(t.c) + ' g</td><td class="cv2-num">' + int(t.f) + ' g</td></tr>';
+    });
+    var flat = vals.length && vals.every(function (v) { return v === vals[0]; });
+    var why = '';
+    call(function () {
+      var nodes = document.querySelectorAll('#section-nutrition .info-card, #section-nutrition div');
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        if (n.closest('#cv2-nutri')) continue;
+        var f = n.firstElementChild;
+        if (f && /^why this works$/i.test((f.textContent || '').trim()) && n.children.length <= 3) { why = (n.textContent || '').replace(/^\s*why this works\s*/i, '').trim(); break; }
+      }
+    });
+    return '<details class="cv2-card cv2-about"><summary><span>' + I('book') + 'About your plan</span>' + I('chev') + '</summary>' +
+      '<p class="cv2-p">' + (flat ? 'Your daily targets stay the same in every phase.' : 'Your daily targets for each phase, set by ' + esc(COACH) + ':') + '</p>' +
+      '<table class="cv2-table"><thead><tr><th></th><th>kcal</th><th>Protein</th><th>Carbs</th><th>Fat</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      (why ? '<p class="cv2-eyebrow" style="margin-top:14px">Why this phase is set up this way</p><p class="cv2-quote" style="color:var(--c-muted)">' + esc(why) + '</p>' : '') +
+      '</details>';
+  }
+  window.cv2NutriDay = function (d) { NV.day = d; nutriRender(); };
+  window.cv2NutriWeek = function (dir) { var c = NV.cal + dir; if (c < 1 || c > totalWeeks()) return; NV.cal = c; nutriRender(); };
+  window.cv2Meal = function (kind, i) {
+    var w = NV.week, d = NV.day;
+    call(function () { currentNutritionWeek = w; currentNutritionDay = d; currentNutritionPhase = getPhaseForWeek(w); });
+    var p;
+    if (kind === 'ate' || kind === 'skip') p = call(function () { return logMealQuick(w, d, i, kind); });
+    else if (kind === 'undo') p = call(function () { return unlogMeal(w, d, i); });
+    else if (kind === 'swap') { call(function () { openSwapModal(w, d, i); }); return; }
+    nutriRender();
+    Promise.resolve(p).then(function () { nutriRender(); });
+  };
+  /* Log meal from Home lands on today's plan in the new view. */
+  window.cv2LogMeal = function () {
+    go('nutrition');
+    setTimeout(function () {
+      var first = document.querySelector('#cv2-nutri .cv2-meal:not(.note):not(.is-ate):not(.is-swap):not(.is-skip)');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+  };
+
+  /* ---------------------------------------------------- SHOPPING LIST --- */
+  var SHOP_CATS = [
+    ['protein', 'Meat, fish & eggs', /chicken|turkey|beef|mince|steak|lamb|pork|salmon|tuna|fish|prawn|egg|tender|whey|wpi|isolate|protein powder|tofu/],
+    ['dairy', 'Dairy', /milk|yog|cheese|cottage|parmesan|feta|butter|cream|ricotta|halloumi|skyr/],
+    ['veg', 'Fruit & veg', /lettuce|tomato|cucumber|spinach|broccoli|capsicum|onion|carrot|zucchini|avocado|salad|greens|mushroom|potato|sweet potato|corn|pea|bean|banana|apple|berr|orange|grape|mango|kiwi|lemon|lime|date|pear|herb|garlic|tabbouleh|rocket/],
+    ['bakery', 'Bread, grains & cereal', /bread|wrap|tortilla|sourdough|bagel|bun|roll|rice|pasta|oat|muesli|granola|weet-bix|cereal|couscous|quinoa|noodle|cracker|rice cake/],
+    ['pantry', 'Pantry & sauces', /oil|spray|sauce|mayo|mustard|ketchup|honey|syrup|tahini|peanut butter|nut butter|hummus|spice|seasoning|salt|pepper|stock|vinegar|tinned|canned|jam|almond|cashew|nut|seed/],
+  ];
+  function shopCat(name) {
+    var n = name.toLowerCase();
+    for (var i = 0; i < SHOP_CATS.length; i++) if (SHOP_CATS[i][2].test(n)) return SHOP_CATS[i][0];
+    return 'other';
+  }
+  /* Strict line parser. Quantities merge only when units reconcile:
+     g with kg, ml with L, and plain counts with counts. A line with no
+     quantity stays unquantified — nothing is guessed. */
+  function parsePiece(raw) {
+    var s = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!s) return null;
+    var m = /^(\d+(?:\.\d+)?|\d+\/\d+)\s*(kg|g|ml|l)?\b\s*(?:x\s+)?(.*)$/i.exec(s);
+    var qty = null, unit = null, rest = s;
+    if (m && m[3]) {
+      qty = m[1].indexOf('/') > 0 ? (function (a) { return +a[0] / +a[1]; })(m[1].split('/')) : parseFloat(m[1]);
+      unit = (m[2] || '').toLowerCase();
+      rest = m[3];
+    }
+    var dim = qty == null ? 'none' : (unit === 'g' || unit === 'kg') ? 'mass' : (unit === 'ml' || unit === 'l') ? 'vol' : 'count';
+    var base = qty == null ? null : unit === 'kg' ? qty * 1000 : unit === 'l' ? qty * 1000 : qty;
+    rest = rest.replace(/^generic\s+/i, '').trim();
+    var serving = '';
+    var paren = rest.match(/\(([^)]*)\)/g) || [];
+    if (dim === 'count') paren.forEach(function (p) { if (/\d\s*(g|ml|tsp|tbsp|cup)/i.test(p)) serving = serving || p.replace(/^\(|\)$/g, '').replace(/^each\s+|^per\s+/i, ''); });
+    var name = rest.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').replace(/[,;]\s*$/, '').trim();
+    if (!name) return null;
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    var key = dim + '|' + name.toLowerCase() + (serving ? '|' + serving.toLowerCase() : '');
+    return { key: key, name: name, serving: serving, dim: dim, base: base };
+  }
+  function shopItems(start, len) {
+    var items = {};
+    for (var cw = start; cw < start + len; cw++) {
+      var w = planWeekFor(cw);
+      var days = call(function () { return mealPlan[w]; }) || [];
+      days.forEach(function (day, di) {
+        var meals = call(function () { return getMealDay(w, di); }) || (day && day.meals) || [];
+        meals.forEach(function (m) {
+          if (!m || !m.name || !(Number(m.cal) > 0) || !m.desc) return;
+          String(m.desc).split(/\s+\+\s+/).forEach(function (piece) {
+            var p = parsePiece(piece); if (!p) return;
+            var it = items[p.key] || (items[p.key] = { key: p.key, name: p.name, serving: p.serving, dim: p.dim, total: 0, uses: 0, cat: shopCat(p.name) });
+            it.uses++; if (p.base != null) it.total += p.base;
+          });
+        });
+      });
+    }
+    return Object.keys(items).map(function (k) { return items[k]; });
+  }
+  function qtyText(it) {
+    if (it.dim === 'mass') return it.total >= 1000 ? (Math.round(it.total / 100) / 10) + ' kg' : Math.round(it.total) + ' g';
+    if (it.dim === 'vol') return it.total >= 1000 ? (Math.round(it.total / 100) / 10) + ' L' : Math.round(it.total) + ' ml';
+    if (it.dim === 'count') {
+      var sv = String(it.serving || '').replace(/^(whole,?\s*)?approx\.?\s*/i, '~').replace(/(\d)\s*(g|ml)\b/gi, '$1 $2').trim();
+      return (Math.round(it.total * 10) / 10) + (sv ? ' · ' + sv + (/each|per|=/.test(sv) ? '' : ' each') : '');
+    }
+    return 'In ' + it.uses + ' meal' + (it.uses === 1 ? '' : 's');
+  }
+  var SHOPV = null;
+  function shopKey() { return SK + '_cv2_shop_' + SHOPV.start + '_' + SHOPV.len; }
+  function shopRender() {
+    var sec = $('section-shop'); if (!sec) return;
+    var box = $('cv2-shop');
+    if (!box) { box = document.createElement('div'); box.id = 'cv2-shop'; box.className = 'cv2-page'; sec.insertBefore(box, sec.firstChild); }
+    if (!SHOPV) SHOPV = { start: D.week().week, len: 1, hide: !!lsGet(SK + '_cv2_shop_hide', false) };
+    var max = totalWeeks();
+    if (SHOPV.start + SHOPV.len - 1 > max) SHOPV.len = 1;
+    var items = shopItems(SHOPV.start, SHOPV.len), checked = lsGet(shopKey(), {}) || {};
+    var nChecked = items.filter(function (i) { return checked[i.key]; }).length;
+    var opts = '';
+    for (var w = 1; w <= max; w++) {
+      var ws = weekStartDate(w);
+      opts += '<option value="' + w + '"' + (w === SHOPV.start ? ' selected' : '') + '>Week ' + w + (ws ? ' · ' + fmtD(ws) + ' – ' + fmtD(addDays(ws, 6)) : '') + '</option>';
+    }
+    var groups = [['protein', 'Meat, fish & eggs'], ['veg', 'Fruit & veg'], ['dairy', 'Dairy'], ['bakery', 'Bread, grains & cereal'], ['pantry', 'Pantry & sauces'], ['other', 'Other']];
+    var list = groups.map(function (g) {
+      var rows = items.filter(function (i) { return i.cat === g[0]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+      var vis = rows.filter(function (i) { return !(SHOPV.hide && checked[i.key]); });
+      if (!vis.length) return '';
+      return '<div class="cv2-card cv2-shopcat"><h3>' + g[1] + '</h3>' + vis.map(function (i) {
+        var on = !!checked[i.key];
+        return '<label class="cv2-shopitem' + (on ? ' on' : '') + '"><input type="checkbox" ' + (on ? 'checked ' : '') + 'onchange="cv2ShopToggle(\'' + esc(i.key).replace(/'/g, '&#39;') + '\')">' +
+          '<span class="box" aria-hidden="true">' + I('check') + '</span><span class="nm">' + esc(i.name) + '</span><span class="q cv2-num">' + esc(qtyText(i)) + '</span></label>';
+      }).join('') + '</div>';
+    }).join('');
+    box.innerHTML =
+      '<div class="cv2-pagehead"><h2 class="section-title">Shopping list</h2><button type="button" class="cv2-btn secondary sm" onclick="cv2ShopShare()">' + I('out') + 'Share</button></div>' +
+      '<p class="cv2-p" style="margin-top:-6px">Everything in your meal plan for the weeks you choose.</p>' +
+      '<div class="cv2-shopbar"><select aria-label="Starting week" onchange="cv2ShopWeek(this.value)">' + opts + '</select>' +
+      '<div class="cv2-seg2" role="group" aria-label="How many weeks"><button type="button" aria-pressed="' + (SHOPV.len === 1) + '" onclick="cv2ShopLen(1)">1 week</button>' +
+      '<button type="button" aria-pressed="' + (SHOPV.len === 2) + '" ' + (SHOPV.start + 1 > max ? 'disabled' : '') + ' onclick="cv2ShopLen(2)">2 weeks</button></div></div>' +
+      (items.length ? '<div class="cv2-shopsum"><span class="cv2-num">' + nChecked + ' of ' + items.length + ' items checked</span>' +
+        '<button type="button" class="cv2-link" onclick="cv2ShopHide()">' + (SHOPV.hide ? 'Show checked items' : 'Hide checked items') + '</button></div>' + list +
+        (SHOPV.hide && nChecked === items.length ? '<div class="cv2-card"><div class="cv2-empty">' + I('check') + '<span>Everything is checked off.</span></div></div>' : '')
+        : '<div class="cv2-card"><div class="cv2-empty">' + I('info') + '<span>There\'s no meal plan for this week yet.</span></div></div>') +
+      '<p class="cv2-p" style="font-size:12px">Quantities add up the plan exactly. Items with different units are listed separately rather than converted.</p>';
+  }
+  window.cv2ShopToggle = function (k) { var c = lsGet(shopKey(), {}) || {}; if (c[k]) delete c[k]; else c[k] = true; lsSet(shopKey(), c); shopRender(); };
+  window.cv2ShopWeek = function (v) { SHOPV.start = +v; shopRender(); };
+  window.cv2ShopLen = function (n) { SHOPV.len = n; shopRender(); };
+  window.cv2ShopHide = function () { SHOPV.hide = !SHOPV.hide; lsSet(SK + '_cv2_shop_hide', SHOPV.hide); shopRender(); };
+  window.cv2ShopShare = function () {
+    var items = shopItems(SHOPV.start, SHOPV.len), checked = lsGet(shopKey(), {}) || {};
+    var ws = weekStartDate(SHOPV.start);
+    var txt = 'Shopping list — Week ' + SHOPV.start + (SHOPV.len > 1 ? '–' + (SHOPV.start + 1) : '') + (ws ? ' (from ' + fmtD(ws) + ')' : '') + '\n';
+    [['protein', 'Meat, fish & eggs'], ['veg', 'Fruit & veg'], ['dairy', 'Dairy'], ['bakery', 'Bread, grains & cereal'], ['pantry', 'Pantry & sauces'], ['other', 'Other']].forEach(function (g) {
+      var rows = items.filter(function (i) { return i.cat === g[0] && !checked[i.key]; });
+      if (!rows.length) return;
+      txt += '\n' + g[1] + '\n' + rows.map(function (i) { return '• ' + i.name + ' — ' + qtyText(i); }).join('\n') + '\n';
+    });
+    if (navigator.share) { navigator.share({ title: 'Shopping list', text: txt }).catch(function () {}); return; }
+    var done = function () { toast('Shopping list copied — paste it anywhere.', 'ok'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function () { fallbackCopy(txt) ? done() : toast('Couldn\'t copy on this browser.', 'err'); });
+    else if (fallbackCopy(txt)) done(); else toast('Couldn\'t copy on this browser.', 'err');
+  };
+  function fallbackCopy(t) {
+    try { var a = document.createElement('textarea'); a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); var ok = document.execCommand('copy'); a.remove(); return ok; } catch (e) { return false; }
+  }
+
+  /* ------------------------------------------------ LIFESTYLE + CARDIO --- */
+  var LIFE_SRC = null;
+  function lifeSource() {
+    if (LIFE_SRC) return LIFE_SRC;
+    var out = {};
+    document.querySelectorAll('#section-lifestyle .life-card').forEach(function (c) {
+      var t = (c.querySelector('.life-card-title') || {}).textContent || '';
+      var body = c.querySelector('.life-card-body'); if (!body) return;
+      var b = body.cloneNode(true), lis = [];
+      b.querySelectorAll('li').forEach(function (li) { lis.push(li.textContent.trim()); });
+      b.querySelectorAll('ul').forEach(function (u) { u.remove(); });
+      out[t.trim().toLowerCase()] = { text: (b.textContent || '').replace(/\s+/g, ' ').trim(), tips: lis };
+    });
+    return (LIFE_SRC = out);
+  }
+  /* Drop statements the page can't back up: assumed personal numbers, percentage
+     claims and supplement promises. What remains is the coach's own guidance. */
+  function cleanAdvice(text) {
+    return (String(text || '').match(/[^.!?]+[.!?]*/g) || []).map(function (s) { return s.trim(); }).filter(function (s) {
+      if (!s) return false;
+      if (/~\s*\d|averag|you'?re (already|getting)|\d+\s*%|\(\d{4}\)|genuinely|guarantee/i.test(s)) return false;
+      // second-person statements about the client's own sleep or stress: the
+      // generator fills these from intake *or its defaults*, so they can't be trusted
+      if (/\byou(r|'re)?\b/i.test(s) && /\d+(\.\d+)?\s*(h|hrs?|hours?)\b|\b(sleep|sleeping)\b[^.]*\b(about|around|only)\b/i.test(s)) return false;
+      if (/^(low|moderate|high|very high)\s+stress\b/i.test(s)) return false;
+      return true;
+    }).join(' ');
+  }
+  function cleanTips(tips) {
+    var seenWalk = false;
+    return (tips || []).filter(function (t) {
+      if (!t || /magnesium|supplement|genuinely|\d+\s*%|tracker tab/i.test(t)) return false;
+      if (/walk after work/i.test(t)) { if (seenWalk) return false; seenWalk = true; }
+      return true;
+    });
+  }
+  function lifeRender() {
+    var sec = $('section-lifestyle'); if (!sec) return;
+    var src = lifeSource();
+    var box = $('cv2-life');
+    if (!box) { box = document.createElement('div'); box.id = 'cv2-life'; box.className = 'cv2-page'; sec.insertBefore(box, sec.firstChild); }
+    var mon = mondayOf(new Date()), fin = D.finished().filter(function (f) { return f.date >= mon && !f.optional; }).length;
+    var n = D.next(), sched = D.scheduledPerWeek((n && n.phase) || 1);
+    var md = D.mealDays(), mealDays = 0, elapsed = 0;
+    for (var i = 0; i < 7; i++) { var d = addDays(mon, i); if (d <= new Date()) { elapsed++; if (md[ymd(d)]) mealDays++; } }
+    var ck = D.checkin();
+    function habit(icon, title, target, result, action) {
+      return '<div class="cv2-habit"><span class="ic">' + I(icon) + '</span><span class="tx"><b>' + esc(title) + '</b><small>Target: ' + esc(target) + '</small>' +
+        '<small class="rs">' + result + '</small></span>' + (action || '') + '</div>';
+    }
+    var stepM = (($('section-cardio') || {}).textContent || '').match(/(\d{1,2},?\d{3})\s*(?:-\s*)?steps?\s*(?:a|per)\s*day/i)
+             || (($('section-cardio') || {}).textContent || '').match(/(\d{1,2},?\d{3})\s*-?\s*step floor/i);
+    var steps = stepM ? stepM[1] : '';
+    var sl = src.sleep || {}, stz = src.stress || {};
+    var sleepTxt = cleanAdvice(sl.text), sleepTips = cleanTips(sl.tips), stressTxt = cleanAdvice(stz.text), stressTips = cleanTips(stz.tips);
+    function guide(title, txt, tips) {
+      if (!txt && !tips.length) return '';
+      return '<details class="cv2-card cv2-about"><summary><span>' + esc(title) + '</span>' + I('chev') + '</summary>' + (txt ? '<p class="cv2-p">' + esc(txt) + '</p>' : '') +
+        (tips.length ? '<ul class="cv2-list">' + tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '') + '</details>';
+    }
+    box.innerHTML =
+      '<div class="cv2-pagehead"><h2 class="section-title">Lifestyle &amp; recovery</h2></div>' +
+      '<p class="cv2-p" style="margin-top:-6px">The habits in your plan, and ' + esc(COACH) + '\'s guidance on recovery.</p>' +
+      '<div class="cv2-card">' + cardHead('cal', 'food', 'This week\'s habits') +
+      habit('train', 'Training sessions', (sched || '—') + ' a week', 'This week: <b class="cv2-num">' + fin + '</b> done') +
+      habit('food', 'Follow your meal plan', 'log meals daily', 'This week: meals logged on <b class="cv2-num">' + mealDays + ' of ' + elapsed + '</b> days') +
+      (steps ? habit('run', 'Daily steps', steps + ' a day', 'Not tracked in the app', '<button type="button" class="cv2-link" onclick="cv2Go(\'cardio\')">Plan' + I('chev') + '</button>') : '') +
+      habit('run', 'Rest-day walk', '20–30 min, optional', 'Not tracked in the app', '<button type="button" class="cv2-link" onclick="cv2Go(\'cardio\')">Plan' + I('chev') + '</button>') +
+      habit('clip', 'Weekly check-in', 'every Sunday', ck.last != null ? 'Last sent ' + esc(fmtWD(new Date(ck.last))) : 'Not sent yet',
+        '<button type="button" class="cv2-link" onclick="scrollToCheckin()">Open' + I('chev') + '</button>') +
+      '<p class="cv2-p" style="font-size:12px;margin-top:10px">Sleep, stress and energy are rated in your weekly check-in. Daily sleep and step tracking isn\'t available in the app yet.</p></div>' +
+      guide('Sleep', sleepTxt, sleepTips) + guide('Stress', stressTxt, stressTips);
+  }
+  function cardioTidy() {
+    var sec = $('section-cardio'); if (!sec || sec.dataset.cv2) return;
+    sec.dataset.cv2 = '1';
+    var t = sec.querySelector('.section-title'); if (t) t.textContent = 'Cardio plan';
+    sec.querySelectorAll('div[style*="DM Mono"]').forEach(function (el) {
+      var box = el.parentElement;
+      if (/ACTIVE JOB NOTE/.test(el.textContent) && box) { box.remove(); return; }   // assumes a job the page can't confirm
+      /* coach-written notes (e.g. "⚠ STEP FLOOR"): keep the content, drop the
+         warning glyph and shouting caps, present it as a card */
+      var t = el.textContent.replace(/^[^A-Za-z0-9]+/, '').trim();
+      if (t && t === t.toUpperCase() && t.length < 40) {
+        el.textContent = t.charAt(0) + t.slice(1).toLowerCase();
+        el.classList.add('cv2-notehead');
+        if (box && box !== sec) box.classList.add('cv2-notecard');
+      }
+    });
+    var grid = Array.prototype.filter.call(sec.querySelectorAll('.section-tag'), function (e) { return /cardio days/i.test(e.textContent); })[0];
+    if (grid && grid.parentElement) grid.parentElement.remove();                  // repeats the plan and asserts a "physical job"
+    var lockNote = $('cardio-unlock-notice');
+    var u = call(function () { return getUnlocked(); }) || [1];
+    [2, 3].forEach(function (n) {
+      var card = $('cardio-card-p' + n); if (!card) return;
+      var open = u.indexOf(n) >= 0 || !!call(function () { return isTimerUnlocked(n); });
+      if (!open) { card.classList.add('cv2-locked'); var tag = document.createElement('div'); tag.className = 'cv2-lockline'; tag.innerHTML = I('lock') + esc(unlockText(n)); card.appendChild(tag); }
+    });
+    if (lockNote) lockNote.remove();
+  }
+
+  /* ---------------------------------------------------------- wiring --- */
+  var _show2 = window.showSection;
+  window.showSection = function (id) {
+    var r = _show2.apply(this, arguments);
+    if (id === 'training') call(trainBoot);
+    if (id === 'nutrition') { NV = null; call(nutriRender); }
+    if (id === 'shop') { SHOPV = null; call(shopRender); }
+    if (id === 'lifestyle') call(lifeRender);
+    if (id === 'cardio') call(cardioTidy);
+    return r;
+  };
+  /* re-render the nutrition view whenever the page logs or undoes a meal
+     (including a swap saved from the page's own modal) */
+  ['logMealQuick', 'unlogMeal', 'saveSwap'].forEach(function (fn) {
+    if (typeof window[fn] !== 'function') return;
+    var orig = window[fn];
+    window[fn] = function () {
+      var r = orig.apply(this, arguments);
+      Promise.resolve(r).then(function () { if (current === 'nutrition') call(nutriRender); });
+      return r;
+    };
+  });
+  setTimeout(function () { call(trainBoot); }, 0);
+
+
+  /* ========================================================= BOOT ======= */
+  buildChrome();
+  setChrome('cv2home');
+  renderConn();
+  setInterval(renderConn, 15000);
+  /* The page boots to 'home' via showSection, which now resolves to the new home. */
+  if (!document.querySelector('.section.active') || ($('section-home') && $('section-home').classList.contains('active'))) go('cv2home');
+})();
+
+</script>
+<!-- CV2:JS:END -->
 </body>
 </html>
 
