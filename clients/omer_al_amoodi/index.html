@@ -11555,6 +11555,20 @@ window.CV2_DEFAULT = 'v2';
       var d = h && h.nextElementSibling; if (d) d.textContent = 'Front, side and back. Tap a slot to choose a photo — they upload when you send your check-in, and only ' + COACH + ' can see them.';
     }
     ['front', 'side', 'back'].forEach(function (v) {
+      /* Older shells only have the camera input (capture="user"), which on iPhone
+         opens the camera and offers no photo library. Give every page the same
+         library picker newer shells have, wired to the page's own handler. */
+      var cam = $('input-photo-' + v + '-file'), slot = $('photo-btn-' + v);
+      if (cam && slot && !$('input-photo-' + v + '-gallery') && typeof window.handlePhotoPicked === 'function') {
+        var gi = document.createElement('input');
+        gi.type = 'file'; gi.accept = 'image/*'; gi.id = 'input-photo-' + v + '-gallery'; gi.style.display = 'none';
+        gi.addEventListener('change', function (e) { window.handlePhotoPicked(e, v); });
+        cam.parentNode.insertBefore(gi, cam.nextSibling);
+        var gb = document.createElement('button');
+        gb.type = 'button';
+        gb.setAttribute('onclick', "var i=document.getElementById('input-photo-" + v + "-gallery');i.value='';i.click()");
+        slot.parentNode.insertBefore(gb, slot.nextSibling);
+      }
       var gal = $('input-photo-' + v + '-gallery');            // newer shells: camera slot + separate library picker
       var sp = $('photo-prompt-' + v);
       if (sp && /📷/.test(sp.textContent)) sp.innerHTML = I('plus') + '<b>' + v[0].toUpperCase() + v.slice(1) + '</b><small>' + (gal ? 'Take photo' : 'Add photo') + '</small>';

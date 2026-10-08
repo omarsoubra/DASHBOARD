@@ -3349,6 +3349,9 @@ body.cv2 .cv2-meal .cv2-btn.ghost.muted{color:var(--c-muted)!important;}
 .cv2-formhead{margin-top:22px;align-items:flex-start;}
 .cv2-formsub{font-size:13px;color:var(--c-muted);margin:3px 0 0;line-height:1.45;}
 .cv2-formsub.warn{color:var(--c-warn);font-weight:700;}
+body.cv2 .cv2-notecard{background:var(--c-surface)!important;border:1px solid rgba(22,24,28,.06)!important;border-radius:var(--c-r)!important;
+  box-shadow:var(--c-shadow)!important;padding:16px!important;}
+body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:var(--c-text)!important;letter-spacing:0!important;margin-bottom:6px!important;}
 
 </style>
 <!-- CV2:CSS:END -->
@@ -11590,7 +11593,8 @@ window.CV2_DEFAULT = 'v2';
   }
 
   function go(id) { call(function () { showSection(id); }); }
-  window.cv2Go = function (id) { go(id); };
+  /* Never navigate to a section this page doesn't have (older shells lack some). */
+  window.cv2Go = function (id) { if (id !== 'home' && !$('section-' + id)) return; go(id); };
 
   /* showSection: 'home' now means the new home. Wrap last so every earlier
      wrapper (elite UX, shop, Training V2) still runs. */
@@ -11634,7 +11638,7 @@ window.CV2_DEFAULT = 'v2';
       '<div class="cv2-coach-id" style="margin-bottom:10px"><span class="cv2-av" style="background:var(--c-text)">' + esc(initials(CLIENT_CONFIG.client.firstName)) + '</span>' +
       '<span><b id="cv2-sheet-h">' + esc(CLIENT_CONFIG.client.firstName || '') + '</b><small>Client · coached by ' + esc(COACH) + '</small></span></div>' +
       '<div class="cv2-rows">' +
-      row('cart', 'Shopping list', 'Built from your meal plan', "cv2Then(function(){cv2Go('shop')})") +
+      ($('section-shop') ? row('cart', 'Shopping list', 'Built from your meal plan', "cv2Then(function(){cv2Go('shop')})") : '') +
       row('run', 'Cardio plan', 'Your cardio for each phase', "cv2Then(function(){cv2Go('cardio')})") +
       row('moon', 'Lifestyle & recovery', 'Sleep, stress and recovery guidance', "cv2Then(function(){cv2Go('lifestyle')})") +
       (typeof window.tv2Guide === 'function' ? row('book', 'Program guide', 'How your training works', "cv2Then(cv2OpenGuide)") : '') +
@@ -11978,6 +11982,20 @@ window.CV2_DEFAULT = 'v2';
       var d = h && h.nextElementSibling; if (d) d.textContent = 'Front, side and back. Tap a slot to choose a photo — they upload when you send your check-in, and only ' + COACH + ' can see them.';
     }
     ['front', 'side', 'back'].forEach(function (v) {
+      /* Older shells only have the camera input (capture="user"), which on iPhone
+         opens the camera and offers no photo library. Give every page the same
+         library picker newer shells have, wired to the page's own handler. */
+      var cam = $('input-photo-' + v + '-file'), slot = $('photo-btn-' + v);
+      if (cam && slot && !$('input-photo-' + v + '-gallery') && typeof window.handlePhotoPicked === 'function') {
+        var gi = document.createElement('input');
+        gi.type = 'file'; gi.accept = 'image/*'; gi.id = 'input-photo-' + v + '-gallery'; gi.style.display = 'none';
+        gi.addEventListener('change', function (e) { window.handlePhotoPicked(e, v); });
+        cam.parentNode.insertBefore(gi, cam.nextSibling);
+        var gb = document.createElement('button');
+        gb.type = 'button';
+        gb.setAttribute('onclick', "var i=document.getElementById('input-photo-" + v + "-gallery');i.value='';i.click()");
+        slot.parentNode.insertBefore(gb, slot.nextSibling);
+      }
       var gal = $('input-photo-' + v + '-gallery');            // newer shells: camera slot + separate library picker
       var sp = $('photo-prompt-' + v);
       if (sp && /📷/.test(sp.textContent)) sp.innerHTML = I('plus') + '<b>' + v[0].toUpperCase() + v.slice(1) + '</b><small>' + (gal ? 'Take photo' : 'Add photo') + '</small>';
@@ -12286,7 +12304,7 @@ window.CV2_DEFAULT = 'v2';
     var dayLabel = (cal === nowCal && day === D.todayIdx()) ? 'Today' : (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day] + (ws ? ' ' + fmtD(addDays(ws, day)) : ''));
     var kind = D.isRest(dt) ? 'Rest day' : /^optional/i.test(dt) ? 'Optional training day' : dt ? 'Training day' : '';
     box.innerHTML =
-      '<div class="cv2-pagehead"><h2 class="section-title">Nutrition</h2><button type="button" class="cv2-btn secondary sm" onclick="cv2Go(\'shop\')">' + I('cart') + 'Shopping list</button></div>' +
+      '<div class="cv2-pagehead"><h2 class="section-title">Nutrition</h2>' + ($('section-shop') ? '<button type="button" class="cv2-btn secondary sm" onclick="cv2Go(\'shop\')">' + I('cart') + 'Shopping list</button>' : '') + '</div>' +
       '<div class="cv2-weeknav"><button type="button" class="cv2-icon-btn" aria-label="Previous week" ' + (prevOk ? 'onclick="cv2NutriWeek(-1)"' : 'disabled') + '>' + I('back') + '</button>' +
       '<b>Week ' + cal + (ws ? ' · ' + fmtD(ws) + ' – ' + fmtD(addDays(ws, 6)) : '') + '</b>' +
       '<button type="button" class="cv2-icon-btn" aria-label="Next week" ' + (nextOk ? 'onclick="cv2NutriWeek(1)"' : 'disabled') + '>' + I('chev') + '</button></div>' +
@@ -12523,6 +12541,9 @@ window.CV2_DEFAULT = 'v2';
       return '<div class="cv2-habit"><span class="ic">' + I(icon) + '</span><span class="tx"><b>' + esc(title) + '</b><small>Target: ' + esc(target) + '</small>' +
         '<small class="rs">' + result + '</small></span>' + (action || '') + '</div>';
     }
+    var stepM = (($('section-cardio') || {}).textContent || '').match(/(\d{1,2},?\d{3})\s*(?:-\s*)?steps?\s*(?:a|per)\s*day/i)
+             || (($('section-cardio') || {}).textContent || '').match(/(\d{1,2},?\d{3})\s*-?\s*step floor/i);
+    var steps = stepM ? stepM[1] : '';
     var sl = src.sleep || {}, stz = src.stress || {};
     var sleepTxt = cleanAdvice(sl.text), sleepTips = cleanTips(sl.tips), stressTxt = cleanAdvice(stz.text), stressTips = cleanTips(stz.tips);
     function guide(title, txt, tips) {
@@ -12536,6 +12557,7 @@ window.CV2_DEFAULT = 'v2';
       '<div class="cv2-card">' + cardHead('cal', 'food', 'This week\'s habits') +
       habit('train', 'Training sessions', (sched || '—') + ' a week', 'This week: <b class="cv2-num">' + fin + '</b> done') +
       habit('food', 'Follow your meal plan', 'log meals daily', 'This week: meals logged on <b class="cv2-num">' + mealDays + ' of ' + elapsed + '</b> days') +
+      (steps ? habit('run', 'Daily steps', steps + ' a day', 'Not tracked in the app', '<button type="button" class="cv2-link" onclick="cv2Go(\'cardio\')">Plan' + I('chev') + '</button>') : '') +
       habit('run', 'Rest-day walk', '20–30 min, optional', 'Not tracked in the app', '<button type="button" class="cv2-link" onclick="cv2Go(\'cardio\')">Plan' + I('chev') + '</button>') +
       habit('clip', 'Weekly check-in', 'every Sunday', ck.last != null ? 'Last sent ' + esc(fmtWD(new Date(ck.last))) : 'Not sent yet',
         '<button type="button" class="cv2-link" onclick="scrollToCheckin()">Open' + I('chev') + '</button>') +
@@ -12548,7 +12570,15 @@ window.CV2_DEFAULT = 'v2';
     var t = sec.querySelector('.section-title'); if (t) t.textContent = 'Cardio plan';
     sec.querySelectorAll('div[style*="DM Mono"]').forEach(function (el) {
       var box = el.parentElement;
-      if (/ACTIVE JOB NOTE/.test(el.textContent) && box) box.remove();          // assumes a job the page can't confirm
+      if (/ACTIVE JOB NOTE/.test(el.textContent) && box) { box.remove(); return; }   // assumes a job the page can't confirm
+      /* coach-written notes (e.g. "⚠ STEP FLOOR"): keep the content, drop the
+         warning glyph and shouting caps, present it as a card */
+      var t = el.textContent.replace(/^[^A-Za-z0-9]+/, '').trim();
+      if (t && t === t.toUpperCase() && t.length < 40) {
+        el.textContent = t.charAt(0) + t.slice(1).toLowerCase();
+        el.classList.add('cv2-notehead');
+        if (box && box !== sec) box.classList.add('cv2-notecard');
+      }
     });
     var grid = Array.prototype.filter.call(sec.querySelectorAll('.section-tag'), function (e) { return /cardio days/i.test(e.textContent); })[0];
     if (grid && grid.parentElement) grid.parentElement.remove();                  // repeats the plan and asserts a "physical job"

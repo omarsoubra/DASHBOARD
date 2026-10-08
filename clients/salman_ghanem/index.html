@@ -11269,7 +11269,8 @@ window.CV2_DEFAULT = 'v2';
   }
 
   function go(id) { call(function () { showSection(id); }); }
-  window.cv2Go = function (id) { go(id); };
+  /* Never navigate to a section this page doesn't have (older shells lack some). */
+  window.cv2Go = function (id) { if (id !== 'home' && !$('section-' + id)) return; go(id); };
 
   /* showSection: 'home' now means the new home. Wrap last so every earlier
      wrapper (elite UX, shop, Training V2) still runs. */
@@ -11313,7 +11314,7 @@ window.CV2_DEFAULT = 'v2';
       '<div class="cv2-coach-id" style="margin-bottom:10px"><span class="cv2-av" style="background:var(--c-text)">' + esc(initials(CLIENT_CONFIG.client.firstName)) + '</span>' +
       '<span><b id="cv2-sheet-h">' + esc(CLIENT_CONFIG.client.firstName || '') + '</b><small>Client · coached by ' + esc(COACH) + '</small></span></div>' +
       '<div class="cv2-rows">' +
-      row('cart', 'Shopping list', 'Built from your meal plan', "cv2Then(function(){cv2Go('shop')})") +
+      ($('section-shop') ? row('cart', 'Shopping list', 'Built from your meal plan', "cv2Then(function(){cv2Go('shop')})") : '') +
       row('run', 'Cardio plan', 'Your cardio for each phase', "cv2Then(function(){cv2Go('cardio')})") +
       row('moon', 'Lifestyle & recovery', 'Sleep, stress and recovery guidance', "cv2Then(function(){cv2Go('lifestyle')})") +
       (typeof window.tv2Guide === 'function' ? row('book', 'Program guide', 'How your training works', "cv2Then(cv2OpenGuide)") : '') +
@@ -11657,6 +11658,20 @@ window.CV2_DEFAULT = 'v2';
       var d = h && h.nextElementSibling; if (d) d.textContent = 'Front, side and back. Tap a slot to choose a photo — they upload when you send your check-in, and only ' + COACH + ' can see them.';
     }
     ['front', 'side', 'back'].forEach(function (v) {
+      /* Older shells only have the camera input (capture="user"), which on iPhone
+         opens the camera and offers no photo library. Give every page the same
+         library picker newer shells have, wired to the page's own handler. */
+      var cam = $('input-photo-' + v + '-file'), slot = $('photo-btn-' + v);
+      if (cam && slot && !$('input-photo-' + v + '-gallery') && typeof window.handlePhotoPicked === 'function') {
+        var gi = document.createElement('input');
+        gi.type = 'file'; gi.accept = 'image/*'; gi.id = 'input-photo-' + v + '-gallery'; gi.style.display = 'none';
+        gi.addEventListener('change', function (e) { window.handlePhotoPicked(e, v); });
+        cam.parentNode.insertBefore(gi, cam.nextSibling);
+        var gb = document.createElement('button');
+        gb.type = 'button';
+        gb.setAttribute('onclick', "var i=document.getElementById('input-photo-" + v + "-gallery');i.value='';i.click()");
+        slot.parentNode.insertBefore(gb, slot.nextSibling);
+      }
       var gal = $('input-photo-' + v + '-gallery');            // newer shells: camera slot + separate library picker
       var sp = $('photo-prompt-' + v);
       if (sp && /📷/.test(sp.textContent)) sp.innerHTML = I('plus') + '<b>' + v[0].toUpperCase() + v.slice(1) + '</b><small>' + (gal ? 'Take photo' : 'Add photo') + '</small>';
@@ -11965,7 +11980,7 @@ window.CV2_DEFAULT = 'v2';
     var dayLabel = (cal === nowCal && day === D.todayIdx()) ? 'Today' : (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day] + (ws ? ' ' + fmtD(addDays(ws, day)) : ''));
     var kind = D.isRest(dt) ? 'Rest day' : /^optional/i.test(dt) ? 'Optional training day' : dt ? 'Training day' : '';
     box.innerHTML =
-      '<div class="cv2-pagehead"><h2 class="section-title">Nutrition</h2><button type="button" class="cv2-btn secondary sm" onclick="cv2Go(\'shop\')">' + I('cart') + 'Shopping list</button></div>' +
+      '<div class="cv2-pagehead"><h2 class="section-title">Nutrition</h2>' + ($('section-shop') ? '<button type="button" class="cv2-btn secondary sm" onclick="cv2Go(\'shop\')">' + I('cart') + 'Shopping list</button>' : '') + '</div>' +
       '<div class="cv2-weeknav"><button type="button" class="cv2-icon-btn" aria-label="Previous week" ' + (prevOk ? 'onclick="cv2NutriWeek(-1)"' : 'disabled') + '>' + I('back') + '</button>' +
       '<b>Week ' + cal + (ws ? ' · ' + fmtD(ws) + ' – ' + fmtD(addDays(ws, 6)) : '') + '</b>' +
       '<button type="button" class="cv2-icon-btn" aria-label="Next week" ' + (nextOk ? 'onclick="cv2NutriWeek(1)"' : 'disabled') + '>' + I('chev') + '</button></div>' +
