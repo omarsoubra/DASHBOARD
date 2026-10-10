@@ -130,3 +130,21 @@ confirmation for existing clients) is a separate, future workflow.
 * A client who trains but never taps Finish Workout still gets the reminder.
 * `push-client.js` is cache-first: new UI shows on the second app open.
 * Legacy shells without Finish Workout cannot offer training reminders.
+
+## Default schedule + client training choice (Omar, 2026-10-11)
+
+Every client in the rollout (`PUSH_DAILY_V1_CLIENTS`) gets reminders without a hand-entered schedule.
+
+- **Training:** 17:00 on a weekday pattern from the plan's mandatory sessions per week. 3 → Mon/Wed/Fri, 4 → Mon/Tue/Thu/Fri, 5 → Mon–Fri, 6 → Mon–Sat; unreadable → 4.
+  - A +2 h follow-up goes only if the shell has Finish Workout and no completion is recorded.
+  - The client may change the time and days in Notifications, or reset to the plan.
+- **Meals:** two a day at most.
+  - Lunch is the plan's usual feed between 11:00 and 15:00.
+  - Dinner is the plan's usual last feed between 17:00 and 20:59.
+  - If the plan has no times, they default to 12:30 and 20:30. Meal times are read-only for the client.
+- **Precedence:**
+  - training: client choice > confirmed `LI_SCHEDULE` > default;
+  - meals: confirmed `LI_SCHEDULE` feeds > served-plan times > default.
+- **Facts:** `scripts/push/plan_facts.mjs` reads `training_days_per_week`, `meal_lunch_time` and `meal_dinner_time` from the verified-live served shell.
+- **Migration:** `20261011120000_push_default_schedule.sql` (additive). Apply it BEFORE deploying push-v5-defaults.
+- **Removed:** the meal feed-count fail-safe (`plan_out_of_sync`). The lunch/dinner copy names no food, so an in-app meal edit can't make it wrong.

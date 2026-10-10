@@ -359,7 +359,38 @@ export const MAX_MEAL_SLOTS = 8;
 export const DAILY_CAP = 10;            // automatic training + meal pushes per client per local day
 export const SCHEDULE_SCHEMA = 'locked-in.schedule.v1';
 
-export type DailyPrefs = Prefs & { training_enabled?: boolean | null; meals_enabled?: boolean | null };
+export type DailyPrefs = Prefs & {
+  training_enabled?: boolean | null; meals_enabled?: boolean | null;
+  /** The client's own training reminder choice (null = plan / default). */
+  training_time_custom?: string | null; training_days_custom?: number[] | null;
+};
+
+// ── DEFAULT SCHEDULE (Omar 2026-10-11) ───────────────────────────────────────
+// Every client in the rollout gets reminders without a hand-entered schedule:
+//   training  17:00 on a weekday pattern from the plan's sessions per week, +2 h
+//             follow-up (= the 5–7 pm window). The client may change time + days.
+//   meals     two a day at most: lunch + dinner, at the plan's own usual times
+//             when the served plan states them, else 12:30 / 20:30.
+// Precedence: training = client choice > confirmed LI_SCHEDULE > default;
+//             meals    = confirmed LI_SCHEDULE feeds > served-plan times > default.
+export const DEFAULT_TRAINING_TIME = 17 * 60;
+export const DEFAULT_TRAINING_DAYS_PER_WEEK = 4;
+export const DEFAULT_LUNCH = 12 * 60 + 30;
+export const DEFAULT_DINNER = 20 * 60 + 30;
+const DAY_PATTERNS: Record<number, number[]> = {
+  1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6],
+};
+/** Default weekdays (0 = Sunday) for N sessions a week; unknown → the 4-day pattern. */
+export function defaultTrainingDays(perWeek: number | null | undefined): number[] {
+  return DAY_PATTERNS[Number.isInteger(perWeek) && perWeek! >= 1 && perWeek! <= 7 ? perWeek! : DEFAULT_TRAINING_DAYS_PER_WEEK];
+}
+/** A valid client day choice: 1–7 unique weekdays 0–6, sorted. Else null. */
+export function validTrainingDays(v: unknown): number[] | null {
+  if (!Array.isArray(v) || v.length < 1 || v.length > 7) return null;
+  if (!v.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) return null;
+  const u = [...new Set(v as number[])].sort((a, b) => a - b);
+  return u.length === v.length ? u : null;
+}
 
 export type ScheduleV1 = {
   schema: string;
@@ -371,6 +402,9 @@ export type PlanFacts = {
   meal_facts_status: string;
   meal_slot_count: number | null;
   has_workout_completion: boolean;
+  training_days_per_week?: number | null;
+  meal_lunch_time?: string | null;
+  meal_dinner_time?: string | null;
   schedule?: ScheduleV1 | null;
   training_schedule_status?: string | null;
   meal_schedule_status?: string | null;
@@ -440,19 +474,64 @@ export function trainingDayOf(schedule: ScheduleV1 | null | undefined, dow: numb
   return days.find((d) => d.dow === dow) ?? null;
 }
 
-/** Plan-owned stage times for one training day. Follow-up absent when it would cross midnight. */
-export function trainingStages(day: { time: string } | null): { primary: number; followup: number | null } | null {
+/**
+ * Stage times for one training day. The follow-up needs Finish Workout (it is the
+ * only way to know the session is done) and never crosses local midnight.
+ */
+export function trainingStages(day: { time: string } | null, followupAllowed = true): { primary: number; followup: number | null } | null {
   const primary = day ? parseTime(day.time) : null;
   if (primary === null) return null;
   const fu = primary + FOLLOWUP_OFFSET_MINUTES;
-  return { primary, followup: fu < MINUTES_PER_DAY ? fu : null };
+  return { primary, followup: followupAllowed && fu < MINUTES_PER_DAY ? fu : null };
 }
 
-export const trainingAvailable = (facts: PlanFacts) =>
-  !!facts && facts.has_workout_completion === true && facts.training_schedule_status === 'confirmed' && facts.schedule?.training?.status === 'confirmed';
-export const mealsAvailable = (facts: PlanFacts) =>
-  !!facts && facts.meal_schedule_status === 'confirmed' && facts.meal_facts_status === 'consistent' &&
-  facts.schedule?.meals?.status === 'confirmed' && (facts.schedule.meals.feeds ?? []).length === facts.meal_slot_count;
+const planTrainingConfirmed = (facts: PlanFacts) =>
+  !!facts && facts.training_schedule_status === 'confirmed' && facts.schedule?.training?.status === 'confirmed';
+const planMealsConfirmed = (facts: PlanFacts) =>
+  !!facts && facts.meal_schedule_status === 'confirmed' && facts.schedule?.meals?.status === 'confirmed';
+
+/** Any synced (verified-live) plan can carry the default schedule. */
+export const trainingAvailable = (facts: PlanFacts) => !!facts;
+export const mealsAvailable = (facts: PlanFacts) => !!facts;
+
+export type EffectiveTraining = {
+  source: 'client' | 'plan' | 'default';
+  time: string;                                    // the time shown to the client (HH:MM)
+  days: Array<{ dow: number; time: string; session: string | null }>;
+};
+
+/** The training reminder schedule actually in force for this client. Pure. */
+export function effectiveTraining(p: DailyPrefs, facts: PlanFacts): EffectiveTraining | null {
+  if (!trainingAvailable(facts)) return null;
+  const customTime = parseTime(p.training_time_custom ?? null);
+  const ct = customTime !== null && customTime % 15 === 0 ? formatTime(customTime) : null;
+  const customDays = validTrainingDays(p.training_days_custom ?? null);
+  const plan = planTrainingConfirmed(facts) ? (facts!.schedule!.training.days ?? []) : null;
+  const planDay = (dow: number) => plan?.find((d) => d.dow === dow) ?? null;
+  if (customDays || ct) {
+    const dows = customDays ?? (plan ? plan.map((d) => d.dow) : defaultTrainingDays(facts!.training_days_per_week));
+    const timeFor = (dow: number) => ct ?? planDay(dow)?.time ?? formatTime(DEFAULT_TRAINING_TIME);
+    return { source: 'client', time: ct ?? timeFor(dows[0]),
+             days: dows.map((dow) => ({ dow, time: timeFor(dow), session: planDay(dow)?.session ?? null })) };
+  }
+  if (plan) return { source: 'plan', time: plan[0]?.time ?? formatTime(DEFAULT_TRAINING_TIME), days: plan.map((d) => ({ ...d })) };
+  const t = formatTime(DEFAULT_TRAINING_TIME);
+  return { source: 'default', time: t, days: defaultTrainingDays(facts!.training_days_per_week).map((dow) => ({ dow, time: t, session: null })) };
+}
+
+/** Lunch (slot 1) and dinner (slot 2) reminder times in force. Pure. At most two a day. */
+export function mealAnchors(facts: PlanFacts): { lunch: number; dinner: number; source: 'plan' | 'served_plan' | 'default' } | null {
+  if (!mealsAvailable(facts)) return null;
+  const pick = (ts: number[], lo: number, hi: number, best: (a: number, b: number) => number) => ts.filter((v) => v >= lo && v <= hi).sort(best)[0];
+  if (planMealsConfirmed(facts)) {
+    const ts = (facts!.schedule!.meals.feeds ?? []).map((f) => parseTime(f.time)).filter((v): v is number => v !== null);
+    const l = pick(ts, 11 * 60, 15 * 60, (a, b) => Math.abs(a - 750) - Math.abs(b - 750) || a - b);
+    const d = pick(ts, 17 * 60, 21 * 60 - 1, (a, b) => b - a);
+    return { lunch: l ?? DEFAULT_LUNCH, dinner: d ?? DEFAULT_DINNER, source: 'plan' };
+  }
+  const L = parseTime(facts!.meal_lunch_time ?? null), D = parseTime(facts!.meal_dinner_time ?? null);
+  return { lunch: L ?? DEFAULT_LUNCH, dinner: D ?? DEFAULT_DINNER, source: L !== null || D !== null ? 'served_plan' : 'default' };
+}
 
 /** Window [at, min(at + WINDOW, nextAt, end of day)) on the local clock. */
 function inDayWindow(minuteOfDay: number, at: number, nextAt: number | null): boolean {
@@ -473,10 +552,12 @@ export type TrainingEvaluation =
  * input is training_enabled; days, times and the follow-up come from the plan.
  */
 export function evaluateTrainingStage(p: DailyPrefs, nowMs: number, facts: PlanFacts): TrainingEvaluation {
-  if (p.training_enabled !== true || !isValidTimezone(p.timezone) || !trainingAvailable(facts)) return { due: false };
+  if (p.training_enabled !== true || !isValidTimezone(p.timezone)) return { due: false };
+  const eff = effectiveTraining(p, facts);
+  if (!eff) return { due: false };
   const now = localParts(nowMs, p.timezone);
-  const day = trainingDayOf(facts!.schedule, now.dow);
-  const st = trainingStages(day);
+  const day = eff.days.find((d) => d.dow === now.dow) ?? null;
+  const st = trainingStages(day, facts!.has_workout_completion === true);
   if (!st) return { due: false };
   let stage: TrainingStage, at: number;
   if (inDayWindow(now.minuteOfDay, st.primary, st.followup)) { stage = 'primary'; at = st.primary; }
@@ -491,10 +572,11 @@ export function evaluateTrainingStage(p: DailyPrefs, nowMs: number, facts: PlanF
   return ev;
 }
 
-/** Plan feed times (1-based slots). */
+/** Reminder slots: 1 = lunch, 2 = dinner (never more than two a day). */
 export function mealSlotTimes(facts: PlanFacts): Array<{ slot: number; at: number }> {
-  if (!mealsAvailable(facts)) return [];
-  return (facts!.schedule!.meals.feeds ?? []).map((f) => ({ slot: f.slot, at: parseTime(f.time) as number }));
+  const a = mealAnchors(facts);
+  if (!a) return [];
+  return a.lunch < a.dinner ? [{ slot: 1, at: a.lunch }, { slot: 2, at: a.dinner }] : [{ slot: 2, at: a.dinner }];
 }
 
 export type MealSlotEvaluation = { slot: number; periodKey: string; eligibleAt: number; suppress?: 'disabled' | 'quiet_hours' };
@@ -553,18 +635,19 @@ export function dailyPlan(p: DailyPrefs, facts: PlanFacts, D: string): DailyPlan
   const tz = isValidTimezone(p.timezone) ? p.timezone : null;
   const inst = (m: number) => (tz ? zonedTimeToUtc(D, m, tz) : NaN);
   const training: DailyPlanView['training'] = { status: 'scheduled', session: null, followupPolicy: null, stages: [] };
-  if (!facts || facts.training_schedule_status !== 'confirmed') training.status = 'no_confirmed_schedule';
-  else if (facts.has_workout_completion !== true) training.status = 'unsupported_workout_completion';
+  const eff = effectiveTraining(p, facts);
+  if (!eff) training.status = 'no_confirmed_schedule';
   else if (p.training_enabled !== true) training.status = 'disabled';
   else {
-    const day = trainingDayOf(facts.schedule, dowOf(D));
-    const st = trainingStages(day);
+    const day = eff.days.find((d) => d.dow === dowOf(D)) ?? null;
+    const st = trainingStages(day, facts!.has_workout_completion === true);
     if (!st) training.status = 'not_training_day';
     else {
       training.session = day!.session ?? null;
       training.stages.push({ stage: 'primary', time: formatTime(st.primary), at: inst(st.primary) });
       if (st.followup !== null) training.stages.push({ stage: 'followup', time: formatTime(st.followup), at: inst(st.followup) });
-      training.followupPolicy = st.followup === null ? 'suppressed_crosses_midnight' : 'primary_plus_2h';
+      training.followupPolicy = st.followup !== null ? 'primary_plus_2h'
+        : facts!.has_workout_completion !== true ? 'none_without_finish_workout' : 'suppressed_crosses_midnight';
     }
   }
   const meals: DailyPlanView['meals'] = { status: 'scheduled', slots: [] };
