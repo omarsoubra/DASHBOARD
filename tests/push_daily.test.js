@@ -41,13 +41,18 @@ const UNKNOWN = { status: 'unknown' };
 const FULL = schedule(TRAIN_A, FEEDS4);
 
 /** Facts exactly as the sync script would send them for a served shell. */
-function facts({ sched = FULL, feeds = 4, wc = true, served = 'shell-a' } = {}) {
+function facts({ sched = FULL, feeds = 4, wc = true, served = 'shell-a', dpw, lunch, dinner } = {}) {
   return {
     served_sha256: sha256hex(served), meal_plan_sig: sha256hex('plan-' + feeds),
     meal_facts_status: feeds === null ? 'variable' : 'consistent', meal_slot_count: feeds,
     has_workout_completion: wc, schedule: sched, schedule_sig: sched === null ? null : sha256hex(JSON.stringify(sched)),
+    ...(dpw !== undefined ? { training_days_per_week: dpw } : {}),
+    ...(lunch !== undefined ? { meal_lunch_time: lunch } : {}),
+    ...(dinner !== undefined ? { meal_dinner_time: dinner } : {}),
   };
 }
+const localMin = (e) => SCH.localParts(Date.parse(e.eligible_at), TZ).minuteOfDay;
+const hm = (e) => SCH.formatTime(localMin(e));
 const SYNC_HDR = { 'x-push-deploy-secret': DEPLOY_SECRET };
 const sync = (w, f, key = CANARY) => w.call({ type: 'planFactsSync', storageKey: key, facts: f, commit: 'abcdef1' }, 'POST', SYNC_HDR);
 
@@ -93,27 +98,34 @@ const explain = (w, extra = {}) => w.call({ type: 'coachPushExplain', coachToken
 const prefs = async (w) => (await w.prefsGet()).j.prefs;
 
 // ════════════════════════════════════════════════════════════════════════════
-// AV. Availability + client control (the client toggles a category, never a schedule)
+// AV. Availability + client control (defaults for everyone; the client owns training time + days)
 // ════════════════════════════════════════════════════════════════════════════
-test('AV1 unknown training schedule → no training reminder offered or sent', async () => {
-  const w = await planWorld({ facts: facts({ sched: schedule(UNKNOWN, FEEDS4) }) });
+test('AV1 no plan training schedule → DEFAULT 5 pm on the default days, +2 h follow-up (the 5–7 pm window)', async () => {
+  const w = await planWorld({ facts: facts({ sched: schedule(UNKNOWN, FEEDS4), dpw: 4 }) });
   const p = await prefs(w);
-  eq(p.daily.trainingAvailable, false, 'training row hidden'); eq(p.daily.mealsAvailable, true, 'meals still offered');
-  eq((await w.prefsSet({ trainingEnabled: true })).j.error, 'training_not_available', 'cannot be switched on');
-  w.db.T.push_preferences[0].training_enabled = true;                     // even if forced on, nothing fires
-  await scheduler(w, at(MON, '17:00'), at(TUE, '00:00'));
-  eq(ev(w, 'training_reminder').length, 0, 'no training rows'); eq(pushes(w, 'li-training').length, 0, 'silent');
+  eq(p.daily.trainingAvailable, true, 'training offered'); eq(p.daily.mealsAvailable, true, 'meals offered');
+  eq(JSON.stringify(p.daily.training), JSON.stringify({ time: '17:00', days: [1, 2, 4, 5], source: 'default', custom: false }), '4 sessions → Mon/Tue/Thu/Fri at 17:00');
+  await scheduler(w, at(MON, '06:00'), at(MON, '23:45'));
+  eq(ev(w, 'training_reminder').map(hm).join(','), '17:00,19:00', 'Monday 17:00 primary + 19:00 follow-up');
+  eq(pushes(w, 'li-training')[0].payload.title, 'Training today 💪', 'generic copy (no plan-bound session)');
+  await scheduler(w, at(WED, '06:00'), at(WED, '23:45'));
+  eq(ev(w, 'training_reminder').filter((e) => e.period_key === WED).length, 0, 'Wednesday is a rest day');
 });
 
-test('AV2 unknown meal schedule (or no LI_SCHEDULE at all) → no meal reminder offered or sent', async () => {
-  for (const f of [facts({ sched: schedule(TRAIN_A, UNKNOWN) }), facts({ sched: null })]) {
+test('AV2 no plan meal schedule → lunch + dinner at the served plan\'s own times, else 12:30 / 20:30', async () => {
+  const cases = [
+    [facts({ sched: schedule(TRAIN_A, UNKNOWN), lunch: '13:00', dinner: '19:30' }), '13:00,19:30', 'served plan times'],
+    [facts({ sched: null }), '12:30,20:30', 'no times anywhere → defaults'],
+    [facts({ sched: null, lunch: null, dinner: '18:30' }), '12:30,18:30', 'one known, one default'],
+  ];
+  for (const [f, want, label] of cases) {
     const w = await planWorld({ facts: f });
     const p = await prefs(w);
-    eq(p.daily.mealsAvailable, false, 'meal row hidden');
-    eq((await w.prefsSet({ mealsEnabled: true })).j.error, 'meals_not_available', 'cannot be switched on');
-    w.db.T.push_preferences[0].meals_enabled = true;
+    eq(p.daily.mealsAvailable, true, 'offered');
+    eq(p.daily.meals.lunch + ',' + p.daily.meals.dinner, want, label + ' (shown)');
     await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
-    eq(ev(w, 'meal_reminder').length, 0, 'no meal rows');
+    eq(ev(w, 'meal_reminder').map(hm).join(','), want, label + ' (sent)');
+    eq(pushes(w, 'li-meal').map((x) => x.payload.title).join('|'), 'Lunch time 🍽️|Dinner time 🍽️', 'two a day, never more');
   }
 });
 
@@ -125,7 +137,7 @@ test('AV3 ONE TAP: the first opt-in of a rollout client switches both categories
   eq(p.trainingEnabled, true, 'training on from the one tap'); eq(p.mealsEnabled, true, 'meals on from the one tap');
   eq(p.checkinEnabled, true, 'check-in on'); eq(p.programUpdatesEnabled, true, 'program updates on');
   await scheduler(w, at(TUE, '06:00'), at(WED, '00:00'));
-  eq(pushes(w, 'li-meal').length, 4, 'meals at the plan times'); eq(pushes(w, 'li-training').length, 2, 'training (Tue primary + follow-up)');
+  eq(pushes(w, 'li-meal').length, 2, 'lunch + dinner at the plan times'); eq(pushes(w, 'li-training').length, 2, 'training (Tue primary + follow-up)');
   // The client can still switch a category off, and it stays off.
   assert((await w.prefsSet({ trainingEnabled: false })).j.ok, 'switched off');
   await scheduler(w, at(THU, '06:00'), at(THU, '23:45'));
@@ -135,12 +147,12 @@ test('AV3 ONE TAP: the first opt-in of a rollout client switches both categories
 test('AV3b ONE TAP before any plan schedule: ON is stored but silent; reminders start the day the schedule syncs', async () => {
   const w = await planWorld({ on: false, facts: null });
   let p = await prefs(w);
-  eq(p.trainingEnabled, true, 'stored on'); eq(p.daily.trainingAvailable, false, 'no row shown yet'); eq(p.daily.mealsAvailable, false, 'no meal row yet');
+  eq(p.trainingEnabled, true, 'stored on'); eq(p.daily.trainingAvailable, false, 'no row before the first verified-live sync'); eq(p.daily.mealsAvailable, false, 'no meal row yet');
   await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
   eq(ev(w, 'training_reminder').length + ev(w, 'meal_reminder').length, 0, 'nothing without a plan schedule');
   assert((await sync(w, facts())).j.ok, 'plan schedule arrives');
   await scheduler(w, at(TUE, '06:00'), at(WED, '00:00'));
-  eq(pushes(w, 'li-meal').length, 4, 'meals start'); eq(pushes(w, 'li-training').length, 2, 'training starts');
+  eq(pushes(w, 'li-meal').length, 2, 'lunch + dinner start'); eq(pushes(w, 'li-training').length, 2, 'training starts');
 });
 
 test('AV3c ONE TAP happens once: a later re-subscribe (new phone, reinstall) never overrides the client\'s own choice', async () => {
@@ -162,16 +174,47 @@ test('AV3d ONE TAP is rollout-gated: outside the rollout, opt-in leaves both off
   eq((await w2.call({ type: 'pushStatus', storageKey: CANARY, token: 'x'.repeat(64), endpoint: '' })).j.oneTap, undefined, 'bad token: no answer');
 });
 
-test('AV4 the client can only toggle categories: every schedule field is refused, the response carries no schedule', async () => {
+test('AV4 the client sets their own training time + days (validated, resettable); meal times and schedules stay plan-owned', async () => {
   const w = await planWorld();
-  for (const f of ['trainingDays', 'trainingTime', 'trainingFollowupEnabled', 'trainingFollowupTime', 'mealTimes', 'schedule', 'mealSlotCount'])
-    eq((await w.prefsSet({ [f]: f === 'trainingDays' ? [1] : '18:00' })).j.error, 'unknown_field', `${f} is not a client field`);
+  for (const f of ['trainingFollowupEnabled', 'trainingFollowupTime', 'mealTimes', 'schedule', 'mealSlotCount', 'lunchTime', 'dinnerTime'])
+    eq((await w.prefsSet({ [f]: '18:00' })).j.error, 'unknown_field', `${f} is not a client field`);
   eq((await w.prefsSet({ trainingEnabled: 'yes' })).j.error, 'bad_trainingEnabled', 'boolean only');
-  const p = await prefs(w);
-  assert(!/18:30|20:30|12:30|feeds|days/.test(JSON.stringify(p)), 'no schedule data reaches the client');
+  for (const [v, why] of [['18:10', 'off the 15-min grid'], ['6pm', 'HH:MM only'], [1800, 'not a string']])
+    eq((await w.prefsSet({ trainingTime: v })).j.error, 'bad_trainingTime', why);
+  for (const [v, why] of [[[7], 'weekday range'], [[1, 1], 'duplicate'], [[], 'empty'], ['1,2', 'not a list'], [[1.5], 'integer']])
+    eq((await w.prefsSet({ trainingDays: v })).j.error, 'bad_trainingDays', why);
+  // The client's choice wins over the plan's Mon/Tue/Thu/Fri 18:30.
+  let r = await w.prefsSet({ trainingTime: '06:30', trainingDays: [6, 0] });
+  assert(r.j.ok, 'saved'); eq(JSON.stringify(r.j.prefs.daily.training), JSON.stringify({ time: '06:30', days: [0, 6], source: 'client', custom: true }), 'shown back');
+  await scheduler(w, at(MON, '00:00'), at('2026-10-19', '00:00'));
+  const prim = ev(w).filter((e) => e.dedupe_key.startsWith('training_primary'));
+  eq(prim.map((e) => e.period_key + '@' + hm(e)).join(','), `${SAT}@06:30,2026-10-18@06:30`, 'Sat + Sun at 06:30 only');
+  // Time only: the plan's days keep their sessions, at the client's time.
+  r = await w.prefsSet({ trainingDays: null });
+  eq(JSON.stringify(r.j.prefs.daily.training.days), JSON.stringify([1, 2, 4, 5]), 'days back to the plan');
+  eq(r.j.prefs.daily.training.time, '06:30', 'time still the client\'s');
+  r = await w.prefsSet({ trainingTime: null });
+  eq(r.j.prefs.daily.training.source + '/' + r.j.prefs.daily.training.time, 'plan/18:30', 'reset → the plan again');
   for (const c of ['training_days', 'training_time', 'training_followup_enabled', 'training_followup_time', 'meal_times'])
-    assert(!SCHEMA.push_preferences.has(c), `push_preferences.${c} removed`);
-  assert(SCHEMA.push_preferences.has('training_enabled') && SCHEMA.push_preferences.has('meals_enabled'), 'category switches kept');
+    assert(!SCHEMA.push_preferences.has(c), `push_preferences.${c} (old client schedule) stays removed`);
+  assert(SCHEMA.push_preferences.has('training_time_custom') && SCHEMA.push_preferences.has('training_days_custom'), 'client training choice columns');
+  const pr = w.db.T.push_preferences.find((x) => x.client_id === w.canaryId);
+  eq(pr.training_time_custom ?? null, null, 'stored reset'); eq(pr.training_days_custom ?? null, null, 'stored reset');
+});
+
+test('AV6 default weekday patterns follow the plan\'s sessions per week; unknown → 4 days', async () => {
+  const cases = [[3, [1, 3, 5]], [4, [1, 2, 4, 5]], [5, [1, 2, 3, 4, 5]], [6, [1, 2, 3, 4, 5, 6]], [null, [1, 2, 4, 5]], [undefined, [1, 2, 4, 5]]];
+  for (const [dpw, days] of cases) eq(JSON.stringify(SCH.defaultTrainingDays(dpw)), JSON.stringify(days), `${dpw} sessions`);
+  const w = await planWorld({ facts: facts({ sched: null, dpw: 3 }) });
+  await scheduler(w, at(MON, '00:00'), at('2026-10-19', '00:00'));
+  eq(ev(w).filter((e) => e.dedupe_key.startsWith('training_primary')).map((e) => SCH.localParts(Date.parse(e.eligible_at), TZ).dow).join(','), '1,3,5', 'Mon/Wed/Fri only');
+});
+
+test('AV7 a client time near midnight: the follow-up never crosses into the next day', async () => {
+  const w = await planWorld({ prefs: { quiet_start: '00:00:00', quiet_end: '00:00:00' } });
+  assert((await w.prefsSet({ trainingTime: '22:30', trainingDays: [1] })).j.ok, 'saved');
+  await scheduler(w, at(MON, '20:00'), at(TUE, '02:00'));
+  eq(ev(w, 'training_reminder').map((e) => e.dedupe_key.split(':')[0]).join(','), 'training_primary', 'primary only');
 });
 
 test('AV5 rollout gate: unset → nothing for anyone; a real eligible client with a confirmed plan schedule but not listed gets nothing', async () => {
@@ -296,12 +339,13 @@ test('TR10 primary not delivered → follow-up primary_not_sent', async () => {
   eq(ev(w).find((e) => e.dedupe_key.startsWith('training_followup')).suppression_reason, 'primary_not_sent', 'reason');
 });
 
-test('TR11 no Finish Workout on the served shell → training unavailable even with a confirmed schedule', async () => {
+test('TR11 no Finish Workout on the served shell → primary still sent, NO follow-up (completion can\'t be known)', async () => {
   const w = await planWorld({ facts: facts({ wc: false }) });
-  eq((await prefs(w)).daily.trainingAvailable, false, 'hidden');
-  w.db.T.push_preferences[0].training_enabled = true;
+  eq((await prefs(w)).daily.trainingAvailable, true, 'offered');
   await scheduler(w, at(MON, '17:00'), at(TUE, '00:00'));
-  eq(ev(w, 'training_reminder').length, 0, 'nothing');
+  eq(ev(w, 'training_reminder').map((e) => e.dedupe_key.split(':')[0]).join(','), 'training_primary', 'primary only, no follow-up row');
+  w.clock.now = at(MON, '12:00');
+  eq((await explain(w, { date: MON })).j.training.followupPolicy, 'none_without_finish_workout', 'explained');
 });
 
 test('TR12 copy is lock-screen safe and never accusatory; session only from the plan', async () => {
@@ -315,53 +359,46 @@ test('TR12 copy is lock-screen safe and never accusatory; session only from the 
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// ME. Meals (plan feed times; no adherence inference)
+// ME. Meals (two a day: lunch + dinner; no adherence inference)
 // ════════════════════════════════════════════════════════════════════════════
-test('ME1 meal reminders follow the plan feed times; ordinal neutral copy; nutrition deep link', async () => {
+test('ME1 two meal reminders a day: lunch + dinner from the plan feeds; neutral copy; nutrition deep link', async () => {
   const w = await planWorld();
   await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
   const p = pushes(w, 'li-meal');
-  eq(p.map((x) => x.payload.title).join('|'), 'Meal 1 time 🍽️|Meal 2 time 🍽️|Meal 3 time 🍽️|Meal 4 time 🍽️', 'titles');
-  for (const x of p) { eq(x.payload.body, 'Your next planned meal is ready in LOCKED IN.', 'neutral'); eq(x.payload.url, './?li=nutrition', 'deep link'); }
-  eq(ev(w, 'meal_reminder').map((e) => e.eligible_at).join(','), ['08:00', '12:30', '17:00', '20:30'].map((t) => iso(at(MON, t))).join(','), 'plan times');
+  eq(p.map((x) => x.payload.title).join('|'), 'Lunch time 🍽️|Dinner time 🍽️', 'titles');
+  for (const x of p) { eq(x.payload.body, 'Your planned meal is ready in LOCKED IN.', 'neutral'); eq(x.payload.url, './?li=nutrition', 'deep link'); }
+  eq(ev(w, 'meal_reminder').map((e) => e.eligible_at).join(','), ['12:30', '20:30'].map((t) => iso(at(MON, t))).join(','), 'the 12:30 + 20:30 feeds of a 4-feed plan, not 08:00 / 17:00');
   assert(!w.db.calls.some((c) => /meal_log/.test(c.t)), 'no meal log read'); assert(!rd('supabase/functions/push/handler.ts').includes('meal_logs'), 'handler never names meal_logs');
 });
 
-test('ME2 4 → 3 plan deploy: Meal 4 disappears (no row at all); Meals 1-3 continue', async () => {
+test('ME2 a plan deploy that moves dinner moves the dinner reminder; never more than two', async () => {
   const w = await planWorld();
   await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
-  eq(pushes(w, 'li-meal').length, 4, 'Monday 4');
+  eq(pushes(w, 'li-meal').length, 2, 'Monday 2');
   const s = await sync(w, facts({ sched: schedule(TRAIN_A, FEEDS3), feeds: 3, served: 'shell-3' }));
   assert(s.j.ok && s.j.changed && s.j.facts.mealSchedule === 'confirmed', 'new plan synced');
   await scheduler(w, at(TUE, '06:00'), at(WED, '00:00'));
-  eq(pushes(w, 'li-meal').length, 7, 'Tuesday 3');
-  eq(ev(w).filter((e) => e.dedupe_key === `meal:${w.canaryId}:${TUE}:4`).length, 0, 'Meal 4 not even evaluated');
+  eq(ev(w, 'meal_reminder').filter((e) => e.period_key === TUE).map(hm).join(','), '12:30,17:00', 'dinner now the 17:00 feed');
+  // A late feed (21:30, inside the default quiet hours) is never the dinner reminder; the latest feed before 21:00 is.
+  const late = { status: 'confirmed', source: 'coach_confirmed', feeds: ['08:00', '12:00', '18:45', '21:30'].map((t, i) => ({ slot: i + 1, time: t })) };
+  const a = SCH.mealAnchors({ ...facts({ sched: schedule(TRAIN_A, late) }), training_schedule_status: 'confirmed', meal_schedule_status: 'confirmed' });
+  eq(SCH.formatTime(a.lunch) + ',' + SCH.formatTime(a.dinner), '12:00,18:45', 'lunch 12:00, dinner 18:45 (not 21:30)');
 });
 
-test('ME3 a schedule whose feed count disagrees with the served plan is invalid → meals unavailable, never guessed', async () => {
-  const w = await planWorld({ facts: facts({ sched: schedule(TRAIN_A, FEEDS4), feeds: 3 }) });
+test('ME3 a malformed plan schedule is recorded invalid and never used → served-plan times / defaults instead', async () => {
+  const w = await planWorld({ facts: facts({ sched: schedule(TRAIN_A, FEEDS4), feeds: 3, lunch: '13:00', dinner: '19:30' }) });
   eq(w.db.T.push_plan_facts[0].meal_schedule_status, 'invalid', 'recorded invalid');
-  eq((await prefs(w)).daily.mealsAvailable, false, 'hidden'); eq((await prefs(w)).daily.trainingAvailable, true, 'training unaffected');
-  w.db.T.push_preferences[0].meals_enabled = true;
   await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
-  eq(ev(w, 'meal_reminder').length, 0, 'nothing');
+  eq(ev(w, 'meal_reminder').map(hm).join(','), '13:00,19:30', 'served plan times, not the invalid schedule\'s');
 });
 
-test('ME4 fail-safe: trainer-mode meal edit that no longer matches the schedule → plan_out_of_sync; matching edit or reset → fine', async () => {
-  const day = (n) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ name: 'M' + i, cal: 500 })).concat([{ name: 'PREP', cal: 0 }]));
-  const cases = [[day(3), 'plan_out_of_sync'], ['not json', 'plan_out_of_sync'], [day(4), null], ['', null]];
-  for (const [value, want] of cases) {
-    const w = await planWorld();
-    w.db.T.client_overrides.push({ id: w.db.uuid(), client_id: w.canaryId, key: 'meal.w2.d3', value_text: value, value_number: null, valid_to: null });
-    w.db.T.client_overrides.push({ id: w.db.uuid(), client_id: w.canaryId, key: 'meal.w1.d1', value_text: day(2), value_number: null, valid_to: '2026-10-01T00:00:00Z' });   // expired: ignored
-    await tickAt(w, at(MON, '08:00'));
-    const e = ev(w, 'meal_reminder')[0];
-    eq(e.suppression_reason ?? null, want, `override ${value.slice(0, 12)} → ${want}`);
-  }
+test('ME4 in-app meal edits cannot make a reminder wrong (lunch/dinner copy names no food): overrides are never read', async () => {
   const w = await planWorld();
+  w.db.T.client_overrides.push({ id: w.db.uuid(), client_id: w.canaryId, key: 'meal.w2.d3', value_text: 'not json', value_number: null, valid_to: null });
   w.db.fail.on = 'client_overrides';
-  await tickAt(w, at(MON, '08:00'));
-  eq(ev(w, 'meal_reminder').length, 0, 'overrides unreadable → silence, nothing claimed');
+  await tickAt(w, at(MON, '12:30'));
+  eq(ev(w, 'meal_reminder').map((e) => e.status).join(','), 'sent', 'lunch sent');
+  assert(!w.db.calls.some((c) => c.t === 'client_overrides'), 'client_overrides never queried');
 });
 
 test('ME5 meals disabled by the client / master off / quiet hours', async () => {
@@ -369,11 +406,11 @@ test('ME5 meals disabled by the client / master off / quiet hours', async () => 
   await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
   eq(ev(w, 'meal_reminder').length, 0, 'off → nothing');
   w = await planWorld({ prefsAfter: { notifications_enabled: false } });
-  await tickAt(w, at(MON, '08:00'));
+  await tickAt(w, at(MON, '12:30'));
   eq(ev(w, 'meal_reminder')[0].suppression_reason, 'disabled', 'master off');
   w = await planWorld({ prefs: { quiet_start: '20:00:00', quiet_end: '06:00:00' } });
   await scheduler(w, at(MON, '06:00'), at(TUE, '07:00'));
-  eq(ev(w).find((e) => e.dedupe_key.endsWith(`${MON}:4`)).suppression_reason, 'quiet_hours', 'Meal 4 at 20:30 silenced, never deferred');
+  eq(ev(w).find((e) => e.dedupe_key.endsWith(`${MON}:2`)).suppression_reason, 'quiet_hours', 'dinner at 20:30 silenced, never deferred');
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -416,7 +453,7 @@ test('SC3 ONE runtime timezone: schedule times are wall-clock in push_preference
   const v = SCH.validateSchedule(withTz, 4);
   eq(v.training + v.meals, 'invalidinvalid', 'a second timezone authority is refused'); assert(v.errors[0].includes('timezone'), 'reason');
   const w2 = await planWorld({ facts: facts({ sched: withTz }) });
-  eq((await prefs(w2)).daily.trainingAvailable, false, 'invalid → unavailable');
+  eq((await prefs(w2)).daily.training.source, 'default', 'invalid plan schedule → never used; the default applies');
 });
 
 test('SC4 duplicate cron, racing schedulers and a restart never double-send', async () => {
@@ -466,13 +503,14 @@ test('SC6 compile-equivalent validation (server re-validates every sync)', async
   eq(v(schedule(UNKNOWN, FEEDS4)), 'unknown/confirmed', 'unknown training never blocks a confirmed meal schedule');
 });
 
-test('SC7 daily cap: never more than 10 automatic pushes per local day; the extra one is recorded daily_cap', async () => {
-  const eight = { status: 'confirmed', source: 'coach_confirmed', feeds: ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00'].map((t, i) => ({ slot: i + 1, time: t })) };
-  const w = await planWorld({ facts: facts({ sched: schedule(TRAIN_A, eight), feeds: 8 }) });
-  w.db.T.notification_events.push({ id: w.db.uuid(), client_id: w.canaryId, storage_key: CANARY, kind: 'meal_reminder', dedupe_key: 'meal:x:pre', status: 'sent', title: 't', body: 'b', url: './', created_by: 'system', period_key: MON });
+test('SC7 daily cap: never more than 10 automatic pushes per local day; the extra ones are recorded daily_cap', async () => {
+  const w = await planWorld();
+  for (let i = 0; i < 9; i++)
+    w.db.T.notification_events.push({ id: w.db.uuid(), client_id: w.canaryId, storage_key: CANARY, kind: 'meal_reminder', dedupe_key: 'meal:x:pre' + i, status: 'sent', title: 't', body: 'b', url: './', created_by: 'system', period_key: MON });
   await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
   eq(ev(w).filter((e) => e.period_key === MON && ['sent', 'partial', 'claimed'].includes(e.status)).length, 10, 'capped at 10');
-  eq(ev(w).filter((e) => e.suppression_reason === 'daily_cap').length, 1, 'observable');
+  eq(ev(w).filter((e) => e.suppression_reason === 'daily_cap').map((e) => e.kind + '@' + hm(e)).join(','), 'training_reminder@18:30,meal_reminder@20:30', 'observable');
+  eq(ev(w).find((e) => e.dedupe_key.startsWith('training_followup')).suppression_reason, 'primary_not_sent', 'no follow-up after a capped primary');
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -485,7 +523,7 @@ test('RG1 weekly check-in unchanged on a training + meal day (copy, url, stages,
   await scheduler(w, at(SUN, '06:00'), at(SUN, '20:00'));
   const ci = pushes(w, 'li-checkin'); eq(ci.length, 2, 'due 09:00 + follow-up 18:00');
   eq(ci[0].payload.body, 'Your weekly check-in is ready. Take a minute to get it done.', 'copy'); eq(ci[0].payload.url, './', 'url');
-  eq(pushes(w, 'li-training').length, 2, 'training alongside'); eq(pushes(w, 'li-meal').length, 3, 'meals alongside (Meal 4 at 20:30 after the window)');
+  eq(pushes(w, 'li-training').length, 2, 'training alongside'); eq(pushes(w, 'li-meal').length, 1, 'lunch alongside (dinner at 20:30 is after the window)');
 });
 
 test('RG2 program-update notifications unchanged with daily reminders on', async () => {
@@ -505,7 +543,7 @@ test('OB1 coachPushExplain shows the plan-owned schedule and each outcome, read-
   const r = await explain(w, { date: MON });
   eq(r.j.training.status, 'scheduled', 'plan day'); eq(r.j.training.session, 'Push', 'session'); eq(r.j.training.followupPolicy, 'primary_plus_2h', 'policy');
   eq(r.j.training.stages.map((s) => s.time + ':' + s.outcome).join(','), '18:30:already_completed,20:30:already_completed', 'outcomes');
-  eq(r.j.meals.slots.map((s) => s.time + ':' + s.outcome).join(','), '08:00:sent,12:30:sent,17:00:sent,20:30:sent', 'meals');
+  eq(r.j.meals.slots.map((s) => s.time + ':' + s.outcome).join(','), '12:30:sent,20:30:sent', 'meals');
   eq(r.j.planFacts.trainingSchedule + '/' + r.j.planFacts.mealSchedule, 'confirmed/confirmed', 'facts');
   w.clock.now = at(WED, '12:00');
   eq((await explain(w)).j.training.status, 'not_training_day', 'Wednesday');
@@ -513,8 +551,11 @@ test('OB1 coachPushExplain shows the plan-owned schedule and each outcome, read-
   eq((await w.call({ type: 'coachPushExplain', storageKey: CANARY, coachToken: CANARY_TOKEN })).status, 401, 'coach token only');
   assertNoLeak(w);
   const w2 = await planWorld({ facts: facts({ sched: null }) });
-  const r2 = await explain(w2);
-  eq(r2.j.training.status + '/' + r2.j.meals.status, 'no_confirmed_schedule/no_confirmed_schedule', 'unknown plan explained');
+  const r2 = await explain(w2, { date: MON });
+  eq(r2.j.training.status + '/' + r2.j.meals.status, 'scheduled/scheduled', 'no plan schedule → defaults explained');
+  eq(r2.j.training.stages.map((x) => x.time).join(',') + '|' + r2.j.meals.slots.map((x) => x.time).join(','), '17:00,19:00|12:30,20:30', 'default times');
+  const w3 = await planWorld({ facts: null });
+  eq((await explain(w3, { date: MON })).j.training.status, 'no_confirmed_schedule', 'never synced → nothing');
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -598,6 +639,46 @@ test('DL1 sw.js: closed app opens the deep link; open app is focused + told the 
   await click(scope + '?li=../../x'); eq(messages.length, 1, 'invalid → no message'); eq(focused.length, 2, 'focused');
   windows = [];
   await click('https://evil.example/?li=training'); eq(opened.at(-1), scope, 'other origin → home');
+});
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// DF. Default-schedule facts: read from the served shell, validated on sync
+// ════════════════════════════════════════════════════════════════════════════
+test('DF1 page reader: sessions per week (MANDATORY days, every phase agrees) and usual lunch / dinner clock times', async () => {
+  const PF = await import(path.join(process.cwd(), 'scripts/push/plan_facts.mjs'));
+  const phases = (perPhase) => 'const phases = {\n' + perPhase.map((days, i) => `  ${i + 1}: {\n    days: [\n` +
+    days.map((b, d) => `      {\n        label: "Day ${d + 1} — X",\n        badge: "${b}",\n      },\n`).join('') + '    ],\n  },').join('\n') + '\n};';
+  eq(PF.trainingDaysPerWeek(phases([['MANDATORY', 'MANDATORY', 'MANDATORY', 'OPTIONAL'], ['MANDATORY', 'MANDATORY', 'MANDATORY']])), 3, 'optional day not counted');
+  eq(PF.trainingDaysPerWeek(phases([['MANDATORY', 'MANDATORY'], ['MANDATORY', 'MANDATORY', 'MANDATORY']])), null, 'phases disagree → null (server default)');
+  eq(PF.trainingDaysPerWeek('<html>no program</html>'), null, 'no program → null');
+  for (const [t, m] of [['7:30am', 450], ['12:30pm', 750], ['12:00am', 0], ['19:30', 1170], ['7pm', 1140], ['12:40pm', 750], ['Lunch', null], ['13', null], ['', null], ['13:75', null]])
+    eq(PF.clockMinutes(t), m, `clock ${t}`);
+  const day = (times) => ({ meals: times.map((t) => ({ time: t, name: 'm', cal: 400 })) });
+  const week = (times) => Array.from({ length: 7 }, () => day(times));
+  eq(JSON.stringify(PF.mealAnchorTimes({ 1: week(['7:00am', '12:30pm', '4:00pm', '8:00pm']) })), JSON.stringify({ meal_lunch_time: '12:30', meal_dinner_time: '20:00' }), 'usual times');
+  eq(JSON.stringify(PF.mealAnchorTimes({ 1: week(['Breakfast', 'Lunch', 'Dinner']) })), JSON.stringify({ meal_lunch_time: null, meal_dinner_time: null }), 'labels only → defaults');
+  eq(PF.mealAnchorTimes({ 1: week(['7:00am', '1:00pm', '9:30pm']) }).meal_dinner_time, null, 'a 21:30 feed is never a dinner reminder (quiet hours)');
+  // The live fleet, read exactly as the sync reads it.
+  const live = (k) => PF.planFactsFromShell(fs.readFileSync(path.join(process.cwd(), 'clients', k, 'index.html')));
+  const z = live('zac'), d = live('dib_kerdy');
+  eq([z.training_days_per_week, z.meal_lunch_time, z.meal_dinner_time].join(','), '5,12:30,20:30', 'zac');
+  eq([d.training_days_per_week, d.meal_lunch_time, d.meal_dinner_time].join(','), '5,12:30,20:00', 'dib_kerdy');
+});
+
+test('DF2 planFactsSync validates the new facts; absent (older sync) = unknown → defaults', async () => {
+  const w = await planWorld({ facts: null });
+  for (const [f, code] of [[{ dpw: 9 }, 'bad_training_days_per_week'], [{ dpw: 2.5 }, 'bad_training_days_per_week'],
+                           [{ lunch: '18:00' }, 'bad_meal_lunch_time'], [{ lunch: '12:10' }, 'bad_meal_lunch_time'],
+                           [{ dinner: '21:00' }, 'bad_meal_dinner_time'], [{ dinner: '7pm' }, 'bad_meal_dinner_time']])
+    eq((await sync(w, facts(f))).j.error, code, JSON.stringify(f));
+  const r = await sync(w, facts({ dpw: 5, lunch: '13:00', dinner: '19:30' }));
+  assert(r.j.ok, 'valid facts stored');
+  eq([r.j.facts.trainingDaysPerWeek, r.j.facts.mealLunchTime, r.j.facts.mealDinnerTime].join(','), '5,13:00,19:30', 'echoed');
+  const row = w.db.T.push_plan_facts[0];
+  eq([row.training_days_per_week, row.meal_lunch_time, row.meal_dinner_time].join(','), '5,13:00,19:30', 'stored');
+  assert((await sync(w, facts())).j.ok, 'older payload without the fields still syncs');
+  eq(w.db.T.push_plan_facts[0].training_days_per_week, null, 'absent → null');
 });
 
 run('push_daily');

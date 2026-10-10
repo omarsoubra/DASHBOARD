@@ -147,6 +147,11 @@
       ':where(.lip-switch[aria-checked="true"]){background:var(--accent,#6ea8ff);}' +
       ':where(.lip-switch[aria-checked="true"])::after{transform:translateX(18px);}' +
       ':where(.lip-switch[disabled]){opacity:.5;}' +
+      ':where(.lip-days){display:flex;gap:6px;padding:0 0 12px;flex-wrap:wrap;}' +
+      ':where(.lip-day){width:36px;height:36px;border-radius:50%;border:1px solid var(--border,rgba(127,127,127,.35));background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;}' +
+      ':where(.lip-day[aria-pressed="true"]){background:var(--accent,#6ea8ff);border-color:transparent;color:#fff;}' +
+      ':where(.lip-day[disabled]){opacity:.6;}' +
+      ':where(.lip-link){background:none;border:0;padding:0 0 10px;color:var(--accent,#6ea8ff);font:inherit;font-size:13px;cursor:pointer;}' +
       ':where(.lip-ask){position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding:0 12px calc(12px + env(safe-area-inset-bottom));}' +
       ':where(.lip-ask .lip-card){width:100%;max-width:440px;margin:0;padding:22px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.35);}' +
       ':where(.lip-ask .lip-bell){font-size:30px;line-height:1;margin-bottom:10px;}' +
@@ -477,7 +482,7 @@
     }
     row('Weekly check-in', (DAYS[p.checkinDow] || 'Sundays') + ', only if it isn\'t done', p.checkinEnabled ? [sel('checkinTime', 'Check-in reminder time'), sw('checkinEnabled', 'Weekly check-in reminder')] : [sw('checkinEnabled', 'Weekly check-in reminder')]);
     row('Program updates', 'When Omar updates your program', [sw('programUpdatesEnabled', 'Program update notifications')]);
-    if (p.daily && p.daily.available) self._daily(row, sw);
+    if (p.daily && p.daily.available) self._daily(row, sw, card);
     row('Quiet hours', 'Nothing is sent in this window', [sel('quietStart', 'Quiet hours start'), el('span', { class: 'lip-muted' }, '–'), sel('quietEnd', 'Quiet hours end')]);
     var tz = localTimezone();
     if (tz && p.timezone !== tz) {
@@ -489,13 +494,60 @@
     }
   };
 
-  // ── Plan-synced reminders: the approved plan owns days and times; the client
-  //    only chooses ON/OFF. A row exists only when the server has a confirmed,
-  //    verified-live schedule for that category — otherwise it is not shown at all.
-  Push.prototype._daily = function (row, sw) {
-    var d = this.prefs.daily;
-    if (d.trainingAvailable) row('Training reminders', 'Synced with your training plan', [sw('trainingEnabled', 'Training reminders')]);
-    if (d.mealsAvailable) row('Meal reminders', 'Synced with your meal plan', [sw('mealsEnabled', 'Meal reminders')]);
+  // ── Daily reminders (Omar 2026-10-11): everyone gets a default. Training: the
+  //    days + time in force, which the client may change (or reset to the plan).
+  //    Meals: lunch + dinner from the plan, shown read-only. Server is the authority.
+  var DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  var DAY_NAME = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function dayList(days) {
+    var d = (days || []).slice().sort(function (a, b) { return a - b; });
+    if (d.length === 7) return 'Every day';
+    if (d.join() === '1,2,3,4,5') return 'Weekdays';
+    var mon = d.filter(function (x) { return x !== 0; }).concat(d.indexOf(0) >= 0 ? [0] : []);   // Mon-first
+    return mon.map(function (x) { return DAY_NAME[x]; }).join(', ');
+  }
+  Push.prototype._saveDaily = function (patch) {
+    var self = this;
+    if (self.saving || !self.prefs) return;
+    self.saving = true; self.lastError = ''; self.render();
+    self.api('pushPrefsSet', { prefs: patch }).then(function (j) {
+      if (j && j.ok && j.prefs) self.prefs = j.prefs;
+      else self.lastError = self.saveError(j && j.error);
+    }).then(function () { self.saving = false; self.render(); });
+  };
+  Push.prototype._daily = function (row, sw, card) {
+    var self = this, p = this.prefs, d = p.daily, tr = d.training, ml = d.meals;
+    if (d.trainingAvailable) {
+      var sub = tr ? dayList(tr.days) + ' at ' + label12(tr.time) : 'From your training plan';
+      if (!tr || !p.trainingEnabled) { row('Training reminders', sub, [sw('trainingEnabled', 'Training reminders')]); }
+      else {
+        var t = el('select', { class: 'lip-sel', 'aria-label': 'Training reminder time' });
+        TIMES.forEach(function (x) { var o = el('option', { value: x }, label12(x)); if (x === tr.time) o.selected = true; t.appendChild(o); });
+        if (self.saving) t.setAttribute('disabled', 'disabled');
+        t.addEventListener('change', function () { self._saveDaily({ trainingTime: t.value }); });
+        row('Training reminders', dayList(tr.days) + (tr.custom ? ' · your times' : ''), [t, sw('trainingEnabled', 'Training reminders')]);
+        var chips = el('div', { class: 'lip-days', role: 'group', 'aria-label': 'Training days' });
+        [1, 2, 3, 4, 5, 6, 0].forEach(function (dow) {
+          var on = tr.days.indexOf(dow) >= 0;
+          var b = el('button', { type: 'button', class: 'lip-day', 'aria-pressed': String(on), 'aria-label': DAY_NAME[dow] }, DAY_SHORT[dow]);
+          if (self.saving || (on && tr.days.length === 1)) b.setAttribute('disabled', 'disabled');   // keep at least one day
+          b.addEventListener('click', function () {
+            var next = on ? tr.days.filter(function (x) { return x !== dow; }) : tr.days.concat([dow]);
+            if (next.length) self._saveDaily({ trainingDays: next.sort(function (a, c) { return a - c; }) });
+          });
+          chips.appendChild(b);
+        });
+        card.appendChild(chips);
+        if (tr.custom) {
+          var reset = el('button', { type: 'button', class: 'lip-link' }, 'Reset to my plan');
+          reset.addEventListener('click', function () { self._saveDaily({ trainingTime: null, trainingDays: null }); });
+          card.appendChild(reset);
+        }
+      }
+    }
+    if (d.mealsAvailable) {
+      row('Meal reminders', ml ? 'Lunch ' + label12(ml.lunch) + ' · Dinner ' + label12(ml.dinner) : 'From your meal plan', [sw('mealsEnabled', 'Meal reminders')]);
+    }
   };
 
   Push.prototype._emit = function () {

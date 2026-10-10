@@ -63,10 +63,11 @@ const MIGRATION_V2 = rd('supabase/migrations/20260930120000_push_v2_checkin_sequ
 const MIGRATION_DAILY = rd('supabase/migrations/20261002120000_push_daily_reminders.sql');
 const MIGRATION_SCHED = rd('supabase/migrations/20261003120000_push_plan_schedule.sql');
 const MIGRATION_DROP = rd('supabase/migrations/20261003130000_push_drop_client_schedule.sql');
+const MIGRATION_DEFAULTS = rd('supabase/migrations/20261011120000_push_default_schedule.sql');
 // Workout Completion V1 is read (never written) by the daily training reminders.
 const MIGRATION_WC = rd('supabase/migrations/20261001120000_workout_completions.sql');
 const ALL_MIGRATIONS = MIGRATION + '\n' + MIGRATION_V1 + '\n' + MIGRATION_V2 + '\n' + MIGRATION_DAILY + '\n' + MIGRATION_WC +
-  '\n' + MIGRATION_SCHED + '\n' + MIGRATION_DROP;
+  '\n' + MIGRATION_SCHED + '\n' + MIGRATION_DROP + '\n' + MIGRATION_DEFAULTS;
 const COL_RE = /^([a-z][a-z0-9_]*)\s+(uuid|text|boolean|integer|smallint|timestamptz|jsonb|time|date)\b/;
 function parseColumns(table) {
   const cols = new Set();
@@ -420,7 +421,7 @@ function assertNoLeak(w, extraSecrets = []) {
 
 module.exports = {
   ROOT, rd, WP, SCH, H, ADH, test, tests, assert, eq, run, b64u, unb64u, sha256hex,
-  MIGRATION, MIGRATION_V1, MIGRATION_V2, MIGRATION_DAILY, MIGRATION_WC, MIGRATION_SCHED, MIGRATION_DROP, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
+  MIGRATION, MIGRATION_V1, MIGRATION_V2, MIGRATION_DAILY, MIGRATION_WC, MIGRATION_SCHED, MIGRATION_DROP, MIGRATION_DEFAULTS, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
   CANARY, OTHER, CANARY_TOKEN, OTHER_TOKEN, SECOND_TOKEN, COACH_HASH, CRON_SECRET, DEPLOY_SECRET,
   makeVapid, makeBrowserSub, nodeDecrypt, verifyVapidHeader, makePushService, world, assertNoLeak,
 };

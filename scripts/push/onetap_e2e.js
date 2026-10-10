@@ -21,6 +21,9 @@
 //   D  the OS "Don't Allow" answer: the sheet closes, nothing is subscribed.
 //   E  wording follows the plan: no plan times → "Get reminders?" with no meal/training promise.
 //   F  push calls carry the client token only in POST bodies (never a URL); no page errors.
+//   G  Notifications settings (default schedule, Omar 2026-10-11): training shows its
+//      days + time and the client can change both or reset to the plan; meals show
+//      lunch + dinner read-only.
 'use strict';
 const { spawn } = require('child_process');
 const http = require('http');
@@ -84,7 +87,9 @@ const FAKE_OS = `(() => {
   const { sessionId: s } = await send('Target.attachToTarget', { targetId, flatten: true });
 
   // ── fake push function (scenario-driven) ──────────────────────────────────
-  const SC = { oneTap: true, training: true, meals: true, registered: false };
+  const SC = { oneTap: true, training: true, meals: true, registered: false, tTime: null, tDays: null };
+  const sets = [];
+  const trainingView = () => ({ time: SC.tTime ?? '17:00', days: SC.tDays ?? [1, 2, 4, 5], source: SC.tTime || SC.tDays ? 'client' : 'default', custom: !!(SC.tTime || SC.tDays) });
   const calls = []; const leaks = [];
   function pushReply(body) {
     calls.push(body.type);
@@ -93,8 +98,15 @@ const FAKE_OS = `(() => {
       case 'pushSubscribe': SC.registered = true; return { ok: true, deviceId: 'd1', created: true };
       case 'pushPrefsGet': return { ok: true, prefs: { optedIn: SC.registered, notificationsEnabled: SC.registered, timezone: 'Australia/Sydney', weighinAvailable: false, weighinEnabled: true, weighinTime: '07:30',
         checkinEnabled: true, checkinDow: 0, checkinTime: '09:00', programUpdatesEnabled: true, quietStart: '21:00', quietEnd: '07:00',
-        daily: { available: SC.oneTap, trainingAvailable: SC.oneTap && SC.training, mealsAvailable: SC.oneTap && SC.meals },
+        daily: { available: SC.oneTap, trainingAvailable: SC.oneTap && SC.training, mealsAvailable: SC.oneTap && SC.meals,
+                 ...(SC.oneTap && SC.training ? { training: trainingView() } : {}), ...(SC.oneTap && SC.meals ? { meals: { lunch: '12:30', dinner: '20:00' } } : {}) },
         trainingEnabled: SC.registered && SC.oneTap, mealsEnabled: SC.registered && SC.oneTap } };
+      case 'pushPrefsSet': {
+        sets.push(body.prefs);
+        if ('trainingTime' in body.prefs) SC.tTime = body.prefs.trainingTime;
+        if ('trainingDays' in body.prefs) SC.tDays = body.prefs.trainingDays;
+        return pushReply({ ...body, type: 'pushPrefsGet' });
+      }
       default: return { ok: true };
     }
   }
@@ -159,6 +171,40 @@ const FAKE_OS = `(() => {
     await open();
     check(P('A14 reopening the app: no sheet'), (await sheet()) === null);
     check(P('A15 reopening: permission never asked again'), (await ls('__permCalls')) === '1', await ls('__permCalls'));
+
+    // ── G: the Notifications settings (registered from A) ──────────────────
+    const card = () => ev(`(() => { const c = document.querySelector('#li-push-settings .lip-card'); if (!c) return null;
+      const rows = [...c.querySelectorAll('.lip-row')].map(r => r.textContent);
+      return { rows, time: (c.querySelector('select[aria-label="Training reminder time"]')||{}).value || null,
+               chips: [...c.querySelectorAll('.lip-day')].map(b => b.getAttribute('aria-label') + ':' + b.getAttribute('aria-pressed')).join(','),
+               reset: !!c.querySelector('.lip-link') }; })()`);
+    const openCard = () => ev(`(() => { const h = document.querySelector('#li-push-settings .lip-head'); if (h && h.getAttribute('aria-expanded') !== 'true') h.click(); return !!h; })()`);
+    SC.tTime = null; SC.tDays = null; sets.length = 0;
+    await openCard(); await sleep(300);
+    let cd = await card();
+    const trRow = cd && cd.rows.find((r) => r.startsWith('Training reminders'));
+    check(P('G1 training row shows the default days'), trRow && trRow.includes('Mon, Tue, Thu, Fri'), cd && cd.rows);
+    check(P('G2 training time shows 5:00 PM'), cd && cd.time === '17:00', cd && cd.time);
+    check(P('G3 day chips: Mon/Tue/Thu/Fri on'), cd && cd.chips === 'Mon:true,Tue:true,Wed:false,Thu:true,Fri:true,Sat:false,Sun:false', cd && cd.chips);
+    check(P('G4 meals row shows lunch + dinner, read-only'), cd && cd.rows.some((r) => r.startsWith('Meal reminders') && r.includes('Lunch 12:30 PM · Dinner 8:00 PM')) &&
+      (await ev(`[...document.querySelectorAll('#li-push-settings .lip-row')].find(r => r.textContent.startsWith('Meal reminders')).querySelectorAll('select').length`)) === 0,
+      cd && cd.rows.filter((r) => r.startsWith('Meal')));   // no time picker on the meal row
+    await ev(`[...document.querySelectorAll('#li-push-settings .lip-day')].find(b => b.getAttribute('aria-label') === 'Sat').click()`); await sleep(400);
+    check(P('G5 tapping Sat adds it'), JSON.stringify(sets.at(-1)) === JSON.stringify({ trainingDays: [1, 2, 4, 5, 6] }), sets.at(-1));
+    cd = await card();
+    check(P('G6 Sat now on; "Reset to my plan" offered'), cd && cd.chips.includes('Sat:true') && cd.reset, cd);
+    await ev(`(() => { const s = document.querySelector('#li-push-settings select[aria-label="Training reminder time"]'); s.value = '18:30'; s.dispatchEvent(new Event('change')); })()`); await sleep(400);
+    check(P('G7 changing the time saves it'), JSON.stringify(sets.at(-1)) === JSON.stringify({ trainingTime: '18:30' }), sets.at(-1));
+    cd = await card();
+    check(P('G8 time shown back as 6:30 PM'), cd && cd.time === '18:30', cd && cd.time);
+    await ev(`document.querySelector('#li-push-settings .lip-link').click()`); await sleep(400);
+    check(P('G9 reset sends both back to the plan in one save'), JSON.stringify(sets.at(-1)) === JSON.stringify({ trainingTime: null, trainingDays: null }), sets.at(-1));
+    cd = await card();
+    check(P('G10 back to the default'), cd && cd.time === '17:00' && !cd.reset && cd.chips.includes('Sat:false'), cd);
+    SC.tDays = [3]; await open(); await openCard(); await sleep(300);
+    const lone = await ev(`[...document.querySelectorAll('#li-push-settings .lip-day')].find(b => b.getAttribute('aria-label') === 'Wed').disabled`);
+    check(P('G11 the last remaining day cannot be removed'), lone === true, lone);
+    SC.tDays = null;
 
     // ── B: Not now → once more after 7 days → never ─────────────────────────
     await reset(); Object.assign(SC, { oneTap: true, registered: false });
