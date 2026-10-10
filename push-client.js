@@ -21,6 +21,13 @@
    Rules this file keeps:
      * Notification permission is requested ONLY inside the "Turn on" tap
        handler (_onEnable). Never on load, never on a timer, never repeatedly.
+     * ONE TAP (2026-10-11): for a client the server marks oneTap (plan-synced
+       rollout), the app offers ONE sheet on open: "Turn on reminders" / "Not
+       now". The sheet itself asks nothing of the OS; its button is the tap that
+       calls _onEnable, and the server switches every reminder on at that first
+       opt-in. Shown only where a push can actually arrive (Home Screen app on
+       iPhone), only while permission is still undecided, at most twice ever per
+       phone ("Not now" → once more after 7 days, then never).
      * No secret lives here. The VAPID public key is fetched from the server.
      * The client token goes only into POST bodies to pushUrl — never a URL,
        never the console, never the DOM.
@@ -139,7 +146,12 @@
       ':where(.lip-switch)::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .15s;}' +
       ':where(.lip-switch[aria-checked="true"]){background:var(--accent,#6ea8ff);}' +
       ':where(.lip-switch[aria-checked="true"])::after{transform:translateX(18px);}' +
-      ':where(.lip-switch[disabled]){opacity:.5;}';
+      ':where(.lip-switch[disabled]){opacity:.5;}' +
+      ':where(.lip-ask){position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding:0 12px calc(12px + env(safe-area-inset-bottom));}' +
+      ':where(.lip-ask .lip-card){width:100%;max-width:440px;margin:0;padding:22px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.35);}' +
+      ':where(.lip-ask .lip-bell){font-size:30px;line-height:1;margin-bottom:10px;}' +
+      ':where(.lip-ask .lip-title){font-size:19px;}' +
+      ':where(.lip-ask .lip-later){margin-top:6px;}';
     var s = el('style', { id: 'lip-style' }); s.textContent = css;
     (document.head || document.documentElement).appendChild(s);
   }
@@ -154,6 +166,8 @@
     this.saving = false;
     this.lastError = '';
     this.open = !opts.compact;
+    this.oneTap = false;
+    this.asked = false;
   }
 
   Push.prototype.api = function (type, extra) {
@@ -183,12 +197,96 @@
         return self.api('pushStatus', { endpoint: sub ? sub.endpoint : '' }).then(function (j) {
           if (!j || j.ok !== true) { self.lastError = self.explain(j && j.error); return; }
           self.vapidKey = j.vapidPublicKey || null;
+          self.oneTap = j.oneTap === true;
           self.serverRegistered = !!(sub && j.registered);
           if (self.serverRegistered) return self.loadPrefs();
         });
       })
       .catch(function () { self.lastError = 'Could not start notifications on this device.'; })
-      .then(function () { self.render(); });
+      .then(function () { self.render(); self._maybeAsk(); });
+  };
+
+  // ── ONE TAP: the single on-open offer ──────────────────────────────────────
+  var ASK_AGAIN_MS = 7 * 24 * 3600 * 1000;
+  Push.prototype._askKey = function () { return 'li_push_ask_' + this.o.storageKey; };
+  Push.prototype._askState = function () {
+    try { var s = JSON.parse(localStorage.getItem(this._askKey()) || 'null'); if (s && typeof s.n === 'number') return s; } catch (e) {}
+    return { n: 0, at: 0 };
+  };
+  Push.prototype._askSave = function (s) {
+    try { localStorage.setItem(this._askKey(), JSON.stringify(s)); } catch (e) {}
+  };
+  Push.prototype._shouldAsk = function () {
+    if (!this.oneTap || this.serverRegistered || !this.reg || !this.vapidKey) return false;
+    if (!supportsPush() || (IS_IOS && !isStandalone())) return false;          // no push can arrive here
+    if (Notification.permission !== 'default') return false;                    // already decided at OS level
+    var s = this._askState();
+    return s.n === 0 || (s.n === 1 && Date.now() - s.at >= ASK_AGAIN_MS);
+  };
+  Push.prototype._maybeAsk = function () {
+    var self = this;
+    if (self.asked || !self._shouldAsk()) return;
+    self.asked = true;                                                          // at most once per app open
+    // Read what the plan offers (works before opt-in), then let the app paint first.
+    self.loadPrefs().then(function () {
+      setTimeout(function () { if (self._shouldAsk()) self._showAsk(); }, 900);
+    });
+  };
+  // Name only what this client's plan actually schedules today (server truth, never assumed).
+  Push.prototype._askWhat = function () {
+    var d = (this.prefs && this.prefs.daily) || {};
+    if (d.trainingAvailable && d.mealsAvailable) return { title: 'Get reminders for your workouts and meals?', when: 'at your planned training and meal times, plus check-in day' };
+    if (d.trainingAvailable) return { title: 'Get reminders for your workouts?', when: 'at your planned training times, plus check-in day' };
+    if (d.mealsAvailable) return { title: 'Get reminders for your meals?', when: 'at your planned meal times, plus check-in day' };
+    return { title: 'Get reminders?', when: 'on check-in day and when Omar updates your program' };
+  };
+  Push.prototype._showAsk = function () {
+    var self = this;
+    if (document.getElementById('lip-ask')) return;
+    injectStyle();
+    var wrap = el('div', { id: 'lip-ask', class: 'lip-ask', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'lip-ask-title' });
+    var card = el('div', { class: 'lip-card' });
+    wrap.appendChild(card);
+    function close() { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }
+    function paint(state) {
+      while (card.firstChild) card.removeChild(card.firstChild);
+      card.appendChild(el('div', { class: 'lip-bell', 'aria-hidden': 'true' }, state === 'done' ? '✅' : '🔔'));
+      if (state === 'done') {
+        card.appendChild(el('div', { class: 'lip-title', id: 'lip-ask-title' }, 'Reminders are on'));
+        card.appendChild(el('p', { class: 'lip-text' }, 'You\'ll get them ' + self._askWhat().when + '. Change them anytime under Notifications.'));
+        var ok = el('button', { type: 'button', class: 'lip-btn' }, 'Done');
+        ok.addEventListener('click', close);
+        card.appendChild(ok);
+        return;
+      }
+      var w = self._askWhat();
+      card.appendChild(el('div', { class: 'lip-title', id: 'lip-ask-title' }, w.title));
+      card.appendChild(el('p', { class: 'lip-text' }, 'We\'ll remind you ' + w.when + '. You can change this anytime.'));
+      if (state === 'error' && self.lastError) card.appendChild(el('p', { class: 'lip-err' }, self.lastError));
+      var on = el('button', { type: 'button', class: 'lip-btn' }, state === 'busy' ? 'Turning on…' : 'Turn on reminders');
+      var later = el('button', { type: 'button', class: 'lip-btn lip-btn2 lip-later' }, 'Not now');
+      if (state === 'busy') { on.setAttribute('disabled', 'disabled'); later.setAttribute('disabled', 'disabled'); }
+      on.addEventListener('click', function () {
+        self._askSave({ n: 9, at: Date.now() });                                // answered: never offer again
+        paint('busy');
+        // _onEnable asks the OS for permission first thing, inside this same tap.
+        var p = self._onEnable();
+        (p && p.then ? p : Promise.resolve()).then(function () {
+          if (self.serverRegistered) paint('done');
+          else if (('Notification' in window) && Notification.permission === 'denied') close();
+          else paint('error');
+        });
+      });
+      later.addEventListener('click', function () {
+        var s = self._askState();
+        self._askSave({ n: s.n + 1, at: Date.now() });
+        close();
+      });
+      card.appendChild(on);
+      card.appendChild(later);
+    }
+    paint('ask');
+    document.body.appendChild(wrap);
   };
 
   Push.prototype.loadPrefs = function () {
@@ -217,7 +315,7 @@
     if (!self.reg || !self.vapidKey) { self.lastError = 'Not ready yet. Close and reopen the app.'; self.render(); return; }
     self.busy = true; self.lastError = ''; self.render();
     // The permission prompt is the first await inside the tap — iOS requires this.
-    Notification.requestPermission().then(function (perm) {
+    return Notification.requestPermission().then(function (perm) {
       if (perm !== 'granted') throw { user: true };
       return self.reg.pushManager.getSubscription().then(function (existing) {
         return existing || self.reg.pushManager.subscribe({

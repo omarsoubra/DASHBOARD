@@ -117,16 +117,49 @@ test('AV2 unknown meal schedule (or no LI_SCHEDULE at all) → no meal reminder 
   }
 });
 
-test('AV3 confirmed schedules → both toggles offered; default OFF until the client switches them on', async () => {
+test('AV3 ONE TAP: the first opt-in of a rollout client switches both categories ON; the plan still decides what fires', async () => {
+  // planWorld opts in BEFORE the plan facts exist: the one tap must not depend on them.
   const w = await planWorld({ on: false });
   const p = await prefs(w);
   eq(p.daily.trainingAvailable, true, 'training row'); eq(p.daily.mealsAvailable, true, 'meal row');
-  eq(p.trainingEnabled, false, 'training off by default'); eq(p.mealsEnabled, false, 'meals off by default');
-  await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
-  eq(pushes(w).length, 0, 'nothing until switched on');
-  assert((await w.prefsSet({ trainingEnabled: true })).j.ok && (await w.prefsSet({ mealsEnabled: true })).j.ok, 'switched on');
+  eq(p.trainingEnabled, true, 'training on from the one tap'); eq(p.mealsEnabled, true, 'meals on from the one tap');
+  eq(p.checkinEnabled, true, 'check-in on'); eq(p.programUpdatesEnabled, true, 'program updates on');
   await scheduler(w, at(TUE, '06:00'), at(WED, '00:00'));
-  eq(pushes(w, 'li-meal').length, 4, 'meals now'); eq(pushes(w, 'li-training').length, 2, 'training now (Tue primary + follow-up)');
+  eq(pushes(w, 'li-meal').length, 4, 'meals at the plan times'); eq(pushes(w, 'li-training').length, 2, 'training (Tue primary + follow-up)');
+  // The client can still switch a category off, and it stays off.
+  assert((await w.prefsSet({ trainingEnabled: false })).j.ok, 'switched off');
+  await scheduler(w, at(THU, '06:00'), at(THU, '23:45'));
+  eq(pushes(w, 'li-training').length, 2, 'no more training reminders once off');
+});
+
+test('AV3b ONE TAP before any plan schedule: ON is stored but silent; reminders start the day the schedule syncs', async () => {
+  const w = await planWorld({ on: false, facts: null });
+  let p = await prefs(w);
+  eq(p.trainingEnabled, true, 'stored on'); eq(p.daily.trainingAvailable, false, 'no row shown yet'); eq(p.daily.mealsAvailable, false, 'no meal row yet');
+  await scheduler(w, at(MON, '06:00'), at(TUE, '00:00'));
+  eq(ev(w, 'training_reminder').length + ev(w, 'meal_reminder').length, 0, 'nothing without a plan schedule');
+  assert((await sync(w, facts())).j.ok, 'plan schedule arrives');
+  await scheduler(w, at(TUE, '06:00'), at(WED, '00:00'));
+  eq(pushes(w, 'li-meal').length, 4, 'meals start'); eq(pushes(w, 'li-training').length, 2, 'training starts');
+});
+
+test('AV3c ONE TAP happens once: a later re-subscribe (new phone, reinstall) never overrides the client\'s own choice', async () => {
+  const w = await planWorld({ on: false });
+  assert((await w.prefsSet({ trainingEnabled: false, mealsEnabled: false })).j.ok, 'client switched both off');
+  const s2 = w.newSub();
+  assert((await w.subscribe(s2, { timezone: TZ })).j.ok, 'second device opts in');
+  const p = await prefs(w);
+  eq(p.trainingEnabled, false, 'training stays off'); eq(p.mealsEnabled, false, 'meals stay off');
+});
+
+test('AV3d ONE TAP is rollout-gated: outside the rollout, opt-in leaves both off and the page gets no prompt', async () => {
+  const w = await planWorld({ daily: false, on: false, facts: null });
+  const pr = w.db.T.push_preferences.find((x) => x.client_id === w.canaryId);
+  eq(!!pr.training_enabled, false, 'training off'); eq(!!pr.meals_enabled, false, 'meals off');
+  eq((await w.call({ type: 'pushStatus', storageKey: CANARY, token: CANARY_TOKEN, endpoint: w.sub.json.endpoint })).j.oneTap, false, 'no prompt outside the rollout');
+  const w2 = await planWorld({ on: false });
+  eq((await w2.call({ type: 'pushStatus', storageKey: CANARY, token: CANARY_TOKEN, endpoint: '' })).j.oneTap, true, 'prompt for a rollout client');
+  eq((await w2.call({ type: 'pushStatus', storageKey: CANARY, token: 'x'.repeat(64), endpoint: '' })).j.oneTap, undefined, 'bad token: no answer');
 });
 
 test('AV4 the client can only toggle categories: every schedule field is refused, the response carries no schedule', async () => {
