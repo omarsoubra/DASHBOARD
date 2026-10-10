@@ -192,17 +192,36 @@ const denied = (r) => r.ok === false && ['forbidden_tier', 'provisioning_incompl
   t('coach reads program of a denied client', B(await M.clientProgram({ coachToken: 'k', storageKey: KEY })).ok === true);
   t('coach reads overrides of a denied client', B(await M.overrideGet({ coachToken: 'k', storageKey: KEY })).ok === true);
 
-  console.log('\n[A8] LEGACY QUARANTINE PATH — canonical mirror is gated too');
+  console.log('\n[A8] NO VALID TOKEN → NO CANONICAL WRITE, EVER (quarantine only)');
   // Legacy Apps Script callers identify with `client`, not `storageKey`, and
-  // carry no valid token — that is exactly the shape this path exists for.
+  // carry no valid token. Before 2026-10-11 an ENTITLED key was auto-mirrored
+  // into canonical data on this path, so anyone who knew a storage key could
+  // write weigh-ins/check-ins into that client's history. Now: quarantine only.
   DID_WRITE = []; QUEUED = []; AUTH_OK = false; ROSTER_ACTIVE = true;
   await M.clientWrite('weight', { token: 'bad', client: KEY, weightKg: 80 });
   t('attempt is quarantined in the queue', QUEUED.length === 1);
-  t('canonical mirror BLOCKED for an unentitled key', DID_WRITE.length === 0);
+  t('no canonical write for an unentitled key', DID_WRITE.length === 0);
   DID_WRITE = []; QUEUED = [];
-  await M.clientWrite('weight', { token: 'bad', client: 'legacy_one', weightKg: 80 });
-  t('attempt is quarantined in the queue', QUEUED.length === 1);
-  t('canonical mirror still works for an entitled legacy key', DID_WRITE.length === 1);
+  for (const k of ['weight', 'checkin']) {
+    const r = B(await M.clientWrite(k, { token: 'bad', client: 'legacy_one', weightKg: 80, week: 1 }));
+    t(`${k}: token-less attempt on an ENTITLED key is refused`, r.ok === false);
+  }
+  t('both attempts are quarantined for coach review', QUEUED.length === 2);
+  t('NO canonical write for an entitled key without a valid token', DID_WRITE.length === 0);
+  DID_WRITE = []; QUEUED = [];
+  for (const k of ['weight', 'checkin', 'meal', 'workout', 'workoutCorrect', 'photoUpload']) {
+    await M.clientWrite(k, { client: 'legacy_one', storageKey: 'legacy_one' });                   // no token at all
+    await M.clientWrite(k, { token: 'forged', client: 'legacy_one', storageKey: 'legacy_one' });  // forged token + real key
+  }
+  t('no token / forged token: zero canonical writes for every write kind', DID_WRITE.length === 0);
+  t('only checkin/weight attempts are quarantined (2 kinds x 2 attempts)', QUEUED.length === 4);
+  DID_WRITE = []; QUEUED = []; ROSTER_ACTIVE = false;
+  await M.clientWrite('weight', { token: 'bad', client: 'not_a_client', weightKg: 80 });
+  t('unknown / inactive key: not even queued', QUEUED.length === 0 && DID_WRITE.length === 0);
+  AUTH_OK = true;
+  DID_WRITE = [];
+  await M.clientWrite('weight', { token: 'x', storageKey: 'legacy_one', weightKg: 80 });
+  t('a VALID token still writes normally (no regression)', DID_WRITE.length === 1);
   AUTH_OK = true; ROSTER_ACTIVE = false;
 
   console.log('\n[A9] WRITE MAP COMPLETENESS');
