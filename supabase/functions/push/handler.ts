@@ -91,7 +91,7 @@ type Deps = {
 };
 
 // ── constants ───────────────────────────────────────────────────────────────
-export const PUSH_VERSION = 'push-v3-daily';
+export const PUSH_VERSION = 'push-v4-onetap';
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ENDPOINT_LEN = 1024;
 const MAX_ACTIVE_DEVICES_PER_CLIENT = 5;
@@ -460,7 +460,10 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         registered = dev.status === 'active';
       }
     }
-    return ok({ storageKey: a.storageKey, vapidPublicKey: v.publicKeyB64, registered, deviceStatus });
+    // oneTap: this client is in the plan-synced rollout, so the page may offer the
+    // single "Turn on reminders" prompt on open (Omar 2026-10-11). The prompt only
+    // ever appears on a tap-able sheet; permission is still requested inside that tap.
+    return ok({ storageKey: a.storageKey, vapidPublicKey: v.publicKeyB64, registered, deviceStatus, oneTap: inDaily(a.storageKey) });
   }
 
   // ── pushSubscribe (= the explicit opt-in) ─────────────────────────────────
@@ -523,17 +526,25 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
 
     // Opt-in: a subscription is only ever created from a user gesture in the
     // browser, so this is where consent is recorded and notifications enabled.
+    // ONE TAP (Omar 2026-10-11): for a client in the plan-synced rollout, the FIRST
+    // consent also switches on the plan-synced categories. They only ever fire for
+    // a category the verified-live plan schedule confirms (the scheduler re-checks
+    // availability every tick), so a category with no plan times stays silent and
+    // starts working the day its schedule arrives. A later re-subscribe never
+    // overrides a choice the client has made since (consent_at is already set).
     const prefs = await loadPrefs(a.clientId);
+    const firstConsent = !prefs?.consent_at;
+    const oneTapOn = firstConsent && inDaily(a.storageKey) ? { training_enabled: true, meals_enabled: true } : {};
     if (!prefs) {
       const { error } = await admin.from('push_preferences').insert({
         client_id: a.clientId, storage_key: a.storageKey, notifications_enabled: true,
-        consent_at: nowIso, timezone, updated_at: nowIso, updated_by: 'client',
+        consent_at: nowIso, timezone, updated_at: nowIso, updated_by: 'client', ...oneTapOn,
       });
       if (error && !isDup(error)) log('pushSubscribe', 'prefs_insert_failed', error.message);
     } else {
       const { error } = await admin.from('push_preferences').update({
         notifications_enabled: true, consent_at: prefs.consent_at ?? nowIso,
-        timezone: prefs.timezone ?? timezone, updated_at: nowIso, updated_by: 'client',
+        timezone: prefs.timezone ?? timezone, updated_at: nowIso, updated_by: 'client', ...oneTapOn,
       }).eq('client_id', a.clientId);
       if (error) log('pushSubscribe', 'prefs_update_failed', error.message);
     }
