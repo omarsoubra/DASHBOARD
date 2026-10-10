@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T15:15:39Z",
+  "generatedAt": "2026-10-10T16:06:57Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 57,
+  "clientCount": 58,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -207,6 +207,10 @@
     {
       "storageKey": "tufail_shinwar",
       "programUrl": "clients/tufail_shinwar/"
+    },
+    {
+      "storageKey": "walid_hassan",
+      "programUrl": "clients/walid_hassan/"
     },
     {
       "storageKey": "yousef_hamze",
