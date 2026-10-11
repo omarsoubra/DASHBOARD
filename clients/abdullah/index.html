@@ -4241,12 +4241,20 @@ function syncFailed(err) {
 
 const _mealPending = new Set();
 
-async function retryUnsyncedMeals() {
+// One run at a time: the load-time retry and a Retry tap must not send the
+// same stuck entries twice.
+let _mealRetryRun = null;
+function retryUnsyncedMeals() {
+  if (!_mealRetryRun) _mealRetryRun = _retryUnsyncedMeals().finally(() => { _mealRetryRun = null; });
+  return _mealRetryRun;
+}
+async function _retryUnsyncedMeals() {
   let logs;
   try { logs = loadMealLogs(); } catch (e) { return; }
   const stuck = Object.keys(logs).filter(k => logs[k] && logs[k].synced === false);
   if (!stuck.length || !CLIENT_TOKEN) return;
   for (const k of stuck.slice(0, 25)) {
+    if (_mealPending.has(k)) continue;   // a live save for this slot is already in flight
     const e = logs[k];
     const r = await cloudWrite('meal', {
       week: e.week, dayIdx: e.dayIdx, mealIdx: e.mealIdx, mealName: e.mealName,
@@ -4255,7 +4263,7 @@ async function retryUnsyncedMeals() {
       timestamp: e.ts || undefined,
     });
     const cur = loadMealLogs();
-    if (cur[k]) { cur[k].synced = !!r.ok; cur[k].syncErr = r.ok ? null : r.error; saveMealLogLocal(cur); }
+    if (cur[k] && cur[k].ts === e.ts) { cur[k].synced = !!r.ok; cur[k].syncErr = r.ok ? null : r.error; saveMealLogLocal(cur); }
     if (!r.ok) break;   // stop on the first failure; try again next load
   }
 }

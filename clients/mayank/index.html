@@ -4999,13 +4999,18 @@ async function postMealLog(entry) {
     pActual:   entry.p   || 0,
     cActual:   entry.c   || 0,
     fActual:   entry.f   || 0,
+    // The entry's own time is its identity: a resend of the same entry (retry
+    // after a lost response) carries the same timestamp, so the server can
+    // recognise it instead of storing it twice.
+    timestamp: entry.ts || undefined,
   });
   // Record the truth on the entry itself so an unsynced tap can be retried
-  // later instead of being silently dropped.
+  // later instead of being silently dropped. Only the entry that was sent is
+  // marked: if the slot was changed or undone meanwhile, the newer state stays.
   try {
     const logs = loadMealLogs();
     const id = _mealLogId(entry.week, entry.dayIdx, entry.mealIdx);
-    if (logs[id]) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error; saveMealLogLocal(logs); }
+    if (logs[id] && logs[id].ts === entry.ts) { logs[id].synced = !!r.ok; logs[id].syncErr = r.ok ? null : r.error; saveMealLogLocal(logs); }
   } catch (e) {}
   if (r.ok) syncSaved(); else syncFailed(r.error);
   return r;
@@ -5407,12 +5412,20 @@ function parseFoodEntry(input) {
 // ╚═════════════════════════════════════════════════════════════════════════╝
 function _workoutLogKey() { return CLIENT_CONFIG.client.storageKey + '_workout_log'; }
 
-async function retryUnsyncedMeals() {
+// One run at a time: the load-time retry and a Retry tap must not send the
+// same stuck entries twice.
+let _mealRetryRun = null;
+function retryUnsyncedMeals() {
+  if (!_mealRetryRun) _mealRetryRun = _retryUnsyncedMeals().finally(() => { _mealRetryRun = null; });
+  return _mealRetryRun;
+}
+async function _retryUnsyncedMeals() {
   let logs;
   try { logs = loadMealLogs(); } catch (e) { return; }
   const stuck = Object.keys(logs).filter(k => logs[k] && logs[k].synced === false);
   if (!stuck.length || !CLIENT_TOKEN) return;
   for (const k of stuck.slice(0, 25)) {
+    if (_mealPending.has(k)) continue;   // a live save for this slot is already in flight
     const e = logs[k];
     const r = await cloudWrite('meal', {
       week: e.week, dayIdx: e.dayIdx, mealIdx: e.mealIdx, mealName: e.mealName,
@@ -5421,7 +5434,7 @@ async function retryUnsyncedMeals() {
       timestamp: e.ts || undefined,
     });
     const cur = loadMealLogs();
-    if (cur[k]) { cur[k].synced = !!r.ok; cur[k].syncErr = r.ok ? null : r.error; saveMealLogLocal(cur); }
+    if (cur[k] && cur[k].ts === e.ts) { cur[k].synced = !!r.ok; cur[k].syncErr = r.ok ? null : r.error; saveMealLogLocal(cur); }
     if (!r.ok) break;   // stop on the first failure; try again next load
   }
 }
@@ -8682,26 +8695,30 @@ async function sw2Save() {
   log.disabled = false;
   renderNutritionDay();
 
-  if (r && r.ok) {
-    _sw2.last = { name: name, cal: entry.cal, p: entry.p, c: entry.c, f: entry.f };
-    sw2PushRecent(_sw2.last);
-    _sw2Msg('', '');
-    document.getElementById('swapv2-entry').hidden = true;
-    document.getElementById('sw2-done-name').textContent = name;
-    document.getElementById('sw2-done-macros').textContent = entry.cal + ' kcal · ' + entry.p + 'g protein';
-    document.getElementById('sw2-done-verdict').textContent =
-      verdict.k === 'good' ? 'Right on target.'
-      : verdict.k === 'close' ? 'Close enough. Keep moving.'
-      : 'Logged. Omar will see the difference.';
-    document.getElementById('swapv2-done').hidden = false;
-    return;
-  }
+  /* The swap is already saved on this phone (above) whatever the server says,
+     so the sheet always finishes here - leaving the form open after a failed
+     send invited a second Log tap. Only the wording depends on the server:
+     "Synced" appears only when the backend confirmed the write; otherwise the
+     entry stays queued (synced:false) and goes out on Retry / next open. */
+  var ok = !!(r && r.ok);
   var err = (r && r.error) || 'network';
-  if (err === 'network' || err === 'timeout' || err === 'no_endpoint') {
-    _sw2Msg("Offline — we'll save this when you're connected", 'offline');
-  } else {
-    _sw2Msg('✗ Not saved — try again', 'err');
-  }
+  _sw2.last = { name: name, cal: entry.cal, p: entry.p, c: entry.c, f: entry.f };
+  sw2PushRecent(_sw2.last);
+  _sw2Msg('', '');
+  document.getElementById('swapv2-entry').hidden = true;
+  var head = document.querySelector('#swapv2-done .sw2-done-head');
+  if (head) head.textContent = ok ? 'Meal swapped' : 'Saved on this phone';
+  document.getElementById('sw2-done-name').textContent = name;
+  document.getElementById('sw2-done-macros').textContent = entry.cal + ' kcal · ' + entry.p + 'g protein';
+  var judged = verdict.k === 'good' ? 'Right on target.'
+    : verdict.k === 'close' ? 'Close enough. Keep moving.'
+    : 'Logged. Omar will see the difference.';
+  document.getElementById('sw2-done-verdict').textContent = ok
+    ? judged + ' Synced.'
+    : (err === 'network' || err === 'timeout'
+        ? "Not synced yet — you're offline. It sends when you're connected (or tap Retry at the top)."
+        : "Not synced yet — the server didn't accept it. It's kept on this phone; tap Retry at the top.");
+  document.getElementById('swapv2-done').hidden = false;
 }
 </script>
 <script>
@@ -12244,20 +12261,30 @@ window.CV2_DEFAULT = 'v2';
       var st = e && e.status;
       if (st === 'ate' || st === 'swap') { logged++; a.cal += +e.cal || 0; a.p += +e.p || 0; a.c += +e.c || 0; a.f += +e.f || 0; }
       var how = call(function () { currentNutritionDay = day; currentNutritionWeek = week; return mealHowToHtml(m, week); }) || '';
+      /* A swap is a logged replacement for this day and slot: the card shows
+         what was eaten (name, kcal, macros) and keeps the planned meal only as
+         a reference. The plan itself (m) is never changed. */
+      var sw = st === 'swap';
+      var shown = sw ? { name: e.swapDesc || m.name, cal: e.cal, p: e.p, c: e.c, f: e.f } : m;
+      var unsynced = st && e.synced === false;
       var status = st === 'ate' ? '<span class="cv2-chip ok">' + I('check') + 'Eaten · ' + int(e.cal || m.cal) + ' kcal</span>'
-        : st === 'swap' ? '<span class="cv2-chip accent">' + I('swap') + 'Swapped · ' + int(e.cal) + ' kcal</span>'
+        : sw ? '<span class="cv2-chip accent">' + I('swap') + 'Swapped · ' + int(e.cal) + ' kcal</span>'
         : st === 'skip' ? '<span class="cv2-chip">Skipped</span>' : '';
+      if (unsynced) status += '<span class="cv2-chip warn" title="Saved on this phone. It sends when you\'re connected.">Not synced yet</span>';
       var actions = st
-        ? '<div class="cv2-meal-a">' + status + (st === 'swap' && e.swapDesc ? '<small class="sw">' + esc(e.swapDesc) + '</small>' : '') +
+        ? '<div class="cv2-meal-a">' + status +
+          (sw ? '<button type="button" class="cv2-btn ghost sm" onclick="cv2Meal(\'swap\',' + i + ')">Change</button>' : '') +
           '<button type="button" class="cv2-btn ghost sm" onclick="cv2Meal(\'undo\',' + i + ')">Undo</button></div>'
         : '<div class="cv2-meal-a">' +
           '<button type="button" class="cv2-btn eat sm" onclick="cv2Meal(\'ate\',' + i + ')">' + I('check') + 'Ate it</button>' +
           '<button type="button" class="cv2-btn ghost sm" aria-label="Swap — log what you ate instead" onclick="cv2Meal(\'swap\',' + i + ')">' + I('swap') + 'Swap</button>' +
           '<button type="button" class="cv2-btn ghost sm muted" onclick="cv2Meal(\'skip\',' + i + ')">Skip</button></div>';
       return '<div class="cv2-meal' + (st ? ' is-' + st : '') + '"><div class="cv2-meal-h"><span class="tx">' +
-        '<small class="when">' + esc(m.time || '') + '</small><b>' + esc(m.name) + '</b></span><span class="kc cv2-num">' + int(m.cal) + '<small> kcal</small></span></div>' +
-        '<div class="cv2-macros cv2-num"><span>P <b>' + int(m.p) + '</b> g</span><span>C <b>' + int(m.c) + '</b> g</span><span>F <b>' + int(m.f) + '</b> g</span></div>' +
-        '<details class="cv2-ing"><summary>Ingredients' + (how ? ' &amp; method' : '') + '</summary><p>' + esc(m.desc || '') + '</p>' + how + '</details>' +
+        '<small class="when">' + esc(m.time || '') + '</small><b>' + esc(shown.name) + '</b>' +
+        (sw ? '<small>Instead of ' + esc(m.name) + '</small>' : '') +
+        '</span><span class="kc cv2-num">' + int(shown.cal) + '<small> kcal</small></span></div>' +
+        '<div class="cv2-macros cv2-num"><span>P <b>' + int(shown.p) + '</b> g</span><span>C <b>' + int(shown.c) + '</b> g</span><span>F <b>' + int(shown.f) + '</b> g</span></div>' +
+        '<details class="cv2-ing"><summary>' + (sw ? 'Planned meal' : 'Ingredients' + (how ? ' &amp; method' : '')) + '</summary><p>' + esc(m.desc || '') + '</p>' + how + '</details>' +
         actions + '</div>';
     }).join('');
     var days = '';
@@ -12573,12 +12600,16 @@ window.CV2_DEFAULT = 'v2';
     return r;
   };
   /* re-render the nutrition view whenever the page logs or undoes a meal
-     (including a swap saved from the page's own modal) */
-  ['logMealQuick', 'unlogMeal', 'saveSwap'].forEach(function (fn) {
+     (including a swap saved from the page's own modal). sw2Save is the swap
+     sheet's save (Swap UX V2); cancelSwap closes that sheet. Each write lands
+     in local state before its first await, so render straight away (pending
+     state) and again once the server has answered (synced / not synced). */
+  ['logMealQuick', 'unlogMeal', 'saveSwap', 'sw2Save', 'cancelSwap'].forEach(function (fn) {
     if (typeof window[fn] !== 'function') return;
     var orig = window[fn];
     window[fn] = function () {
       var r = orig.apply(this, arguments);
+      if (current === 'nutrition') call(nutriRender);
       Promise.resolve(r).then(function () { if (current === 'nutrition') call(nutriRender); });
       return r;
     };

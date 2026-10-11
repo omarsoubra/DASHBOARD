@@ -1889,7 +1889,7 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
     return ok({ tab: 'weight_logs', id: weight_id });
   }
   if (kind === 'meal') {
-    const { data, error: mErr } = await admin.from('meal_logs').insert({
+    const row = {
       client_id: clientId,
       meal_name: body.mealName ?? body.name ?? '',
       notes:     body.swapDesc ?? body.desc ?? '',
@@ -1898,8 +1898,26 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
       carbs_g:   body.cActual   ?? body.c   ?? 0,
       fat_g:     body.fActual   ?? body.f   ?? 0,
       logged_at: body.timestamp ?? new Date().toISOString(),
-    }).select('id').single();
-    if (mErr) logEfError(kind, key, 'meal_log_insert_failed', mErr.message);
+    };
+    // MEAL-SWAP-FIX 2026-10-11 — idempotency. The shell sends each meal log
+    // with the log entry's own time and re-sends that same time on a retry
+    // (lost response, Retry tap). A row already stored for this client with
+    // the same time and content is that same log arriving twice: answer with
+    // the existing row instead of storing a duplicate that double-counts.
+    if (body.timestamp) {
+      const { data: dup } = await admin.from('meal_logs').select('id')
+        .eq('client_id', clientId).eq('logged_at', row.logged_at)
+        .eq('meal_name', row.meal_name).eq('notes', row.notes).eq('kcal', row.kcal)
+        .limit(1).maybeSingle();
+      if (dup?.id) return ok({ tab: 'meal_logs', id: dup.id, deduped: true });
+    }
+    const { data, error: mErr } = await admin.from('meal_logs').insert(row).select('id').single();
+    // A failed insert is a failed save: say so, so the shell keeps the log
+    // queued and never shows "synced" for something that was not stored.
+    if (mErr) {
+      logEfError(kind, key, 'meal_log_insert_failed', mErr.message);
+      return err('write_failed', { table: 'meal_logs' });
+    }
     return ok({ tab: 'meal_logs', id: data?.id });
   }
   if (kind === 'workout') {
