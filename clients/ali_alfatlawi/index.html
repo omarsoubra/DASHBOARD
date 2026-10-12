@@ -11101,7 +11101,8 @@ window.CV2_DEFAULT = 'v2';
     meals.forEach(function (m, i) {
       if (!m || !m.name || !(Number(m.cal) > 0)) return;      // prep-note cards carry no calories
       planned++;
-      var e = logs[call(function () { return _mealLogId(week, day, i); }) || ('w' + week + '.d' + day + '.m' + i)];
+      // ticks are keyed by the calendar week (wk.week); `week` is the plan week whose meals are shown
+      var e = logs[call(function () { return _mealLogId(wk.week, day, i); }) || ('w' + wk.week + '.d' + day + '.m' + i)];
       if (e && (e.status === 'ate' || e.status === 'swap')) {
         logged++; a.cal += +e.cal || 0; a.p += +e.p || 0; a.c += +e.c || 0; a.f += +e.f || 0;
       } else if (e && e.status === 'skip') { skipped++; }
@@ -12216,7 +12217,7 @@ window.CV2_DEFAULT = 'v2';
           (m.desc ? '<small>' + esc(m.desc) + '</small>' : '') + '</span></div></div>';
       }
       planned++;
-      var e = logs[call(function () { return _mealLogId(week, day, i); })] || null;
+      var e = logs[call(function () { return _mealLogId(cal, day, i); })] || null;   // ticks belong to the calendar week
       var st = e && e.status;
       if (st === 'ate' || st === 'swap') { logged++; a.cal += +e.cal || 0; a.p += +e.p || 0; a.c += +e.c || 0; a.f += +e.f || 0; }
       var how = call(function () { currentNutritionDay = day; currentNutritionWeek = week; return mealHowToHtml(m, week); }) || '';
@@ -12250,7 +12251,7 @@ window.CV2_DEFAULT = 'v2';
     for (var d = 0; d < 7; d++) {
       var dd = ws ? addDays(ws, d) : null;
       var hasLog = false;
-      call(function () { (getMealDay(week, d) || []).forEach(function (m, i) { var e = logs[_mealLogId(week, d, i)]; if (e && (e.status === 'ate' || e.status === 'swap')) hasLog = true; }); });
+      call(function () { (getMealDay(week, d) || []).forEach(function (m, i) { var e = logs[_mealLogId(cal, d, i)]; if (e && (e.status === 'ate' || e.status === 'swap')) hasLog = true; }); });
       var isToday = cal === nowCal && d === D.todayIdx();
       days += '<button type="button" class="cv2-day' + (d === day ? ' on' : '') + (isToday ? ' today' : '') + '" aria-pressed="' + (d === day) + '" onclick="cv2NutriDay(' + d + ')">' +
         '<span>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d] + '</span><b class="cv2-num">' + (dd ? dd.getDate() : d + 1) + '</b>' + (hasLog ? '<i></i>' : '') + '</button>';
@@ -12301,7 +12302,11 @@ window.CV2_DEFAULT = 'v2';
   window.cv2NutriDay = function (d) { NV.day = d; nutriRender(); };
   window.cv2NutriWeek = function (dir) { var c = NV.cal + dir; if (c < 1 || c > totalWeeks()) return; NV.cal = c; nutriRender(); };
   window.cv2Meal = function (kind, i) {
-    var w = NV.week, d = NV.day;
+    /* The page's log functions get the CALENDAR week: it keys the tick (one
+       record per real day) and getMealDay below resolves it to the plan week
+       whose meals are on screen. Passing the plan week made every calendar
+       week of a locked phase share one record (Bishoy 2026-10-12). */
+    var w = NV.cal, d = NV.day;
     call(function () { currentNutritionWeek = w; currentNutritionDay = d; currentNutritionPhase = getPhaseForWeek(w); });
     var p;
     if (kind === 'ate' || kind === 'skip') p = call(function () { return logMealQuick(w, d, i, kind); });
@@ -12558,6 +12563,19 @@ window.CV2_DEFAULT = 'v2';
     if (id === 'cardio') call(cardioTidy);
     return r;
   };
+  /* A calendar week in a locked phase shows the last unlocked plan week's
+     meals (planWeekFor). The page's log / swap functions are handed the
+     calendar week (so each real day keeps its own tick) and look its meals up
+     through getMealDay, so that lookup resolves the calendar week to the plan
+     week on screen. A week that is open is its own plan week - unchanged. */
+  if (typeof window.getMealDay === 'function') {
+    var _getMealDay = window.getMealDay;
+    window.getMealDay = function (week, dayIdx) {
+      var w = week;
+      if (document.body.classList.contains('cv2')) { var pw = call(function () { return planWeekFor(week); }); if (pw) w = pw; }
+      return _getMealDay.call(this, w, dayIdx);
+    };
+  }
   /* re-render the nutrition view whenever the page logs or undoes a meal
      (including a swap saved from the page's own modal). sw2Save is the swap
      sheet's save (Swap UX V2); cancelSwap closes that sheet. Each write lands
