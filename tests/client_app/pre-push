@@ -1,0 +1,26 @@
+#!/bin/sh
+# Client app gate (Omar 2026-10-13). Installed as .git/hooks/pre-push by tests/client_app/install-hook.sh.
+# When a push changes any client page, run the client app regression suite on the changed pages plus the
+# reference pages, and refuse the push if a check fails. Emergency bypass: git push --no-verify
+remote="$1"
+zero=0000000000000000000000000000000000000000
+changed=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  if [ "$remote_sha" = "$zero" ]; then range="origin/main..$local_sha"; else range="$remote_sha..$local_sha"; fi
+  pages=$(git diff --name-only "$range" -- 'clients/*/index.html' 2>/dev/null | sed -n 's#^clients/\([^/]*\)/index\.html$#\1#p')
+  changed="$changed $pages"
+done
+changed=$(echo $changed | tr ' ' '\n' | sort -u | tr '\n' ' ')
+[ -z "$(echo $changed | tr -d ' ')" ] && exit 0
+root=$(git rev-parse --show-toplevel)
+[ -f "$root/tests/client_app/run.js" ] || exit 0
+echo "client app gate: checking$changed+ reference pages"
+node "$root/tests/client_app/run.js" $changed bishoy_shaker mohamad_taha zain_hussein karim
+status=$?
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "PUSH BLOCKED: the client app suite failed (see above). Fix the page, or bypass in an emergency with --no-verify."
+  exit 1
+fi
+exit 0
