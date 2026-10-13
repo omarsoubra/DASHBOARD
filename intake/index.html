@@ -61,7 +61,7 @@
   .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
   .radio-group label { display: inline-flex; align-items: center; padding: 8px 14px; border: 1px solid var(--input-border); border-radius: 20px; cursor: pointer; background: var(--input-bg); font-weight: 500; transition: all 0.15s; }
   .radio-group label:hover { border-color: var(--accent); }
-  .radio-group input[type="radio"] { display: none; }
+  .radio-group input[type="radio"], .radio-group input[type="checkbox"] { display: none; }
   .radio-group input[type="radio"]:checked + span { color: var(--accent); }
   .radio-group label:has(input:checked) { border-color: var(--accent); background: rgba(0, 229, 160, 0.08); }
   .photo-block { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; }
@@ -174,13 +174,55 @@
             <label><input type="radio" name="mealVariety" value="repetitive" /><span>Same meals repeated — I don't mind</span></label>
           </div>
         </div>
+        <div class="field"><label><span class="num">24</span> Do u eat halal only?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="halalPref" value="halal_only" required /><span>Halal only</span></label>
+            <label><input type="radio" name="halalPref" value="prefer" /><span>Prefer halal</span></label>
+            <label><input type="radio" name="halalPref" value="no" /><span>No</span></label>
+          </div>
+        </div>
+        <div class="field"><label><span class="num">25</span> Which days do u work or study?<span class="req">*</span></label>
+          <div class="radio-group" id="workDaysGroup">
+            <label><input type="checkbox" name="workDays" value="mon" /><span>Mon</span></label>
+            <label><input type="checkbox" name="workDays" value="tue" /><span>Tue</span></label>
+            <label><input type="checkbox" name="workDays" value="wed" /><span>Wed</span></label>
+            <label><input type="checkbox" name="workDays" value="thu" /><span>Thu</span></label>
+            <label><input type="checkbox" name="workDays" value="fri" /><span>Fri</span></label>
+            <label><input type="checkbox" name="workDays" value="sat" /><span>Sat</span></label>
+            <label><input type="checkbox" name="workDays" value="sun" /><span>Sun</span></label>
+            <label><input type="checkbox" name="workDays" value="varies" /><span>Shift work / varies</span></label>
+          </div>
+          <input type="text" name="workHours" placeholder="Usual hours (optional) — e.g. 7am–3pm, rotating shifts" style="margin-top:8px" />
+        </div>
+        <div class="field"><label><span class="num">26</span> How much time can u spend cooking?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="cookingTime" value="minimal" required /><span>Barely any</span></label>
+            <label><input type="radio" name="cookingTime" value="some" /><span>15–30 min a day</span></label>
+            <label><input type="radio" name="cookingTime" value="plenty" /><span>30+ min a day</span></label>
+            <label><input type="radio" name="cookingTime" value="batch" /><span>Happy to meal prep 1–2x a week</span></label>
+          </div>
+        </div>
+        <div class="field"><label><span class="num">27</span> Are protein shakes ok as a meal sometimes?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="shakesOk" value="yes" required /><span>Yes</span></label>
+            <label><input type="radio" name="shakesOk" value="sometimes" /><span>Sometimes</span></label>
+            <label><input type="radio" name="shakesOk" value="no" /><span>No</span></label>
+          </div>
+        </div>
+        <div class="field"><label><span class="num">28</span> How often do u buy food out? (servo, takeaway, canteen)<span class="req">*</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="foodOut" value="rarely" required /><span>Rarely</span></label>
+            <label><input type="radio" name="foodOut" value="weekly" /><span>1–3x a week</span></label>
+            <label><input type="radio" name="foodOut" value="often" /><span>Most days</span></label>
+          </div>
+        </div>
       </section>
 
       <section>
         <div class="section-title">Health &amp; Recovery</div>
-        <div class="field"><label><span class="num">24</span> Any injuries, medical conditions, or physical limitations?<span class="req">*</span></label><textarea name="injuries" placeholder="Or 'none'" required></textarea></div>
-        <div class="field"><label><span class="num">25</span> Average hours of sleep per night<span class="req">*</span></label><input type="number" name="sleepHours" step="0.5" min="3" max="12" required /></div>
-        <div class="field"><label><span class="num">26</span> Stress levels day-to-day<span class="req">*</span></label>
+        <div class="field"><label><span class="num">29</span> Any injuries, medical conditions, or physical limitations?<span class="req">*</span></label><textarea name="injuries" placeholder="Or 'none'" required></textarea></div>
+        <div class="field"><label><span class="num">30</span> Average hours of sleep per night<span class="req">*</span></label><input type="number" name="sleepHours" step="0.5" min="3" max="12" required /></div>
+        <div class="field"><label><span class="num">31</span> Stress levels day-to-day<span class="req">*</span></label>
           <div class="radio-group">
             <label><input type="radio" name="stressLevel" value="low" required /><span>Low</span></label>
             <label><input type="radio" name="stressLevel" value="moderate" /><span>Moderate</span></label>
@@ -286,6 +328,12 @@ function resizeImage(file, maxDim = 800, quality = 0.82) {
 // Form submit
 document.getElementById('intakeForm').addEventListener('submit', async e => {
   e.preventDefault();
+  if (!e.target.querySelector('input[name="workDays"]:checked')) {
+    const st = document.getElementById('status');
+    st.className = 'status err'; st.textContent = 'Pick at least one work/study day (or "Shift work / varies") in question 25.';
+    document.getElementById('workDaysGroup').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
   const btn = document.getElementById('submitBtn');
   const status = document.getElementById('status');
   btn.disabled = true;
@@ -296,6 +344,9 @@ document.getElementById('intakeForm').addEventListener('submit', async e => {
   const formData = new FormData(e.target);
   const payload = { type: 'intakeSubmit', submissionKey: SUBMISSION_KEY };
   formData.forEach((v, k) => { payload[k] = v; });
+  // work days: every ticked day in one value ('varies' wins over individual days)
+  const days = formData.getAll('workDays');
+  payload.workDays = days.includes('varies') ? 'varies' : days.join(',');
   payload.photoFront = photoData.front || '';
   payload.photoSide = photoData.side || '';
   payload.photoBack = photoData.back || '';

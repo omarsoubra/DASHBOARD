@@ -2201,6 +2201,13 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
   injuries:           'injuries',
   sleepHours:         'sleep_hours',
   stressLevel:        'stress_level',
+  // Omar 2026-10-13: what the meal-plan agents used to guess
+  halalPref:          'halal_pref',
+  workDays:           'work_days',
+  workHours:          'work_hours',
+  cookingTime:        'cooking_time',
+  shakesOk:           'shakes_ok',
+  foodOut:            'food_out',
 };
 // Server-side mirror of the form's own min/max. Never trust the browser.
 const INTAKE_NUMERIC: Record<string, [number, number]> = {
@@ -2222,7 +2229,13 @@ const INTAKE_ENUM: Record<string, string[]> = {
   tracks_macros:     ['yes_actively', 'have_app', 'no'],
   meal_variety:      ['variety', 'rotating', 'repetitive'],
   stress_level:      ['low', 'moderate', 'high'],
+  halal_pref:        ['halal_only', 'prefer', 'no'],
+  cooking_time:      ['minimal', 'some', 'plenty', 'batch'],
+  shakes_ok:         ['yes', 'sometimes', 'no'],
+  food_out:          ['rarely', 'weekly', 'often'],
 };
+// work_days: comma-separated weekday codes (each at most once) or 'varies'
+const WORK_DAYS_RE = /^(varies|(mon|tue|wed|thu|fri|sat|sun)(,(mon|tue|wed|thu|fri|sat|sun)){0,6})$/;
 const INTAKE_TEXT_MAX = 4000;
 
 function intakePhotoPath(intakeId: string, view: string, ext: string): string {
@@ -2231,15 +2244,8 @@ function intakePhotoPath(intakeId: string, view: string, ext: string): string {
   return `intakes/${intakeId}/${view}.${ext}`;
 }
 
-async function intakeSubmit(body: any) {
-  // ── 1. Idempotency / resume key. A browser-generated UUID identifies one
-  //      submission ATTEMPT and is replayed on every retry. Idempotency token
-  //      only: no identity, no access, no influence on client linkage.
-  const rawKey = typeof body?.submissionKey === 'string' ? body.submissionKey.trim().toLowerCase() : '';
-  const submissionKey = UUID_RE.test(rawKey) ? rawKey : null;
-
-  // ── 2. Whitelist + validate scalars. Runs on every attempt, including
-  //      retries, so a mutated retry payload cannot smuggle anything in.
+// Whitelist + validate the intake's scalar answers (pure; unit-tested in tests/intake_preferences.test.js).
+function validateIntakeFields(body: any): { row: Record<string, unknown>; fieldErrors: Record<string, string> } {
   const row: Record<string, unknown> = {};
   const fieldErrors: Record<string, string> = {};
   for (const [formKey, col] of Object.entries(INTAKE_FIELD_MAP)) {
@@ -2254,6 +2260,13 @@ async function intakeSubmit(body: any) {
       continue;
     }
     const s = String(raw);
+    if (col === 'work_days') {
+      const parts = s.toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+      const v = parts.join(',');
+      if (!WORK_DAYS_RE.test(v) || new Set(parts).size !== parts.length) { fieldErrors[formKey] = 'not_an_allowed_value'; continue; }
+      row[col] = v;
+      continue;
+    }
     if (INTAKE_ENUM[col]) {
       if (!INTAKE_ENUM[col].includes(s)) { fieldErrors[formKey] = 'not_an_allowed_value'; continue; }
       row[col] = s;
@@ -2262,6 +2275,19 @@ async function intakeSubmit(body: any) {
     if (s.length > INTAKE_TEXT_MAX) { fieldErrors[formKey] = 'too_long'; continue; }
     row[col] = s;
   }
+  return { row, fieldErrors };
+}
+
+async function intakeSubmit(body: any) {
+  // ── 1. Idempotency / resume key. A browser-generated UUID identifies one
+  //      submission ATTEMPT and is replayed on every retry. Idempotency token
+  //      only: no identity, no access, no influence on client linkage.
+  const rawKey = typeof body?.submissionKey === 'string' ? body.submissionKey.trim().toLowerCase() : '';
+  const submissionKey = UUID_RE.test(rawKey) ? rawKey : null;
+
+  // ── 2. Whitelist + validate scalars (validateIntakeFields). Runs on every attempt, including
+  //      retries, so a mutated retry payload cannot smuggle anything in.
+  const { row, fieldErrors } = validateIntakeFields(body);
   if (!row.full_name) fieldErrors.fullName = 'required';
   if (Object.keys(fieldErrors).length) return err('validation_failed', { fields: fieldErrors });
 
@@ -2505,6 +2531,7 @@ const INTAKE_COACHING_COLUMNS = [
   'days_per_week', 'training_location', 'training_time', 'job_activity',
   'meals_per_day', 'food_restrictions', 'tracks_macros', 'enjoy_eating', 'meal_variety',
   'injuries', 'sleep_hours', 'stress_level',
+  'halal_pref', 'work_days', 'work_hours', 'cooking_time', 'shakes_ok', 'food_out',
 ];
 async function intakeGet(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
