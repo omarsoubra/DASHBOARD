@@ -7,6 +7,7 @@
 //   drafted check-in replies not yet sent
 //   active clients quiet 3-13 days (worth a nudge); 14+ days counted as inactive
 //   client pages that fail to load
+//   client journey (2026-10-13): block ending (weeks 10-12), finished 12 weeks with no next block (13+), journey messages drafted
 // Accounts whose key starts with '_' (canaries, the coach account) and 'omar' (the coach's own client page) are skipped.
 // ============================================================================
 
@@ -17,7 +18,7 @@ export const COACH_TZ = 'Australia/Sydney';
 export type RosterEntry = { storageKey?: string; displayName?: string; startDate?: string | null; programStatus?: string;
                             accessStatus?: string; isPaused?: boolean };
 export type MorningInput = { roster: RosterEntry[]; lastActivityMs: Record<string, number>; repliesReady: number;
-                             pagesDown: string[]; today: string; nowMs: number };
+                             pagesDown: string[]; today: string; nowMs: number; journeyReady?: number };
 
 export function isActiveRosterClient(c: RosterEntry): boolean {
   const k = String(c?.storageKey ?? '');
@@ -37,12 +38,13 @@ export function programWeek(start: string | null | undefined, today: string): nu
 
 export function coachMorningHeadline(inp: MorningInput): { body: string; items: Record<string, unknown> } {
   const first = (c: RosterEntry) => String(c.displayName || c.storageKey).split(' ')[0];
-  const now: string[] = [], next: string[] = [], quiet: string[] = [], inactive: string[] = [];
+  const now: string[] = [], next: string[] = [], quiet: string[] = [], inactive: string[] = [], ending: string[] = [], past: string[] = [];
   const active = inp.roster.filter(isActiveRosterClient);
   for (const c of active) {
     const w = programWeek(c.startDate, inp.today);
     if (w === 5 || w === 9) now.push(`${first(c)} (P${w === 5 ? 2 : 3})`);
     else if (w === 4 || w === 8) next.push(`${first(c)} (P${w === 4 ? 2 : 3})`);
+    if (w !== null && w >= 10 && w <= 12) ending.push(first(c)); else if (w !== null && w > 12) past.push(first(c));
     const la = inp.lastActivityMs[String(c.storageKey)];
     if (typeof la === 'number') {
       const d = Math.floor((inp.nowMs - la) / 86400000);
@@ -54,11 +56,14 @@ export function coachMorningHeadline(inp: MorningInput): { body: string; items: 
   if (down.length) parts.push(`PAGE DOWN: ${down.slice(0, 3).join(', ')}`);
   if (now.length) parts.push(`unlock: ${now.slice(0, 4).join(', ')}${now.length > 4 ? '…' : ''}`);
   if (inp.repliesReady) parts.push(`${inp.repliesReady} repl${inp.repliesReady === 1 ? 'y' : 'ies'} ready`);
+  if (past.length) parts.push(`${past.length} past wk12, no next block`);
+  if (ending.length) parts.push(`${ending.length} ending soon`);
+  if (inp.journeyReady) parts.push(`${inp.journeyReady} journey msg${inp.journeyReady === 1 ? '' : 's'} ready`);
   if (quiet.length) parts.push(`${quiet.length} quiet (${quiet.slice(0, 3).join(', ')}${quiet.length > 3 ? '…' : ''})`);
   if (next.length) parts.push(`next wk unlock: ${next.length}`);
   if (inactive.length) parts.push(`${inactive.length} inactive 14d+`);
   const body = parts.length ? parts.join(' · ') : 'All clear - nothing extra today';
-  return { body: body.slice(0, 220), items: { pageDown: down, unlockNow: now, unlockNext: next, repliesReady: inp.repliesReady, quiet, inactive } };
+  return { body: body.slice(0, 220), items: { pageDown: down, unlockNow: now, unlockNext: next, repliesReady: inp.repliesReady, quiet, inactive, ending, pastBlock: past, journeyReady: inp.journeyReady ?? 0 } };
 }
 
 /** Last activity per client (latest weight, check-in, workout set, meal since `sinceIso`) — one row per table per client.

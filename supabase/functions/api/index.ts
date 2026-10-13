@@ -597,6 +597,7 @@ Deno.serve(async (req) => {
       case 'checkinDraftsGet':   return checkinDraftsGet(body);
       case 'checkinDraftsPut':   return checkinDraftsPut(body);
       case 'checkinDraftMark':   return checkinDraftMark(body);
+      case 'coachClientHistory': return coachClientHistory(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
       case 'clientCreate':       return clientCreate(body);
       case 'issueClientToken':   return issueClientToken(body);
@@ -1145,6 +1146,40 @@ async function checkinDraftMark(body: any) {
   if (error) return err('write_failed');
   if (!data || !data.length) return err('not_found');
   return ok({ sent_at: data[0].sent_at });
+}
+
+// CLIENT JOURNEY (Omar 2026-10-13): one client's whole logged history for the week-12
+// progress report (client_template journey.py). Coach-only, read-only, paged so a long
+// block is never cut at the 1000-row default. Nothing is written.
+const HIST_PAGE = 1000, HIST_MAX = 10000;
+async function readAll(table: string, cols: string, col: string, val: string, tsCol: string) {
+  const out: any[] = [];
+  for (let from = 0; from < HIST_MAX; from += HIST_PAGE) {
+    const { data, error } = await admin.from(table).select(cols).eq(col, val)
+      .order(tsCol, { ascending: true }).range(from, from + HIST_PAGE - 1);
+    if (error) throw new Error(table + ': ' + error.message);
+    out.push(...(data ?? []));
+    if ((data ?? []).length < HIST_PAGE) break;
+  }
+  return out;
+}
+async function coachClientHistory(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.storageKey ?? '').toLowerCase();
+  if (!CI_KEY_RE.test(key)) return err('bad_storageKey');
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+  if (!client?.id) return err('unknown_client');
+  try {
+    const [weights, workouts, checkins] = await Promise.all([
+      readAll('weight_logs', 'logged_at, weight_kg', 'client_key', key, 'logged_at'),
+      readAll('workout_log_entries', 'logged_at, exercise_name, weight, sets_done, reps_done, phase_key', 'client_key', key, 'logged_at'),
+      readAll('check_ins', 'submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10', 'client_key', key, 'submitted_at'),
+    ]);
+    return ok({ storageKey: key, weights, workouts, checkins });
+  } catch (e) {
+    logEfError('coachClientHistory', key, 'read_failed', String((e as any)?.message ?? e));
+    return err('read_failed');
+  }
 }
 
 async function registryGetPrivate(body: any) {

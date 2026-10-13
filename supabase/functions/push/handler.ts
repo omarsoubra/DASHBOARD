@@ -575,11 +575,15 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const { data: rows } = await admin.from('clients').select('id, storage_key');
     const idByKey: Record<string, string> = Object.fromEntries((rows ?? []).map((r: any) => [r.storage_key, r.id]));
     const lastActivityMs = await loadLastActivity(admin, roster, idByKey, new Date(nowMs - 90 * 86400_000).toISOString());
-    const { count: replies } = await admin.from('checkin_drafts').select('id', { count: 'exact', head: true })
-      .is('sent_at', null).gte('created_at', new Date(nowMs - 21 * 86400_000).toISOString());
+    // Unsent drafts: check-in replies, and client-journey messages (checkin_ts 'journey:<stage>:<block start>').
+    const { data: drafts, error: dErr } = await admin.from('checkin_drafts').select('checkin_ts')
+      .is('sent_at', null).gte('created_at', new Date(nowMs - 21 * 86400_000).toISOString()).limit(500);
+    if (dErr) throw new Error(dErr.message);
+    const journey = (drafts ?? []).filter((d: any) => String(d.checkin_ts).startsWith('journey:')).length;
+    const replies = (drafts ?? []).length - journey;
     const down = (await Promise.all(roster.map(async (c: any) => (await pageDown(String(c.storageKey))) ? String(c.storageKey) : null)))
       .filter((k): k is string => !!k);
-    const h = coachMorningHeadline({ roster, lastActivityMs, repliesReady: replies ?? 0, pagesDown: down, today: lp.date, nowMs });
+    const h = coachMorningHeadline({ roster, lastActivityMs, repliesReady: replies, journeyReady: journey, pagesDown: down, today: lp.date, nowMs });
     const tpl: Template = { ...TEMPLATES.coach_morning, body: h.body };
     const got = await claim({
       client_id: coachId, storage_key: COACH_KEY, kind: tpl.kind, dedupe_key: key, status: 'claimed',

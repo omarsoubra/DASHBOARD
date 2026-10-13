@@ -1663,6 +1663,11 @@ body.v2-collapsed .v2-collapse svg { transform: rotate(180deg); }
 .v2-m-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .v2-m-chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--v2-ws); color: var(--v2-ink); font-size: 12.5px; font-weight: 500; text-decoration: none; }
 .v2-m-chip small { color: var(--v2-muted); font-size: 11px; }
+button.v2-m-chip { border: 0; cursor: pointer; font-family: inherit; }
+button.v2-m-chip.is-on { background: var(--v2-ink); color: #fff; }
+button.v2-m-chip.is-on small { color: rgba(255,255,255,.75); }
+#v2-m-jm { flex-basis: 100%; }
+.v2-m-jm { margin-top: 10px; }
 .v2-m-more { font-size: 12px; color: var(--v2-muted); align-self: center; }
 .v2-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
 .v2-kpi {
@@ -11977,11 +11982,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
         (extra ? ' <small>' + esc(extra) + '</small>' : '') + '</a>';
     };
     var chips = function (arr) { return arr.slice(0, 6).join('') + (arr.length > 6 ? '<span class="v2-m-more">+' + (arr.length - 6) + '</span>' : ''); };
-    var now = [], next = [], quiet = [], inactive = 0, broken = [];
+    var now = [], next = [], quiet = [], inactive = 0, broken = [], ending = [], past = [];
     active.forEach(function (c) {
       var w = weekOf(c), sum = data[c.storageKey] || {};
       if (w === 5 || w === 9) now.push(link(c, 'phase ' + (w === 5 ? 2 : 3)));
       else if (w === 4 || w === 8) next.push(link(c, 'phase ' + (w === 4 ? 2 : 3)));
+      // Client journey (Omar 2026-10-13): the block ends at week 12. A renewed client gets a new startDate, so the count restarts.
+      if (w !== null && w >= 10 && w <= 12) ending.push(link(c, 'wk ' + w));
+      else if (w !== null && w > 12) past.push(link(c, 'wk ' + w));
       var la = lastActivity(sum);
       var qd = la === null ? null : Math.floor((Date.now() - la) / 86400000);
       if (qd !== null && qd >= 3 && qd < 14) quiet.push(link(c, qd + 'd'));          // recently quiet: worth a nudge
@@ -11989,11 +11997,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (_pageHealth && _pageHealth[c.storageKey] === false) broken.push(link(c));
     });
     var replies = 0;
-    try { Object.keys(CI_DRAFTS || {}).forEach(function (k) { if (!CI_DRAFTS[k].sent_at) replies++; }); } catch (e) {}
+    var journey = [];                                               // journey messages: checkin_ts 'journey:<stage>:<block start>'
+    try { Object.keys(CI_DRAFTS || {}).forEach(function (k) { var d = CI_DRAFTS[k]; if (String(d.checkin_ts).indexOf('journey:') === 0) { if (!d.sent_at || k === _jmOpen) journey.push(d); } else if (!d.sent_at) replies++; }); } catch (e) {}
     var rows = [];
     if (broken.length) rows.push(['red', 'Client page not loading', chips(broken)]);
     if (now.length) rows.push(['amber', 'Unlock code due this week', chips(now)]);
     if (replies) rows.push(['blue', '<a class="v2-m-link" href="#/check-ins">' + replies + ' drafted repl' + (replies === 1 ? 'y' : 'ies') + ' ready to send →</a>', '']);
+    if (past.length) rows.push(['amber', 'Finished 12 weeks - no next block yet', chips(past)]);
+    if (ending.length) rows.push(['blue', 'Block ending soon (weeks 10–12)', chips(ending)]);
+    if (journey.length) rows.push(['blue', journey.length + ' client journey message' + (journey.length === 1 ? '' : 's') + ' ready - tap a name', journey.map(function (d) {
+      var c = active.find(function (x) { return x.storageKey === d.client_key; }) || { storageKey: d.client_key };
+      var k = d.client_key + '|' + d.checkin_ts;
+      return '<button type="button" class="v2-m-chip' + (k === _jmOpen ? ' is-on' : '') + '" data-jm="' + esc(k) + '">' + esc(String(c.displayName || c.storageKey).split(' ')[0]) +
+        ' <small>' + esc(JM_LABEL[d.action] || d.action) + '</small></button>';
+    }).join('') + '<div id="v2-m-jm"></div>']);
     if (quiet.length) rows.push(['grey', 'Gone quiet (3–13 days)', chips(quiet)]);
     if (next.length) rows.push(['grey', 'Unlock code next week', chips(next)]);
     if (inactive) rows.push(['grey', '<a class="v2-m-link" href="#/clients">' + inactive + ' inactive 14+ days - archive or check in →</a>', ''])
@@ -12004,6 +12021,53 @@ window.addEventListener('beforeinstallprompt', (e) => {
           (r[2] ? '<div class="v2-m-chips">' + r[2] + '</div>' : '') + '</div></div>';
       }).join('') : '<div class="v2-m-row"><span class="v2-dot green"></span><div class="v2-m-txt"><div class="v2-m-lbl">Nothing extra this morning.</div></div></div>');
     coachBell();
+    wireJourney(box, active);
+  }
+  // Client journey messages (week 6 momentum, week 10 preview, week 12 review + next block, past 12).
+  // Drafted by client_template journey.py + the journey writer; nothing is sent from here - WhatsApp/Copy
+  // hand the text to the coach and record that he used it (same checkinDraftMark as check-in replies).
+  var _jmOpen = null;
+  var JM_LABEL = { momentum: 'wk 6 momentum', week10: 'wk 10 preview', week12: 'wk 12 review', past12: 'next block' };
+  var jmWa = function (ph) { var n = String(ph || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(n)) n = '61' + n.slice(1); return n.length >= 9 ? n : ''; };
+  function wireJourney(box, active) {
+    var host = box.querySelector('#v2-m-jm'); if (!host) return;
+    var show = function () {
+      var d = _jmOpen && CI_DRAFTS[_jmOpen]; host.innerHTML = '';
+      if (!d) return;
+      var c = active.find(function (x) { return x.storageKey === d.client_key; }) || {};
+      var phone = jmWa(c.phone), notes = (d.for_coach || []).filter(Boolean);
+      host.innerHTML = '<div class="v2-rd v2-m-jm' + (d.sent_at ? ' is-sent' : '') + '">' +
+        (notes.length ? '<ul class="v2-rd-notes">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' : '') +
+        '<textarea class="v2-rd-text" rows="8" aria-label="Journey message">' + esc(d.draft || '') + '</textarea>' +
+        '<div class="v2-rd-actions">' + (phone ? '<button type="button" class="v2-btn primary" data-jm-wa="1">Open in WhatsApp</button>' : '') +
+        '<button type="button" class="v2-btn' + (phone ? '' : ' primary') + '" data-jm-copy="1">Copy</button>' +
+        '<span class="v2-rd-state">' + (d.sent_at ? 'Sent · <button type="button" class="v2-link" data-jm-unsend="1">Mark not sent</button>' : 'Marks it sent when you use it') + '</span></div></div>';
+      var ta = host.querySelector('textarea'), st = host.querySelector('.v2-rd-state'), parts = _jmOpen.split('|');
+      var mark = function (what, sent) {
+        ciDraftMark(parts[0], parts.slice(1).join('|'), sent).then(function (ok) {
+          if (!ok) { st.textContent = what + ', but could not record it - check your connection'; return; }
+          host.firstChild.classList.toggle('is-sent', sent);
+          st.innerHTML = sent ? what + ' and marked sent · <button type="button" class="v2-link" data-jm-unsend="1">Undo</button>' : 'Marks it sent when you use it';
+        });
+      };
+      host.onclick = function (e) {
+        if (e.target.closest('[data-jm-unsend]')) { mark('Undone', false); return; }
+        if (e.target.closest('[data-jm-wa]')) { window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); mark('Opened in WhatsApp', true); return; }
+        if (e.target.closest('[data-jm-copy]')) {
+          var done = function () { mark('Copied', true); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); document.execCommand('copy'); done(); });
+          else { ta.select(); document.execCommand('copy'); done(); }
+        }
+      };
+    };
+    box.querySelectorAll('[data-jm]').forEach(function (b) {
+      b.onclick = function () {
+        _jmOpen = _jmOpen === b.getAttribute('data-jm') ? null : b.getAttribute('data-jm');
+        box.querySelectorAll('[data-jm]').forEach(function (x) { x.classList.toggle('is-on', x.getAttribute('data-jm') === _jmOpen); });
+        show();
+      };
+    });
+    show();
   }
   // Coach morning report on this phone (Omar 2026-10-13): the push function sends the card above
   // as a notification at 07:00 Sydney to devices registered here. Only shown where web push works

@@ -39,7 +39,8 @@ async function coachWorld(opts = {}) {
     { id: 1, client_key: 'bishoy_shaker', checkin_ts: 'a', created_at: iso(now - 1 * DAY), sent_at: null },
     { id: 2, client_key: 'zain_hussein', checkin_ts: 'b', created_at: iso(now - 1 * DAY), sent_at: null },
     { id: 3, client_key: 'hassan_x', checkin_ts: 'c', created_at: iso(now - 1 * DAY), sent_at: iso(now - 3600e3) },
-    { id: 4, client_key: 'quiet_q', checkin_ts: 'd', created_at: iso(now - 40 * DAY), sent_at: null });
+    { id: 4, client_key: 'quiet_q', checkin_ts: 'd', created_at: iso(now - 40 * DAY), sent_at: null },
+    { id: 5, client_key: 'gone_g', checkin_ts: 'journey:past12:2026-07-01', created_at: iso(now - 1 * DAY), sent_at: null });
   const pageHits = [];
   const down = new Set(opts.down ?? []);
   const fetchImpl = async (url, init) => {
@@ -108,7 +109,8 @@ test('CM4 07:00 Sydney: one report with the card rules, delivered once; later ti
   eq(w.svc.received.length, 1, 'one push');
   const p = w.svc.received[0].payload;
   eq(p.kind, 'coach_morning'); eq(p.title, 'This morning'); eq(p.url, './coach_dashboard.html');
-  eq(p.body, 'PAGE DOWN: Hassan · unlock: Zain (P2) · 2 replies ready · 1 quiet (Quinn) · next wk unlock: 1 · 1 inactive 14d+');
+  // quiet_q is week 11 (ending soon), gone_g week 15 (past 12); the journey draft is not a check-in reply.
+  eq(p.body, 'PAGE DOWN: Hassan · unlock: Zain (P2) · 2 replies ready · 1 past wk12, no next block · 1 ending soon · 1 journey msg ready · 1 quiet (Quinn) · next wk unlock: 1 · 1 inactive 14d+');
   assert(!w.pageHits.includes('omar') && !w.pageHits.includes('revoked_r'), 'skipped accounts not checked');
   const ev = w.db.T.notification_events.find((e) => e.kind === 'coach_morning');
   eq(ev.dedupe_key, 'coach_morning:2026-10-13'); eq(ev.created_by, 'system'); eq(ev.status, 'sent');
