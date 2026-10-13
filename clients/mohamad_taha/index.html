@@ -3429,7 +3429,7 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
     <h1 class="hero-title">MOHAMAD'S<span class="line2">12-WEEK MUSCLE & SIZE - RAMP</span></h1>
     <p class="hero-sub">Rebuild the habit, then build size - 5 gym sessions - 4 halal feeds a day</p>
     <div class="stats-grid">
-      <div class="stat-box"><span class="stat-val"><span data-cfg="startWeight">64</span><span style="font-size:1.2rem">kg</span></span><span class="stat-label">Start Weight</span></div>
+      <div class="stat-box"><span class="stat-val"><span data-cfg="startWeight">62.7</span><span style="font-size:1.2rem">kg</span></span><span class="stat-label">Start Weight</span></div>
       <div class="stat-box"><span class="stat-val">6'0"</span><span class="stat-label">Height</span></div>
       <div class="stat-box"><span class="stat-val">2950</span><span class="stat-label">Daily Kcal</span></div>
       <div class="stat-box"><span class="stat-val">12<span style="font-size:1.2rem">wk</span></span><span class="stat-label">Duration</span></div>
@@ -3686,7 +3686,7 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
   <div class="tracker-grid">
     <div class="tracker-card">
       <div class="tracker-label">Current Weight (kg)</div>
-      <input class="tracker-input" type="number" id="input-weight" placeholder="64" min="50" max="200" step="0.1"/>
+      <input class="tracker-input" type="number" id="input-weight" placeholder="62.7" min="50" max="200" step="0.1"/>
       <div class="tracker-unit">kilograms</div>
     </div>
     <div class="tracker-card">
@@ -3758,7 +3758,7 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
     <div class="progress-label"><span>Goal Progress</span><strong id="progress-text">0%</strong></div>
     <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
     <div style="display:flex;justify-content:space-between;margin-top:0.4rem;">
-      <span data-cfg="startWeightLabel" style="font-size:0.72rem;color:var(--muted)">64 kg (start)</span>
+      <span data-cfg="startWeightLabel" style="font-size:0.72rem;color:var(--muted)">62.7 kg (start)</span>
       <span data-cfg="goalWeightLabel" style="font-size:0.72rem;color:var(--muted)">80 kg+ long-term</span>
     </div>
   </div>
@@ -3766,7 +3766,7 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
   <!-- Weight lost counter -->
   <div id="weight-lost-display" style="display:none;margin-top:1rem;background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.3);border-radius:10px;padding:1rem 1.5rem;display:flex;gap:2rem;flex-wrap:wrap;">
     <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Total Gained</div><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent3);" id="total-lost-display">0 kg</div></div>
-    <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">To Goal</div><div data-cfg="toGoalKg" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent2);" id="to-goal-display">16 kg</div></div>
+    <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">To Goal</div><div data-cfg="toGoalKg" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent2);" id="to-goal-display">17.299999999999997 kg</div></div>
     <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Avg Per Week</div><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent);" id="avg-loss-display">—</div></div>
   </div>
 
@@ -6071,7 +6071,7 @@ const CLIENT_CONFIG = {
     heroLine1:   "MOHAMAD'S",
     heroLine2:   '12-WEEK MUSCLE & SIZE - RAMP',
     heroSub:     'Rebuild the habit, then build size - 5 gym sessions - 4 halal feeds a day',
-    startWeight: 64,
+    startWeight: 62.7,
     goalWeight:  80,
     storageKey:  'mohamad_taha',
     durationWeeks: 12,
@@ -6489,9 +6489,9 @@ function deleteCheckin(i){
 // ║                and macros per meal.                                     ║
 // ╚═════════════════════════════════════════════════════════════════════════╝
 const phaseTargets = {
-  1: { cal: 2950, p: 138, c: 402, f: 88, deficit: 280, balance: 280 },
-  2: { cal: 2950, p: 138, c: 402, f: 88, deficit: 280, balance: 280 },
-  3: { cal: 2950, p: 138, c: 402, f: 88, deficit: 280, balance: 280 },
+  1: { cal: 2950, p: 138, c: 402, f: 88, deficit: 300, balance: 300 },
+  2: { cal: 2950, p: 138, c: 402, f: 88, deficit: 300, balance: 300 },
+  3: { cal: 2950, p: 138, c: 402, f: 88, deficit: 300, balance: 300 },
 };
 
 const DAY_NAMES=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -6582,7 +6582,7 @@ function renderNutrition(){
     ${editPrompt ? `<div style="margin-bottom:0.5rem;text-align:right;">${editPrompt} ${macroResetBtn}</div>` : ''}
     <div class="macro-grid" style="margin-bottom:1.5rem;">
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Daily Calories ${macroEdited ? '<span class="trainer-edited-badge">EDITED</span>' : ''}</div><div class="info-card-val">${t.cal.toLocaleString()}</div><div class="info-card-desc">${(typeof t.balance === 'number') ? (t.balance > 20 ? '~' + t.balance + ' kcal surplus' : (t.balance < -20 ? '~' + (-t.balance) + ' kcal deficit' : '≈ maintenance')) : '~' + t.deficit + ' kcal surplus'}</div></div>
-      <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">2.16g/kg · build muscle</div></div>
+      <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Protein</div><div class="info-card-val" style="color:var(--accent)">${t.p}g</div><div class="info-card-desc">2.201g/kg · build muscle</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Carbs</div><div class="info-card-val" style="color:var(--accent2)">${t.c}g</div><div class="info-card-desc">Around workouts</div></div>
       <div class="${macroCardClass}" ${macroCardClick}><div class="info-card-label">Fat</div><div class="info-card-val" style="color:var(--accent3)">${t.f}g</div><div class="info-card-desc">Hormones + satiety</div></div>
     </div>
@@ -12739,7 +12739,7 @@ window.CV2_DEFAULT = 'v2';
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-10-13T09:21:03.577354Z
+  generatedAt: 2026-10-13T09:23:19.963503Z
   clientStorageKey: mohamad_taha
   configPath: mohamad_taha.json
   safetyBlockers: 0
