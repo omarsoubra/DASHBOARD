@@ -2079,6 +2079,18 @@ body.v2-ci-open { overflow: hidden; }
 .v2-ci-field :focus, #v2-ci-panel textarea.ap-draft:focus { outline: none; border-color: var(--v2-accent-ink); box-shadow: 0 0 0 3px var(--v2-accent-soft); }
 .v2-ci-next { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; }
 .v2-ci-compose { margin-top: 10px; }
+/* suggested reply (agent draft) - Omar 2026-10-13 */
+.v2-rd-notes { list-style: none; margin: 0 0 12px; padding: 10px 12px; background: var(--v2-ws); border-radius: 10px; font-size: 12.5px; line-height: 1.5; color: var(--v2-ink2); }
+.v2-rd-notes li { position: relative; padding-left: 14px; margin: 3px 0; }
+.v2-rd-notes li::before { content: ''; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--v2-amber); }
+.v2-rd-notes li.v2-rd-more::before { display: none; }
+.v2-rd-text { display: block; width: 100%; box-sizing: border-box; min-height: 128px; padding: 12px 14px; border: 1px solid var(--v2-line); border-radius: 10px;
+  background: var(--v2-card); color: var(--v2-ink); font: 14px/1.55 'Inter', system-ui, sans-serif; resize: vertical; }
+.v2-rd-text:focus { outline: none; border-color: var(--v2-ink2); }
+.v2-rd-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.v2-rd-state { font-size: 12px; color: var(--v2-muted); }
+.v2-rd.is-sent .v2-rd-text { color: var(--v2-ink2); background: var(--v2-ws); }
+.v2-ci-sec.sec-reply { border-color: var(--v2-ink2); }
 .v2-ci-hint { margin: 6px 0 0; font-size: 11px; color: var(--v2-muted); }
 #v2-ci-panel .v2-ci-actions { display: flex; gap: 8px; justify-content: flex-end; margin: 0; padding: 0; }
 #v2-ci-panel .v2-ci-actions .cc-btn { height: 38px; padding: 0 16px; border-radius: 8px; font: 600 13px 'Inter', system-ui, sans-serif; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink); cursor: pointer; }
@@ -5884,6 +5896,35 @@ function updateSyncStatus() {
   el.className = 'sync-status ok';
 }
 
+// ── CHECK-IN REPLY DRAFTS (Omar 2026-10-13) ───────────────────────────────
+// Agent-drafted replies (client_template checkin_review.py + checkin-reviewer), one per
+// check-in, keyed by storageKey|check-in timestamp. Optional: if the server has none
+// (or the action does not exist yet) every page renders exactly as before.
+// Nothing is ever sent from here - Copy puts the text on the clipboard and records
+// that the coach sent it.
+var CI_DRAFTS = {};
+async function loadCheckinDrafts() {
+  try {
+    const r = await coachFetch('checkinDraftsGet', { days: 21 });
+    if (!r || r.ok === false || !Array.isArray(r.drafts)) return;
+    const m = {};
+    r.drafts.forEach(function (d) { m[d.client_key + '|' + d.checkin_ts] = d; });
+    CI_DRAFTS = m;
+    try { if (window.UIV2 && UIV2.p3 && UIV2.p3.renderQueue) UIV2.p3.renderQueue(); } catch (e) {}
+  } catch (e) { /* drafts are optional */ }
+}
+function ciDraftFor(key, iso) { return CI_DRAFTS[key + '|' + iso] || null; }
+async function ciDraftMark(key, iso, sent) {
+  const d = ciDraftFor(key, iso); if (!d) return false;
+  const before = d.sent_at;
+  d.sent_at = sent ? new Date().toISOString() : null;            // optimistic; reverted if the server refuses
+  try {
+    const r = await coachFetch('checkinDraftMark', { clientKey: key, checkinTs: iso, sent: !!sent });
+    if (!r || r.ok === false) throw new Error((r && r.error) || 'refused');
+    d.sent_at = r.sent_at || d.sent_at; return true;
+  } catch (e) { d.sent_at = before; return false; }
+}
+
 async function fetchDashboardData() {
   if (!_coachToken()) throw new Error('unauthorized');
   const resp = await coachFetch('dashboard');
@@ -5904,6 +5945,7 @@ async function loadAll() {
     _dashboardData = dashData;
     _lastSyncMs = Date.now();
     _syncStatus = 'ok';
+    loadCheckinDrafts();                     // agent-drafted replies (optional; never blocks the dashboard)
     // Merge the registry into the roster BEFORE rendering so new program
     // files show up as onboarding without needing a manual reload.
     if (registry) {
@@ -12683,6 +12725,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return '<a class="v2-ci-name" href="#/clients/' + enc(c.storageKey) + '/checkins" data-stop="1">' + esc(c.displayName) + '</a>';
   };
 
+  function rdChip(key, iso) {
+    var d = typeof ciDraftFor === 'function' ? ciDraftFor(key, iso) : null;
+    return !d ? '' : d.sent_at ? '<span class="v2-chip grey">Replied</span>' : '<span class="v2-chip green">Reply ready</span>';
+  }
   function rowHtml(r) {
     var c = r.client, ci = r.ci || {}, k = esc(c.storageKey);
     if (r.state === 'overdue') {
@@ -12718,12 +12764,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
       wtLine = (wt ? '<b>' + esc(wt) + 'kg</b>' : mute()) + ' <span class="ci-sub">Δ14d ' + (t === null ? '—' : (t > 0.15 ? '▲' : t < -0.15 ? '▼' : '·') + ' ' + Math.abs(t).toFixed(2) + 'kg') + '</span>';
       summary = r.meta && r.meta.note ? esc(r.meta.note) : '';
     }
-    var fl = flagsOf(ci);
+    // An agent reply exists: its status + top note replace the autopilot chips and reason (one voice per row, no clutter)
+    var rdD = typeof ciDraftFor === 'function' ? ciDraftFor(c.storageKey, ci.timestamp) : null;
+    if (rdD) { chips = ''; summary = esc(((rdD.for_coach || [])[0]) || ''); }
+    var fl = rdD ? [] : flagsOf(ci);
     var flagsHtml = fl.length ? fl.slice(0, 2).map(function (f) { return '<span class="v2-flag ' + f[0] + '">' + esc(f[1]) + '</span>'; }).join('') +
       (fl.length > 2 ? '<span class="v2-flag more">+' + (fl.length - 2) + '</span>' : '') : '';
     return '<div class="v2-ci-row" data-key="' + k + '" data-iso="' + esc(ci.timestamp) + '" tabindex="0">' +
       '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + esc(_fmtWhen(ci.timestamp)) + (ci.week ? ' · wk ' + esc(ci.week) : '') + '</span></div>' +
-      '<div class="ci-status">' + chips + '</div>' +
+      '<div class="ci-status">' + chips + rdChip(c.storageKey, ci.timestamp) + '</div>' +
       '<div class="ci-metrics"><span class="ci-wt">' + wtLine + '</span>' +
         '<span class="ci-adh">Nutr ' + (ci.dietAdherence1to10 ? esc(ci.dietAdherence1to10) + '/10' : '—') + ' · Train ' + (ci.trainingAdherence1to10 ? esc(ci.trainingAdherence1to10) + '/10' : '—') + '</span></div>' +
       '<div class="ci-summary">' + (flagsHtml ? '<div class="ci-flags">' + flagsHtml + '</div>' : '') + (summary ? '<div class="ci-reason">' + summary + '</div>' : '') + '</div>' +
@@ -12802,6 +12851,56 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return out;
   };
 
+  // ── suggested reply (agent draft) ──
+  function rdState(d) {
+    return d.sent_at ? 'Sent ' + esc(_fmtWhen(d.sent_at)) + ' · <button type="button" class="v2-link" data-rd-unsend="1">Mark not sent</button>'
+                     : 'Marks it sent when you use it';
+  }
+  var waNum = function (ph) { var n = String(ph || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(n)) n = '61' + n.slice(1); return n.length >= 9 ? n : ''; };
+  function rdCard(d, phone) {
+    var notes = (d.for_coach || []).filter(Boolean);
+    var shown = notes.slice(0, 3), more = notes.slice(3);
+    return '<div class="v2-rd' + (d.sent_at ? ' is-sent' : '') + '">' +
+      (notes.length ? '<ul class="v2-rd-notes">' + shown.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') +
+        (more.length ? '<li class="v2-rd-more"><button type="button" class="v2-link" data-rd-more="1">' + more.length + ' more</button></li>' +
+          more.map(function (n) { return '<li class="v2-rd-extra" hidden>' + esc(n) + '</li>'; }).join('') : '') + '</ul>' : '') +
+      '<textarea class="v2-rd-text" rows="6" aria-label="Suggested reply">' + esc(d.draft || '') + '</textarea>' +
+      '<div class="v2-rd-actions">' +
+      (waNum(phone) ? '<button type="button" class="v2-btn primary" data-rd-wa="1">Open in WhatsApp</button><button type="button" class="v2-btn" data-rd-copy="1">Copy</button>'
+                    : '<button type="button" class="v2-btn primary" data-rd-copy="1">' + (d.sent_at ? 'Copy again' : 'Copy reply') + '</button>') +
+      '<span class="v2-rd-state">' + rdState(d) + '</span></div></div>';
+  }
+  function wireRd(sec, key, iso, phone) {
+    var card = sec.querySelector('.v2-rd'); if (!card) return;
+    var btn = card.querySelector('[data-rd-copy]'), wa = card.querySelector('[data-rd-wa]'), state = card.querySelector('.v2-rd-state'), ta = card.querySelector('.v2-rd-text');
+    var refresh = function () { var d = ciDraftFor(key, iso); card.classList.toggle('is-sent', !!(d && d.sent_at)); if (d) state.innerHTML = rdState(d); P3.renderQueue && P3.renderQueue(); };
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('[data-rd-more]')) {
+        card.querySelectorAll('.v2-rd-extra').forEach(function (li) { li.hidden = false; }); e.target.closest('li').remove(); return;
+      }
+      if (e.target.closest('[data-rd-unsend]')) { ciDraftMark(key, iso, false).then(function () { if (!wa) btn.textContent = 'Copy reply'; refresh(); }); return; }
+      var mark = function (what) {
+        ciDraftMark(key, iso, true).then(function (ok) {
+          refresh();
+          if (!ok) state.textContent = what + ', but could not mark it sent - check your connection';
+          else state.innerHTML = what + ' and marked sent · <button type="button" class="v2-link" data-rd-unsend="1">Undo</button>';
+        });
+      };
+      if (e.target.closest('[data-rd-wa]')) {
+        window.open('https://wa.me/' + waNum(phone) + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener');
+        mark('Opened in WhatsApp'); return;
+      }
+      if (!e.target.closest('[data-rd-copy]')) return;
+      var text = ta.value;
+      var done = function () {
+        btn.textContent = 'Copied ✓';
+        setTimeout(function () { btn.textContent = wa ? 'Copy' : 'Copy again'; }, 1600);
+        mark('Copied');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { ta.select(); document.execCommand('copy'); done(); });
+      else { ta.select(); document.execCommand('copy'); done(); }
+    });
+  }
   function section(title, inner, cls) { return '<section class="v2-ci-sec' + (cls ? ' ' + cls : '') + '"><h3>' + title + '</h3>' + inner + '</section>'; }
   // Re-arrange the nodes openCheckInReview just built. Nothing is re-created:
   // every control keeps its id, value and inline handler.
@@ -12844,8 +12943,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (context) a.appendChild(context);
     main.insertAdjacentHTML('beforeend', section('What changed', '', 'sec-changed'));
     main.lastChild.appendChild(a);
-    // B. Autopilot assessment (draft moves to the action panel)
-    if (brief) {
+    // B. Autopilot assessment (draft moves to the action panel) - skipped when an agent reply exists (its notes replace it)
+    var rdB = typeof ciDraftFor === 'function' ? ciDraftFor(key, iso) : null;
+    if (brief && !rdB) {
       if (draftSec) draftSec.parentNode.removeChild(draftSec);
       var h4 = brief.querySelector('.ap-brief-head h4'); if (h4) h4.remove();
       main.insertAdjacentHTML('beforeend', section('Autopilot assessment', '', 'sec-ap'));
@@ -12857,12 +12957,19 @@ window.addEventListener('beforeinstallprompt', (e) => {
     else main.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted v2-ci-none">No written notes in this check-in.</p>');
 
     // D. Coach response
-    side.insertAdjacentHTML('beforeend', section('Coach response', '', 'sec-draft'));
-    if (draftSec) {
+    var rd = rdB;
+    if (rd) {
+      main.insertAdjacentHTML('afterbegin', section('Suggested reply', '', 'sec-draft sec-reply'));
+      main.firstChild.insertAdjacentHTML('beforeend', rdCard(rd, c && c.phone));
+      wireRd(main.firstChild, key, iso, c && c.phone);
+    }
+    if (!rd) side.insertAdjacentHTML('beforeend', section('Coach response', '', 'sec-draft'));
+    if (rd) { /* the reply card above is the coach response */ }
+    else if (draftSec) {
       var dh = draftSec.querySelector('.ap-brief-h'); if (dh) dh.textContent = 'Draft (editable — not sent)';
       side.lastChild.appendChild(draftSec);
     } else side.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted">No draft available.</p>');
-    side.lastChild.insertAdjacentHTML('beforeend', '<button type="button" class="v2-btn sm v2-ci-compose" data-compose="' + esc(key) + '">Message via WhatsApp / SMS…</button>' +
+    if (!rd) side.lastChild.insertAdjacentHTML('beforeend', '<button type="button" class="v2-btn sm v2-ci-compose" data-compose="' + esc(key) + '">Message via WhatsApp / SMS…</button>' +
       '<p class="v2-ci-hint">Opens the existing message composer (templates · Copy · WhatsApp · SMS).</p>');
     // E. Outcome + coach note
     var fld = function (label, el, req) { var w = document.createElement('label'); w.className = 'v2-ci-field'; w.innerHTML = '<span>' + label + (req ? ' <em>*</em>' : '') + '</span>'; if (el) w.appendChild(el); return w; };

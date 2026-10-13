@@ -594,6 +594,9 @@ Deno.serve(async (req) => {
       case 'coachWorkoutCompletions': return coachWorkoutCompletions(body);
       case 'rosterGet':          return rosterGet(body);
       case 'rosterPut':          return rosterPut(body);
+      case 'checkinDraftsGet':   return checkinDraftsGet(body);
+      case 'checkinDraftsPut':   return checkinDraftsPut(body);
+      case 'checkinDraftMark':   return checkinDraftMark(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
       case 'clientCreate':       return clientCreate(body);
       case 'issueClientToken':   return issueClientToken(body);
@@ -1094,6 +1097,54 @@ async function rosterPut(body: any) {
     author: 'coach',
   });
   return ok({ count: roster.length });
+}
+
+// ── CHECK-IN REPLY DRAFTS (Omar 2026-10-13) ───────────────────────────────────
+// Agent-drafted replies to client check-ins, shown in the coach Check-ins panel.
+// Coach-only on every path. Nothing is ever sent to a client from here: the
+// coach copies the text himself; checkinDraftMark only records that he did.
+const CI_KEY_RE = /^[a-z0-9_]{1,64}$/;
+async function checkinDraftsGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const days = Math.min(Math.max(Number(body?.days) || 21, 1), 90);
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await admin.from('checkin_drafts')
+    .select('client_key, checkin_ts, action, for_coach, draft, created_at, sent_at')
+    .gte('created_at', since).order('created_at', { ascending: false }).limit(500);
+  if (error) return err('read_failed');
+  return ok({ drafts: data ?? [] });
+}
+async function checkinDraftsPut(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const list = Array.isArray(body?.drafts) ? body.drafts.slice(0, 200) : [];
+  const rows = [];
+  for (const d of list) {
+    const key = String(d?.clientKey ?? '').toLowerCase(), ts = String(d?.checkinTs ?? '');
+    if (!CI_KEY_RE.test(key) || ts.length < 10 || ts.length > 40) return err('bad_draft', { clientKey: key });
+    rows.push({
+      client_key: key, checkin_ts: ts,
+      action: String(d?.action ?? 'hold').slice(0, 32),
+      for_coach: (Array.isArray(d?.forCoach) ? d.forCoach : []).slice(0, 12).map((x: any) => String(x).slice(0, 400)),
+      draft: String(d?.draft ?? '').slice(0, 4000),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  if (!rows.length) return ok({ count: 0 });
+  // upsert never touches sent_at: re-publishing a draft keeps "already sent"
+  const { error } = await admin.from('checkin_drafts').upsert(rows, { onConflict: 'client_key,checkin_ts' });
+  if (error) return err('write_failed');
+  return ok({ count: rows.length });
+}
+async function checkinDraftMark(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.clientKey ?? '').toLowerCase(), ts = String(body?.checkinTs ?? '');
+  if (!CI_KEY_RE.test(key) || !ts) return err('bad_request');
+  const { data, error } = await admin.from('checkin_drafts')
+    .update({ sent_at: body?.sent === false ? null : new Date().toISOString() })
+    .eq('client_key', key).eq('checkin_ts', ts).select('sent_at');
+  if (error) return err('write_failed');
+  if (!data || !data.length) return err('not_found');
+  return ok({ sent_at: data[0].sent_at });
 }
 
 async function registryGetPrivate(body: any) {
