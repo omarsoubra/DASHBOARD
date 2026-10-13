@@ -11969,19 +11969,21 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function renderMorning(clients, data) {
     var box = $('v2-morning'); if (!box) return;
     checkPages(clients);
-    var active = clients.filter(_isActiveClient);
+    var active = clients.filter(function (c) { return _isActiveClient(c) && c.storageKey !== 'omar'; });   // not the coach's own account
     var link = function (c, extra) {
       return '<a class="v2-m-chip" href="#/clients/' + encodeURIComponent(c.storageKey) + '">' + esc(String(c.displayName || c.storageKey).split(' ')[0]) +
         (extra ? ' <small>' + esc(extra) + '</small>' : '') + '</a>';
     };
     var chips = function (arr) { return arr.slice(0, 6).join('') + (arr.length > 6 ? '<span class="v2-m-more">+' + (arr.length - 6) + '</span>' : ''); };
-    var now = [], next = [], quiet = [], broken = [];
+    var now = [], next = [], quiet = [], inactive = 0, broken = [];
     active.forEach(function (c) {
       var w = weekOf(c), sum = data[c.storageKey] || {};
       if (w === 5 || w === 9) now.push(link(c, 'phase ' + (w === 5 ? 2 : 3)));
       else if (w === 4 || w === 8) next.push(link(c, 'phase ' + (w === 4 ? 2 : 3)));
       var la = lastActivity(sum);
-      if (la !== null && Date.now() - la > 3 * 86400000) quiet.push(link(c, Math.floor((Date.now() - la) / 86400000) + 'd'));
+      var qd = la === null ? null : Math.floor((Date.now() - la) / 86400000);
+      if (qd !== null && qd >= 3 && qd < 14) quiet.push(link(c, qd + 'd'));          // recently quiet: worth a nudge
+      else if (qd !== null && qd >= 14) inactive++;                                  // long silent: tidy the roster
       if (_pageHealth && _pageHealth[c.storageKey] === false) broken.push(link(c));
     });
     var replies = 0;
@@ -11990,8 +11992,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (broken.length) rows.push(['red', 'Client page not loading', chips(broken)]);
     if (now.length) rows.push(['amber', 'Unlock code due this week', chips(now)]);
     if (replies) rows.push(['blue', '<a class="v2-m-link" href="#/check-ins">' + replies + ' drafted repl' + (replies === 1 ? 'y' : 'ies') + ' ready to send →</a>', '']);
-    if (quiet.length) rows.push(['grey', 'Gone quiet (3+ days)', chips(quiet)]);
+    if (quiet.length) rows.push(['grey', 'Gone quiet (3–13 days)', chips(quiet)]);
     if (next.length) rows.push(['grey', 'Unlock code next week', chips(next)]);
+    if (inactive) rows.push(['grey', '<a class="v2-m-link" href="#/clients">' + inactive + ' inactive 14+ days - archive or check in →</a>', ''])
     box.hidden = false;
     box.innerHTML = '<div class="v2-m-head"><b>This morning</b><span>' + (rows.length ? rows.length + ' thing' + (rows.length === 1 ? '' : 's') + ' to know' : 'all clear') + '</span></div>' +
       (rows.length ? rows.map(function (r) {
