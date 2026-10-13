@@ -6013,13 +6013,15 @@ async function loadAll() {
 }
 
 // ─── RENDER: HELPERS ──────────────────────────────────────────────────────
-function programWeek(startDate) {
+function programWeek(startDate, maxWeeks) {
   if (!startDate) return null;
   const start = new Date(startDate);
   const now = new Date();
   const days = Math.floor((now - start) / (86400000));
-  return Math.max(1, Math.min(12, Math.ceil(days / 7) || 1));
+  return Math.max(1, Math.min(maxWeeks || 12, Math.ceil(days / 7) || 1));
 }
+// The client's block length: roster durationWeeks (16 = 4 phases for new sign-ups and Block 2 since 2026-10-13), else 12.
+function blockWeeks(c) { const n = parseInt(c && c.durationWeeks, 10); return n >= 4 && n <= 52 ? n : 12; }
 
 function daysSince(ts) {
   if (!ts) return null;
@@ -8542,7 +8544,7 @@ function renderClientGrid() {
   }
   const html = list.map(c => {
     const sum = _dashboardData[c.storageKey] || {};
-    const week = programWeek(c.startDate);
+    const week = programWeek(c.startDate, blockWeeks(c));
     const status = clientStatus(c, sum);
     // LOCKED IN Sprint — guard undefined/NaN before render.
     const curRaw = (Number.isFinite(sum.latestWeight) ? sum.latestWeight
@@ -8616,7 +8618,7 @@ function renderClientGrid() {
             style="background:rgba(255,68,102,0.12);border:1px solid rgba(255,68,102,0.4);color:var(--danger);font-size:0.6rem;padding:0.2rem 0.4rem;border-radius:3px;cursor:pointer;font-family:'DM Mono',monospace;">✕</button>
         </div>
         <div class="name" style="margin-top:0.6rem;">${c.displayName}</div>
-        <div class="program">${c.programType} · Wk ${week || 1}/12</div>
+        <div class="program">${c.programType} · Wk ${week || 1}/${blockWeeks(c)}</div>
         <div class="weight-row">
           <div class="cur">${cur}<span style="font-size:1rem;color:var(--muted);">kg</span></div>
           <div class="goal">${goalTxt}</div>
@@ -8930,7 +8932,7 @@ function _cd3AccessChip(c) {
 }
 function _cd3WeekBadge(c) {
   if (!c.startDate) return '';
-  const w = programWeek(c.startDate);
+  const w = programWeek(c.startDate, blockWeeks(c));
   const dur = c.durationWeeks || 12;
   return _cd3Chip('Week ' + w + '/' + dur, 'muted');
 }
@@ -11985,11 +11987,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var now = [], next = [], quiet = [], inactive = 0, broken = [], ending = [], past = [];
     active.forEach(function (c) {
       var w = weekOf(c), sum = data[c.storageKey] || {};
-      if (w === 5 || w === 9) now.push(link(c, 'phase ' + (w === 5 ? 2 : 3)));
-      else if (w === 4 || w === 8) next.push(link(c, 'phase ' + (w === 4 ? 2 : 3)));
-      // Client journey (Omar 2026-10-13): the block ends at week 12. A renewed client gets a new startDate, so the count restarts.
-      if (w !== null && w >= 10 && w <= 12) ending.push(link(c, 'wk ' + w));
-      else if (w !== null && w > 12) past.push(link(c, 'wk ' + w));
+      // 4-week phases: unlocks at weeks 5, 9 (and 13 in a 16-week block). Block length per client (blockWeeks).
+      var L = blockWeeks(c), nph = Math.max(1, Math.floor(L / 4));
+      if (w > 1 && w % 4 === 1 && (w - 1) / 4 < nph) now.push(link(c, 'phase ' + ((w - 1) / 4 + 1)));
+      else if (w && w % 4 === 0 && w / 4 < nph) next.push(link(c, 'phase ' + (w / 4 + 1)));
+      // Client journey (Omar 2026-10-13): the last 2-3 weeks of the block, then finished. A renewed client gets a new startDate.
+      if (w !== null && w >= L - 2 && w <= L) ending.push(link(c, 'wk ' + w + '/' + L));
+      else if (w !== null && w > L) past.push(link(c, 'wk ' + w));
       var la = lastActivity(sum);
       var qd = la === null ? null : Math.floor((Date.now() - la) / 86400000);
       if (qd !== null && qd >= 3 && qd < 14) quiet.push(link(c, qd + 'd'));          // recently quiet: worth a nudge
@@ -12003,8 +12007,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (broken.length) rows.push(['red', 'Client page not loading', chips(broken)]);
     if (now.length) rows.push(['amber', 'Unlock code due this week', chips(now)]);
     if (replies) rows.push(['blue', '<a class="v2-m-link" href="#/check-ins">' + replies + ' drafted repl' + (replies === 1 ? 'y' : 'ies') + ' ready to send →</a>', '']);
-    if (past.length) rows.push(['amber', 'Finished 12 weeks - no next block yet', chips(past)]);
-    if (ending.length) rows.push(['blue', 'Block ending soon (weeks 10–12)', chips(ending)]);
+    if (past.length) rows.push(['amber', 'Finished their block - no next block yet', chips(past)]);
+    if (ending.length) rows.push(['blue', 'Block ending soon (last 3 weeks)', chips(ending)]);
     if (journey.length) rows.push(['blue', journey.length + ' client journey message' + (journey.length === 1 ? '' : 's') + ' ready - tap a name', journey.map(function (d) {
       var c = active.find(function (x) { return x.storageKey === d.client_key; }) || { storageKey: d.client_key };
       var k = d.client_key + '|' + d.checkin_ts;
@@ -12027,7 +12031,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // Drafted by client_template journey.py + the journey writer; nothing is sent from here - WhatsApp/Copy
   // hand the text to the coach and record that he used it (same checkinDraftMark as check-in replies).
   var _jmOpen = null;
-  var JM_LABEL = { momentum: 'wk 6 momentum', seed: 'wk 8 next goal', call_invite: 'wk 10 book call', offer: 'wk 12 offer', next_block: 'book Block 2 call',
+  var JM_LABEL = { momentum: 'wk 6 momentum', seed: 'next goal', call_invite: 'book call', offer: 'final-week offer', next_block: 'book Block 2 call',
                    preview: 'wk 10 preview', review: 'wk 12 review' };
   var jmWa = function (ph) { var n = String(ph || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(n)) n = '61' + n.slice(1); return n.length >= 9 ? n : ''; };
   function wireJourney(box, active) {

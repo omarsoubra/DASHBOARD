@@ -110,7 +110,7 @@ test('CM4 07:00 Sydney: one report with the card rules, delivered once; later ti
   const p = w.svc.received[0].payload;
   eq(p.kind, 'coach_morning'); eq(p.title, 'This morning'); eq(p.url, './coach_dashboard.html');
   // quiet_q is week 11 (ending soon), gone_g week 15 (past 12); the journey draft is not a check-in reply.
-  eq(p.body, 'PAGE DOWN: Hassan · unlock: Zain (P2) · 2 replies ready · 1 past wk12, no next block · 1 ending soon · 1 journey msg ready · 1 quiet (Quinn) · next wk unlock: 1 · 1 inactive 14d+');
+  eq(p.body, 'PAGE DOWN: Hassan · unlock: Zain (P2) · 2 replies ready · 1 finished, no next block · 1 ending soon · 1 journey msg ready · 1 quiet (Quinn) · next wk unlock: 1 · 1 inactive 14d+');
   assert(!w.pageHits.includes('omar') && !w.pageHits.includes('revoked_r'), 'skipped accounts not checked');
   const ev = w.db.T.notification_events.find((e) => e.kind === 'coach_morning');
   eq(ev.dedupe_key, 'coach_morning:2026-10-13'); eq(ev.created_by, 'system'); eq(ev.status, 'sent');
@@ -162,6 +162,13 @@ test('CM7 headline rules (pure)', async () => {
   const h = M.coachMorningHeadline({ roster: many, lastActivityMs: {}, repliesReady: 1, pagesDown: [], today: '2026-10-13', nowMs: 0 });
   eq(h.body, 'unlock: N0 (P2), N1 (P2), N2 (P2), N3 (P2)… · 1 reply ready');
   assert(h.body.length <= 220, 'bounded');
+  // 16-week block (Omar 2026-10-13): unlock at 13 (P4), next-week at 12, ending 14-16, finished 17+
+  const b16 = (start) => ({ storageKey: 'x' + start, displayName: 'S' + start, startDate: start, durationWeeks: 16 });
+  const h16 = M.coachMorningHeadline({ roster: [b16('2026-07-13'), b16('2026-07-20'), b16('2026-06-29'), b16('2026-06-08')], lastActivityMs: {}, repliesReady: 0,
+    pagesDown: [], today: '2026-10-13', nowMs: 0 });
+  // weeks: 07-13 -> 14 (ending), 07-20 -> 13 (unlock P4), 06-29 -> 16 (ending), 06-08 -> 19 (finished)
+  eq(h16.body, 'unlock: S2026-07-20 (P4) · 1 finished, no next block · 2 ending soon');
+  eq(M.blockWeeks({ durationWeeks: '16' }), 16); eq(M.blockWeeks({}), 12);
 });
 
 run('push_coach_morning');

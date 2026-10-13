@@ -15,7 +15,7 @@ export const COACH_KEY = '_coach';
 export const COACH_MORNING_MINUTE = 7 * 60;          // 07:00 local; the 15-minute tick sends it in [07:00, 07:15)
 export const COACH_TZ = 'Australia/Sydney';
 
-export type RosterEntry = { storageKey?: string; displayName?: string; startDate?: string | null; programStatus?: string;
+export type RosterEntry = { storageKey?: string; displayName?: string; startDate?: string | null; programStatus?: string; durationWeeks?: number | string;
                             accessStatus?: string; isPaused?: boolean };
 export type MorningInput = { roster: RosterEntry[]; lastActivityMs: Record<string, number>; repliesReady: number;
                              pagesDown: string[]; today: string; nowMs: number; journeyReady?: number };
@@ -36,15 +36,22 @@ export function programWeek(start: string | null | undefined, today: string): nu
   return days < 0 ? null : Math.floor(days / 7) + 1;
 }
 
+export function blockWeeks(c: RosterEntry): number {
+  const n = parseInt(String(c?.durationWeeks ?? ''), 10);
+  return n >= 4 && n <= 52 ? n : 12;
+}
+
 export function coachMorningHeadline(inp: MorningInput): { body: string; items: Record<string, unknown> } {
   const first = (c: RosterEntry) => String(c.displayName || c.storageKey).split(' ')[0];
   const now: string[] = [], next: string[] = [], quiet: string[] = [], inactive: string[] = [], ending: string[] = [], past: string[] = [];
   const active = inp.roster.filter(isActiveRosterClient);
   for (const c of active) {
     const w = programWeek(c.startDate, inp.today);
-    if (w === 5 || w === 9) now.push(`${first(c)} (P${w === 5 ? 2 : 3})`);
-    else if (w === 4 || w === 8) next.push(`${first(c)} (P${w === 4 ? 2 : 3})`);
-    if (w !== null && w >= 10 && w <= 12) ending.push(first(c)); else if (w !== null && w > 12) past.push(first(c));
+    // 4-week phases (12 weeks = 3, 16 = 4 since 2026-10-13): unlocks at 5, 9, 13; the block ends at its own length.
+    const L = blockWeeks(c), nph = Math.max(1, Math.floor(L / 4));
+    if (w !== null && w > 1 && w % 4 === 1 && (w - 1) / 4 < nph) now.push(`${first(c)} (P${(w - 1) / 4 + 1})`);
+    else if (w !== null && w % 4 === 0 && w / 4 < nph) next.push(`${first(c)} (P${w / 4 + 1})`);
+    if (w !== null && w >= L - 2 && w <= L) ending.push(first(c)); else if (w !== null && w > L) past.push(first(c));
     const la = inp.lastActivityMs[String(c.storageKey)];
     if (typeof la === 'number') {
       const d = Math.floor((inp.nowMs - la) / 86400000);
@@ -56,7 +63,7 @@ export function coachMorningHeadline(inp: MorningInput): { body: string; items: 
   if (down.length) parts.push(`PAGE DOWN: ${down.slice(0, 3).join(', ')}`);
   if (now.length) parts.push(`unlock: ${now.slice(0, 4).join(', ')}${now.length > 4 ? '…' : ''}`);
   if (inp.repliesReady) parts.push(`${inp.repliesReady} repl${inp.repliesReady === 1 ? 'y' : 'ies'} ready`);
-  if (past.length) parts.push(`${past.length} past wk12, no next block`);
+  if (past.length) parts.push(`${past.length} finished, no next block`);
   if (ending.length) parts.push(`${ending.length} ending soon`);
   if (inp.journeyReady) parts.push(`${inp.journeyReady} journey msg${inp.journeyReady === 1 ? '' : 's'} ready`);
   if (quiet.length) parts.push(`${quiet.length} quiet (${quiet.slice(0, 3).join(', ')}${quiet.length > 3 ? '…' : ''})`);
