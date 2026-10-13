@@ -1647,6 +1647,21 @@ body.v2-collapsed .v2-collapse svg { transform: rotate(180deg); }
 .v2-sr-empty { padding: 10px; color: var(--v2-muted); font-size: 13px; }
 
 /* KPI cards */
+/* This morning card (Omar 2026-10-13) */
+.v2-morning { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 14px 16px 6px; margin-bottom: 16px; }
+.v2-m-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.v2-m-head b { font: 600 14px 'Inter', system-ui, sans-serif; color: var(--v2-ink); }
+.v2-m-head span { font-size: 12px; color: var(--v2-muted); }
+.v2-m-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--v2-line2); }
+.v2-m-row:first-of-type { border-top: 0; }
+.v2-m-row .v2-dot { margin-top: 6px; flex: 0 0 auto; }
+.v2-m-txt { min-width: 0; flex: 1; }
+.v2-m-lbl { font-size: 13px; color: var(--v2-ink2); font-weight: 500; }
+.v2-m-link { color: var(--v2-ink); text-decoration: none; font-weight: 600; }
+.v2-m-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.v2-m-chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--v2-ws); color: var(--v2-ink); font-size: 12.5px; font-weight: 500; text-decoration: none; }
+.v2-m-chip small { color: var(--v2-muted); font-size: 11px; }
+.v2-m-more { font-size: 12px; color: var(--v2-muted); align-self: center; }
 .v2-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
 .v2-kpi {
   background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; padding: 16px; text-align: left;
@@ -1660,7 +1675,7 @@ a.v2-kpi:hover, button.v2-kpi:hover { border-color: #c9ccd4; }
 .v2-kpi .k-sub { font-size: 12px; color: var(--v2-muted); margin-top: 4px; }
 .v2-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 8px; background: #c4c7cf; }
 .v2-dot.red { background: var(--v2-red); } .v2-dot.amber { background: var(--v2-amber); }
-.v2-dot.green { background: var(--v2-accent); } .v2-dot.blue { background: var(--v2-blue); }
+.v2-dot.green { background: var(--v2-accent); } .v2-dot.blue { background: var(--v2-blue); } .v2-dot.grey { background: var(--v2-muted); }
 
 /* Cards / layout */
 .v2-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -2406,6 +2421,7 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
             <button class="v2-btn primary" type="button" onclick="openClientForm()">+ Add client</button>
           </div>
         </header>
+        <section class="v2-morning" id="v2-morning" hidden aria-label="This morning"></section>
         <div class="v2-kpis" id="v2-kpis"></div>
         <div class="v2-grid">
           <div class="v2-col">
@@ -11926,6 +11942,63 @@ window.addEventListener('beforeinstallprompt', (e) => {
       (iso ? ' data-iso="' + esc(iso) + '"' : '') + '>' + label + '</button>';
   }
 
+  // ── THIS MORNING (Omar 2026-10-13) ── what the Today KPIs don't already show: unlock codes due,
+  // drafted replies waiting, clients gone quiet, client pages that fail to load. Computed live from
+  // data the dashboard already has (roster, dashboard data, check-in drafts); nothing is stored.
+  var _pageHealth = null;                       // { key: ok } - checked once per page load
+  function checkPages(clients) {
+    if (_pageHealth) return;
+    _pageHealth = {};
+    var keys = clients.filter(_isActiveClient).map(function (c) { return c.storageKey; });
+    Promise.all(keys.map(function (k) {
+      return fetch('clients/' + encodeURIComponent(k) + '/index.html', { method: 'HEAD', cache: 'no-store' })
+        .then(function (r) { _pageHealth[k] = r.ok; }, function () { _pageHealth[k] = true; });   // offline is not a page fault
+    })).then(function () { try { if (location.hash.indexOf('#/today') === 0 || !location.hash) renderToday(); } catch (e) {} });
+  }
+  function weekOf(c) {
+    var s = c.startDate ? new Date(String(c.startDate).slice(0, 10) + 'T00:00:00') : null;
+    if (!s || isNaN(s)) return null;
+    var d = Math.floor((new Date().setHours(0, 0, 0, 0) - s.getTime()) / 86400000);
+    return d < 0 ? null : Math.floor(d / 7) + 1;
+  }
+  function lastActivity(sum) {
+    var ts = [sum.latestMealTs, sum.latestWorkoutTs, sum.latestWeightTs, sum.latestCheckinTs].filter(Boolean)
+      .map(function (t) { return Date.parse(t); }).filter(function (n) { return !isNaN(n); });
+    return ts.length ? Math.max.apply(null, ts) : null;
+  }
+  function renderMorning(clients, data) {
+    var box = $('v2-morning'); if (!box) return;
+    checkPages(clients);
+    var active = clients.filter(_isActiveClient);
+    var link = function (c, extra) {
+      return '<a class="v2-m-chip" href="#/clients/' + encodeURIComponent(c.storageKey) + '">' + esc(String(c.displayName || c.storageKey).split(' ')[0]) +
+        (extra ? ' <small>' + esc(extra) + '</small>' : '') + '</a>';
+    };
+    var chips = function (arr) { return arr.slice(0, 6).join('') + (arr.length > 6 ? '<span class="v2-m-more">+' + (arr.length - 6) + '</span>' : ''); };
+    var now = [], next = [], quiet = [], broken = [];
+    active.forEach(function (c) {
+      var w = weekOf(c), sum = data[c.storageKey] || {};
+      if (w === 5 || w === 9) now.push(link(c, 'phase ' + (w === 5 ? 2 : 3)));
+      else if (w === 4 || w === 8) next.push(link(c, 'phase ' + (w === 4 ? 2 : 3)));
+      var la = lastActivity(sum);
+      if (la !== null && Date.now() - la > 3 * 86400000) quiet.push(link(c, Math.floor((Date.now() - la) / 86400000) + 'd'));
+      if (_pageHealth && _pageHealth[c.storageKey] === false) broken.push(link(c));
+    });
+    var replies = 0;
+    try { Object.keys(CI_DRAFTS || {}).forEach(function (k) { if (!CI_DRAFTS[k].sent_at) replies++; }); } catch (e) {}
+    var rows = [];
+    if (broken.length) rows.push(['red', 'Client page not loading', chips(broken)]);
+    if (now.length) rows.push(['amber', 'Unlock code due this week', chips(now)]);
+    if (replies) rows.push(['blue', '<a class="v2-m-link" href="#/check-ins">' + replies + ' drafted repl' + (replies === 1 ? 'y' : 'ies') + ' ready to send →</a>', '']);
+    if (quiet.length) rows.push(['grey', 'Gone quiet (3+ days)', chips(quiet)]);
+    if (next.length) rows.push(['grey', 'Unlock code next week', chips(next)]);
+    box.hidden = false;
+    box.innerHTML = '<div class="v2-m-head"><b>This morning</b><span>' + (rows.length ? rows.length + ' thing' + (rows.length === 1 ? '' : 's') + ' to know' : 'all clear') + '</span></div>' +
+      (rows.length ? rows.map(function (r) {
+        return '<div class="v2-m-row"><span class="v2-dot ' + r[0] + '"></span><div class="v2-m-txt"><div class="v2-m-lbl">' + r[1] + '</div>' +
+          (r[2] ? '<div class="v2-m-chips">' + r[2] + '</div>' : '') + '</div></div>';
+      }).join('') : '<div class="v2-m-row"><span class="v2-dot green"></span><div class="v2-m-txt"><div class="v2-m-lbl">Nothing extra this morning.</div></div></div>');
+  }
   function renderToday() {
     var clients = (typeof COACH !== 'undefined' && COACH.clients) || [];
     var data = (typeof _dashboardData !== 'undefined' && _dashboardData) || {};
@@ -11935,6 +12008,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     $('v2-greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('v2-date').textContent = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) +
       ' · what needs you today';
+
+    try { renderMorning(clients, data); } catch (e) { console.warn('[ui-v2] morning card failed', e); }
 
     // Same definitions as renderCcSummary / renderCcAttention / renderCcWatch.
     var onBooks = clients.filter(_isOnBooksClient).length;
