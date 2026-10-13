@@ -185,7 +185,27 @@ const CHECKS = {
   },
   // offline: change kept locally and labelled not synced; retry (several triggers at once) sends exactly once
   async offline(page, ctx) {
-    if (!ctx.cv2 || !ctx.sw2) return 'SKIP no Swap V2 sheet';
+    if (!ctx.cv2) return 'SKIP classic layout';
+    if (!ctx.sw2) {
+      // pages without the Swap V2 sheet: an offline "Ate it" must be kept, shown as not synced, and resent once
+      const t = await page.eval(`(async function () {
+        showSection('nutrition'); await __t.wait(100);
+        var c = __t.cards()[0]; var u = __t.btn(c, /^Undo$/); if (u) { u.click(); await __t.wait(500); }
+        localStorage.setItem('__mock_mode', 'offline');
+        __t.btn(__t.cards()[0], /Ate it/).click(); await __t.wait(900);
+        var off = { card: __t.cards()[0].innerText.replace(/\\s+/g, ' '), synced: Object.values(loadMealLogs())[0].synced };
+        localStorage.setItem('__mock_mode', 'ok'); window.__mealPosts = 0;
+        if (typeof cv2Retry === 'function') { cv2Retry(); cv2Retry(); }
+        retryUnsyncedMeals(); retryUnsyncedMeals();
+        await __t.wait(2500);
+        return { off: off, posts: window.__mealPosts, synced: Object.values(loadMealLogs())[0].synced };
+      })()`);
+      if (t.off.synced !== false) throw new Error('offline tick not queued (synced should be false)');
+      if (!/Not synced yet/.test(t.off.card)) throw new Error('card does not show "Not synced yet" while offline');
+      if (t.posts !== 1) throw new Error(`retry sent ${t.posts} saves for one queued meal (expected 1)`);
+      if (t.synced !== true) throw new Error('entry not marked synced after a successful retry');
+      return;
+    }
     const r = await page.eval(`(async function () {
       showSection('nutrition'); await __t.wait(100);
       var c = __t.cards()[0]; var u = __t.btn(c, /^Undo$/); if (u) { u.click(); await __t.wait(500); }
