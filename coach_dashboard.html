@@ -12027,7 +12027,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // Drafted by client_template journey.py + the journey writer; nothing is sent from here - WhatsApp/Copy
   // hand the text to the coach and record that he used it (same checkinDraftMark as check-in replies).
   var _jmOpen = null;
-  var JM_LABEL = { momentum: 'wk 6 momentum', preview: 'wk 10 preview', review: 'wk 12 review', next_block: 'next block' };
+  var JM_LABEL = { momentum: 'wk 6 momentum', seed: 'wk 8 next goal', call_invite: 'wk 10 book call', offer: 'wk 12 offer', next_block: 'book Block 2 call',
+                   preview: 'wk 10 preview', review: 'wk 12 review' };
   var jmWa = function (ph) { var n = String(ph || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(n)) n = '61' + n.slice(1); return n.length >= 9 ? n : ''; };
   function wireJourney(box, active) {
     var host = box.querySelector('#v2-m-jm'); if (!host) return;
