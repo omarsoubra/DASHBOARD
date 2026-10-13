@@ -1652,6 +1652,8 @@ body.v2-collapsed .v2-collapse svg { transform: rotate(180deg); }
 .v2-m-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
 .v2-m-head b { font: 600 14px 'Inter', system-ui, sans-serif; color: var(--v2-ink); }
 .v2-m-head span { font-size: 12px; color: var(--v2-muted); }
+.v2-m-head .v2-m-bell { margin-left: auto; margin-right: 10px; border: 1px solid var(--v2-line, #e5e5e5); background: transparent; color: var(--v2-ink); border-radius: 999px; padding: 3px 10px; font: 500 12px 'Inter', system-ui, sans-serif; cursor: pointer; }
+.v2-m-head .v2-m-bell[disabled] { opacity: .6; cursor: default; }
 .v2-m-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--v2-line2); }
 .v2-m-row:first-of-type { border-top: 0; }
 .v2-m-row .v2-dot { margin-top: 6px; flex: 0 0 auto; }
@@ -11996,11 +11998,58 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (next.length) rows.push(['grey', 'Unlock code next week', chips(next)]);
     if (inactive) rows.push(['grey', '<a class="v2-m-link" href="#/clients">' + inactive + ' inactive 14+ days - archive or check in →</a>', ''])
     box.hidden = false;
-    box.innerHTML = '<div class="v2-m-head"><b>This morning</b><span>' + (rows.length ? rows.length + ' thing' + (rows.length === 1 ? '' : 's') + ' to know' : 'all clear') + '</span></div>' +
+    box.innerHTML = '<div class="v2-m-head"><b>This morning</b><button class="v2-m-bell" id="v2-m-bell" hidden></button><span>' + (rows.length ? rows.length + ' thing' + (rows.length === 1 ? '' : 's') + ' to know' : 'all clear') + '</span></div>' +
       (rows.length ? rows.map(function (r) {
         return '<div class="v2-m-row"><span class="v2-dot ' + r[0] + '"></span><div class="v2-m-txt"><div class="v2-m-lbl">' + r[1] + '</div>' +
           (r[2] ? '<div class="v2-m-chips">' + r[2] + '</div>' : '') + '</div></div>';
       }).join('') : '<div class="v2-m-row"><span class="v2-dot green"></span><div class="v2-m-txt"><div class="v2-m-lbl">Nothing extra this morning.</div></div></div>');
+    coachBell();
+  }
+  // Coach morning report on this phone (Omar 2026-10-13): the push function sends the card above
+  // as a notification at 07:00 Sydney to devices registered here. Only shown where web push works
+  // (on iPhone: the dashboard added to the Home Screen). Permission is asked only inside the tap.
+  var _coachBellState = null, _coachBellOn = false;
+  var COACH_PUSH_URL = String((typeof COACH !== 'undefined' && COACH.webhookUrl) || '').replace(/\/api$/, '/push');
+  function coachPushPost(body) {
+    return fetch(COACH_PUSH_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ coachToken: _coachToken() }, body)) }).then(function (r) { return r.json(); });
+  }
+  function coachPushB64(s) {
+    var b = atob((s + '==='.slice((s.length + 3) % 4)).replace(/-/g, '+').replace(/_/g, '/')), out = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+    return out;
+  }
+  function coachBell() {
+    if (!$('v2-m-bell') || !COACH_PUSH_URL || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+    // The card re-renders on every refresh: ask the server once per page load, re-wire the new button each time.
+    _coachBellState = _coachBellState || navigator.serviceWorker.ready.then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (sub) {
+        return coachPushPost({ type: 'coachPushStatus', endpoint: sub ? sub.endpoint : '' }).then(function (st) { return { reg: reg, sub: sub, st: st }; });
+      });
+    });
+    _coachBellState.then(function (x) {
+      var btn = $('v2-m-bell'), st = x.st;
+      if (!btn || !st || !st.ok) return;
+      btn.hidden = false;
+      if (_coachBellOn || (st.registered && Notification.permission === 'granted')) { btn.textContent = '🔔 7am alert on'; btn.disabled = true; return; }
+      btn.textContent = '🔔 Alert me at 7am';
+      btn.onclick = function () {
+        btn.disabled = true; btn.textContent = 'Turning on…';
+        Notification.requestPermission().then(function (perm) {
+          if (perm !== 'granted') throw new Error('permission ' + perm);
+          return x.sub || x.reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: coachPushB64(st.vapidPublicKey) });
+        }).then(function (sub) {
+          var standalone = window.navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+          return coachPushPost({ type: 'coachPushSubscribe', subscription: sub.toJSON(), standalone: standalone });
+        }).then(function (r) {
+          if (!r || !r.ok) throw new Error((r && r.error) || 'failed');
+          _coachBellOn = true; btn.textContent = '🔔 7am alert on';
+        }).catch(function (e) {
+          console.warn('[coach push]', e); btn.disabled = false;
+          btn.textContent = /permission/.test(String(e && e.message)) ? 'Notifications blocked - allow in Settings' : 'Could not turn on - tap to retry';
+        });
+      };
+    }).catch(function (e) { _coachBellState = null; console.warn('[coach push] status', e); });
   }
   function renderToday() {
     var clients = (typeof COACH !== 'undefined' && COACH.clients) || [];

@@ -403,7 +403,9 @@ test('E8 templates are lock-screen safe (no numbers, no targets/units/body data)
     assert(!/\b(kg|kgs|lb|lbs|kcal|calorie|calories|protein|carb|carbs|fat|macro|macros|bmi|body|deficit|target|goal)\b/i.test(text), k + ': no targets/units/body data');
     if (/\bweigh/i.test(text)) eq(t.body, APPROVED_WEIGHT_COPY, k + ': "weight" only in the approved copy');
     // Scope-relative; the only query allowed is a daily-reminder deep link to an existing shell section.
-    assert(/^\.\/[A-Za-z0-9#_-]*$/.test(t.url) || /^\.\/\?li=(training|nutrition)$/.test(t.url), k + ': url is scope-relative');
+    // The coach morning report (coach's own phone only) opens the coach dashboard page in the same scope.
+    assert(/^\.\/[A-Za-z0-9#_-]*$/.test(t.url) || /^\.\/\?li=(training|nutrition)$/.test(t.url) ||
+      (k === 'coach_morning' && t.url === './coach_dashboard.html'), k + ': url is scope-relative');
   }
 });
 

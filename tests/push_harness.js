@@ -22,15 +22,17 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'push-tests-'));
 function transpile(src, out) {
   const js = ts.transpileModule(rd(src), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
-  }).outputText.replace(/require\("\.\/(webpush|schedule)\.ts"\)/g, 'require("./$1.js")');
+  }).outputText.replace(/require\("\.\/(webpush|schedule|coach_morning)\.ts"\)/g, 'require("./$1.js")');
   fs.writeFileSync(path.join(tmp, out), js);
 }
 transpile('supabase/functions/push/webpush.ts', 'webpush.js');
 transpile('supabase/functions/push/schedule.ts', 'schedule.js');
 transpile('supabase/functions/push/handler.ts', 'handler.js');
 transpile('supabase/functions/push/adherence.ts', 'adherence.js');
+transpile('supabase/functions/push/coach_morning.ts', 'coach_morning.js');
 const WP = require(path.join(tmp, 'webpush.js'));
 const SCH = require(path.join(tmp, 'schedule.js'));
+const CM = require(path.join(tmp, 'coach_morning.js'));
 const H = require(path.join(tmp, 'handler.js'));
 const ADH = require(path.join(tmp, 'adherence.js'));
 
@@ -64,10 +66,11 @@ const MIGRATION_DAILY = rd('supabase/migrations/20261002120000_push_daily_remind
 const MIGRATION_SCHED = rd('supabase/migrations/20261003120000_push_plan_schedule.sql');
 const MIGRATION_DROP = rd('supabase/migrations/20261003130000_push_drop_client_schedule.sql');
 const MIGRATION_DEFAULTS = rd('supabase/migrations/20261011120000_push_default_schedule.sql');
+const MIGRATION_COACH = rd('supabase/migrations/20261013140000_coach_morning.sql');
 // Workout Completion V1 is read (never written) by the daily training reminders.
 const MIGRATION_WC = rd('supabase/migrations/20261001120000_workout_completions.sql');
 const ALL_MIGRATIONS = MIGRATION + '\n' + MIGRATION_V1 + '\n' + MIGRATION_V2 + '\n' + MIGRATION_DAILY + '\n' + MIGRATION_WC +
-  '\n' + MIGRATION_SCHED + '\n' + MIGRATION_DROP + '\n' + MIGRATION_DEFAULTS;
+  '\n' + MIGRATION_SCHED + '\n' + MIGRATION_DROP + '\n' + MIGRATION_DEFAULTS + '\n' + MIGRATION_COACH;
 const COL_RE = /^([a-z][a-z0-9_]*)\s+(uuid|text|boolean|integer|smallint|timestamptz|jsonb|time|date)\b/;
 function parseColumns(table) {
   const cols = new Set();
@@ -104,6 +107,11 @@ const SCHEMA = {
   weight_logs: new Set(['id', 'client_id', 'client_key', 'logged_at', 'weight_kg']),
   check_ins: new Set(['id', 'client_id', 'client_key', 'submitted_at', 'week_number']),
   client_overrides: new Set(['id', 'client_id', 'key', 'value_text', 'value_number', 'valid_from', 'valid_to']),
+  // Read by the coach morning report only.
+  roster_snapshots: new Set(['id', 'snapshot_ts', 'roster_json', 'client_count', 'author']),
+  meal_logs: new Set(['id', 'client_id', 'logged_at']),
+  workout_log_entries: new Set(['id', 'client_key', 'logged_at']),
+  checkin_drafts: new Set(['id', 'client_key', 'checkin_ts', 'created_at', 'sent_at']),
 };
 const KINDS = parseCheckList('notification_events', 'notification_events_kind_check');
 const STATUSES = parseCheckList('notification_events', 'notification_events_status_check');
@@ -143,7 +151,7 @@ const PREF_DEFAULTS = {
 // In-memory Supabase stand-in (strict)
 // ════════════════════════════════════════════════════════════════════════════
 function makeDb() {
-  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [], push_preferences: [], push_internal_auth: [], weight_logs: [], check_ins: [], client_entitlements: [], push_plan_facts: [], workout_completions: [], client_overrides: [] };
+  const T = { clients: [], client_sessions: [], push_devices: [], notification_events: [], push_preferences: [], push_internal_auth: [], weight_logs: [], check_ins: [], client_entitlements: [], push_plan_facts: [], workout_completions: [], client_overrides: [], roster_snapshots: [], meal_logs: [], workout_log_entries: [], checkin_drafts: [] };
   const calls = [];
   let seq = 0;
   const uuid = () => '00000000-0000-4000-8000-' + String(++seq).padStart(12, '0');
@@ -420,7 +428,7 @@ function assertNoLeak(w, extraSecrets = []) {
 }
 
 module.exports = {
-  ROOT, rd, WP, SCH, H, ADH, test, tests, assert, eq, run, b64u, unb64u, sha256hex,
+  ROOT, rd, WP, SCH, H, ADH, CM, test, tests, assert, eq, run, b64u, unb64u, sha256hex,
   MIGRATION, MIGRATION_V1, MIGRATION_V2, MIGRATION_DAILY, MIGRATION_WC, MIGRATION_SCHED, MIGRATION_DROP, MIGRATION_DEFAULTS, SCHEMA, KINDS, STATUSES, REASONS, makeDb,
   CANARY, OTHER, CANARY_TOKEN, OTHER_TOKEN, SECOND_TOKEN, COACH_HASH, CRON_SECRET, DEPLOY_SECRET,
   makeVapid, makeBrowserSub, nodeDecrypt, verifyVapidHeader, makePushService, world, assertNoLeak,

@@ -51,6 +51,7 @@ import {
   effectiveTraining, localDayBounds, localParts, mealAnchors, mealsAvailable, nextLocalTime, parseTime, trainingAvailable,
   validTrainingDays, validateSchedule, type DailyPrefs, type Observation, type PlanFacts, type Prefs,
 } from './schedule.ts';
+import { COACH_KEY, COACH_MORNING_MINUTE, COACH_TZ, coachMorningHeadline, isActiveRosterClient, loadLastActivity } from './coach_morning.ts';
 
 export type PushEnv = {
   vapidPublicKey: string;
@@ -91,9 +92,10 @@ type Deps = {
 };
 
 // ── constants ───────────────────────────────────────────────────────────────
-export const PUSH_VERSION = 'push-v5-defaults';
+export const PUSH_VERSION = 'push-v6-coach-morning';
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ENDPOINT_LEN = 1024;
+const COACH_PAGES_BASE = 'https://omarsoubra.github.io/DASHBOARD';
 const MAX_ACTIVE_DEVICES_PER_CLIENT = 5;
 const MAX_EVENTS_PER_CLIENT_PER_DAY = 20;
 const MAX_DEVICES_PER_SEND = 10;
@@ -145,6 +147,8 @@ export const TEMPLATES: Record<string, Template> = {
   training_primary:  { kind: 'training_reminder', title: 'Training today 💪', body: 'Your session is ready when you are.', url: './?li=training', tag: 'li-training', ttlSec: 3 * 3600 },
   training_followup: { kind: 'training_reminder', title: 'Still training today?', body: "Your session is still there whenever you're ready.", url: './?li=training', tag: 'li-training', ttlSec: 3 * 3600 },
   meal_slot:         { kind: 'meal_reminder', title: 'Meal time 🍽️', body: 'Your planned meal is ready in LOCKED IN.', url: './?li=nutrition', tag: 'li-meal', ttlSec: 3600 },
+  // Coach only (the `_coach` device, never a client): body = today's morning headline. Opens the dashboard.
+  coach_morning:     { kind: 'coach_morning', title: 'This morning', body: '', url: './coach_dashboard.html', tag: 'li-coach-morning', ttlSec: 6 * 3600 },
 };
 
 /** Meal slot k's lock-screen text: the ordinal only ("Meal 2 time"), never a food, time or amount. */
@@ -480,6 +484,114 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return ok({ storageKey: a.storageKey, vapidPublicKey: v.publicKeyB64, registered, deviceStatus, oneTap: inDaily(a.storageKey) });
   }
 
+  // ── Coach morning report (Omar 2026-10-13) ────────────────────────────────
+  // The coach's phone subscribes under the internal `_coach` account. It has no
+  // push_preferences row, so no client reminder ever targets it; the only thing
+  // ever sent to it is the 07:00 Sydney morning report claimed in pushTick.
+  async function coachClientId(): Promise<string | null> {
+    const { data } = await admin.from('clients').select('id').eq('storage_key', COACH_KEY).maybeSingle();
+    return data?.id ?? null;
+  }
+
+  async function coachPushStatus(body: any): Promise<Response> {
+    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    const v = await vapidOrNull();
+    if (!v) return err('push_not_configured', 503);
+    const coachId = await coachClientId();
+    if (!coachId) return err('no_coach_account', 404);
+    let registered = false;
+    if (typeof body?.endpoint === 'string' && body.endpoint && body.endpoint.length <= MAX_ENDPOINT_LEN) {
+      const { data: dev } = await admin.from('push_devices').select('client_id, status')
+        .eq('endpoint_hash', await sha256(body.endpoint)).maybeSingle();
+      registered = !!dev && dev.client_id === coachId && dev.status === 'active';
+    }
+    return ok({ vapidPublicKey: v.publicKeyB64, registered, devices: await activeDeviceCount(coachId) });
+  }
+
+  async function coachPushSubscribe(body: any): Promise<Response> {
+    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    if (!(await vapidOrNull())) return err('push_not_configured', 503);
+    const coachId = await coachClientId();
+    if (!coachId) return err('no_coach_account', 404);
+    const sub = body?.subscription;
+    const ep = validateEndpoint(sub?.endpoint);
+    if (!ep.ok) return err(ep.reason, 400);
+    const keys = await validateKeys(sub?.keys);
+    if (!keys.ok) return err(keys.reason, 400);
+    const endpoint: string = sub.endpoint;
+    const endpointHash = await sha256(endpoint);
+    const nowIso = new Date(now()).toISOString();
+    const { data: existing } = await admin.from('push_devices')
+      .select('id, client_id').eq('endpoint_hash', endpointHash).maybeSingle();
+    // The coach's own dashboard and a client page never share a browser registration
+    // (different scopes); an endpoint already owned by a client is never moved.
+    if (existing && existing.client_id !== coachId) { log('coachPushSubscribe', 'endpoint_conflict', ''); return err('endpoint_conflict', 409); }
+    const fields = {
+      endpoint, p256dh: keys.p256dh, auth_secret: keys.auth, push_host: ep.host,
+      standalone: body?.standalone === true, timezone: COACH_TZ, status: 'active', disabled_reason: null, failure_count: 0,
+      last_seen_at: nowIso, updated_at: nowIso,
+    };
+    if (existing) {
+      const { error } = await admin.from('push_devices').update(fields).eq('id', existing.id).eq('client_id', coachId);
+      if (error) { log('coachPushSubscribe', 'update_failed', error.message); return err('write_failed', 500); }
+      return ok({ deviceId: existing.id, created: false });
+    }
+    if ((await activeDeviceCount(coachId)) >= MAX_ACTIVE_DEVICES_PER_CLIENT) return err('too_many_devices', 429);
+    const { data: ins, error } = await admin.from('push_devices').insert({
+      client_id: coachId, storage_key: COACH_KEY, endpoint_hash: endpointHash, created_at: nowIso, ...fields,
+    }).select('id').single();
+    if (error || !ins?.id) {
+      if (isDup(error)) return err('retry', 409);
+      log('coachPushSubscribe', 'insert_failed', error?.message ?? 'no_id');
+      return err('write_failed', 500);
+    }
+    return ok({ deviceId: ins.id, created: true });
+  }
+
+  /** A page that answers 404/5xx is down; network trouble is not a page fault. */
+  async function pageDown(key: string): Promise<boolean> {
+    try {
+      const r = await fetchImpl(`${COACH_PAGES_BASE}/clients/${key}/index.html`, { method: 'HEAD' });
+      return r.status >= 400;
+    } catch (_) { return false; }
+  }
+
+  /** Once per Sydney day in [07:00, 07:30): build the headline, claim coach_morning:<date>, deliver. */
+  async function coachMorningStep(v: VapidKeys, nowMs: number, nowIso: string): Promise<string> {
+    const lp = localParts(nowMs, COACH_TZ);
+    if (lp.minuteOfDay < COACH_MORNING_MINUTE || lp.minuteOfDay >= COACH_MORNING_MINUTE + 30) return 'not_due';
+    const coachId = await coachClientId();
+    if (!coachId) return 'no_coach_account';
+    const key = `coach_morning:${lp.date}`;
+    const { data: seen, error: seenErr } = await admin.from('notification_events').select('id').eq('dedupe_key', key).limit(1);
+    if (seenErr) throw new Error(seenErr.message);
+    if ((seen ?? []).length) return 'duplicate';
+    if ((await activeDeviceCount(coachId)) === 0) return 'no_device';     // nothing claimed: a phone added at 07:10 still gets today's
+
+    const { data: snap, error: rErr } = await admin.from('roster_snapshots').select('roster_json')
+      .order('snapshot_ts', { ascending: false }).limit(1).maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    const roster = (Array.isArray(snap?.roster_json) ? snap.roster_json : []).filter(isActiveRosterClient);
+    const { data: rows } = await admin.from('clients').select('id, storage_key');
+    const idByKey: Record<string, string> = Object.fromEntries((rows ?? []).map((r: any) => [r.storage_key, r.id]));
+    const lastActivityMs = await loadLastActivity(admin, roster, idByKey, new Date(nowMs - 90 * 86400_000).toISOString());
+    const { count: replies } = await admin.from('checkin_drafts').select('id', { count: 'exact', head: true })
+      .is('sent_at', null).gte('created_at', new Date(nowMs - 21 * 86400_000).toISOString());
+    const down = (await Promise.all(roster.map(async (c: any) => (await pageDown(String(c.storageKey))) ? String(c.storageKey) : null)))
+      .filter((k): k is string => !!k);
+    const h = coachMorningHeadline({ roster, lastActivityMs, repliesReady: replies ?? 0, pagesDown: down, today: lp.date, nowMs });
+    const tpl: Template = { ...TEMPLATES.coach_morning, body: h.body };
+    const got = await claim({
+      client_id: coachId, storage_key: COACH_KEY, kind: tpl.kind, dedupe_key: key, status: 'claimed',
+      title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'system',
+      created_at: nowIso, eligible_at: nowIso, period_key: lp.date,
+    });
+    if (got === 'duplicate') return 'duplicate';
+    if (!got) throw new Error('claim_failed');
+    const r = await deliver(got.id, coachId, tpl, v, nowMs);
+    return r.status;
+  }
+
   // ── pushSubscribe (= the explicit opt-in) ─────────────────────────────────
   async function pushSubscribe(body: any): Promise<Response> {
     const a = await authClient(body);
@@ -744,8 +856,12 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const nowIso = new Date(nowMs).toISOString();
     const summary = { clients: 0, due: 0, sent: 0, duplicates: 0, suppressed: {} as Record<string, number>, stateErrors: 0, deferredSent: 0,
                       checkinStages: { due: 0, followup: 0, final: 0 } as Record<string, number>,
-                      training: { primary: 0, followup: 0 } as Record<string, number>, meals: 0 };
+                      training: { primary: 0, followup: 0 } as Record<string, number>, meals: 0, coachMorning: '' };
     const bump = (r: string) => { summary.suppressed[r] = (summary.suppressed[r] ?? 0) + 1; };
+
+    // ── Coach morning report: independent of every client reminder below ──
+    try { summary.coachMorning = await coachMorningStep(v, nowMs, nowIso); }
+    catch (e) { summary.coachMorning = 'error'; summary.stateErrors++; log('pushTick', 'coach_morning_failed', String((e as any)?.message ?? e)); }
 
     // ── V2 check-in adherence sequence: one step per client per tick ───────
     // evaluateCheckinStage says which stage (if any) is open; decideReminder
@@ -1203,6 +1319,8 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         case 'pushPrefsGet':    return await pushPrefsGet(body);
         case 'pushPrefsSet':    return await pushPrefsSet(body);
         case 'coachPushSend':   return await coachPushSend(body);
+        case 'coachPushStatus': return await coachPushStatus(body);
+        case 'coachPushSubscribe': return await coachPushSubscribe(body);
         case 'pushTick':        return await pushTick(req);
         case 'programUpdated':  return await programUpdated(req, body);
         case 'planFactsSync':   return await planFactsSync(req, body);
