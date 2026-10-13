@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="referrer" content="no-referrer" />
+<meta name="robots" content="noindex" />
+<title>LOCKED IN — Connect Apple Health</title>
+<link rel="apple-touch-icon" href="../icon-192.png" />
+<style>
+  :root { --bg: #0a0a0a; --panel: #141414; --line: #2a2a2a; --text: #f0f0f0; --muted: #8a8a8a; --accent: #00E5A0; --warn: #ffb347; --bad: #ff5c5c; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.55; min-height: 100vh; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 28px 18px 80px; }
+  .logo { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: var(--accent); text-align: center; }
+  .sub { text-align: center; color: var(--muted); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 2px 0 26px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 18px; margin-bottom: 10px; }
+  .step { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  p, li { color: #cfcfcf; font-size: 15px; }
+  p + p { margin-top: 8px; }
+  ul, ol { padding-left: 20px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  strong { color: var(--text); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 10px; padding: 14px 16px; font-size: 16px; font-weight: 700; text-align: center;
+         background: var(--accent); color: #04140e; cursor: pointer; text-decoration: none; margin-top: 14px; font-family: inherit; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .btn.danger { background: transparent; color: var(--bad); border: 1px solid #4a2222; }
+  .btn[disabled] { opacity: .45; cursor: default; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 14px; color: #cfcfcf; }
+  .check input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex: 0 0 auto; }
+  .code { font-family: ui-monospace, Menlo, monospace; background: #0d0d0d; border: 1px dashed var(--line); border-radius: 8px; padding: 10px; font-size: 13px;
+          word-break: break-all; margin-top: 10px; color: var(--text); }
+  .ok { color: var(--accent); font-weight: 700; }
+  .status { border-left: 3px solid var(--accent); }
+  .err { border-left: 3px solid var(--bad); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">LOCKED IN</div>
+  <div class="sub">Connect Apple Health</div>
+
+  <div id="loading" class="card"><p>Loading…</p></div>
+
+  <div id="invalid" class="card err" hidden>
+    <h2>This link isn't active</h2>
+    <p>It may have been replaced or switched off. Ask Omar to send you a new Apple Health link.</p>
+  </div>
+
+  <!-- 1. consent -->
+  <div id="consent" class="card" hidden>
+    <div class="step">Step 1 of 4</div>
+    <h2 id="hello">Share your daily activity with Omar</h2>
+    <p>Once a day your iPhone sends Omar these <strong>daily totals</strong> from Apple Health (including your Apple Watch):</p>
+    <ul>
+      <li>Steps</li>
+      <li>Active calories</li>
+      <li>Exercise minutes</li>
+      <li>Resting heart rate</li>
+      <li>Hours of sleep</li>
+    </ul>
+    <p><strong>Nothing else.</strong> No location, no workouts in detail, no other health records, no contacts or photos.</p>
+    <p><strong>Why:</strong> so your calories and training are set from how active you really are, and Omar can spot when you're run down before it costs you progress.</p>
+    <p><strong>Who sees it:</strong> only Omar, inside his coaching dashboard. It's stored in LOCKED IN's private, access-controlled database and is never sold or shared.</p>
+    <p><strong>Your choice:</strong> you can stop at any time on this page, and everything already sent is deleted.</p>
+    <label class="check"><input type="checkbox" id="adult" /> <span>I'm 18 or older, or my parent/guardian has agreed to this.</span></label>
+    <label class="check"><input type="checkbox" id="agree" /> <span>I agree to share these daily totals with Omar for my coaching.</span></label>
+    <button class="btn" id="agreeBtn" disabled>I agree — continue</button>
+  </div>
+
+  <!-- 2-4. setup -->
+  <div id="setup" hidden>
+    <div class="card">
+      <div class="step">Step 2 of 4</div>
+      <h2>Copy your code</h2>
+      <p>This code links the Shortcut to your coaching. Keep it private.</p>
+      <div class="code" id="code"></div>
+      <button class="btn" id="copyBtn">Copy code</button>
+    </div>
+    <div class="card">
+      <div class="step">Step 3 of 4</div>
+      <h2>Add the LOCKED IN Shortcut</h2>
+      <p>Tap below, then <strong>Add Shortcut</strong>. When it asks for your code, <strong>paste</strong> it.</p>
+      <a class="btn" id="shortcutBtn" href="#" target="_blank" rel="noopener">Add the Shortcut</a>
+      <p class="muted" id="shortcutLater" hidden>Omar will send you the Shortcut link separately.</p>
+      <p class="muted" style="margin-top:10px">The first time it runs, your iPhone asks what Apple Health data the Shortcut may read — tap <strong>Allow</strong> for each item.</p>
+    </div>
+    <div class="card">
+      <div class="step">Step 4 of 4</div>
+      <h2>Make it run every night</h2>
+      <ol>
+        <li>Open the <strong>Shortcuts</strong> app and tap <strong>Automation</strong> at the bottom.</li>
+        <li>Tap <strong>+</strong> (or <strong>New Automation</strong>), then <strong>Time of Day</strong>.</li>
+        <li>Choose <strong>9:00 PM</strong>, <strong>Daily</strong>, and <strong>Run Immediately</strong>. Tap <strong>Next</strong>.</li>
+        <li>Pick <strong>LOCKED IN Health</strong> and tap <strong>Done</strong>.</li>
+      </ol>
+      <p>Now run the Shortcut once yourself (tap it in the Shortcuts app) to test it.</p>
+      <button class="btn ghost" id="checkBtn">Check it worked</button>
+      <p id="checkMsg" style="margin-top:10px" hidden></p>
+    </div>
+  </div>
+
+  <!-- connected -->
+  <div id="connected" class="card status" hidden>
+    <h2><span class="ok">✓</span> Apple Health connected</h2>
+    <p id="lastMsg"></p>
+    <p class="muted">Want to set it up on a new phone? Use the steps above again with the same code.</p>
+  </div>
+
+  <div id="off" class="card" hidden>
+    <h2>Stop sharing</h2>
+    <p>This switches the link off straight away and deletes every day of Apple Health data Omar has received from you.</p>
+    <button class="btn danger" id="offBtn">Stop sharing and delete my data</button>
+    <p class="muted" style="margin-top:10px">Also delete the LOCKED IN Health shortcut and its automation in the Shortcuts app.</p>
+  </div>
+
+  <div id="stopped" class="card status" hidden>
+    <h2>Sharing stopped</h2>
+    <p id="stoppedMsg">Your link is switched off and your Apple Health data has been deleted.</p>
+  </div>
+</div>
+<script>
+(function () {
+  var API_URL = 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
+  // iCloud link of the LOCKED IN Health shortcut (its import question asks for the code). Empty until published.
+  var SHORTCUT_URL = '';
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id, on) { $(id).hidden = !on; };
+
+  // The key arrives in the URL fragment (never sent to a server). Keep it for this tab, then take it out of the address bar.
+  var key = '';
+  var m = /[#&]k=(lih_[0-9a-f]{40})/.exec(location.hash || '');
+  try {
+    if (m) { key = m[1]; sessionStorage.setItem('li_health_key', key); history.replaceState(null, '', location.pathname); }
+    else key = sessionStorage.getItem('li_health_key') || '';
+  } catch (e) { if (m) key = m[1]; }
+
+  function call(type, extra) {
+    var body = Object.assign({ type: type, healthKey: key }, extra || {});
+    return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); });
+  }
+  function fmtDay(d) {
+    try { return new Date(d + 'T12:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return d; }
+  }
+  var version = null;
+
+  function render(st) {
+    show('loading', false);
+    if (!st || !st.ok) { show('invalid', true); return; }
+    version = st.consentVersion;
+    if (st.firstName) $('hello').textContent = 'Hey ' + st.firstName + ' — share your daily activity with Omar';
+    $('code').textContent = key;
+    if (SHORTCUT_URL) $('shortcutBtn').href = SHORTCUT_URL; else { show('shortcutBtn', false); show('shortcutLater', true); }
+    show('consent', !st.active);
+    show('setup', !!st.active);
+    show('off', !!st.active);
+    show('connected', !!(st.active && st.lastDay));
+    if (st.lastDay) $('lastMsg').textContent = 'Last day received: ' + fmtDay(st.lastDay) + '.';
+  }
+
+  function load() {
+    if (!key) { show('loading', false); show('invalid', true); return; }
+    call('healthStatus').then(render, function () { show('loading', false); show('invalid', true); });
+  }
+
+  var sync = function () { $('agreeBtn').disabled = !($('adult').checked && $('agree').checked); };
+  $('adult').addEventListener('change', sync); $('agree').addEventListener('change', sync);
+  $('agreeBtn').addEventListener('click', function () {
+    $('agreeBtn').disabled = true; $('agreeBtn').textContent = 'Saving…';
+    call('healthConsent', { agree: true, version: version }).then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.error) || 'failed');
+      load(); window.scrollTo(0, 0);
+    }).catch(function () { $('agreeBtn').disabled = false; $('agreeBtn').textContent = 'Could not save — tap to try again'; });
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var done = function () { $('copyBtn').textContent = 'Copied ✓'; setTimeout(function () { $('copyBtn').textContent = 'Copy code'; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(key).then(done, function () { selectCode(); });
+    else selectCode();
+  });
+  function selectCode() { var r = document.createRange(); r.selectNodeContents($('code')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  $('checkBtn').addEventListener('click', function () {
+    var msg = $('checkMsg'); msg.hidden = false; msg.textContent = 'Checking…';
+    call('healthStatus').then(function (st) {
+      if (st && st.ok && st.lastDay) { msg.innerHTML = '<span class="ok">✓ Received</span> — ' + fmtDay(st.lastDay) + '. You\'re all set.'; render(st); }
+      else msg.textContent = 'Nothing received yet. Run the LOCKED IN Health shortcut once, allow the Health permissions, then check again.';
+    }, function () { msg.textContent = 'Could not check — try again in a moment.'; });
+  });
+  $('offBtn').addEventListener('click', function () {
+    if (!confirm('Stop sharing and delete all Apple Health data Omar has received from you?')) return;
+    $('offBtn').disabled = true;
+    call('healthRevoke', { deleteData: true }).then(function (r) {
+      if (!r || !r.ok) throw new Error('failed');
+      ['consent', 'setup', 'connected', 'off'].forEach(function (id) { show(id, false); });
+      show('stopped', true);
+      $('stoppedMsg').textContent = 'Your link is switched off and ' + (r.deleted ? r.deleted + ' day' + (r.deleted === 1 ? '' : 's') + ' of' : 'all your') + ' Apple Health data has been deleted.';
+      try { sessionStorage.removeItem('li_health_key'); } catch (e) {}
+    }).catch(function () { $('offBtn').disabled = false; alert('Could not switch off — check your connection and try again.'); });
+  });
+  load();
+})();
+</script>
+</body>
+</html>

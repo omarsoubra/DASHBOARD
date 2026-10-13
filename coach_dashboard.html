@@ -5926,6 +5926,71 @@ function updateSyncStatus() {
 // Nothing is ever sent from here - Copy puts the text on the clipboard and records
 // that the coach sent it.
 var CI_DRAFTS = {};
+// APPLE HEALTH V1 (Omar 2026-10-14): daily totals each client's iPhone Shortcut sends (steps, active kcal, exercise
+// minutes, resting HR, sleep). Coach-only read (healthGet). Optional: no data / no action -> nothing changes.
+var HEALTH = { rows: {}, status: {}, loaded: false };
+async function loadHealth() {
+  try {
+    const r = await coachFetch('healthGet', { days: 30 });
+    if (!r || r.ok === false) return;
+    const rows = {};
+    (r.rows || []).forEach(function (x) { (rows[x.storage_key] = rows[x.storage_key] || []).push(x); });
+    HEALTH = { rows: rows, status: r.status || {}, loaded: true };
+    document.querySelectorAll('[data-health-key]').forEach(function (el) { _healthFill(el.getAttribute('data-health-key')); });
+  } catch (e) { /* optional */ }
+}
+function _healthAvg(rows, f) { var v = rows.map(function (r) { return r[f]; }).filter(function (x) { return x != null; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; }
+function _healthFill(key) {
+  var el = document.querySelector('[data-health-key="' + key + '"]'); if (!el) return;
+  var esc_ = function (x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var st = HEALTH.status[key], rows = (HEALTH.rows[key] || []).slice().sort(function (a, b) { return a.day < b.day ? -1 : 1; });
+  var btn = '<button class="cd3-btn" type="button" onclick="_healthIssue(\'' + esc_(key) + '\', this)">' + (st ? 'New Apple Health link' : 'Create Apple Health link') + '</button>';
+  if (!HEALTH.loaded) { el.innerHTML = '<div class="cd3-empty">Loading…</div>'; return; }
+  if (!st && !rows.length) { el.innerHTML = '<p class="v2-muted" style="margin:0 0 10px">Not connected. Send the client their Apple Health link: they agree, add the Shortcut, and their daily steps, active calories, exercise minutes, resting heart rate and sleep arrive every night.</p>' + btn + '<div class="hl-link"></div>'; return; }
+  if (st && st.state === 'pending' && !rows.length) { el.innerHTML = '<p class="v2-muted" style="margin:0 0 10px">Link sent ' + esc_(_fmtWhen(st.issuedAt)) + ' — waiting for the client to agree and add the Shortcut.</p>' + btn + '<div class="hl-link"></div>'; return; }
+  var last7 = rows.filter(function (r) { return r.day > _healthDayAgo(7); }), prev7 = rows.filter(function (r) { return r.day <= _healthDayAgo(7) && r.day > _healthDayAgo(14); });
+  var stat = function (lbl, f, unit, fmt) {
+    var a = _healthAvg(last7, f), b = _healthAvg(prev7, f);
+    var v = a == null ? '—' : fmt(a) + unit;
+    var d = a != null && b != null && b > 0 ? Math.round((a - b) / b * 100) : null;
+    return '<div class="v2-cd-stat"><span>' + lbl + '</span><b>' + v + (d != null && Math.abs(d) >= 5 ? ' <small style="color:var(--v2-muted);font-weight:500">' + (d > 0 ? '▲' : '▼') + Math.abs(d) + '%</small>' : '') + '</b></div>';
+  };
+  var int = function (x) { return Math.round(x).toLocaleString('en-AU'); };
+  var hrs = function (m) { return (m / 60).toFixed(1); };
+  var last14 = rows.filter(function (r) { return r.day > _healthDayAgo(14); });
+  var max = Math.max.apply(null, last14.map(function (r) { return r.steps || 0; }).concat([1]));
+  var bars = last14.map(function (r) { var h = Math.max(2, Math.round((r.steps || 0) / max * 48));
+    return '<div title="' + esc_(r.day) + ': ' + (r.steps != null ? int(r.steps) + ' steps' : 'no steps') + '" style="flex:1;display:flex;align-items:flex-end;height:50px"><div style="width:100%;height:' + h + 'px;background:var(--v2-accent, #00E5A0);border-radius:3px;opacity:' + (r.steps != null ? 1 : .25) + '"></div></div>'; }).join('');
+  var lastDay = rows.length ? rows[rows.length - 1].day : null;
+  el.innerHTML = '<div class="v2-cd-stats" style="margin:0 0 12px">' +
+      stat('Steps / day', 'steps', '', int) + stat('Active kcal', 'active_kcal', '', int) + stat('Exercise', 'exercise_min', ' min', int) +
+      stat('Sleep', 'sleep_min', ' h', hrs) + stat('Resting HR', 'resting_hr', ' bpm', int) + '</div>' +
+    (last14.length ? '<div style="display:flex;gap:3px;align-items:flex-end;margin-bottom:6px">' + bars + '</div><div class="v2-muted" style="font-size:12px;margin-bottom:10px">Steps, last 14 days · averages are the last 7 days vs the 7 before</div>' : '') +
+    '<div class="v2-muted" style="font-size:12px;margin-bottom:10px">' + (lastDay ? 'Last day received: ' + esc_(lastDay) : 'Nothing received yet') + (st ? '' : ' · link switched off') + '</div>' +
+    btn + '<div class="hl-link"></div>';
+}
+function _healthDayAgo(n) { var d = new Date(Date.now() - n * 86400000); return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); }
+async function _healthIssue(key, btn) {
+  var c = (COACH.clients || []).find(function (x) { return x.storageKey === key; }) || {};
+  if (HEALTH.status[key] && !confirm('This replaces the current Apple Health link - the old one stops working. Continue?')) return;
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const r = await coachFetch('healthKeyIssue', { storageKey: key });
+    if (!r || r.ok === false || !r.setupUrl) throw new Error((r && r.error) || 'failed');
+    HEALTH.status[key] = { state: 'pending', issuedAt: new Date().toISOString() };
+    var first = String(c.displayName || key).split(' ')[0];
+    var msg = 'Hey ' + first + ', I want to use your Apple Health / Apple Watch data so your calories and training match how active you really are. ' +
+      'Takes 2 mins - tap this on your iPhone and follow the steps: ' + r.setupUrl;
+    var phone = String(c.phone || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(phone)) phone = '61' + phone.slice(1);
+    var box = btn.parentElement.querySelector('.hl-link');
+    box.innerHTML = '<textarea class="v2-rd-text" rows="4" style="margin-top:10px">' + msg.replace(/</g, '&lt;') + '</textarea>' +
+      '<div class="v2-rd-actions">' + (phone.length >= 9 ? '<a class="cd3-btn primary" target="_blank" rel="noopener" href="https://wa.me/' + phone + '?text=' + encodeURIComponent(msg) + '">Open in WhatsApp</a>' : '') +
+      '<button class="cd3-btn" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.parentElement.previousElementSibling.value);this.textContent=\'Copied ✓\'">Copy message</button></div>' +
+      '<p class="v2-muted" style="font-size:12px;margin-top:6px">The link works once per client - send it only to ' + first + '.</p>';
+    btn.textContent = 'Link created ✓';
+  } catch (e) { btn.disabled = false; btn.textContent = 'Could not create - try again'; }
+}
+
 async function loadCheckinDrafts() {
   try {
     const r = await coachFetch('checkinDraftsGet', { days: 21 });
@@ -5969,6 +6034,7 @@ async function loadAll() {
     _lastSyncMs = Date.now();
     _syncStatus = 'ok';
     loadCheckinDrafts();                     // agent-drafted replies (optional; never blocks the dashboard)
+    loadHealth();                            // Apple Health daily totals (optional; never blocks the dashboard)
     // Merge the registry into the roster BEFORE rendering so new program
     // files show up as onboarding without needing a manual reload.
     if (registry) {
@@ -12622,6 +12688,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
         return '<div class="cd3-panel-body">' +
           card('Weight trend', hasHistory ? '<div class="cd-chart-wrap"><canvas id="detail-chart"></canvas></div>' : _cd3Empty('No weight history yet.')) +
           card('Adherence — last 30 days', renderAdherenceSection(m30)) +
+          card('Activity — Apple Health', '<div data-health-key="' + esc(key) + '"></div>') +
           card('Progress photos', renderPhotoTimelineSection(c, sum)) + '</div>';
       }
       case 'nutrition':
@@ -12712,6 +12779,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     P2.rendered = storageKey + '|' + tab + '|' + (_cd3SumMissing(storageKey) ? 'nodata' : 'data');
     setTimeout(centerActiveTab, 0);
+    setTimeout(function () { try { _healthFill(storageKey); } catch (e) {} }, 0);   // Apple Health card (progress tab)
     try { return detailHtml(c, tab); } catch (e) { console.warn('[ui-v2] detail render failed, falling back', e); return origRender(storageKey); }
   };
   // Weight chart: the engine draws with dark-theme colours; recolour the

@@ -598,6 +598,12 @@ Deno.serve(async (req) => {
       case 'checkinDraftsPut':   return checkinDraftsPut(body);
       case 'checkinDraftMark':   return checkinDraftMark(body);
       case 'coachClientHistory': return coachClientHistory(body);
+      case 'healthKeyIssue':     return healthKeyIssue(body);
+      case 'healthStatus':       return healthStatus(body);
+      case 'healthConsent':      return healthConsent(body);
+      case 'healthLog':          return healthLog(body);
+      case 'healthRevoke':       return healthRevoke(body);
+      case 'healthGet':          return healthGet(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
       case 'clientCreate':       return clientCreate(body);
       case 'issueClientToken':   return issueClientToken(body);
@@ -1180,6 +1186,133 @@ async function coachClientHistory(body: any) {
     logEfError('coachClientHistory', key, 'read_failed', String((e as any)?.message ?? e));
     return err('read_failed');
   }
+}
+
+// APPLE HEALTH V1 (Omar 2026-10-14). The client's own iPhone Shortcut sends daily totals from Apple Health
+// (steps, active energy, exercise minutes, resting heart rate, sleep) once a day. Auth is a per-client UPLOAD KEY:
+// issued by the coach, inactive until the client agrees on the setup page, able only to write that client's
+// daily totals (it reads nothing back but the client's first name and its own status), revocable by either side.
+// Only sha256(key) is stored. Health information is sensitive: collected with consent, read only by the coach,
+// deleted when the client switches it off.
+const HEALTH_CONSENT_VERSION = 'health-v1-2026-10-14';
+const HEALTH_SETUP_URL = 'https://omarsoubra.github.io/DASHBOARD/health/';
+const HEALTH_KEY_RE = /^lih_[0-9a-f]{40}$/;
+const HEALTH_MAX_UPLOADS_PER_DAY = 30;
+function sydneyDate(ms: number): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+}
+/** Lenient number from a Shortcut ("8,432", "8432.0", 8432, "7.5 hr"); null when absent or not a number. */
+function healthNum(v: any): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+async function healthKeyRow(key: unknown) {
+  if (typeof key !== 'string' || !HEALTH_KEY_RE.test(key)) return null;
+  const { data } = await admin.from('health_keys').select('id, client_id, storage_key, consent_at, revoked_at, uploads_today, uploads_day')
+    .eq('key_hash', await sha256(key)).maybeSingle();
+  return data ?? null;
+}
+async function healthKeyIssue(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.storageKey ?? '').toLowerCase();
+  if (!CI_KEY_RE.test(key)) return err('bad_storageKey');
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+  if (!client?.id) return err('unknown_client');
+  const now = new Date().toISOString();
+  await admin.from('health_keys').update({ revoked_at: now, revoked_by: 'replaced' }).eq('client_id', client.id).is('revoked_at', null);
+  const raw = new Uint8Array(20); crypto.getRandomValues(raw);
+  const upload = 'lih_' + Array.from(raw, (b) => b.toString(16).padStart(2, '0')).join('');
+  const { error } = await admin.from('health_keys').insert({ client_id: client.id, storage_key: key, key_hash: await sha256(upload), created_at: now });
+  if (error) return err('write_failed');
+  // the key travels in the URL FRAGMENT: browsers never send it to any server or log
+  return ok({ storageKey: key, setupUrl: HEALTH_SETUP_URL + '#k=' + upload });
+}
+async function healthStatus(body: any) {
+  const row = await healthKeyRow(body?.healthKey);
+  if (!row || row.revoked_at) return err('invalid_key');
+  const { data: c } = await admin.from('clients').select('display_name').eq('id', row.client_id).maybeSingle();
+  const { data: last } = await admin.from('health_daily').select('day, received_at').eq('client_id', row.client_id).order('day', { ascending: false }).limit(1);
+  return ok({ firstName: String(c?.display_name ?? '').split(' ')[0] || null, active: !!row.consent_at, consentVersion: HEALTH_CONSENT_VERSION,
+              lastDay: (last ?? [])[0]?.day ?? null, lastReceivedAt: (last ?? [])[0]?.received_at ?? null });
+}
+async function healthConsent(body: any) {
+  const row = await healthKeyRow(body?.healthKey);
+  if (!row || row.revoked_at) return err('invalid_key');
+  if (body?.agree !== true || body?.version !== HEALTH_CONSENT_VERSION) return err('consent_required');
+  if (!row.consent_at) {
+    const { error } = await admin.from('health_keys').update({ consent_at: new Date().toISOString(), consent_version: HEALTH_CONSENT_VERSION }).eq('id', row.id);
+    if (error) return err('write_failed');
+  }
+  return ok({ active: true });
+}
+async function healthLog(body: any) {
+  const row = await healthKeyRow(body?.healthKey);
+  if (!row || row.revoked_at) return err('invalid_key');
+  if (!row.consent_at) return err('consent_required');
+  const nowMs = Date.now(), today = sydneyDate(nowMs);
+  const used = row.uploads_day === today ? (row.uploads_today ?? 0) : 0;
+  if (used >= HEALTH_MAX_UPLOADS_PER_DAY) return err('rate_limited');
+  // the day the totals belong to: the Shortcut's date if it is today or up to 7 days back, else today (Sydney)
+  let day = today;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(body?.date ?? ''));
+  if (m) {
+    const d = m[0], ageDays = (Date.parse(today) - Date.parse(d)) / 86400000;
+    if (ageDays >= 0 && ageDays <= 7) day = d; else return err('bad_date');
+  }
+  const int = (v: number | null, lo: number, hi: number) => v === null ? null : Math.round(v) >= lo && Math.round(v) <= hi ? Math.round(v) : NaN;
+  const sleepMin = healthNum(body?.sleepMin) ?? (healthNum(body?.sleepHours) !== null ? (healthNum(body?.sleepHours) as number) * 60 : null);
+  const vals = {
+    steps: int(healthNum(body?.steps), 0, 150000), active_kcal: int(healthNum(body?.activeKcal), 0, 10000),
+    exercise_min: int(healthNum(body?.exerciseMin), 0, 1440), resting_hr: int(healthNum(body?.restingHr), 20, 250),
+    sleep_min: int(sleepMin, 0, 1440),
+  };
+  const bad = Object.entries(vals).filter(([, v]) => Number.isNaN(v)).map(([k]) => k);
+  if (bad.length) return err('out_of_range', { fields: bad });
+  if (Object.values(vals).every((v) => v === null)) return err('no_values');
+  // a missing value never erases one already received for that day (later runs only fill in / update)
+  const fields: Record<string, unknown> = Object.fromEntries(Object.entries(vals).filter(([, v]) => v !== null));
+  const { data: ex } = await admin.from('health_daily').select('id').eq('client_id', row.client_id).eq('day', day).maybeSingle();
+  const nowIso = new Date(nowMs).toISOString();
+  const { error } = ex?.id
+    ? await admin.from('health_daily').update({ ...fields, received_at: nowIso }).eq('id', ex.id)
+    : await admin.from('health_daily').insert({ client_id: row.client_id, storage_key: row.storage_key, day, ...fields, received_at: nowIso });
+  if (error) { logEfError('healthLog', row.storage_key, 'write_failed', error.message); return err('write_failed'); }
+  await admin.from('health_keys').update({ last_used_at: nowIso, uploads_today: used + 1, uploads_day: today }).eq('id', row.id);
+  return ok({ day, saved: Object.keys(fields) });
+}
+async function healthRevoke(body: any) {
+  const isCoach = verifyCoachToken(body?.coachToken);
+  let clientId: string | null = null, by = 'client';
+  if (isCoach) {
+    const { data: c } = await admin.from('clients').select('id').eq('storage_key', String(body?.storageKey ?? '').toLowerCase()).maybeSingle();
+    clientId = c?.id ?? null; by = 'coach';
+  } else {
+    const row = await healthKeyRow(body?.healthKey);
+    if (!row) return err('invalid_key');
+    clientId = row.client_id;
+  }
+  if (!clientId) return err('unknown_client');
+  await admin.from('health_keys').update({ revoked_at: new Date().toISOString(), revoked_by: by }).eq('client_id', clientId).is('revoked_at', null);
+  // switching off from the setup page also deletes everything received (the client's choice; the coach cannot)
+  let deleted = 0;
+  if (!isCoach && body?.deleteData === true) {
+    const { data } = await admin.from('health_daily').delete().eq('client_id', clientId).select('id');
+    deleted = (data ?? []).length;
+  }
+  return ok({ revoked: true, deleted });
+}
+async function healthGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const days = Math.min(Math.max(Number(body?.days) || 30, 1), 120);
+  const since = sydneyDate(Date.now() - days * 86400000);
+  const { data: rows, error } = await admin.from('health_daily')
+    .select('storage_key, day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at').gte('day', since).order('day', { ascending: true }).limit(5000);
+  if (error) return err('read_failed');
+  const { data: keys } = await admin.from('health_keys').select('storage_key, consent_at, revoked_at, last_used_at, created_at').is('revoked_at', null);
+  const status: Record<string, unknown> = {};
+  for (const k of keys ?? []) status[k.storage_key] = { state: k.consent_at ? 'active' : 'pending', consentAt: k.consent_at, lastUsedAt: k.last_used_at, issuedAt: k.created_at };
+  return ok({ rows: rows ?? [], status });
 }
 
 async function registryGetPrivate(body: any) {
