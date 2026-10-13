@@ -10,6 +10,7 @@ Opens real client pages in headless Chrome and drives the flows clients use, aga
 | swap | The card shows the replacement's name and kcal straight away. The day total counts it once. Three taps send one save. The "Meal swapped" wording appears only after a confirmed save. It survives a reload. |
 | offline | An offline swap is kept, labelled "Not synced yet", and never called synced. Several retry triggers send exactly one save. |
 | weeks | A calendar week in a locked phase keeps its own ticks: none bleed in from the week before, none leak to the week after, and undo there leaves other weeks alone. This check uses a fake clock 10 days into the programme. |
+| phases | 4-week phases (Omar 2026-10-13: 16-week blocks = 4 phases, older 12 = 3). Every week maps to its phase; the last phase has its own targets, meal weeks, timer and code. The week before it, it is locked and its code opens it; on its first day its timer opens it and Training shows "Week 13 of 16" (or 9 of 12). Pages whose length is not 4 weeks per phase, or without a start date, skip it. |
 
 ```
 node tests/client_app/run.js                 # pages changed vs origin/main + reference pages

@@ -263,8 +263,55 @@ const CHECKS = {
     if (!allOn(r.prev)) throw new Error(`week ${r.w - 1}'s ticks changed (${r.prev})`);
     if (!allOn(r.prevAfterUndo)) throw new Error(`undo in week ${r.w} removed week ${r.w - 1}'s ticks (${r.prevAfterUndo})`);
   },
+  // 4-week phases (Omar 2026-10-13: 16-week blocks = 4 phases, older blocks 12 = 3): every week maps to its phase, the LAST
+  // phase has its own targets, meal weeks, timer and code; the week before it, it is locked and its code opens it early;
+  // on its first day its timer opens it and the app shows "Week <first> of <W>"
+  async phases(page, ctx, base) {
+    if (!ctx.cv2) return 'SKIP classic layout';
+    if (!ctx.start) return 'SKIP no canonical start date';
+    const shape = await page.eval(`({ W: +((CLIENT_CONFIG.client || {}).durationWeeks || 12), N: Object.keys(CLIENT_CONFIG.phases || {}).length + 1,
+      unlocked: LS_KEYS.unlocked })`);
+    if (shape.W !== 4 * shape.N) return `SKIP ${shape.W}-week page with ${shape.N} phases (not 4-week phases)`;
+    const { W, N } = shape, first = W - 3;                       // first week of the last phase
+    const at = (day) => ({ [shape.unlocked]: JSON.stringify(Array.from({ length: N - 1 }, (_, i) => i + 1)),
+                           __fake_now: new Date(Date.parse(ctx.start + 'T12:00:00+10:00') + day * 864e5).toISOString() });
+    // A: last week of phase N-1 -> phase N locked; its code opens it early
+    await fresh(page, base, ctx.key, at(7 * (first - 2) + 1));
+    const a = await page.eval(`(async function () {
+      var W = ${W}, N = ${N}, out = { map: [] };
+      for (var w = 1; w <= W; w++) out.map.push(getPhaseForWeek(w));
+      out.target = !!(phaseTargets[N] && phaseTargets[N].cal > 0);
+      out.lastWeek = (mealPlan[W] || []).length;
+      out.timer = TIMER_DAYS[N]; out.code = !!CODES[N];
+      showSection('nutrition'); await __t.wait(150);
+      await __t.goWeek(${first});
+      out.before = { locked: getUnlocked().indexOf(N) < 0 && !isTimerUnlocked(N) };
+      attemptingPhase = N; document.getElementById('unlock-input').value = CODES[N]; submitCode();
+      out.unlocked = getUnlocked().indexOf(N) >= 0;
+      showSection('nutrition'); await __t.wait(150);
+      out.after = await __t.goWeek(${first}); out.meals = __t.cards().length;
+      return out;
+    })()`);
+    const want = Array.from({ length: W }, (_, i) => Math.floor(i / 4) + 1).join('');
+    if (a.map.join('') !== want) throw new Error(`week->phase map ${a.map.join('')} != ${want}`);
+    if (!a.target) throw new Error(`no phase ${N} targets`);
+    if (a.lastWeek !== 7) throw new Error(`week ${W} has ${a.lastWeek} meal days`);
+    if (!a.timer || !a.code) throw new Error(`phase ${N} has no timer/code (${a.timer}, ${a.code})`);
+    if (!a.before.locked) throw new Error(`phase ${N} was open in week ${first - 1}, before its timer or code`);
+    if (!a.unlocked || !a.after || !a.meals) throw new Error(`phase ${N} code: unlocked ${a.unlocked}, week ${first} shown ${a.after}, meals ${a.meals}`);
+    // B: first day of phase N -> its timer opens it; the app shows week <first> of <W>
+    await fresh(page, base, ctx.key, at(7 * (first - 1) + 1));
+    const b = await page.eval(`(async function () {
+      showSection('nutrition'); await __t.wait(150); var nut = __t.week();
+      showSection('training'); await __t.wait(300);
+      var m = (document.body.innerText.match(/Week (\\d+) of (\\d+)/) || []);
+      return { nut: nut, week: +m[1] || null, total: +m[2] || null };
+    })()`);
+    if (b.nut !== first) throw new Error(`on day 1 of phase ${N} nutrition shows week ${b.nut}, expected ${first}`);
+    if (b.week !== first || b.total !== W) throw new Error(`training shows week ${b.week} of ${b.total}, expected ${first} of ${W}`);
+  },
 };
-const ORDER = ['load', 'start', 'tick', 'swap', 'offline', 'weeks'];
+const ORDER = ['load', 'start', 'tick', 'swap', 'offline', 'weeks', 'phases'];
 
 async function main() {
   const args = process.argv.slice(2);
