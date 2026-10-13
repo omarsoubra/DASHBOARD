@@ -3766,7 +3766,7 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
   <!-- Weight lost counter -->
   <div id="weight-lost-display" style="display:none;margin-top:1rem;background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.3);border-radius:10px;padding:1rem 1.5rem;display:flex;gap:2rem;flex-wrap:wrap;">
     <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Total Lost</div><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent3);" id="total-lost-display">0 kg</div></div>
-    <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">To Goal</div><div data-cfg="toGoalKg" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent2);" id="to-goal-display">0 kg</div></div>
+    <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">To Goal</div><div data-cfg="toGoalKg" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent2);" id="to-goal-display">7 kg</div></div>
     <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;">Avg Per Week</div><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent);" id="avg-loss-display">—</div></div>
   </div>
 
@@ -4128,6 +4128,7 @@ const phases = {
           { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Machine Shoulder Press", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Cable Chest Fly (Mid)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "EZ-Bar Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Machine Triceps Dips", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4216,6 +4217,7 @@ const phases = {
           { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Machine Shoulder Press", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Cable Chest Fly (Mid)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "EZ-Bar Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Machine Triceps Dips", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4302,6 +4304,7 @@ const phases = {
           { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Machine Shoulder Press", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Cable Chest Fly (Mid)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "EZ-Bar Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Machine Triceps Dips", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -6813,6 +6816,13 @@ const START_DATE = CANONICAL_START || localStorage.getItem(LS_KEYS.start) || nul
 // Keep the local copy in step so anything else reading it agrees.
 try {
   if (CANONICAL_START && localStorage.getItem(LS_KEYS.start) !== CANONICAL_START) {
+    // NEW BLOCK (2026-10-11, Karim Block 2): a configured start more than 10 weeks after the device's start means the
+    // client began a new 12-week block on the same account - the old block's phase unlocks must not carry over, or the
+    // page would open on phase 3. A normal start-date correction never moves the start that far forward.
+    var _prevStart = Date.parse(localStorage.getItem(LS_KEYS.start) || '');
+    if (!isNaN(_prevStart) && Date.parse(CANONICAL_START) - _prevStart > 70 * 86400000) {
+      localStorage.setItem(LS_KEYS.unlocked, '[1]');
+    }
     localStorage.setItem(LS_KEYS.start, CANONICAL_START);
   }
 } catch (e) {}
@@ -6953,7 +6963,7 @@ function applyClientConfig() {
     else if (key === 'startWeightLabel') val = c.startWeight + ' kg (start)';
     else if (key === 'goalWeightLabel')  val = (typeof COPY !== 'undefined' && COPY.GOAL_WEIGHT_LABEL)
                                              ? COPY.GOAL_WEIGHT_LABEL
-                                             : '73 kg start';
+                                             : '66 kg (goal)';
     else if (key === 'toGoalKg')    val = (c.startWeight - c.goalWeight).toFixed(1) + ' kg';
     else if (key === 'firstName')   val = c.firstName;
     el.textContent = val;
@@ -12734,7 +12744,7 @@ window.CV2_DEFAULT = 'v2';
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-10-04T09:04:44.703508Z
+  generatedAt: 2026-10-13T11:25:41.094844Z
   clientStorageKey: samir_bardouh
   configPath: samir_bardouh.json
   safetyBlockers: 0
