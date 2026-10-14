@@ -4985,7 +4985,7 @@ async function saveCheckin(){
   if (photoTokens.length) notes = (notes === '—' ? '' : notes + ' ') + photoTokens.join(' ');
   // Record last check-in timestamp so Sunday reminder banner can suppress itself
   try { localStorage.setItem((CLIENT_CONFIG.client.storageKey||'client')+'_last_checkin_ts', String(Date.now())); } catch(e) {}
-  const lost=Math.max(0,weight-CLIENT_CONFIG.client.startWeight).toFixed(1);
+  const lost=Math.max(0,CLIENT_CONFIG.client.startWeight-weight).toFixed(1);   // kg lost since start (was reversed: always 0 for anyone losing)
   const date=new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   checkins.unshift({weight,week,energy,sleep,stress,feeling,notes,date,lost});
   localStorage.setItem(LS_KEYS.checkins,JSON.stringify(checkins));
@@ -5896,7 +5896,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // Show a small install button in the corner
   const b = document.createElement('button');
   b.textContent = '📲 INSTALL APP';
-  b.style.cssText = 'position:fixed;bottom:60px;right:14px;background:var(--accent3);color:#000;border:none;padding:0.6rem 1rem;border-radius:8px;font-family:DM Mono,monospace;font-size:0.75rem;font-weight:700;cursor:pointer;z-index:9500;box-shadow:0 4px 16px rgba(0,229,160,0.4);';
+  b.style.cssText = 'position:fixed;bottom:60px;right:14px;background:var(--accent3);color:#000;border:none;padding:0.6rem 1rem;border-radius:8px;font-family:DM Mono,monospace;font-size:0.75rem;font-weight:700;cursor:pointer;z-index:200;box-shadow:0 4px 16px rgba(0,229,160,0.4);';
   b.onclick = async () => {
     b.remove();
     if (_deferredInstall) {
@@ -7722,7 +7722,7 @@ function updateBottomNav(id) {
         var sm = sl.length ? summarise(sl) : { sets: (en && en.sets) || '', weight: (en && en.weight) || '' };
         doneRows += '<button class="tv2-done-row" onclick="tv2Go(' + i + ')">' +
           '<span class="tv2-bullet done"></span><span class="n">' + esc(ex.name) + '</span>' +
-          '<span class="v">' + esc(sm.sets) + ' sets' + (sm.weight ? ' · ' + esc(sm.weight) : '') + '</span></button>';
+          '<span class="v">' + esc(sm.sets) + ' sets' + (sm.weight && /[^\s,]/.test(sm.weight) ? ' · ' + esc(sm.weight) : '') + '</span></button>';
       } else {
         var h2 = false; try { h2 = !!(howTos && howTos[ex.name]); } catch (e3) {}
         upRows += '<div class="tv2-up">' +
