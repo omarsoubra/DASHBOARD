@@ -570,11 +570,27 @@
     };
   };
 
+  // APPLE HEALTH (2026-10-14): the in-app Connect card lives in health-client.js, next to this file. It reuses the
+  // login this shell already passes here. Loaded after reminders are set up and fully isolated: if it fails to load
+  // or throws, nothing above is affected.
+  function bootHealth(opts) {
+    try {
+      var api = String(opts.pushUrl || '').replace(/\/push$/, '/api');
+      var start = function () { try { window.LockedInHealth.boot({ storageKey: opts.storageKey, getToken: opts.getToken, apiUrl: api }); } catch (e) {} };
+      if (window.LockedInHealth) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'health-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   window.LockedInPush = {
     mount: function (opts) {
       var p = new Push(opts);
       p.render();
       p.init();
+      bootHealth(opts || {});
       return p;
     },
   };
