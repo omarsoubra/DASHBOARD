@@ -60,7 +60,8 @@
       status = s;
       if (s.connected && s.days && s.days.length) put('k', null);          // the Shortcut has its code: forget it here
       render();
-      if (sheet && s.connected && s.days && s.days.length && sheet.dataset.step !== 'done' && sheet.dataset.step !== 'manage') step('done');
+      var fresh = s.lastSyncAt && Date.now() - Date.parse(s.lastSyncAt) < 10 * 60e3;
+      if (sheet && s.connected && s.days && s.days.length && (sheet.dataset.step === 'finish' || sheet.dataset.step === 'add' || (sheet.dataset.step === 'fix' && fresh))) step('done');
       return s;
     }).catch(function () { render(); });
   }
@@ -120,6 +121,7 @@
       '.lih-steps li.ok .lih-n{background:#30d158;color:#06210f}',
       '.lih-fine{font-size:11.5px!important;color:rgba(244,245,248,.5)!important;margin-top:10px!important}',
       '.lih-close{position:absolute;top:12px;right:14px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:18px;line-height:32px;cursor:pointer}',
+      '.lih-stale .lih-orb{color:#ffb340}.lih-stale .lih-orb::before{background:conic-gradient(from 0deg,#ffb340,#ff7a1a,#ffb340)}',
       '.lih-pop{animation:lih-pop .5s cubic-bezier(.2,1.4,.4,1)}@keyframes lih-pop{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}',
       '@media (prefers-reduced-motion:reduce){.lih-aurora,.lih-orb::before,.lih-orb::after,.lih-cta::after,.lih-live i{animation:none}.lih-sheet{transition:none}}',
     ].join('\n');
@@ -140,6 +142,16 @@
   function card() {
     var c = el('div', { class: 'lih-card', id: 'lih-card' }, [el('div', { class: 'lih-aurora' })]);
     var connected = status && status.connected, days = (status && status.days) || [];
+    var lastSync = status && status.lastSyncAt ? Date.parse(status.lastSyncAt) : NaN;
+    var stale = connected && days.length && isFinite(lastSync) && Date.now() - lastSync > 36 * 3600e3;
+    if (stale) {                                   // the nightly sync stopped (automation off, or a permission declined)
+      c.classList.add('lih-stale');
+      c.appendChild(el('div', { class: 'lih-row' }, [el('div', { class: 'lih-orb' }, [svg(HEART)]),
+        el('div', { class: 'lih-tx' }, [el('b', { text: 'Apple Health sync paused' }),
+          el('span', { text: 'Last synced ' + when(status.lastSyncAt) + '. One tap to get it going again.' })])]));
+      c.appendChild(el('button', { type: 'button', class: 'lih-cta', on: { click: function () { open('fix'); } } }, ['Fix it']));
+      return c;
+    }
     if (connected && days.length) {
       var d = days[0];
       c.appendChild(el('div', { class: 'lih-row' }, [el('div', { class: 'lih-orb' }, [svg(HEART)]),
@@ -199,7 +211,7 @@
     document.body.appendChild(scrim); document.body.appendChild(sheet);
     requestAnimationFrame(function () { scrim.classList.add('on'); sheet.classList.add('on'); });
     step(which);
-    clearInterval(poll); poll = setInterval(function () { if (!document.hidden && sheet && sheet.dataset.step === 'finish') refresh(); }, 5000);
+    clearInterval(poll); poll = setInterval(function () { if (!document.hidden && sheet && (sheet.dataset.step === 'finish' || sheet.dataset.step === 'fix')) refresh(); }, 5000);
   }
   function close(instant) {
     clearInterval(poll); poll = null;
@@ -266,6 +278,19 @@
             el('small', { text: 'Shortcuts → Automation → + → Time of Day → 9:00 PM · Daily · Run Immediately → Next → ' + SHORTCUT_NAME })])])]),
         run, auto,
         el('p', { class: 'lih-fine', text: 'This screen turns green by itself as soon as your first sync arrives.' })]);
+    } else if (s === 'fix') {
+      var again = el('button', { type: 'button', class: 'lih-cta' }, ['Sync now']);
+      again.addEventListener('click', function () { put('ran', '1'); runShortcut(); });
+      var openSc = el('button', { type: 'button', class: 'lih-cta lih-ghost' }, ['Open Shortcuts']);
+      openSc.addEventListener('click', function () { try { window.location.href = 'shortcuts://'; } catch (e) {} });
+      frame('fix', [el('h3', { text: 'Get syncing again' }),
+        el('ol', { class: 'lih-steps' }, [
+          el('li', {}, [el('span', { class: 'lih-n', text: '1' }), el('span', {}, [el('b', { text: 'Sync now' }),
+            el('small', { text: 'If your iPhone asks, tap Always Allow.' })])]),
+          el('li', {}, [el('span', { class: 'lih-n', text: '2' }), el('span', {}, [el('b', { text: 'Check the nightly automation' }),
+            el('small', { text: 'Shortcuts → Automation: "Time of Day 9:00 PM" should run ' + SHORTCUT_NAME + ' with Run Immediately. If it’s missing, add it: + → Time of Day → 9:00 PM · Daily · Run Immediately.' })])])]),
+        again, openSc,
+        el('p', { class: 'lih-fine', text: 'This turns green by itself as soon as a sync arrives.' })]);
     } else if (s === 'done') {
       var d = (status && status.days && status.days[0]) || {};
       frame('done', [el('div', { class: 'lih-hero lih-pop' }, [el('div', { class: 'lih-orb lih-ok-orb', style: 'color:#30d158' }, [svg(CHECK)])]),

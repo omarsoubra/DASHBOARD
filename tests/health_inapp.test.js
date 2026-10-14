@@ -13,7 +13,7 @@ const CODE = 'lih_' + 'ab12'.repeat(10);
 
 const INIT = String.raw`
 (function () {
-  window.__h = { connected: false, days: [], calls: [], opened: null, copied: null, nav: [] };
+  window.__h = { connected: false, days: [], lastSyncAt: null, calls: [], opened: null, copied: null, nav: [] };
   var real = window.fetch.bind(window);
   window.fetch = function (u, o) {
     u = String((u && u.url) || u);
@@ -21,7 +21,7 @@ const INIT = String.raw`
     var b = {}; try { b = JSON.parse((o && o.body) || '{}'); } catch (e) {}
     __h.calls.push(b.type);
     var r = { ok: true };
-    if (b.type === 'healthSelfStatus') r = { ok: true, connected: __h.connected, days: __h.days, consentVersion: 'health-v1-2026-10-14' };
+    if (b.type === 'healthSelfStatus') r = { ok: true, connected: __h.connected, days: __h.days, lastSyncAt: __h.lastSyncAt, consentVersion: 'health-v1-2026-10-14' };
     else if (b.type === 'healthSelfConnect') r = (b.agree === true && b.version === 'health-v1-2026-10-14') ? (__h.connected = true, { ok: true, healthKey: '${CODE}' }) : { ok: false, error: 'consent_required' };
     else if (b.type === 'healthSelfDisconnect') { __h.connected = false; __h.days = []; r = { ok: true, revoked: true, deleted: 1 }; }
     return new Promise(function (res) { setTimeout(function () { res(new Response(JSON.stringify(r), { status: 200, headers: { 'Content-Type': 'application/json' } })); }, 40); });
@@ -76,7 +76,7 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     t('the code is never shown in the page', !(await page.eval(`document.body.innerText.indexOf('${CODE}') >= 0 || document.documentElement.outerHTML.indexOf('${CODE}') >= 0`)));
     await shot('4_finish.png');
     await page.eval(`__h.days = [{ day: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }), steps: 8432, active_kcal: 512, resting_hr: 58, received_at: new Date().toISOString() }];
-      document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(800);
+      __h.lastSyncAt = new Date().toISOString(); document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(800);
     t('first sync detected -> "You\'re synced"', await page.eval(`document.querySelector('.lih-sheet').dataset.step === 'done' && /synced/.test(document.querySelector('.lih-sheet').innerText)`));
     await shot('5_done.png');
     await click('.lih-sheet .lih-cta'); await wait(600);
@@ -85,6 +85,15 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     t('the code is forgotten on this phone once data arrived', await page.eval(`localStorage.getItem('lih_k_' + CLIENT_CONFIG.client.storageKey) === null`));
     await page.eval(`document.getElementById('lih-card').scrollIntoView({ block: 'center' }); 1`); await wait(300);
     await shot('6_live_card.png');
+    await page.eval(`__h.lastSyncAt = new Date(Date.now() - 3 * 864e5).toISOString(); document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(700);
+    t('no sync for 3 days -> the card says "sync paused" with Fix it', /sync paused/i.test(await q('#lih-card')) && /Fix it/.test(await q('#lih-card')), await q('#lih-card'));
+    await page.eval(`document.getElementById('lih-card').scrollIntoView({ block: 'center' }); 1`); await wait(200);
+    await shot('7_paused.png');
+    await click('#lih-card .lih-cta'); await wait(500);
+    t('Fix it opens the get-syncing-again sheet', await page.eval(`document.querySelector('.lih-sheet').dataset.step === 'fix'`));
+    await page.eval(`__h.lastSyncAt = new Date().toISOString(); document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(800);
+    t('a fresh sync turns it green ("You\'re synced") and the card goes live again', await page.eval(`document.querySelector('.lih-sheet').dataset.step === 'done'`) && !/paused/i.test(await q('#lih-card')));
+    await click('.lih-sheet .lih-cta'); await wait(500);
     await page.eval(`[].slice.call(document.querySelectorAll('#lih-card .lih-link')).filter(function (b) { return /Manage/.test(b.textContent); })[0].click(); 1`); await wait(500);
     await page.eval(`[].slice.call(document.querySelectorAll('.lih-sheet .lih-cta')).filter(function (b) { return /Stop sharing/.test(b.textContent); })[0].click(); 1`); await wait(500);
     t('Manage -> stop sharing: server disconnect, card back to Connect', await page.eval(`__h.calls.indexOf('healthSelfDisconnect') >= 0`) && /Connect Apple Health/.test(await q('#lih-card')));

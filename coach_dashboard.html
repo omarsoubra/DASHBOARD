@@ -5937,6 +5937,7 @@ async function loadHealth() {
     (r.rows || []).forEach(function (x) { (rows[x.storage_key] = rows[x.storage_key] || []).push(x); });
     HEALTH = { rows: rows, status: r.status || {}, loaded: true };
     document.querySelectorAll('[data-health-key]').forEach(function (el) { _healthFill(el.getAttribute('data-health-key')); });
+    try { if (!location.hash || location.hash.indexOf('#/today') === 0) renderToday(); } catch (e) {}   // the This-morning sync-stopped row
   } catch (e) { /* optional */ }
 }
 function _healthAvg(rows, f) { var v = rows.map(function (r) { return r[f]; }).filter(function (x) { return x != null; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; }
@@ -5966,8 +5967,31 @@ function _healthFill(key) {
       stat('Steps / day', 'steps', '', int) + stat('Active kcal', 'active_kcal', '', int) + stat('Exercise', 'exercise_min', ' min', int) +
       stat('Sleep', 'sleep_min', ' h', hrs) + stat('Resting HR', 'resting_hr', ' bpm', int) + '</div>' +
     (last14.length ? '<div style="display:flex;gap:3px;align-items:flex-end;margin-bottom:6px">' + bars + '</div><div class="v2-muted" style="font-size:12px;margin-bottom:10px">Steps, last 14 days · averages are the last 7 days vs the 7 before</div>' : '') +
-    '<div class="v2-muted" style="font-size:12px;margin-bottom:10px">' + (lastDay ? 'Last day received: ' + esc_(lastDay) : 'Nothing received yet') + (st ? '' : ' · link switched off') + '</div>' +
+    (_healthStale().indexOf(key) >= 0 ? '<div style="font-size:12.5px;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:#fff7e6;color:#9a5b00">Sync stopped — last upload ' + esc_(_fmtWhen(st.lastUsedAt || st.consentAt)) + '. Their app shows them a Fix it button; a nudge helps.</div>' : '') +
+    '<div class="v2-muted" style="font-size:12px;margin-bottom:10px">' + (lastDay ? 'Last day received: ' + esc_(lastDay) : 'Nothing received yet') + (_healthDevices(rows) ? ' · from ' + esc_(_healthDevices(rows)) : '') + (st ? '' : ' · link switched off') + '</div>' +
     btn + '<div class="hl-link"></div>';
+}
+/** Devices behind a client's data, from the latest day's per-source totals: 'Garmin · iPhone'. */
+function _healthDevices(rows) {
+  for (var i = rows.length - 1; i >= 0; i--) {
+    var src = rows[i].sources && (rows[i].sources.steps || rows[i].sources.active);
+    if (!src) continue;
+    var kinds = [];
+    Object.keys(src).forEach(function (n) {
+      var k = /watch/i.test(n) ? 'Apple Watch' : /garmin|forerunner|fenix|venu|vivo/i.test(n) ? 'Garmin' : /whoop/i.test(n) ? 'WHOOP' : /oura/i.test(n) ? 'Oura' :
+              /fitbit/i.test(n) ? 'Fitbit' : /iphone/i.test(n) ? 'iPhone' : 'Other app';
+      if (kinds.indexOf(k) < 0) kinds.push(k);
+    });
+    return kinds.join(' · ');
+  }
+  return '';
+}
+/** Clients whose phone stopped syncing (active link, last upload 36h+ ago). */
+function _healthStale() {
+  return Object.keys(HEALTH.status || {}).filter(function (k) {
+    var st = HEALTH.status[k]; if (!st || st.state !== 'active') return false;
+    var t = Date.parse(st.lastUsedAt || st.consentAt || ''); return isFinite(t) && Date.now() - t > 36 * 3600e3;
+  });
 }
 function _healthDayAgo(n) { var d = new Date(Date.now() - n * 86400000); return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); }
 async function _healthIssue(key, btn) {
@@ -12081,6 +12105,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
       return '<button type="button" class="v2-m-chip' + (k === _jmOpen ? ' is-on' : '') + '" data-jm="' + esc(k) + '">' + esc(String(c.displayName || c.storageKey).split(' ')[0]) +
         ' <small>' + esc(JM_LABEL[d.action] || d.action) + '</small></button>';
     }).join('') + '<div id="v2-m-jm"></div>']);
+    var hStale = []; try { if (HEALTH.loaded) _healthStale().forEach(function (k) { var c = active.find(function (x) { return x.storageKey === k; }); if (c) hStale.push(link(c)); }); } catch (e) {}
+    if (hStale.length) rows.push(['amber', 'Apple Health sync stopped (36h+)', chips(hStale)]);
     if (quiet.length) rows.push(['grey', 'Gone quiet (3–13 days)', chips(quiet)]);
     if (next.length) rows.push(['grey', 'Unlock code next week', chips(next)]);
     if (inactive) rows.push(['grey', '<a class="v2-m-link" href="#/clients">' + inactive + ' inactive 14+ days - archive or check in →</a>', ''])

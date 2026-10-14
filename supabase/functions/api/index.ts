@@ -1282,6 +1282,9 @@ async function healthLog(body: any) {
     v.forEach((x, i) => { if (x !== null) { const k = (sl[i] || 'unknown').trim().slice(0, 60) || 'unknown'; sums[k] = (sums[k] ?? 0) + x; } });
     return { total: Math.max(...Object.values(sums)), sources: Object.fromEntries(Object.entries(sums).map(([k, n]) => [k, Math.round(n)])) };
   };
+  // v4 Shortcut (2026-10-14): every reading of the last two days with its start time, so YESTERDAY is re-sent with its
+  // final total (a 9pm sync never sees 9pm-midnight) and each reading lands on its own Sydney day.
+  if (body?.stepsDates || body?.activeDates) return healthLogDays(row, body, today, used);
   const stepsPS = perSource(body?.stepsList, body?.stepsSources), activePS = perSource(body?.activeList, body?.activeSources);
   if (stepsPS.total !== null) body.steps = stepsPS.total;
   if (activePS.total !== null) body.activeKcal = activePS.total;
@@ -1304,6 +1307,49 @@ async function healthLog(body: any) {
   await admin.from('health_keys').update({ last_used_at: nowIso, uploads_today: used + 1, uploads_day: today }).eq('id', row.id);
   return ok({ day, saved: Object.keys(fields), ...(Object.keys(stepsPS.sources).length ? { stepsBySource: stepsPS.sources } : {}),
               ...(Object.keys(activePS.sources).length ? { activeBySource: activePS.sources } : {}) });
+}
+/** Sydney day ('YYYY-MM-DD') of a Shortcut date: ISO 8601 with an offset ('2026-10-14T10:26:00+11:00'); null otherwise. */
+function healthDay(raw: string): string | null {
+  const t = Date.parse(String(raw ?? '').trim());
+  return Number.isFinite(t) ? sydneyDate(t) : null;
+}
+/** Readings (values / sources / start dates as newline lists) -> { day: { source: sum } }. */
+function healthBuckets(vals: any, srcs: any, dates: any): Record<string, Record<string, number>> {
+  const v = String(vals ?? '').split(/\r?\n/), s = String(srcs ?? '').split(/\r?\n/), d = String(dates ?? '').split(/\r?\n/);
+  const out: Record<string, Record<string, number>> = {};
+  v.forEach((x, i) => {
+    const n = healthNum(x), day = healthDay(d[i]);
+    if (n === null || !day) return;
+    const src = (s[i] || 'unknown').trim().slice(0, 60) || 'unknown';
+    (out[day] ??= {})[src] = ((out[day] ?? {})[src] ?? 0) + n;
+  });
+  return out;
+}
+async function healthLogDays(row: any, body: any, today: string, used: number) {
+  const steps = healthBuckets(body?.stepsList, body?.stepsSources, body?.stepsDates);
+  const active = healthBuckets(body?.activeList, body?.activeSources, body?.activeDates);
+  const days = [...new Set([...Object.keys(steps), ...Object.keys(active)])]
+    .filter((d) => { const age = (Date.parse(today) - Date.parse(d)) / 86400000; return age >= 0 && age <= 7; }).sort();
+  if (!days.length) return err('no_values');
+  const nowIso = new Date().toISOString(), saved: Record<string, unknown> = {};
+  const top = (m: Record<string, number> | undefined) => m && Object.keys(m).length ? Math.round(Math.max(...Object.values(m))) : null;
+  for (const day of days) {
+    const fields: Record<string, unknown> = {};
+    const st = top(steps[day]), ac = top(active[day]);
+    if (st !== null && st <= 150000) fields.steps = st;
+    if (ac !== null && ac <= 10000) fields.active_kcal = ac;
+    if (!Object.keys(fields).length) continue;
+    const { data: ex } = await admin.from('health_daily').select('id, sources').eq('client_id', row.client_id).eq('day', day).maybeSingle();
+    const round = (m: Record<string, number> | undefined) => m ? Object.fromEntries(Object.entries(m).map(([k, n]) => [k, Math.round(n)])) : undefined;
+    fields.sources = Object.assign({}, ex?.sources ?? {}, steps[day] ? { steps: round(steps[day]) } : {}, active[day] ? { active: round(active[day]) } : {});
+    const { error } = ex?.id
+      ? await admin.from('health_daily').update({ ...fields, received_at: nowIso }).eq('id', ex.id)
+      : await admin.from('health_daily').insert({ client_id: row.client_id, storage_key: row.storage_key, day, ...fields, received_at: nowIso });
+    if (error) { logEfError('healthLog', row.storage_key, 'write_failed', error.message); return err('write_failed'); }
+    saved[day] = { steps: fields.steps ?? null, active_kcal: fields.active_kcal ?? null };
+  }
+  await admin.from('health_keys').update({ last_used_at: nowIso, uploads_today: used + 1, uploads_day: today }).eq('id', row.id);
+  return ok({ days: saved });
 }
 async function healthRevoke(body: any) {
   const isCoach = verifyCoachToken(body?.coachToken);
@@ -1341,12 +1387,12 @@ async function healthSelfStatus(body: any) {
   const gate = await requireCapability(String(v.storageKey).toLowerCase(), 'view_progress');
   if (!gate.ok) return capabilityDenied(gate.reason);
   const c = await healthClientRow(String(v.storageKey).toLowerCase()); if (c instanceof Response) return c;
-  const { data: k } = await admin.from('health_keys').select('consent_at').eq('client_id', c.id).is('revoked_at', null).limit(1);
+  const { data: k } = await admin.from('health_keys').select('consent_at, last_used_at').eq('client_id', c.id).is('revoked_at', null).limit(1);
   const since = sydneyDate(Date.now() - 7 * 86400000);
   const { data: rows } = await admin.from('health_daily').select('day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at')
     .eq('client_id', c.id).gte('day', since).order('day', { ascending: false }).limit(8);
   const active = !!(k ?? [])[0]?.consent_at;
-  return ok({ connected: active, days: active ? (rows ?? []) : [], consentVersion: HEALTH_CONSENT_VERSION });
+  return ok({ connected: active, days: active ? (rows ?? []) : [], lastSyncAt: active ? ((k ?? [])[0]?.last_used_at ?? null) : null, consentVersion: HEALTH_CONSENT_VERSION });
 }
 async function healthSelfConnect(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
@@ -1378,7 +1424,7 @@ async function healthGet(body: any) {
   const days = Math.min(Math.max(Number(body?.days) || 30, 1), 120);
   const since = sydneyDate(Date.now() - days * 86400000);
   const { data: rows, error } = await admin.from('health_daily')
-    .select('storage_key, day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at').gte('day', since).order('day', { ascending: true }).limit(5000);
+    .select('storage_key, day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at, sources').gte('day', since).order('day', { ascending: true }).limit(5000);
   if (error) return err('read_failed');
   const { data: keys } = await admin.from('health_keys').select('storage_key, consent_at, revoked_at, last_used_at, created_at').is('revoked_at', null);
   const status: Record<string, unknown> = {};

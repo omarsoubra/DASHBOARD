@@ -102,6 +102,26 @@ const B = (r) => r.__body;
   await M.healthLog({ healthKey: z, steps: 4000 });
   const off = B(await M.healthRevoke({ healthKey: key3, deleteData: true }));
   t('client switch-off: revoked + ALL their data deleted, nobody else\'s', off.revoked && off.deleted === 1 && T.health_daily.length === 1 && T.health_daily[0].client_id === 'c2', off);
+  console.log('v4: two days of readings with start times');
+  T.health_keys = []; T.health_daily = [];
+  const k4 = B(await M.healthSelfConnect({ storageKey: 'zain_hussein', token: 'tok-zain_hussein', agree: true, version: M.HEALTH_CONSENT_VERSION })).healthKey;
+  const syd = (daysAgo, hh) => { const d = new Date(Date.now() - daysAgo * 864e5); const ymd = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); return ymd + 'T' + hh + ':00+11:00'; };
+  const tdy = M.sydneyDate(Date.now()), yst = M.sydneyDate(Date.now() - 864e5);
+  // yesterday: Garmin 9000 total (two readings) vs iPhone 4000; plus a late 21:40 walk the 9pm sync missed. Today: Garmin 300.
+  const v4 = B(await M.healthLog({ healthKey: k4,
+    stepsList: ['5000', '3500', '500', '4000', '300'].join('\n'),
+    stepsSources: ["Zain's Garmin", "Zain's Garmin", "Zain's Garmin", "Zain's iPhone", "Zain's Garmin"].join('\n'),
+    stepsDates: [syd(1, '09:00'), syd(1, '18:00'), syd(1, '21:40'), syd(1, '12:00'), syd(0, '07:10')].join('\n') }));
+  const rowY = T.health_daily.find((r) => r.day === yst), rowT = T.health_daily.find((r) => r.day === tdy);
+  t('each reading lands on its own Sydney day; yesterday gets its FINAL total (incl. after 9pm); largest device wins',
+    v4.ok && rowY && rowY.steps === 9000 && rowT && rowT.steps === 300, { v4, rowY, rowT });
+  t('per-device totals are kept (who wears what)', rowY.sources && rowY.sources.steps["Zain's Garmin"] === 9000 && rowY.sources.steps["Zain's iPhone"] === 4000, rowY && rowY.sources);
+  await M.healthLog({ healthKey: k4, stepsList: '9500', stepsSources: "Zain's Garmin", stepsDates: syd(1, '23:00') });
+  t('a later run re-sends yesterday: its row is updated, not duplicated', T.health_daily.filter((r) => r.day === yst).length === 1 && T.health_daily.find((r) => r.day === yst).steps === 9500);
+  t('readings older than 7 days are ignored', B(await M.healthLog({ healthKey: k4, stepsList: '10', stepsSources: 'x', stepsDates: '2020-01-01T10:00:00+11:00' })).error === 'no_values');
+  const st4 = B(await M.healthSelfStatus({ storageKey: 'zain_hussein', token: 'tok-zain_hussein' }));
+  t('self status reports when the phone last synced', st4.connected && !!st4.lastSyncAt, st4);
+
   console.log('in-app (client login)');
   T.health_keys = []; T.health_daily = [];
   t('self status needs the client\'s own token', B(await M.healthSelfStatus({ storageKey: 'bishoy_shaker', token: 'tok-zain_hussein' })).error === 'bad_token');
