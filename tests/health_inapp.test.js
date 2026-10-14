@@ -94,6 +94,10 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     await page.eval(`__h.lastSyncAt = new Date().toISOString(); document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(800);
     t('a fresh sync turns it green ("You\'re synced") and the card goes live again', await page.eval(`document.querySelector('.lih-sheet').dataset.step === 'done'`) && !/paused/i.test(await q('#lih-card')));
     await click('.lih-sheet .lih-cta'); await wait(500);
+    await page.eval(`__h.days[0].sleep_min = 452; document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(700);
+    t('with sleep (v4): the third tile is last night\'s sleep, e.g. "7h 32"', /7h 32/.test(await q('#lih-card')) && /sleep/.test(await q('#lih-card')), await q('#lih-card'));
+    await page.eval(`document.getElementById('lih-card').scrollIntoView({ block: 'center' }); 1`); await wait(200);
+    await shot('8_sleep_card.png');
     await page.eval(`[].slice.call(document.querySelectorAll('#lih-card .lih-link')).filter(function (b) { return /Manage/.test(b.textContent); })[0].click(); 1`); await wait(500);
     await page.eval(`[].slice.call(document.querySelectorAll('.lih-sheet .lih-cta')).filter(function (b) { return /Stop sharing/.test(b.textContent); })[0].click(); 1`); await wait(500);
     t('Manage -> stop sharing: server disconnect, card back to Connect', await page.eval(`__h.calls.indexOf('healthSelfDisconnect') >= 0`) && /Connect Apple Health/.test(await q('#lih-card')));

@@ -10,7 +10,7 @@
                        (the client's upload code is copied first; Apple's own
                        Add Shortcut screen asks for it), then "Run it once" and the
                        one-time nightly automation, then it detects the first sync.
-     connected      -> today's steps / active energy / resting heart rate, when it
+     connected      -> today's steps / active energy / last night's sleep (or resting heart rate), when it
                        last synced, Sync now, Manage (stop sharing + delete).
    Rules: the client token only travels in POST bodies to the api; the upload
    code is shown nowhere, kept on this phone only until the first sync arrives;
@@ -130,6 +130,7 @@
 
   // ── Home card ─────────────────────────────────────────────────────────────
   function fmtInt(n) { return n == null ? '—' : Math.round(n).toLocaleString('en-AU'); }
+  function fmtSleep(m) { m = Math.round(m); return Math.floor(m / 60) + 'h ' + (m % 60 < 10 ? '0' : '') + (m % 60); }
   function when(iso) {
     try {
       var d = new Date(iso), now = new Date();
@@ -159,7 +160,9 @@
       c.appendChild(el('div', { class: 'lih-metrics' }, [
         el('div', { class: 'lih-m' }, [el('b', { text: fmtInt(d.steps) }), el('span', { text: 'steps' })]),
         el('div', { class: 'lih-m' }, [el('b', { text: fmtInt(d.active_kcal) }), el('span', { text: 'active kcal' })]),
-        el('div', { class: 'lih-m' }, [el('b', { text: d.resting_hr != null ? String(d.resting_hr) : '—' }), el('span', { text: 'resting bpm' })])]));
+        d.sleep_min != null
+          ? el('div', { class: 'lih-m' }, [el('b', { text: fmtSleep(d.sleep_min) }), el('span', { text: 'sleep' })])
+          : el('div', { class: 'lih-m' }, [el('b', { text: d.resting_hr != null ? String(d.resting_hr) : '—' }), el('span', { text: 'resting bpm' })])]));
       c.appendChild(el('div', { class: 'lih-foot' }, [
         el('span', { class: 'lih-live' }, [el('i'), el('span', { text: 'Synced ' + when(d.received_at) })]),
         el('span', { class: 'lih-acts' }, [el('button', { type: 'button', class: 'lih-link', on: { click: syncNow } }, [svg(SYNC), 'Sync now']),
@@ -170,7 +173,7 @@
     c.appendChild(el('div', { class: 'lih-row' }, [el('div', { class: 'lih-orb' }, [svg(HEART)]),
       el('div', { class: 'lih-tx' }, [el('b', { text: pending ? 'Finish connecting Apple Health' : 'Connect Apple Health' }),
         el('span', { text: pending ? 'One last step — then it syncs every night on its own.' : 'Your steps, calories and recovery, synced to your coaching automatically.' })])]));
-    if (!pending) c.appendChild(el('div', { class: 'lih-chips' }, [el('span', { text: 'Steps' }), el('span', { text: 'Active energy' }), el('span', { text: 'Resting heart rate' }), el('span', { text: 'Private to Omar' })]));
+    if (!pending) c.appendChild(el('div', { class: 'lih-chips' }, [el('span', { text: 'Steps' }), el('span', { text: 'Active energy' }), el('span', { text: 'Sleep' }), el('span', { text: 'Private to Omar' })]));
     c.appendChild(el('button', { type: 'button', class: 'lih-cta', on: { click: function () { open(pending ? (get('k') ? 'add' : 'finish') : 'consent'); } } }, [pending ? 'Finish setup' : 'Connect']));
     return c;
   }
@@ -243,7 +246,7 @@
         }).catch(function () { btn.removeAttribute('disabled'); btn.textContent = 'Couldn’t connect — tap to retry'; });
       });
       frame('consent', [hero(), el('h3', { text: 'Connect Apple Health' }),
-        el('p', { text: 'Once a day your iPhone shares your steps, active calories and resting heart rate with Omar — so your calories and training match how active you really are.' }),
+        el('p', { text: 'Once a day your iPhone shares your daily steps, active calories, exercise minutes, resting heart rate and sleep with Omar — so your calories and training match how active and recovered you really are.' }),
         el('div', { class: 'lih-chips' }, [el('span', { text: 'Only Omar sees it' }), el('span', { text: 'Never sold or shared' }), el('span', { text: 'Stop anytime — data deleted' })]),
         el('label', { class: 'lih-check' }, [cb, el('span', { text: 'I agree to share these daily totals for my coaching, and I’m 18+ (or my parent/guardian agrees).' })]),
         btn]);
@@ -309,7 +312,7 @@
         }).catch(function () { stop.removeAttribute('disabled'); stop.textContent = 'Couldn’t stop — tap to retry'; });
       });
       frame('manage', [el('h3', { text: 'Apple Health' }),
-        el('p', { text: 'Your daily steps, active calories and resting heart rate sync every night at 9pm. Only Omar sees them.' }),
+        el('p', { text: 'Your daily steps, active calories, exercise minutes, resting heart rate and sleep sync every night at 9pm. Only Omar sees them.' }),
         el('button', { type: 'button', class: 'lih-cta', on: { click: function () { step('consent'); } } }, ['Set it up on this phone']), stop]);
     }
   }

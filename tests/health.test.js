@@ -119,6 +119,24 @@ const B = (r) => r.__body;
   await M.healthLog({ healthKey: k4, stepsList: '9500', stepsSources: "Zain's Garmin", stepsDates: syd(1, '23:00') });
   t('a later run re-sends yesterday: its row is updated, not duplicated', T.health_daily.filter((r) => r.day === yst).length === 1 && T.health_daily.find((r) => r.day === yst).steps === 9500);
   t('readings older than 7 days are ignored', B(await M.healthLog({ healthKey: k4, stepsList: '10', stepsSources: 'x', stepsDates: '2020-01-01T10:00:00+11:00' })).error === 'no_values');
+  // the 3-day window's OLDEST day arrives cut part-way: it must never lower a finished day
+  await M.healthLog({ healthKey: k4, stepsList: '1200', stepsSources: "Zain's Garmin", stepsDates: syd(1, '23:30') });
+  t('a partial re-send never lowers a finished day (per device the larger total is kept)', T.health_daily.find((r) => r.day === yst).steps === 9500);
+  // sleep, in the exact format iOS 26 Shortcuts writes (read back from Omar's Garmin data 2026-10-14): one long In Bed,
+  // then stages. Last night 22:40 -> 06:40 in bed; asleep = 22:41-01:00 + 01:30-06:30 (a 30-min Awake gap) = 7h19m.
+  const night = [['In Bed', syd(1, '22:40'), syd(0, '06:40')], ['Core', syd(1, '22:41'), syd(1, '23:30')], ['Deep', syd(1, '23:30'), syd(0, '00:20')],
+    ['REM', syd(0, '00:20'), syd(0, '01:00')], ['Awake', syd(0, '01:00'), syd(0, '01:30')], ['Core', syd(0, '01:30'), syd(0, '06:30')],
+    ['Core', syd(0, '02:00'), syd(0, '03:00')]];   // a second device overlapping: merged, not added twice
+  const sl = B(await M.healthLog({ healthKey: k4, sleepValues: night.map((x) => x[0]).join('\n'), sleepStarts: night.map((x) => x[1]).join('\n'),
+    sleepEnds: night.map((x) => x[2]).join('\n'), exerciseList: '12\n20', exerciseSources: "Zain's Apple Watch\nZain's Apple Watch",
+    exerciseDates: [syd(0, '07:00'), syd(0, '08:00')].join('\n'), restingHr: '54', restingHrDate: syd(0, '06:00') }));
+  const rs = T.health_daily.find((r) => r.day === tdy);
+  t('sleep: time asleep (no In Bed, no Awake, overlaps merged) lands on the day you wake up', sl.ok && rs.sleep_min === 439, { sl, rs });
+  t('sleep stages kept for the coach (deep / REM / core / awake minutes)', rs.sources.sleep && rs.sources.sleep.deep === 50 && rs.sources.sleep.rem === 40 && rs.sources.sleep.awake === 30, rs.sources);
+  t('exercise minutes + resting heart rate on their own day; earlier steps on that day untouched', rs.exercise_min === 32 && rs.resting_hr === 54 && rs.steps === 300, rs);
+  await M.healthLog({ healthKey: k4, sleepValues: 'Core', sleepStarts: syd(0, '05:00'), sleepEnds: syd(0, '06:30') });
+  t('a cut-off night re-sent later never lowers sleep', T.health_daily.find((r) => r.day === tdy).sleep_min === 439);
+  t('a sleep stage longer than 16 h is ignored (bad data)', B(await M.healthLog({ healthKey: k4, sleepValues: 'Core', sleepStarts: syd(3, '00:00'), sleepEnds: syd(0, '00:00') })).error === 'no_values');
   const st4 = B(await M.healthSelfStatus({ storageKey: 'zain_hussein', token: 'tok-zain_hussein' }));
   t('self status reports when the phone last synced', st4.connected && !!st4.lastSyncAt, st4);
 

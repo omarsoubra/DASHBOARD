@@ -1282,9 +1282,9 @@ async function healthLog(body: any) {
     v.forEach((x, i) => { if (x !== null) { const k = (sl[i] || 'unknown').trim().slice(0, 60) || 'unknown'; sums[k] = (sums[k] ?? 0) + x; } });
     return { total: Math.max(...Object.values(sums)), sources: Object.fromEntries(Object.entries(sums).map(([k, n]) => [k, Math.round(n)])) };
   };
-  // v4 Shortcut (2026-10-14): every reading of the last two days with its start time, so YESTERDAY is re-sent with its
+  // v4 Shortcut (2026-10-14): every reading of the last three days with its start time (sleep: stages with start + end), so YESTERDAY is re-sent with its
   // final total (a 9pm sync never sees 9pm-midnight) and each reading lands on its own Sydney day.
-  if (body?.stepsDates || body?.activeDates) return healthLogDays(row, body, today, used);
+  if (body?.stepsDates || body?.activeDates || body?.exerciseDates || body?.sleepStarts || body?.restingHrDate) return healthLogDays(row, body, today, used);
   const stepsPS = perSource(body?.stepsList, body?.stepsSources), activePS = perSource(body?.activeList, body?.activeSources);
   if (stepsPS.total !== null) body.steps = stepsPS.total;
   if (activePS.total !== null) body.activeKcal = activePS.total;
@@ -1325,29 +1325,80 @@ function healthBuckets(vals: any, srcs: any, dates: any): Record<string, Record<
   });
   return out;
 }
+// Sleep (v4): Apple Health sleep stages as Shortcuts writes them. Time asleep = Core + Deep + REM (+ "Asleep" from older
+// sources), never In Bed or Awake. Overlapping stages from two devices are merged, never added twice.
+const HEALTH_NOT_ASLEEP = new Set(['in bed', 'awake', 'inbed']);
+/** Sleep stages (values / starts / ends as newline lists) -> { day: { min, stages } }. A night belongs to the day you
+ *  wake up (an interval's end + 6 h, Sydney), so 23:00-23:06 and 06:00-07:00 are the same night. */
+function healthSleep(vals: any, starts: any, ends: any): Record<string, { min: number; stages: Record<string, number> }> {
+  const v = String(vals ?? '').split(/\r?\n/), s = String(starts ?? '').split(/\r?\n/), e = String(ends ?? '').split(/\r?\n/);
+  const per: Record<string, { iv: [number, number][]; stages: Record<string, number> }> = {};
+  v.forEach((raw, i) => {
+    const a = Date.parse(String(s[i] ?? '').trim()), b = Date.parse(String(e[i] ?? '').trim());
+    const stage = String(raw ?? '').trim().toLowerCase();
+    if (!stage || !Number.isFinite(a) || !Number.isFinite(b) || b <= a || b - a > 16 * 3600e3) return;
+    const day = sydneyDate(b + 6 * 3600e3), d = (per[day] ??= { iv: [], stages: {} });
+    const k = stage.slice(0, 20);
+    d.stages[k] = (d.stages[k] ?? 0) + (b - a) / 60000;
+    if (!HEALTH_NOT_ASLEEP.has(stage)) d.iv.push([a, b]);
+  });
+  const out: Record<string, { min: number; stages: Record<string, number> }> = {};
+  for (const [day, d] of Object.entries(per)) {
+    if (!d.iv.length) continue;
+    d.iv.sort((x, y) => x[0] - y[0]);
+    let total = 0, [cs, ce] = d.iv[0];
+    for (const [a, b] of d.iv.slice(1)) { if (a <= ce) ce = Math.max(ce, b); else { total += ce - cs; cs = a; ce = b; } }
+    total += ce - cs;
+    out[day] = { min: Math.round(total / 60000), stages: Object.fromEntries(Object.entries(d.stages).map(([k, n]) => [k, Math.round(n)])) };
+  }
+  return out;
+}
 async function healthLogDays(row: any, body: any, today: string, used: number) {
   const steps = healthBuckets(body?.stepsList, body?.stepsSources, body?.stepsDates);
   const active = healthBuckets(body?.activeList, body?.activeSources, body?.activeDates);
-  const days = [...new Set([...Object.keys(steps), ...Object.keys(active)])]
+  const exercise = healthBuckets(body?.exerciseList, body?.exerciseSources, body?.exerciseDates);
+  const sleep = healthSleep(body?.sleepValues, body?.sleepStarts, body?.sleepEnds);
+  // resting heart rate: the latest reading, on its own day
+  const rhr: Record<string, number> = {};
+  { const n = healthNum(body?.restingHr), d = healthDay(String(body?.restingHrDate ?? '').split(/\r?\n/)[0]);
+    if (n !== null && d && n >= 20 && n <= 250) rhr[d] = Math.round(n); }
+  const days = [...new Set([steps, active, exercise, sleep, rhr].flatMap((m) => Object.keys(m)))]
     .filter((d) => { const age = (Date.parse(today) - Date.parse(d)) / 86400000; return age >= 0 && age <= 7; }).sort();
   if (!days.length) return err('no_values');
   const nowIso = new Date().toISOString(), saved: Record<string, unknown> = {};
-  const top = (m: Record<string, number> | undefined) => m && Object.keys(m).length ? Math.round(Math.max(...Object.values(m))) : null;
+  const round = (m: Record<string, number>) => Object.fromEntries(Object.entries(m).map(([k, n]) => [k, Math.round(n)]));
+  // The Shortcut re-sends a rolling window (the last 3 days), so its OLDEST day can be cut part-way. A day's totals only
+  // ever grow as readings arrive: per device keep the larger of what we have and what came in, then the largest device
+  // wins (Apple Health's own de-duplication of iPhone + Watch). A partial re-send can never lower a finished day.
+  const merge = (old: Record<string, number> | undefined, inc: Record<string, number> | undefined) => {
+    const m: Record<string, number> = { ...(old ?? {}) };
+    for (const [k, n] of Object.entries(inc ?? {})) m[k] = Math.max(m[k] ?? 0, Math.round(n));
+    return m;
+  };
+  const top = (m: Record<string, number>) => Object.keys(m).length ? Math.max(...Object.values(m)) : null;
   for (const day of days) {
-    const fields: Record<string, unknown> = {};
-    const st = top(steps[day]), ac = top(active[day]);
-    if (st !== null && st <= 150000) fields.steps = st;
-    if (ac !== null && ac <= 10000) fields.active_kcal = ac;
+    const { data: ex } = await admin.from('health_daily').select('id, sources, steps, active_kcal, exercise_min, sleep_min').eq('client_id', row.client_id).eq('day', day).maybeSingle();
+    const src: Record<string, any> = { ...(ex?.sources ?? {}) }, fields: Record<string, unknown> = {};
+    const grow = (col: string, key: string, inc: Record<string, number> | undefined, max: number) => {
+      if (!inc) return;
+      const m = merge(src[key], inc), n = top(m);
+      if (n === null || n > max) return;
+      src[key] = m; fields[col] = Math.max(n, ex?.[col] ?? 0);
+    };
+    grow('steps', 'steps', steps[day], 150000);
+    grow('active_kcal', 'active', active[day], 10000);
+    grow('exercise_min', 'exercise', exercise[day], 1440);
+    if (sleep[day] && sleep[day].min <= 1440 && sleep[day].min >= (ex?.sleep_min ?? 0)) { fields.sleep_min = sleep[day].min; src.sleep = sleep[day].stages; }
+    if (rhr[day] !== undefined) fields.resting_hr = rhr[day];
     if (!Object.keys(fields).length) continue;
-    const { data: ex } = await admin.from('health_daily').select('id, sources').eq('client_id', row.client_id).eq('day', day).maybeSingle();
-    const round = (m: Record<string, number> | undefined) => m ? Object.fromEntries(Object.entries(m).map(([k, n]) => [k, Math.round(n)])) : undefined;
-    fields.sources = Object.assign({}, ex?.sources ?? {}, steps[day] ? { steps: round(steps[day]) } : {}, active[day] ? { active: round(active[day]) } : {});
+    fields.sources = src;
     const { error } = ex?.id
       ? await admin.from('health_daily').update({ ...fields, received_at: nowIso }).eq('id', ex.id)
       : await admin.from('health_daily').insert({ client_id: row.client_id, storage_key: row.storage_key, day, ...fields, received_at: nowIso });
     if (error) { logEfError('healthLog', row.storage_key, 'write_failed', error.message); return err('write_failed'); }
-    saved[day] = { steps: fields.steps ?? null, active_kcal: fields.active_kcal ?? null };
+    saved[day] = Object.fromEntries(Object.entries(fields).filter(([k]) => k !== 'sources'));
   }
+  // nothing new (e.g. a partial window that is smaller than what we already have) is still a successful sync
   await admin.from('health_keys').update({ last_used_at: nowIso, uploads_today: used + 1, uploads_day: today }).eq('id', row.id);
   return ok({ days: saved });
 }

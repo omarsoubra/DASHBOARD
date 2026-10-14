@@ -5967,14 +5967,27 @@ function _healthFill(key) {
       stat('Steps / day', 'steps', '', int) + stat('Active kcal', 'active_kcal', '', int) + stat('Exercise', 'exercise_min', ' min', int) +
       stat('Sleep', 'sleep_min', ' h', hrs) + stat('Resting HR', 'resting_hr', ' bpm', int) + '</div>' +
     (last14.length ? '<div style="display:flex;gap:3px;align-items:flex-end;margin-bottom:6px">' + bars + '</div><div class="v2-muted" style="font-size:12px;margin-bottom:10px">Steps, last 14 days · averages are the last 7 days vs the 7 before</div>' : '') +
+    _healthSleepLine(rows) +
     (_healthStale().indexOf(key) >= 0 ? '<div style="font-size:12.5px;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:#fff7e6;color:#9a5b00">Sync stopped — last upload ' + esc_(_fmtWhen(st.lastUsedAt || st.consentAt)) + '. Their app shows them a Fix it button; a nudge helps.</div>' : '') +
     '<div class="v2-muted" style="font-size:12px;margin-bottom:10px">' + (lastDay ? 'Last day received: ' + esc_(lastDay) : 'Nothing received yet') + (_healthDevices(rows) ? ' · from ' + esc_(_healthDevices(rows)) : '') + (st ? '' : ' · link switched off') + '</div>' +
     btn + '<div class="hl-link"></div>';
 }
+/** Last night from the latest row with sleep: 'Last night 7h 32m asleep · deep 51m · REM 50m · awake 27m'. */
+function _healthSleepLine(rows) {
+  for (var i = rows.length - 1; i >= 0; i--) {
+    var r = rows[i]; if (r.sleep_min == null) continue;
+    var hm = function (m) { m = Math.round(m); return Math.floor(m / 60) + 'h ' + (m % 60 < 10 ? '0' : '') + (m % 60) + 'm'; };
+    var stg = (r.sources && r.sources.sleep) || {}, parts = [];
+    [['deep', 'deep'], ['rem', 'REM'], ['awake', 'awake']].forEach(function (p) { if (stg[p[0]] != null) parts.push(p[1] + ' ' + Math.round(stg[p[0]]) + 'm'); });
+    var when = r.day === _healthDayAgo(0) ? 'Last night' : 'Night to ' + r.day;
+    return '<div style="font-size:12.5px;margin-bottom:8px">' + when + ': <b>' + hm(r.sleep_min) + ' asleep</b>' + (parts.length ? ' · ' + parts.join(' · ') : '') + '</div>';
+  }
+  return '';
+}
 /** Devices behind a client's data, from the latest day's per-source totals: 'Garmin · iPhone'. */
 function _healthDevices(rows) {
   for (var i = rows.length - 1; i >= 0; i--) {
-    var src = rows[i].sources && (rows[i].sources.steps || rows[i].sources.active);
+    var src = rows[i].sources && (rows[i].sources.steps || rows[i].sources.active || rows[i].sources.exercise);
     if (!src) continue;
     var kinds = [];
     Object.keys(src).forEach(function (n) {
