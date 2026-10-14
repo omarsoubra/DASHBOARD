@@ -1900,6 +1900,10 @@ details.v2-fallback > .v2-fallback-body > p { margin: 0 0 12px; color: var(--v2-
 .v2-tq-panel .x { position: absolute; top: 14px; right: 14px; border: 0; background: var(--v2-grey-soft); border-radius: 50%; width: 32px; height: 32px; color: var(--v2-ink2); cursor: pointer; font-size: 14px; }
 .v2-tq-toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--v2-ink); color: #fff; padding: 10px 16px; border-radius: 12px; font: 13.5px 'Inter', system-ui, sans-serif; z-index: 140; pointer-events: none; }
 .v2-act-page .v2-card { max-width: 860px; }
+.v2-tq-code { display: grid; gap: 12px; font-size: 14px; color: var(--v2-ink2); }
+.v2-tq-codebox { display: flex; align-items: center; gap: 12px; border: 1px solid var(--v2-line); border-radius: 12px; padding: 12px 14px; background: var(--v2-ws); }
+.v2-tq-codebox span { font: 600 11px 'DM Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--v2-muted); }
+.v2-tq-codebox b { flex: 1; font: 600 22px 'DM Mono', ui-monospace, monospace; letter-spacing: .08em; color: var(--v2-ink); }
 @media (max-width: 767px) {
   /* phone: straight to the headline - search and Add client live on the Clients page */
   .v2-tq-strip { margin-bottom: 14px; flex-wrap: nowrap; }
@@ -12415,8 +12419,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // programme timeline, quiet, pages, coach tasks
     active.forEach(function (c) {
       var w = weekOf(c), sum = data[c.storageKey] || {}, L = blockWeeks(c), nph = Math.max(1, Math.floor(L / 4));
-      if (w > 1 && w % 4 === 1 && (w - 1) / 4 < nph) add(c, 'unlock', 'Unlock code due · phase ' + ((w - 1) / 4 + 1), { kind: 'open', label: 'Send code' });
-      else if (w && w % 4 === 0 && w / 4 < nph) add(c, 'unlocknext', 'Unlock code next week · phase ' + (w / 4 + 1), { kind: 'open', label: 'Open' });
+      if (w > 1 && w % 4 === 1 && (w - 1) / 4 < nph) add(c, 'unlock', 'Unlock code due · phase ' + ((w - 1) / 4 + 1), { kind: 'code', label: 'Send code', phase: (w - 1) / 4 + 1 });
+      else if (w && w % 4 === 0 && w / 4 < nph) add(c, 'unlocknext', 'Unlock code next week · phase ' + (w / 4 + 1), { kind: 'code', label: 'Get code', phase: w / 4 + 1, early: true });
       if (w !== null && w > L) add(c, 'finished', 'Finished their block (wk ' + w + ') · no next block yet', { kind: 'offer', label: 'Offer' });
       else if (w !== null && w >= L - 2) add(c, 'ending', 'Block ending · wk ' + w + '/' + L, { kind: 'offer', label: 'Book call' });
       var la = lastActivity(sum), qd = la === null ? null : Math.floor((Date.now() - la) / 86400000);
@@ -12587,6 +12591,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (a.kind === 'ci') { try { window.openCheckInReview(key, a.iso); } catch (e) { location.hash = '#/check-ins'; } return; }
     if (a.kind === 'journey') return tqJourney(a.jm);
     if (a.kind === 'offer') return tqOffer(key);
+    if (a.kind === 'code') return tqCode(key, a.phase, a.early);
     openDetail(key);
   }
   function tqPanel(html) {
@@ -12656,6 +12661,58 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (a === 'wa') { window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); return sentIt('Opened in WhatsApp'); }
       tqCopy(ta, function () { sentIt('Copied'); });
     };
+  }
+  // Send code (Omar 2026-10-14): read the phase's unlock code from the client's own page (the generator writes
+  // `N: { unlockCode: 'ZAIN20', ... }` into CLIENT_CONFIG.phases) and hand over a ready message with the code in it.
+  var _tqPageCache = {};
+  function tqPageCodes(c) {
+    var url = String(c.programUrl || ('clients/' + c.storageKey + '/')).replace(/^\.?\//, '');
+    if (!/\.html?$/.test(url)) url = url.replace(/\/?$/, '/') + 'index.html';
+    if (_tqPageCache[url]) return _tqPageCache[url];
+    return (_tqPageCache[url] = fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (html) {
+      var codes = {}, labels = {}, m, re = /\b([2-9]):\s*\{\s*unlockCode:\s*'([^']+)'/g, rl = /\n\s{2}([2-9]):\s*\{\s*\n\s*label:\s*"([^"]+)"/g;
+      while ((m = re.exec(html))) codes[m[1]] = m[2];
+      while ((m = rl.exec(html))) if (!labels[m[1]]) labels[m[1]] = m[2];
+      return { codes: codes, labels: labels };
+    }).catch(function (e) { delete _tqPageCache[url]; throw e; }));
+  }
+  function tqCode(key, phase, early) {
+    var c = (COACH.clients || []).find(function (x) { return x.storageKey === key; }); if (!c) return;
+    var first = String(c.displayName || key).split(' ')[0], phone = jmWa(c.phone);
+    tqPanel('<div><h3>' + esc(c.displayName || key) + '</h3><div class="sub">Phase ' + phase + ' unlock code' + (early ? ' · due next week' : '') + '</div></div>' +
+      '<div class="v2-tq-code" id="v2-tq-code">Reading their page…</div>');
+    tqPageCodes(c).then(function (pg) {
+      var code = pg.codes[String(phase)];
+      if (!code) {
+        $('v2-tq-code').innerHTML = 'No Phase ' + phase + ' code on ' + esc(first) + '’s page. <button type="button" class="v2-link" data-tqc="client">Open client page</button>';
+      } else {
+        var label = pg.labels[String(phase)], nm = 'Phase ' + phase + (label ? ' (' + label + ')' : '');
+        var msg = early
+          ? 'Hey ' + first + ', heads up: ' + nm + ' unlocks next week. Finish this week strong.\n\nWhen you hit it: open your app, tap Phase ' + phase + ' and enter code ' + code + '.'
+          : 'Hey ' + first + ', you’ve earned it. ' + nm + ' is ready for you.\n\nOpen your app, tap Phase ' + phase + ' and enter code: ' + code + '\n\nNew training and meal plan start from your next session. Let’s go.';
+        $('v2-tq-code').innerHTML = '<div class="v2-tq-codebox"><span>Code</span><b>' + esc(code) + '</b><button type="button" class="v2-btn sm ghost" data-tqc="code">Copy code</button></div>' +
+          '<textarea class="v2-rd-text" rows="7" aria-label="Message">' + esc(msg) + '</textarea>' +
+          '<div class="v2-rd-actions">' + (phone ? '<button type="button" class="v2-btn primary" data-tqc="wa">Open in WhatsApp</button>' : '') +
+          '<button type="button" class="v2-btn' + (phone ? '' : ' primary') + '" data-tqc="copy">Copy message</button>' +
+          '<button type="button" class="v2-btn ghost" data-tqc="client">Open client page</button>' +
+          (phone ? '' : '<span class="v2-rd-state">No phone number saved for ' + esc(first) + ' - copy, then paste in WhatsApp</span>') + '</div>';
+      }
+      var p = $('v2-tq-panel');
+      p.onclick = function (e) {
+        var b = e.target.closest('[data-tqc]'); if (!b) return;
+        var a = b.getAttribute('data-tqc'), ta = p.querySelector('textarea');
+        if (a === 'client') { tqClosePanel(); return openDetail(key); }
+        if (a === 'code') {
+          var tmp = document.createElement('textarea'); tmp.value = code; return tqCopy(tmp, function () { b.textContent = 'Copied ✓'; });
+        }
+        var sentIt = function (what) { tqClosePanel(); tqToast(what + ' · ' + first + ' marked done'); if (!early) tqResolve(key, 'done'); };
+        if (a === 'wa') { window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); return sentIt('Opened in WhatsApp'); }
+        tqCopy(ta, function () { sentIt('Copied'); });
+      };
+    }, function () {
+      $('v2-tq-code').innerHTML = 'Couldn’t read ' + esc(first) + '’s page (offline?). <button type="button" class="v2-link" data-tqc="client">Open client page</button>';
+      $('v2-tq-panel').onclick = function (e) { if (e.target.closest('[data-tqc="client"]')) { tqClosePanel(); openDetail(key); } };
+    });
   }
   function tqCopy(ta, done) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); document.execCommand('copy'); done(); });

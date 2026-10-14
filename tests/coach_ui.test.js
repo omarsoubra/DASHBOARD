@@ -168,7 +168,13 @@ function serve() {
     if (u === '/clients_registry.json') { res.writeHead(200, { 'Content-Type': MIME['.json'] }); return res.end(JSON.stringify(FX.registry)); }
     if (u === '/__fixture/photo.svg') { res.writeHead(200, { 'Content-Type': MIME['.svg'] }); return res.end(PHOTO); }
     const m = u.match(/^\/clients\/([^/]+)\/(index\.html)?$/);
-    if (m && keys.has(m[1]) && FX.pageStatus[m[1]] !== 404) { res.writeHead(200, { 'Content-Type': MIME['.html'] }); return res.end('<!doctype html><title>fixture client page</title>'); }
+    if (m && keys.has(m[1]) && FX.pageStatus[m[1]] !== 404) {
+      // fixture page carries the generator's phase labels + unlock codes (KWAME20 / KWAME30) - never a real client page
+      const K = m[1].split('_')[0].toUpperCase();
+      res.writeHead(200, { 'Content-Type': MIME['.html'] });
+      return res.end('<!doctype html><title>fixture client page</title><script>var P = {\n  2: {\n    label: "Build", weeks: "5–8",\n  },\n  3: {\n    label: "Peak", weeks: "9–12",\n  },\n};\n' +
+        'var CLIENT_CONFIG = { phases: {\n    2: { unlockCode: \'' + K + '20\', unlockAfterDays: 28 },\n    3: { unlockCode: \'' + K + '30\', unlockAfterDays: 56 },\n  } };</script>');
+    }
     if (u.startsWith('/clients/')) { res.writeHead(404); return res.end(); }               // never serve a real client page
     let f = path.join(ROOT, u.endsWith('/') ? u + 'index.html' : u);
     if (!f.startsWith(ROOT + path.sep) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
@@ -375,6 +381,8 @@ const knownBug = (name, holds, detail) => {
         'review-modal': async (k) => (await ev(`document.getElementById('cc-review-modal').classList.contains('open')`)) && new RegExp(FX.roster.find((c) => c.storageKey === k).displayName).test(await txt('#cc-review-title')),
         'checkin-review': async (k) => (await ev(`location.hash`)).startsWith('#/check-ins/' + k + '/') && (await visible('#v2-ci-panel')) && (await exists('#v2-ci-panel .v2-ci-shell')),
         client: async (k) => (await ev(`location.hash`)) === '#/clients/' + k && (await exists(`#v2-cl-detail .v2-cd[data-key="${k}"]`)),
+        code: async (k) => { await idle(400); const box = await txt('#v2-tq-panel .v2-tq-codebox'); const msg = await ev(`(document.querySelector('#v2-tq-panel textarea') || {}).value || ''`);
+          return (await visible('#v2-tq-panel')) && /KWAME20/.test(box) && /Phase 2 \(Build\)/.test(msg) && /enter code: KWAME20/.test(msg) && (await exists('#v2-tq-panel [data-tqc="copy"]')); },
         offer: async (k) => (await visible('#v2-tq-panel')) && /Sofia/.test(await txt('#v2-tq-panel')) && /call/i.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`))
           && (await ev(`!!document.querySelector('#v2-tq-panel [data-tqo="client"], #v2-tq-panel [data-tqsend]')`)),
         journey: async (k) => (await visible('#v2-tq-panel')) && /Jonah Reyes/.test(await txt('#v2-tq-panel')) && /two weeks left/.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`)),
@@ -387,7 +395,12 @@ const knownBug = (name, holds, detail) => {
           const where = { hash: await ev('location.hash'), reviewModal: await ev(`document.getElementById('cc-review-modal').classList.contains('open')`), ciPanel: await visible('#v2-ci-panel') };
           if (e.opens === 'checkin-review') knownBug(`"${e.label}" on a ${e.src} row opens the check-in review (#/check-ins/${k}/<iso>)`, okOpen, where);
           else t(`"${e.label}" opens the ${e.opens.replace('-', ' ')}`, okOpen, where);
-          if (e.opens === 'journey' || e.opens === 'offer') { await click('#v2-tq-panel [data-tqclose]'); await idle(150); t('journey panel closes with ✕', !(await visible('#v2-tq-panel'))); }
+          if (e.opens === 'code') {
+            await shot('today_code_panel');
+            await click('#v2-tq-panel [data-tqc="code"]'); await idle(150);
+            t('Copy code puts just the code on the clipboard', (await ev(`__ui.copied[__ui.copied.length - 1]`)) === 'KWAME20', await ev(`__ui.copied.slice(-1)`));
+          }
+          if (e.opens === 'journey' || e.opens === 'offer' || e.opens === 'code') { await click('#v2-tq-panel [data-tqclose]'); await idle(150); t('journey panel closes with ✕', !(await visible('#v2-tq-panel'))); }
           if (e.opens === 'review-modal') { await ev(`closeReviewModal(); 1`); t('review modal closes', !(await ev(`document.getElementById('cc-review-modal').classList.contains('open')`))); }
         }, { shot: 'today_open_' + e.src });
       }

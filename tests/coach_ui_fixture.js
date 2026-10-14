@@ -243,7 +243,7 @@ const EXPECT = {
   nadia_k: { src: 'noreply', label: 'Nudge', opens: 'client', list: 'today' },
   jonah_r: { src: 'journey', label: 'Message', opens: 'journey', list: 'today' },
   sofia_m: { src: 'finished', label: 'Offer', opens: 'offer', list: 'today' },
-  kwame_a: { src: 'unlock', label: 'Send code', opens: 'client', list: 'today' },
+  kwame_a: { src: 'unlock', label: 'Send code', opens: 'code', list: 'today' },
   felix_w: { src: 'task', label: 'Do it', opens: 'client', list: 'today' },
   elena_p: { src: 'broken', label: 'Open', opens: 'client', list: 'today' },
   amara_d: { src: 'sleep', label: 'Check in', opens: 'client', list: 'week' },
