@@ -39,14 +39,15 @@ function from(t) {
   return b;
 }
 const admin = { from };
-const json = (o) => ({ __body: o });
+const json = (o) => { const r = new Response(JSON.stringify(o)); r.__body = o; return r; };
 const ok = (e = {}) => json({ ok: true, ...e });
 const err = (r, e = {}) => json({ ok: false, error: r, ...e });
 const sha256 = async (s) => nodeCrypto.createHash('sha256').update(s).digest('hex');
 const M = {};
-new Function('admin', 'ok', 'err', 'verifyCoachToken', 'logEfError', 'CI_KEY_RE', 'sha256', 'crypto', 'exports',
-  js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, sydneyDate, HEALTH_CONSENT_VERSION });')(
-  admin, ok, err, (t) => t === 'coach', () => {}, /^[a-z0-9_]{1,64}$/, sha256, globalThis.crypto, M);
+const verifyClientToken = async (tok, key) => tok === 'tok-' + String(key).toLowerCase() ? { ok: true, storageKey: String(key).toLowerCase() } : { ok: false, reason: 'bad_token' };
+new Function('admin', 'ok', 'err', 'verifyCoachToken', 'verifyClientToken', 'logEfError', 'CI_KEY_RE', 'sha256', 'crypto', 'exports',
+  js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, healthSelfStatus, healthSelfConnect, healthSelfDisconnect, sydneyDate, HEALTH_CONSENT_VERSION });')(
+  admin, ok, err, (t) => t === 'coach', verifyClientToken, () => {}, /^[a-z0-9_]{1,64}$/, sha256, globalThis.crypto, M);
 
 let pass = 0, fail = 0;
 const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { fail++; console.log('  FAIL ' + n + (d ? '  -- ' + JSON.stringify(d).slice(0, 300) : '')); } };
@@ -98,6 +99,24 @@ const B = (r) => r.__body;
   await M.healthLog({ healthKey: z, steps: 4000 });
   const off = B(await M.healthRevoke({ healthKey: key3, deleteData: true }));
   t('client switch-off: revoked + ALL their data deleted, nobody else\'s', off.revoked && off.deleted === 1 && T.health_daily.length === 1 && T.health_daily[0].client_id === 'c2', off);
+  console.log('in-app (client login)');
+  T.health_keys = []; T.health_daily = [];
+  t('self status needs the client\'s own token', B(await M.healthSelfStatus({ storageKey: 'bishoy_shaker', token: 'tok-zain_hussein' })).error === 'bad_token');
+  t('not connected at first', B(await M.healthSelfStatus({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' })).connected === false);
+  t('connect needs agree + version', B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: 'x' })).error === 'consent_required');
+  const sc = B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION }));
+  t('connect: a consented key for THIS client, returned once, only its hash stored',
+    /^lih_[0-9a-f]{40}$/.test(sc.healthKey) && T.health_keys.length === 1 && T.health_keys[0].client_id === 'c1' && !!T.health_keys[0].consent_at && !JSON.stringify(T.health_keys).includes(sc.healthKey), sc);
+  t('the Shortcut can upload with it straight away', B(await M.healthLog({ healthKey: sc.healthKey, steps: 1234 })).ok === true);
+  const ss = B(await M.healthSelfStatus({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' }));
+  t('self status: connected + today\'s row', ss.connected === true && ss.days.length === 1 && ss.days[0].steps === 1234, ss);
+  const sc2 = B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION }));
+  t('connecting again replaces the old key (old one dead)', B(await M.healthLog({ healthKey: sc.healthKey, steps: 5 })).error === 'invalid_key' && B(await M.healthLog({ healthKey: sc2.healthKey, steps: 5 })).ok);
+  const zk = B(await M.healthSelfConnect({ storageKey: 'zain_hussein', token: 'tok-zain_hussein', agree: true, version: M.HEALTH_CONSENT_VERSION })).healthKey;
+  await M.healthLog({ healthKey: zk, steps: 777 });
+  const sd = B(await M.healthSelfDisconnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' }));
+  t('disconnect: own key revoked + own data deleted, nobody else\'s', sd.revoked && sd.deleted === 1 && T.health_daily.length === 1 && T.health_daily[0].client_id === 'c2'
+    && B(await M.healthSelfStatus({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' })).connected === false, sd);
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();

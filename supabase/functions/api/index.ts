@@ -604,6 +604,9 @@ Deno.serve(async (req) => {
       case 'healthLog':          return healthLog(body);
       case 'healthRevoke':       return healthRevoke(body);
       case 'healthGet':          return healthGet(body);
+      case 'healthSelfStatus':   return healthSelfStatus(body);
+      case 'healthSelfConnect':  return healthSelfConnect(body);
+      case 'healthSelfDisconnect': return healthSelfDisconnect(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
       case 'clientCreate':       return clientCreate(body);
       case 'issueClientToken':   return issueClientToken(body);
@@ -1316,6 +1319,44 @@ async function healthRevoke(body: any) {
     deleted = (data ?? []).length;
   }
   return ok({ revoked: true, deleted });
+}
+// IN-APP (Omar 2026-10-14): the client connects from inside their own app with their existing login, no link from the
+// coach. Auth = the client's own access token (verifyClientToken); a client can only ever touch their own key and data.
+async function healthClientId(body: any): Promise<{ id: string; key: string } | Response> {
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(v.storageKey ?? '').toLowerCase();
+  const { data: c } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+  if (!c?.id) return err('unknown_client');
+  return { id: c.id, key };
+}
+async function healthSelfStatus(body: any) {
+  const c = await healthClientId(body); if (c instanceof Response) return c;
+  const { data: k } = await admin.from('health_keys').select('consent_at').eq('client_id', c.id).is('revoked_at', null).limit(1);
+  const since = sydneyDate(Date.now() - 7 * 86400000);
+  const { data: rows } = await admin.from('health_daily').select('day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at')
+    .eq('client_id', c.id).gte('day', since).order('day', { ascending: false }).limit(8);
+  const active = !!(k ?? [])[0]?.consent_at;
+  return ok({ connected: active, days: active ? (rows ?? []) : [], consentVersion: HEALTH_CONSENT_VERSION });
+}
+async function healthSelfConnect(body: any) {
+  const c = await healthClientId(body); if (c instanceof Response) return c;
+  if (body?.agree !== true || body?.version !== HEALTH_CONSENT_VERSION) return err('consent_required');
+  const now = new Date().toISOString();
+  await admin.from('health_keys').update({ revoked_at: now, revoked_by: 'replaced' }).eq('client_id', c.id).is('revoked_at', null);
+  const raw = new Uint8Array(20); crypto.getRandomValues(raw);
+  const upload = 'lih_' + Array.from(raw, (b) => b.toString(16).padStart(2, '0')).join('');
+  const { error } = await admin.from('health_keys').insert({ client_id: c.id, storage_key: c.key, key_hash: await sha256(upload), created_at: now,
+                                                              consent_at: now, consent_version: HEALTH_CONSENT_VERSION });
+  if (error) return err('write_failed');
+  // returned ONCE to the client's own app, which puts it on the clipboard for the Shortcut's set-up question
+  return ok({ healthKey: upload });
+}
+async function healthSelfDisconnect(body: any) {
+  const c = await healthClientId(body); if (c instanceof Response) return c;
+  await admin.from('health_keys').update({ revoked_at: new Date().toISOString(), revoked_by: 'client' }).eq('client_id', c.id).is('revoked_at', null);
+  const { data } = await admin.from('health_daily').delete().eq('client_id', c.id).select('id');
+  return ok({ revoked: true, deleted: (data ?? []).length });
 }
 async function healthGet(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
