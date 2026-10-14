@@ -276,7 +276,7 @@
       frame('finish', [el('h3', { text: 'Two taps from done' }),
         el('ol', { class: 'lih-steps' }, [
           el('li', { class: ran ? 'ok' : '' }, [el('span', { class: 'lih-n', text: ran ? '✓' : '1' }), el('span', {}, [el('b', { text: 'Run the first sync' }),
-            el('small', { text: 'Tap Always Allow for each question, then come back here. If it says “does not have access”: Settings → Health → Data Access & Devices → Shortcuts → Turn On All, then run it again.' })])]),
+            el('small', { text: 'Tap Always Allow for each question, then come back here. If it says “does not have access”: in Shortcuts tap ••• on ' + SHORTCUT_NAME + ', tap Allow Access → Turn On All → Allow (repeat on any step that still shows it), then ▶.' })])]),
           el('li', {}, [el('span', { class: 'lih-n', text: '2' }), el('span', {}, [el('b', { text: 'Make it automatic' }), ' — one time, about 20 seconds',
             el('small', { text: 'Shortcuts → Automation → + → Time of Day → 9:00 PM · Daily · Run Immediately → Next → ' + SHORTCUT_NAME })])])]),
         run, auto,
@@ -289,7 +289,7 @@
       frame('fix', [el('h3', { text: 'Get syncing again' }),
         el('ol', { class: 'lih-steps' }, [
           el('li', {}, [el('span', { class: 'lih-n', text: '1' }), el('span', {}, [el('b', { text: 'Sync now' }),
-            el('small', { text: 'If your iPhone asks, tap Always Allow. If it says “does not have access”: Settings → Health → Data Access & Devices → Shortcuts → Turn On All, then run it again.' })])]),
+            el('small', { text: 'If your iPhone asks, tap Always Allow. If it says “does not have access”: in Shortcuts tap ••• on ' + SHORTCUT_NAME + ', tap Allow Access → Turn On All → Allow (repeat on any step that still shows it), then ▶.' })])]),
           el('li', {}, [el('span', { class: 'lih-n', text: '2' }), el('span', {}, [el('b', { text: 'Check the nightly automation' }),
             el('small', { text: 'Shortcuts → Automation: "Time of Day 9:00 PM" should run ' + SHORTCUT_NAME + ' with Run Immediately. If it’s missing, add it: + → Time of Day → 9:00 PM · Daily · Run Immediately.' })])])]),
         again, openSc,
