@@ -1860,6 +1860,9 @@ details.v2-fallback > .v2-fallback-body > p { margin: 0 0 12px; color: var(--v2-
 .v2-tq-nm a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .v2-tq-nm small { color: var(--v2-muted); font: 400 11.5px 'DM Mono', ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .v2-tq-why { color: var(--v2-ink2); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-tq-ai { display: inline-block; font: 600 10px 'DM Mono', ui-monospace, monospace; letter-spacing: .08em; padding: 1px 6px; border-radius: 6px; margin-right: 7px; vertical-align: 1px; background: var(--v2-grey-soft); color: var(--v2-ink2); }
+.v2-tq-ai.hot { background: var(--v2-red-soft); color: var(--v2-red); }
+.v2-tq-ai.ok { background: var(--v2-accent-soft); color: var(--v2-accent-ink); }
 .v2-tq-why .also { color: var(--v2-muted); font: 500 11.5px 'DM Mono', ui-monospace, monospace; margin-left: 6px; }
 .v2-tq-go { border: 0; border-radius: 10px; padding: 8px 14px; font: 600 13px 'Inter', system-ui, sans-serif; background: var(--v2-grey-soft); color: var(--v2-ink); white-space: nowrap; cursor: pointer; }
 .v2-tq-row.is-act .v2-tq-go { background: var(--v2-ink); color: #fff; }
@@ -12359,6 +12362,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // The row's single button opens the existing flow (review modal, check-in review, client page,
   // journey message). Done / snooze are per-device and come back when the reason changes.
   var TQ = { filter: 'today', sel: 0, items: [], list: [] };
+  var AIV = { NEEDS_ATTENTION: 'needs attention', REVIEW: 'review', GREEN: 'on track' };
   var TQ_STORE = 'v2_tq_state_v1';
   function tqState() { try { return JSON.parse(localStorage.getItem(TQ_STORE) || '{}') || {}; } catch (e) { return {}; } }
   function tqSave(s) { try { localStorage.setItem(TQ_STORE, JSON.stringify(s)); } catch (e) {} }
@@ -12370,9 +12374,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return !!e.done && Date.now() - e.at < 7 * 86400000;        // done: hidden for up to 7 days unless it changes
   }
   function tqTomorrow() { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(5, 0, 0, 0); return d.getTime(); }
-  var TQ_RANK = { broken: 0, attn: 1, noreply: 2, finished: 3, journey: 4, task: 5, unlock: 6, checkin: 7, reply: 8, review: 9,
+  var TQ_RANK = { broken: 0, attn: 1, aicheckin: 1.5, noreply: 2, finished: 3, journey: 4, task: 5, unlock: 6, checkin: 7, reply: 8, review: 9,
                   sleep: 18, steps: 19, health: 20, watch: 21, quiet: 22, ending: 23, unlocknext: 24 };
-  var TQ_TODAY = { broken: 1, attn: 1, noreply: 1, finished: 1, journey: 1, task: 1, unlock: 1, checkin: 1, reply: 1, review: 1 };
+  var TQ_TODAY = { broken: 1, attn: 1, aicheckin: 1, noreply: 1, finished: 1, journey: 1, task: 1, unlock: 1, checkin: 1, reply: 1, review: 1 };
   function tqCollect(clients, data) {
     var by = {}, waiting = [], inactive = 0;
     var active = clients.filter(function (c) { return _isActiveClient(c) && c.storageKey !== 'omar'; });
@@ -12394,11 +12398,19 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (a.tier === CC_TIER.ACTION) add(c, a.severity === 'red' ? 'attn' : 'review', txt, { kind: 'review', label: 'Review' });
       else if (a.tier === CC_TIER.WATCH) add(c, 'watch', txt, { kind: 'review', label: 'Review' });
     });
-    // new check-ins
-    _queueAllRows().filter(function (r) { return r.state === 'new'; }).forEach(function (r) {
-      var ci = r.ci || {};
-      add(r.client, 'checkin', 'Check-in' + (ci.week ? ' week ' + ci.week : '') + ' submitted ' + ago(ci.timestamp),
-        r.gap ? { kind: 'open', label: 'Open' } : { kind: 'ci', label: 'Review', iso: ci.timestamp });
+    // new check-ins, with the AI review's verdict (same _apPriority the check-in queue uses) and whether the AI
+    // already drafted the reply. A check-in the AI marks NEEDS ATTENTION jumps the queue (red).
+    var QROWS = []; try { QROWS = _queueAllRows(); } catch (e) {}
+    QROWS.filter(function (r) { return r.state === 'new'; }).forEach(function (r) {
+      var ci = r.ci || {}, ap = null;
+      if (!r.gap) { try { ap = r._ap || _apPriority(r.client, r.sum, typeof build30DayMetrics === 'function' ? build30DayMetrics(r.sum) : {}); } catch (e) { ap = null; } }
+      var d = CI_DRAFTS && CI_DRAFTS[r.client.storageKey + '|' + ci.timestamp], drafted = d && !d.sent_at;
+      var head = 'Check-in' + (ci.week ? ' wk ' + ci.week : '') + ' · ' + ago(ci.timestamp);
+      var txt = ap && ap.reason ? head + ' · ' + ap.reason : head;   // the verdict itself is the AI chip on the row
+      if (drafted) txt += ' · reply drafted';
+      add(r.client, ap && ap.priority === 'NEEDS_ATTENTION' ? 'aicheckin' : 'checkin', txt,
+        r.gap ? { kind: 'open', label: 'Open' } : { kind: 'ci', label: drafted ? 'Review & send' : 'Review', iso: ci.timestamp, ai: ap && ap.priority });
+      if (drafted) r._draftShown = true;
     });
     // drafts: replies ready, journey messages, and replies sent but nothing back from the client
     var REPLY_H = 24;
@@ -12407,7 +12419,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var journey = String(d.checkin_ts).indexOf('journey:') === 0;
       if (!d.sent_at) {
         if (journey) add(c, 'journey', (JM_LABEL[d.action] || 'Journey') + ' message ready', { kind: 'journey', label: 'Message', jm: k });
-        else add(c, 'reply', 'Drafted reply ready to send', { kind: 'ci', label: 'Send reply', iso: d.checkin_ts });
+        else if (!QROWS.some(function (r) { return r.state === 'new' && r.client.storageKey === d.client_key && r.ci && r.ci.timestamp === d.checkin_ts; }))
+          add(c, 'reply', 'AI reply drafted, ready to send', { kind: 'ci', label: 'Send reply', iso: d.checkin_ts });
         return;
       }
       var sent = Date.parse(d.sent_at); if (isNaN(sent)) return;
@@ -12457,7 +12470,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var top = it.reasons[0];
       it.top = top; it.today = !!TQ_TODAY[top.src];
       it.hot = top.rank <= 6;                                       // red dot: act today (not just a review)
-      it.hasCi = it.reasons.some(function (r) { return r.src === 'checkin' || r.src === 'reply'; });
+      it.hasCi = it.reasons.some(function (r) { return r.src === 'checkin' || r.src === 'aicheckin' || r.src === 'reply'; });
       it.sig = top.src;   // done / snooze hold until the MAIN reason changes (not when a draft loads or a day count ticks)
       return it;
     });
@@ -12530,12 +12543,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
       $('v2-tq-list').innerHTML = empty('All clear', TQ.filter === 'today' ? 'Every client handled today.' + (week.length ? ' ' + week.length + ' coming up.' : '') : 'Nothing here right now.');
     } else {
       $('v2-tq-list').innerHTML = list.map(function (it, i) {
-        var a = it.top.act, c = it.c;
+        // in the Check-ins filter a row leads with its check-in (AI verdict + reason), elsewhere with its main reason
+        var CI_SRC = { aicheckin: 1, checkin: 1, reply: 1 };
+        it.view = TQ.filter === 'checkin' ? (it.reasons.filter(function (r) { return CI_SRC[r.src]; })[0] || it.top) : it.top;
+        var a = it.view.act, c = it.c;
         var plan = (c.programType || '') + (weekOf(c) ? (c.programType ? ' · ' : '') + 'wk ' + weekOf(c) + '/' + blockWeeks(c) : '');
         return '<div class="v2-tq-row' + (it.hot ? ' is-act' : '') + (i === TQ.sel ? ' sel' : '') + '" role="listitem" data-tqk="' + esc(it.key) + '" data-i="' + i + '">' +
           '<span class="v2-tq-dot' + (it.hot ? ' act' : '') + '"></span>' +
           '<div class="v2-tq-who"><div class="v2-tq-nm"><a href="#/clients/' + encodeURIComponent(it.key) + '">' + esc(c.displayName || it.key) + '</a>' + (plan ? '<small>' + esc(plan) + '</small>' : '') + '</div>' +
-            '<div class="v2-tq-why" title="' + esc(it.reasons.map(function (r) { return r.text; }).join('\n')) + '">' + esc(it.top.text) +
+            '<div class="v2-tq-why" title="' + esc(it.reasons.map(function (r) { return r.text; }).join('\n')) + '">' +
+            (a.ai ? '<span class="v2-tq-ai' + (a.ai === 'NEEDS_ATTENTION' ? ' hot' : a.ai === 'GREEN' ? ' ok' : '') + '" title="AI review: ' + esc(AIV[a.ai] || a.ai) + '">AI · ' +
+              ({ NEEDS_ATTENTION: 'FLAG', REVIEW: 'REVIEW', GREEN: 'OK' }[a.ai] || esc(a.ai)) + '</span>' : '') + esc(it.view.text) +
             (it.reasons.length > 1 ? '<span class="also">+' + (it.reasons.length - 1) + '</span>' : '') + '</div></div>' +
           '<button type="button" class="v2-tq-go" data-tqgo="' + esc(it.key) + '">' + esc(a.label) + '</button>' +
           '<button type="button" class="v2-tq-more" data-tqmore="' + esc(it.key) + '" aria-label="More for ' + esc(c.displayName || it.key) + '">•••</button></div>';
@@ -12586,7 +12604,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   function tqOpen(key) {
     var it = TQ.items.filter(function (x) { return x.key === key; })[0]; if (!it) return;
-    var a = it.top.act;
+    var a = (it.view || it.top).act;
     if (a.kind === 'review') return openAttentionReview(key);
     if (a.kind === 'ci') { try { window.openCheckInReview(key, a.iso); } catch (e) { location.hash = '#/check-ins'; } return; }
     if (a.kind === 'journey') return tqJourney(a.jm);

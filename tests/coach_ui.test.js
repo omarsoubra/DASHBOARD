@@ -346,7 +346,9 @@ const knownBug = (name, holds, detail) => {
           t(`today: ${k} -> top reason "${e.src}", button "${e.label}"`, r && r.label === e.label, r || 'missing');
         }
         t('red attention row is hot (red dot)', byKey.marcus_vell && byKey.marcus_vell.hot);
-        t('Priya also carries the drafted reply (+N)', byKey.priya_n && /\+\d/.test(byKey.priya_n.why) && /Drafted reply/.test(byKey.priya_n.all), byKey.priya_n);
+        t('AI review on the check-in row: AI chip + verdict + reason + "reply drafted" (Priya)', byKey.priya_n && /^AI/.test(byKey.priya_n.why) && /^AI · (REVIEW|FLAG|OK)Check-in wk \d+ · .+ · .{10,}/.test(byKey.priya_n.why) && /reply drafted/.test(byKey.priya_n.all), byKey.priya_n);
+        t('a drafted reply for a NEW check-in is not listed twice', byKey.priya_n && !/AI reply drafted, ready to send/.test(byKey.priya_n.all), byKey.priya_n);
+        t('every new check-in row carries an AI verdict', rows.filter((r) => /^(AI · \w+)?Check-in wk/.test(r.why)).every((r) => /^AI · (REVIEW|FLAG|OK)/.test(r.why)), rows.map((r) => r.all.split('\n')[0]));
         t('never queued: onboarding / paused / archived / on-track clients', NEVER_IN_QUEUE.every((k) => !byKey[k]), rows.map((r) => r.key));
         t('inactive 14+ days footer (Owen)', /1 inactive 14\+ days/.test(await txt('#v2-tq-foot')), await txt('#v2-tq-foot'));
         t('"Waiting on client" shows Ravi (sent 5 h ago)', (await visible('#v2-tq-waitsec')) && /Ravi Menon/.test(await txt('#v2-tq-wait')) && /5h \/ 24h/.test(await txt('#v2-tq-wait')), await txt('#v2-tq-wait'));
@@ -404,6 +406,23 @@ const knownBug = (name, holds, detail) => {
           if (e.opens === 'review-modal') { await ev(`closeReviewModal(); 1`); t('review modal closes', !(await ev(`document.getElementById('cc-review-modal').classList.contains('open')`))); }
         }, { shot: 'today_open_' + e.src });
       }
+      await step('Check-ins filter: every row leads with its check-in and the AI verdict', async () => {
+        await backToToday(); await click('[data-tqf="checkin"]'); await idle(200);
+        const rows = await tqRows(), owen = rows.find((r) => r.key === 'owen_c');
+        t('Owen (also flagged for something else) shows his check-in + AI verdict here', owen && /^AI · (REVIEW|FLAG|OK)Check-in wk/.test(owen.why), owen);
+        t('the Check-ins button opens the check-in review', owen && /Review/.test(owen.label));
+        await click('[data-tqf="today"]'); await idle(150);
+      });
+      await step('AI review flags a check-in: it turns red and jumps above reviews', async () => {
+        await backToToday();
+        await ev(`(function () { var orig = window._apPriority; window.__apOrig = orig; window._apPriority = function (c, sum, m) { var r = orig(c, sum, m);
+          return c.storageKey === 'isla_b' ? Object.assign({}, r, { priority: 'NEEDS_ATTENTION', reason: 'Sleep 4h avg and stress 9/10 this week.' }) : r; };
+          UIV2.renderToday(); return 1; })()`); await idle(300);
+        const rows = await tqRows(), i = rows.findIndex((r) => r.key === 'isla_b'), pr = rows.findIndex((r) => r.key === 'priya_n');
+        t('flagged check-in row: red dot + "AI · FLAG" + the AI reason', i >= 0 && rows[i].hot && /^AI · FLAG/.test(rows[i].why) && /Sleep 4h avg/.test(rows[i].why), rows[i]);
+        t('...and it sits above the check-ins the AI only wants reviewed', i >= 0 && pr >= 0 && i < pr, { isla: i, priya: pr });
+        await ev(`window._apPriority = window.__apOrig; UIV2.renderToday(); 1`);
+      }, { shot: 'today_ai_flag' });
       await step('Offer with no journey draft: a ready Block 2 call message from the client\'s numbers', async () => {
         await backToToday();
         await ev(`Object.keys(CI_DRAFTS).forEach(function (k) { if (CI_DRAFTS[k].client_key === 'sofia_m') delete CI_DRAFTS[k]; }); 1`);
@@ -438,6 +457,7 @@ const knownBug = (name, holds, detail) => {
         t('picking a search result opens that client', (await ev('location.hash')) === '#/clients/grace_o');
         await backToToday();
         await click('#v2-m-bell'); await idle(300);
+        for (let i = 0; i < 20 && !/blocked/i.test(await txt('#v2-m-bell')); i++) await idle(100);   // the permission promise settles asynchronously
         t('bell asks permission only on tap; denied -> no subscribe, no write', (await ev(`__ui.notif.indexOf('requestPermission') >= 0 && __ui.notif.indexOf('subscribe') < 0`)) && /blocked/i.test(await txt('#v2-m-bell')), await ev(`__ui.notif`));
         await ev(`UIV2.toggleCollapse(); 1`); const col1 = await ev(`document.body.classList.contains('v2-collapsed')`);
         await ev(`UIV2.toggleCollapse(); 1`); const col2 = await ev(`document.body.classList.contains('v2-collapsed')`);

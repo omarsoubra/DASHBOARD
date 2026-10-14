@@ -237,7 +237,7 @@ function build(now = Date.now()) {
 // What the Today queue should show for each client (top reason source -> main button -> what it opens).
 const EXPECT = {
   marcus_vell: { src: 'attn', label: 'Review', opens: 'review-modal', list: 'today' },
-  priya_n: { src: 'checkin', label: 'Review', opens: 'checkin-review', list: 'today' },
+  priya_n: { src: 'checkin', label: 'Review & send', opens: 'checkin-review', list: 'today' },
   tomasz_b: { src: 'reply', label: 'Send reply', opens: 'checkin-review', list: 'today' },
   isla_b: { src: 'checkin', label: 'Review', opens: 'checkin-review', list: 'today' },
   nadia_k: { src: 'noreply', label: 'Nudge', opens: 'client', list: 'today' },
