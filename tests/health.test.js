@@ -11,7 +11,7 @@ if (i < 0 || j < 0) throw new Error('locate health handlers');
 const js = ts.transpileModule(SRC.slice(i, j), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 
 const T = { clients: [{ id: 'c1', storage_key: 'bishoy_shaker', display_name: 'Bishoy Shaker' }, { id: 'c2', storage_key: 'zain_hussein', display_name: 'Zain Hussein' }],
-            health_keys: [], health_daily: [] };
+            health_keys: [], health_daily: [], workout_completions: [], workout_log_entries: [], weight_logs: [], meal_logs: [], checkin_drafts: [], check_ins: [] };
 let seq = 0;
 function from(t) {
   const q = { f: [], isn: [], gte: null, mode: 'select', payload: null, single: false, order: null, lim: null, ret: false };
@@ -49,7 +49,7 @@ const ENTITLED = new Set(['bishoy_shaker', 'zain_hussein']);
 const requireCapability = async (k) => ENTITLED.has(k) ? { ok: true } : { ok: false, reason: 'forbidden_tier' };
 const capabilityDenied = (r) => err(r || 'forbidden_tier');
 new Function('admin', 'ok', 'err', 'verifyCoachToken', 'verifyClientToken', 'requireCapability', 'capabilityDenied', 'logEfError', 'CI_KEY_RE', 'sha256', 'crypto', 'exports',
-  js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, healthSelfStatus, healthSelfConnect, healthSelfDisconnect, sydneyDate, HEALTH_CONSENT_VERSION, healthStepTarget });')(
+  js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, healthSelfStatus, healthSelfConnect, healthSelfDisconnect, sydneyDate, HEALTH_CONSENT_VERSION, healthStepTarget, clientWeekGet, mondayOf });')(
   admin, ok, err, (t) => t === 'coach', verifyClientToken, requireCapability, capabilityDenied, () => {}, /^[a-z0-9_]{1,64}$/, sha256, globalThis.crypto, M);
 
 let pass = 0, fail = 0;
@@ -163,6 +163,34 @@ const B = (r) => r.__body;
   t('the app gets the target (healthSelfStatus.stepTarget)', s8.stepTarget && s8.stepTarget.steps === 9500 && s8.stepTarget.baseline === 8000, s8.stepTarget);
   const g8 = B(await M.healthGet({ coachToken: 'coach' }));
   t('the coach dashboard gets every client\'s target (healthGet.targets)', g8.targets && g8.targets.zain_hussein && g8.targets.zain_hussein.steps === 9500, g8.targets);
+
+  console.log('your week + from Omar');
+  {
+    const MON = M.mondayOf(Date.now()), D0 = Date.parse(MON + 'T12:00:00+11:00');      // this Monday, midday Sydney
+    const at = (daysBeforeThisMon) => new Date(D0 - daysBeforeThisMon * 864e5).toISOString();
+    // last week = 7..1 days before this Monday; the week before = 14..8
+    T.workout_completions.push({ client_id: 'c2', completed_at: at(6), local_date: null, status: 'complete' }, { client_id: 'c2', completed_at: at(4), status: 'complete' },
+      { client_id: 'c2', completed_at: at(2), status: 'complete' }, { client_id: 'c2', completed_at: at(10), status: 'complete' }, { client_id: 'c2', completed_at: at(3), status: 'revoked', revoked_at: at(3) },
+      { client_id: 'c1', completed_at: at(3), status: 'complete' });
+    T.workout_log_entries.push({ client_key: 'zain_hussein', logged_at: at(20), exercise_name: 'Back Squat', weight: '100kg' }, { client_key: 'zain_hussein', logged_at: at(3), exercise_name: 'Back Squat', weight: '105kg' },
+      { client_key: 'zain_hussein', logged_at: at(20), exercise_name: 'Bench Press', weight: '80kg' }, { client_key: 'zain_hussein', logged_at: at(3), exercise_name: 'Bench Press', weight: '80kg' },
+      { client_key: 'zain_hussein', logged_at: at(3), exercise_name: 'New Lift', weight: '40kg' });
+    T.weight_logs.push({ client_key: 'zain_hussein', logged_at: at(5), weight_kg: 80.0 }, { client_key: 'zain_hussein', logged_at: at(2), weight_kg: 79.6 }, { client_key: 'zain_hussein', logged_at: at(10), weight_kg: 80.6 });
+    T.meal_logs.push({ client_id: 'c2', logged_at: at(5) }, { client_id: 'c2', logged_at: at(5) }, { client_id: 'c2', logged_at: at(3) }, { client_id: 'c2', logged_at: at(9) });
+    T.checkin_drafts.push({ client_key: 'zain_hussein', checkin_ts: '2026-10-12T09:00:00.000Z', draft: 'Zain, solid week. Keep the steps up.', sent_at: at(1) },
+      { client_key: 'zain_hussein', checkin_ts: '2026-10-13T09:00:00.000Z', draft: 'Unsent draft', sent_at: null },
+      { client_key: 'zain_hussein', checkin_ts: 'journey:offer:2026-06-01', draft: 'Block 2 offer', sent_at: at(1) },
+      { client_key: 'bishoy_shaker', checkin_ts: '2026-10-12T09:00:00.000Z', draft: 'Bishoy only', sent_at: at(1) });
+    t('your week: needs the client\'s own token', B(await M.clientWeekGet({ storageKey: 'zain_hussein', token: 'tok-bishoy_shaker' })).error === 'bad_token');
+    const wk = B(await M.clientWeekGet({ storageKey: 'zain_hussein', token: 'tok-zain_hussein' }));
+    t('your week: last full week Mon-Sun', wk.ok && wk.week.from < MON && wk.week.to < MON, wk.week);
+    t('sessions 3 last week (revoked not counted, other clients not counted) vs 1 the week before', wk.sessions === 3 && wk.sessionsPrev === 1, { s: wk.sessions, p: wk.sessionsPrev });
+    t('PRs: squat 105 over 100; bench equal is not a PR; a first-ever lift is not a PR', wk.prs.length === 1 && wk.prs[0].exercise === 'Back Squat' && wk.prs[0].kg === 105 && wk.prs[0].prev === 100, wk.prs);
+    t('weight average 79.8 vs 80.6', wk.weightAvg === 79.8 && wk.weightAvgPrev === 80.6, { a: wk.weightAvg, p: wk.weightAvgPrev });
+    t('meal days 2 vs 1', wk.mealDays === 2 && wk.mealDaysPrev === 1);
+    t('from Omar: only replies he SENT, only check-in replies (no journey/sales), only this client', wk.feedback.length === 1 && wk.feedback[0].text === 'Zain, solid week. Keep the steps up.', wk.feedback);
+    t('a client without an active coaching entitlement cannot read it', B(await M.clientWeekGet({ storageKey: 'lapsed_l', token: 'tok-lapsed_l' })).error === 'forbidden_tier');
+  }
 
   console.log('in-app (client login)');
   T.health_keys = []; T.health_daily = [];

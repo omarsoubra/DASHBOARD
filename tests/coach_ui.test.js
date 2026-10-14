@@ -103,6 +103,7 @@ const INIT = String.raw`
         var d = drafts.filter(function (x) { return x.client_key === b.clientKey && x.checkin_ts === b.checkinTs; })[0];
         if (!d) return { ok: false, error: 'not_found' };
         d.sent_at = b.sent === false ? null : new Date().toISOString();
+        if (typeof b.draft === 'string') { d.draft = b.draft; window.__lastSentText = b.draft; }
         return { ok: true, sent_at: d.sent_at };
       }
       default: return { ok: true };
@@ -730,11 +731,13 @@ const knownBug = (name, holds, detail) => {
       });
       await step('Check-in review: Copy reply marks it sent (write allowed: checkinDraftMark)', async () => {
         await go('#/check-ins/priya_n/' + encodeURIComponent(FX.ciTs.priya), 500);
+        await ev(`(function(){ var ta = document.querySelector('#v2-ci-panel .v2-rd-text'); ta.value = ta.value + ' Edited by Omar.'; return 1; })()`);
         await click('#v2-ci-panel [data-rd-copy]'); await idle(400);
+        t('the text Omar actually sent (with his edit) is saved with it - that is what the client sees in their app', /Edited by Omar\.$/.test(await ev(`window.__lastSentText || ''`)), await ev(`window.__lastSentText || ''`));
         t('Copy puts the edited draft on the clipboard', /Greek yoghurt/.test(await ev(`__ui.copied[__ui.copied.length - 1] || ''`)));
         t('…and records it sent (checkinDraftMark)', /marked sent/.test(await txt('#v2-ci-panel .v2-rd-state')) && (await ev(`__ui.calls.some(function (c) { return c.type === 'checkinDraftMark'; })`)));
         await click('#v2-ci-panel [data-rd-unsend]'); await idle(400);
-        t('Undo marks it not sent again', /Marks it sent when you use it/.test(await txt('#v2-ci-panel .v2-rd-state')), await txt('#v2-ci-panel .v2-rd-state'));
+        t('Undo marks it not sent again', /marked sent and shows in their app/.test(await txt('#v2-ci-panel .v2-rd-state')), await txt('#v2-ci-panel .v2-rd-state'));
         await ev(`history.back(); 1`); await idle(300); await go('#/check-ins', 300);
       }, { writes: ['checkinDraftMark'] });
       await step('Check-in review (autopilot, no draft)', async () => {

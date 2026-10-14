@@ -585,12 +585,27 @@
     } catch (e) {}
   }
 
+  // YOUR WEEK + FROM OMAR (2026-10-14): week-client.js, next to this file, same login. Last week's recap on Home
+  // (Mon-Wed) and Omar's sent replies in the Coach tab.
+  function bootWeek(opts) {
+    try {
+      var api = String(opts.pushUrl || '').replace(/\/push$/, '/api');
+      var start = function () { try { window.LockedInWeek.boot({ storageKey: opts.storageKey, getToken: opts.getToken, apiUrl: api }); } catch (e) {} };
+      if (window.LockedInWeek) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'week-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   window.LockedInPush = {
     mount: function (opts) {
       var p = new Push(opts);
       p.render();
       p.init();
       bootHealth(opts || {});
+      bootWeek(opts || {});
       return p;
     },
   };

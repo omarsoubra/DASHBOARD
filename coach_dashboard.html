@@ -6260,12 +6260,13 @@ async function loadCheckinDrafts() {
   } catch (e) { /* drafts are optional */ }
 }
 function ciDraftFor(key, iso) { return CI_DRAFTS[key + '|' + iso] || null; }
-async function ciDraftMark(key, iso, sent) {
+async function ciDraftMark(key, iso, sent, text) {   // text: what was actually sent (the client sees it in their app)
   const d = ciDraftFor(key, iso); if (!d) return false;
   const before = d.sent_at;
   d.sent_at = sent ? new Date().toISOString() : null;            // optimistic; reverted if the server refuses
   try {
-    const r = await coachFetch('checkinDraftMark', { clientKey: key, checkinTs: iso, sent: !!sent });
+    const r = await coachFetch('checkinDraftMark', Object.assign({ clientKey: key, checkinTs: iso, sent: !!sent }, sent && typeof text === 'string' && text.trim() ? { draft: text } : {}));
+    if (sent && typeof text === 'string' && text.trim()) d.draft = text.trim();
     if (!r || r.ok === false) throw new Error((r && r.error) || 'refused');
     d.sent_at = r.sent_at || d.sent_at; return true;
   } catch (e) { d.sent_at = before; return false; }
@@ -12813,7 +12814,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     p.onclick = function (e) {
       var b = e.target.closest('[data-tqsend]'); if (!b) return;
       var mark = function (what) {
-        ciDraftMark(parts[0], parts.slice(1).join('|'), true).then(function (ok) {
+        ciDraftMark(parts[0], parts.slice(1).join('|'), true, ta.value).then(function (ok) {
           if (!ok) { stt.textContent = what + ', but could not record it - check your connection'; return; }
           stt.textContent = what + ' and marked sent'; setTimeout(function () { tqClosePanel(); safeRenderToday(); }, 700);
         });
@@ -13809,8 +13810,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
   // ── suggested reply (agent draft) ──
   function rdState(d) {
-    return d.sent_at ? 'Sent ' + esc(_fmtWhen(d.sent_at)) + ' · <button type="button" class="v2-link" data-rd-unsend="1">Mark not sent</button>'
-                     : 'Marks it sent when you use it';
+    return d.sent_at ? 'Sent ' + esc(_fmtWhen(d.sent_at)) + ' · also in their app · <button type="button" class="v2-link" data-rd-unsend="1">Mark not sent</button>'
+                     : 'When you use it, it\'s marked sent and shows in their app under Coach';
   }
   var waNum = function (ph) { var n = String(ph || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(n)) n = '61' + n.slice(1); return n.length >= 9 ? n : ''; };
   function rdCard(d, phone) {
@@ -13836,7 +13837,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       }
       if (e.target.closest('[data-rd-unsend]')) { ciDraftMark(key, iso, false).then(function () { if (!wa) btn.textContent = 'Copy reply'; refresh(); }); return; }
       var mark = function (what) {
-        ciDraftMark(key, iso, true).then(function (ok) {
+        ciDraftMark(key, iso, true, ta && ta.value).then(function (ok) {
           refresh();
           if (!ok) state.textContent = what + ', but could not mark it sent - check your connection';
           else state.innerHTML = what + ' and marked sent · <button type="button" class="v2-link" data-rd-unsend="1">Undo</button>';

@@ -613,6 +613,7 @@ Deno.serve(async (req) => {
       case 'healthRevoke':       return healthRevoke(body);
       case 'healthGet':          return healthGet(body);
       case 'healthSelfStatus':   return healthSelfStatus(body);
+      case 'clientWeekGet':      return clientWeekGet(body);
       case 'healthSelfConnect':  return healthSelfConnect(body);
       case 'healthSelfDisconnect': return healthSelfDisconnect(body);
       case 'registryGetPrivate': return registryGetPrivate(body);
@@ -1190,8 +1191,11 @@ async function checkinDraftMark(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
   const key = String(body?.clientKey ?? '').toLowerCase(), ts = String(body?.checkinTs ?? '');
   if (!CI_KEY_RE.test(key) || !ts) return err('bad_request');
+  const upd: Record<string, unknown> = { sent_at: body?.sent === false ? null : new Date().toISOString() };
+  // the text the coach actually sent (after his edits) - it is what the client sees in the app (Omar 2026-10-14)
+  if (body?.sent !== false && typeof body?.draft === 'string' && body.draft.trim() && body.draft.length <= 4000) upd.draft = body.draft.trim();
   const { data, error } = await admin.from('checkin_drafts')
-    .update({ sent_at: body?.sent === false ? null : new Date().toISOString() })
+    .update(upd)
     .eq('client_key', key).eq('checkin_ts', ts).select('sent_at');
   if (error) return err('write_failed');
   if (!data || !data.length) return err('not_found');
@@ -1506,6 +1510,65 @@ async function healthTargetsFor(clientIds: string[] | null): Promise<Record<stri
   const out: Record<string, { steps: number; baseline: number; days: number }> = {};
   for (const [k, v] of Object.entries(by)) { const t = healthStepTarget(v); if (t) out[k] = t; }
   return out;
+}
+// ── YOUR WEEK + FROM OMAR (Omar 2026-10-14) ─────────────────────────────────────────────────────────────────────────
+// The client's own app: last week's recap (sessions, PRs, weight, meals, steps, sleep vs the week before) and the replies
+// Omar actually SENT to their check-ins. Client token + coaching entitlement; a client only ever reads their own rows.
+// Journey (sales) messages are not shown here; only check-in replies.
+function weekNum(s: unknown): number | null { const m = /(\d+(?:\.\d+)?)/.exec(String(s ?? '')); return m ? Number(m[1]) : null; }
+function mondayOf(ms: number): string {           // Sydney Monday (YYYY-MM-DD) of the week containing ms
+  const d = sydneyDate(ms), dt = new Date(d + 'T12:00:00Z'), dow = (dt.getUTCDay() + 6) % 7;
+  return new Date(dt.getTime() - dow * 86400000).toISOString().slice(0, 10);
+}
+async function clientWeekGet(body: any) {
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(v.storageKey).toLowerCase();
+  const gate = await requireCapability(key, 'view_progress');
+  if (!gate.ok) return capabilityDenied(gate.reason);
+  const c = await healthClientRow(key); if (c instanceof Response) return c;
+  const now = Date.now(), thisMon = mondayOf(now);
+  const wkFrom = new Date(Date.parse(thisMon + 'T00:00:00Z') - 7 * 86400000).toISOString().slice(0, 10);   // last full week
+  const prevFrom = new Date(Date.parse(wkFrom + 'T00:00:00Z') - 7 * 86400000).toISOString().slice(0, 10);
+  const since = new Date(now - 120 * 86400000).toISOString();
+  const day = (iso: string) => sydneyDate(Date.parse(iso));
+  const inWk = (d: string) => d >= wkFrom && d < thisMon, inPrev = (d: string) => d >= prevFrom && d < wkFrom;
+  const [wc, wl, wt, ml, hd, dr, ci] = await Promise.all([
+    admin.from('workout_completions').select('completed_at, local_date, status, revoked_at').eq('client_id', c.id).gte('completed_at', since),
+    admin.from('workout_log_entries').select('logged_at, exercise_name, weight').eq('client_key', key).gte('logged_at', since).limit(5000),
+    admin.from('weight_logs').select('logged_at, weight_kg').eq('client_key', key).gte('logged_at', since),
+    admin.from('meal_logs').select('logged_at').eq('client_id', c.id).gte('logged_at', since).limit(5000),
+    admin.from('health_daily').select('day, steps, sleep_min').eq('client_id', c.id).gte('day', prevFrom),
+    admin.from('checkin_drafts').select('checkin_ts, draft, sent_at').eq('client_key', key).not('sent_at', 'is', null).order('sent_at', { ascending: false }).limit(10),
+    admin.from('check_ins').select('submitted_at, weight_kg').eq('client_key', key).gte('submitted_at', since),
+  ]);
+  const sess = (f: (d: string) => boolean) => (wc.data ?? []).filter((r: any) => !r.revoked_at && r.status !== 'revoked' && f(r.local_date || day(r.completed_at))).length;
+  // PRs: a heavier top set in the week than anything logged on that exercise before it
+  const best: Record<string, number> = {}, wkBest: Record<string, number> = {};
+  for (const r of (wl.data ?? []).slice().sort((a: any, b: any) => a.logged_at < b.logged_at ? -1 : 1)) {
+    const kg = weekNum(r.weight), d = day(r.logged_at), ex = String(r.exercise_name || '').trim();
+    if (kg === null || !ex || kg <= 0) continue;
+    if (d < wkFrom) best[ex] = Math.max(best[ex] ?? 0, kg);
+    else if (inWk(d)) wkBest[ex] = Math.max(wkBest[ex] ?? 0, kg);
+  }
+  const prs = Object.entries(wkBest).filter(([ex, kg]) => best[ex] && kg > best[ex]).map(([ex, kg]) => ({ exercise: ex, kg, prev: best[ex] }))
+    .sort((a, b) => (b.kg - b.prev) - (a.kg - a.prev)).slice(0, 5);
+  const weights = [...(wt.data ?? []).map((r: any) => ({ d: day(r.logged_at), kg: Number(r.weight_kg) })), ...(ci.data ?? []).map((r: any) => ({ d: day(r.submitted_at), kg: Number(r.weight_kg) }))]
+    .filter((x) => x.kg > 0);
+  const avg = (a: number[]) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10) / 10 : null;
+  const mealDays = (f: (d: string) => boolean) => new Set((ml.data ?? []).map((r: any) => day(r.logged_at)).filter(f)).size;
+  const hAvg = (f: (d: string) => boolean, col: string, min: number) => { const v2 = (hd.data ?? []).filter((r: any) => f(r.day) && r[col] != null).map((r: any) => r[col]); return v2.length >= min ? Math.round(v2.reduce((x: number, y: number) => x + y, 0) / v2.length) : null; };
+  const target = ((await healthTargetsFor([c.id]))[key] ?? null);
+  const feedback = (dr.data ?? []).filter((r: any) => !String(r.checkin_ts).startsWith('journey:') && String(r.draft || '').trim())
+    .slice(0, 3).map((r: any) => ({ text: String(r.draft).trim(), sentAt: r.sent_at, checkinTs: r.checkin_ts }));
+  return ok({
+    week: { from: wkFrom, to: new Date(Date.parse(thisMon + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10) },
+    sessions: sess(inWk), sessionsPrev: sess(inPrev), prs,
+    weightAvg: avg(weights.filter((x) => inWk(x.d)).map((x) => x.kg)), weightAvgPrev: avg(weights.filter((x) => inPrev(x.d)).map((x) => x.kg)),
+    mealDays: mealDays(inWk), mealDaysPrev: mealDays(inPrev),
+    steps: hAvg(inWk, 'steps', 4), stepsPrev: hAvg(inPrev, 'steps', 4), sleepMin: hAvg(inWk, 'sleep_min', 3), stepTarget: target ? target.steps : null,
+    feedback,
+  });
 }
 async function healthSelfStatus(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
