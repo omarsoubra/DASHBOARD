@@ -77,13 +77,12 @@
       <div class="step">Step 2 of 3</div>
       <h2>Add the LOCKED IN Shortcut</h2>
       <p>Tap the button. Your code is copied for you.</p>
-      <a class="btn" id="shortcutBtn" href="LOCKED-IN-Health.shortcut">Add the Shortcut</a>
+      <a class="btn" id="shortcutBtn" href="https://www.icloud.com/shortcuts/355ba8a7b6664804bcd60e802b847f8b">Add the Shortcut</a>
       <p style="margin-top:12px">Then on the next screen:</p>
       <ol>
-        <li>Tap <strong>Set Up Shortcut</strong> (or <strong>Add Shortcut</strong>).</li>
+        <li>Tap <strong>Set Up Shortcut</strong>.</li>
         <li>Tap the code box, then <strong>Paste</strong>, then <strong>Add Shortcut</strong>.</li>
       </ol>
-      <p class="muted" style="margin-top:8px">If it asks to download the file first, tap <strong>Download</strong>, then open it.</p>
       <details style="margin-top:10px"><summary class="muted">Show my code</summary><div class="code" id="code"></div></details>
     </div>
     <div class="card">
@@ -122,7 +121,9 @@
 (function () {
   var API_URL = 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
   // iCloud link of the LOCKED IN Health shortcut (its import question asks for the code). Empty until published.
-  var SHORTCUT_URL = 'LOCKED-IN-Health.shortcut';   // signed shortcut (health/build_shortcut.py + `shortcuts sign --mode anyone`)
+  // Apple's iCloud link: opens the Shortcuts app's own "Add Shortcut" screen. Built by health/build_shortcut.py, signed with
+  // `shortcuts sign --mode anyone`, added to Omar's library and shared from there (2026-10-14).
+  var SHORTCUT_URL = 'https://www.icloud.com/shortcuts/355ba8a7b6664804bcd60e802b847f8b';
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).hidden = !on; };
 
