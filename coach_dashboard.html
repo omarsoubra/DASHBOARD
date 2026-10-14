@@ -12360,7 +12360,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function tqSave(s) { try { localStorage.setItem(TQ_STORE, JSON.stringify(s)); } catch (e) {} }
   function tqHidden(it, s) {
     var e = s[it.key]; if (!e) return false;
-    if (e.sig !== it.sig) return false;                         // the reason changed: show it again
+    if (e.sig !== it.sig && String(e.sig).split(':')[0] !== it.sig) return false;   // the main reason changed: show it again
     if (e.until && Date.now() < e.until) return true;           // snoozed
     return !!e.done && Date.now() - e.at < 7 * 86400000;        // done: hidden for up to 7 days unless it changes
   }
@@ -12416,8 +12416,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var w = weekOf(c), sum = data[c.storageKey] || {}, L = blockWeeks(c), nph = Math.max(1, Math.floor(L / 4));
       if (w > 1 && w % 4 === 1 && (w - 1) / 4 < nph) add(c, 'unlock', 'Unlock code due · phase ' + ((w - 1) / 4 + 1), { kind: 'open', label: 'Send code' });
       else if (w && w % 4 === 0 && w / 4 < nph) add(c, 'unlocknext', 'Unlock code next week · phase ' + (w / 4 + 1), { kind: 'open', label: 'Open' });
-      if (w !== null && w > L) add(c, 'finished', 'Finished their block (wk ' + w + ') · no next block yet', { kind: 'open', label: 'Offer' });
-      else if (w !== null && w >= L - 2) add(c, 'ending', 'Block ending · wk ' + w + '/' + L, { kind: 'open', label: 'Plan' });
+      if (w !== null && w > L) add(c, 'finished', 'Finished their block (wk ' + w + ') · no next block yet', { kind: 'offer', label: 'Offer' });
+      else if (w !== null && w >= L - 2) add(c, 'ending', 'Block ending · wk ' + w + '/' + L, { kind: 'offer', label: 'Book call' });
       var la = lastActivity(sum), qd = la === null ? null : Math.floor((Date.now() - la) / 86400000);
       if (qd !== null && qd >= 3 && qd < 14) add(c, 'quiet', 'Gone quiet ' + qd + ' days', { kind: 'open', label: 'Nudge' });
       else if (qd !== null && qd >= 14) inactive++;
@@ -12435,7 +12435,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       it.top = top; it.today = !!TQ_TODAY[top.src];
       it.hot = top.rank <= 6;                                       // red dot: act today (not just a review)
       it.hasCi = it.reasons.some(function (r) { return r.src === 'checkin' || r.src === 'reply'; });
-      it.sig = it.reasons.map(function (r) { return r.src + ':' + r.text; }).join('|');
+      it.sig = top.src;   // done / snooze hold until the MAIN reason changes (not when a draft loads or a day count ticks)
       return it;
     });
     items.sort(function (a, b) { return a.top.rank - b.top.rank || String(a.c.displayName).localeCompare(String(b.c.displayName)); });
@@ -12563,6 +12563,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (a.kind === 'review') return openAttentionReview(key);
     if (a.kind === 'ci') { try { window.openCheckInReview(key, a.iso); } catch (e) { location.hash = '#/check-ins'; } return; }
     if (a.kind === 'journey') return tqJourney(a.jm);
+    if (a.kind === 'offer') return tqOffer(key);
     openDetail(key);
   }
   function tqPanel(html) {
@@ -12593,6 +12594,44 @@ window.addEventListener('beforeinstallprompt', (e) => {
       };
       if (b.getAttribute('data-tqsend') === 'wa') { window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); mark('Opened in WhatsApp'); }
       else tqCopy(ta, function () { mark('Copied'); });
+    };
+  }
+  // Offer / Book call (Omar 2026-10-14: "when I go on offer it doesn't give me anything"): the journey writer's own
+  // draft for this client when there is one, otherwise a ready invite to a 10-min Block 2 call built from their numbers.
+  // No prices in writing: the offer itself is made on the call (client-journey method).
+  function tqOffer(key) {
+    var ks = Object.keys(CI_DRAFTS || {}).filter(function (k) { var d = CI_DRAFTS[k]; return d.client_key === key && String(d.checkin_ts).indexOf('journey:') === 0; });
+    var unsent = ks.filter(function (k) { return !CI_DRAFTS[k].sent_at; });
+    if (unsent.length) return tqJourney(unsent[unsent.length - 1]);
+    var c = (COACH.clients || []).find(function (x) { return x.storageKey === key; }); if (!c) return openDetail(key);
+    var sum = (_dashboardData || {})[key] || {}, first = String(c.displayName || key).split(' ')[0];
+    var w = weekOf(c), L = blockWeeks(c), done = Math.min(w || L, L);
+    var lw = Number(sum.latestWeight), sw = Number(c.startWeight), gw = Number(c.goalWeight), win = '';
+    if (isFinite(lw) && isFinite(sw) && lw > 0 && sw > 0) {
+      var d = Math.round((lw - sw) * 10) / 10, cut = isFinite(gw) && gw < sw;
+      if (cut && d <= -0.5) win = ' and you’re down ' + Math.abs(d) + ' kg since we started';
+      else if (!cut && isFinite(gw) && gw > sw && d >= 0.5) win = ' and you’re up ' + d + ' kg of quality weight since we started';
+    }
+    var finished = w !== null && w > L;
+    var msg = finished
+      ? 'Hey ' + first + ', ' + L + ' weeks done' + win + '. Proud of how you backed yourself through that block.\n\nI’ve mapped out what your next block looks like to take this further. Free for a quick 10-min call this week so I can walk you through it?'
+      : 'Hey ' + first + ', ' + (L - done) + ' week' + (L - done === 1 ? '' : 's') + ' left in your block' + win + '. Big effort.\n\nI want to make sure you go straight into the next block with no gap. Free for a quick 10-min call this week so I can show you the plan?';
+    var phone = jmWa(c.phone);
+    tqPanel('<div><h3>' + esc(c.displayName || key) + '</h3><div class="sub">' + esc((finished ? 'Block finished · wk ' + w : 'Block ending · wk ' + w + '/' + L) + ' · book the Block 2 call') + '</div></div>' +
+      '<ul class="v2-rd-notes"><li>Offer on the call: Block 2 (16 weeks) first; Maintenance if they hesitate; Pause as the last resort.</li></ul>' +
+      '<textarea class="v2-rd-text" rows="8" aria-label="Message">' + esc(msg) + '</textarea>' +
+      '<div class="v2-rd-actions">' + (phone ? '<button type="button" class="v2-btn primary" data-tqo="wa">Open in WhatsApp</button>' : '') +
+      '<button type="button" class="v2-btn' + (phone ? '' : ' primary') + '" data-tqo="copy">Copy</button>' +
+      '<button type="button" class="v2-btn ghost" data-tqo="client">Open client page</button>' +
+      '<span class="v2-rd-state">' + (phone ? '' : 'No phone number saved for ' + esc(first) + ' - Copy, then paste in WhatsApp') + '</span></div>');
+    var p = $('v2-tq-panel'), ta = p.querySelector('textarea');
+    var sentIt = function (what) { tqClosePanel(); tqToast(what + ' · ' + first + ' marked done'); tqResolve(key, 'done'); };
+    p.onclick = function (e) {
+      var b = e.target.closest('[data-tqo]'); if (!b) return;
+      var a = b.getAttribute('data-tqo');
+      if (a === 'client') { tqClosePanel(); return openDetail(key); }
+      if (a === 'wa') { window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); return sentIt('Opened in WhatsApp'); }
+      tqCopy(ta, function () { sentIt('Copied'); });
     };
   }
   function tqCopy(ta, done) {

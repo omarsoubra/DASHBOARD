@@ -11,7 +11,7 @@
 //   nadia   reply sent 30 h ago, nothing from her since        -> noreply   -> Nudge   (client page)
 //   ravi    reply sent 5 h ago, nothing since                  -> "Waiting on client" row; Apple Health sync stopped
 //   jonah   16-wk block, week 15, unsent journey draft         -> journey   -> Message (journey side panel)
-//   sofia   16-wk block, week 18 (finished, no next block)     -> finished  -> Offer   (client page)
+//   sofia   16-wk block, week 18 (finished, no next block)     -> finished  -> Offer   (drafted Block 2 call message)
 //   kwame   16-wk block, week 5, Apple Health live, PR 3 d ago -> unlock    -> Send code
 //   felix   coach task due today                               -> task      -> Do it
 //   elena   client page 404 + pre-rollout check-in             -> broken    -> Open
@@ -239,7 +239,7 @@ const EXPECT = {
   isla_b: { src: 'checkin', label: 'Review', opens: 'checkin-review', list: 'today' },
   nadia_k: { src: 'noreply', label: 'Nudge', opens: 'client', list: 'today' },
   jonah_r: { src: 'journey', label: 'Message', opens: 'journey', list: 'today' },
-  sofia_m: { src: 'finished', label: 'Offer', opens: 'client', list: 'today' },
+  sofia_m: { src: 'finished', label: 'Offer', opens: 'offer', list: 'today' },
   kwame_a: { src: 'unlock', label: 'Send code', opens: 'client', list: 'today' },
   felix_w: { src: 'task', label: 'Do it', opens: 'client', list: 'today' },
   elena_p: { src: 'broken', label: 'Open', opens: 'client', list: 'today' },

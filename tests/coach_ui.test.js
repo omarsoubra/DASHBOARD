@@ -367,6 +367,8 @@ const knownBug = (name, holds, detail) => {
         'review-modal': async (k) => (await ev(`document.getElementById('cc-review-modal').classList.contains('open')`)) && new RegExp(FX.roster.find((c) => c.storageKey === k).displayName).test(await txt('#cc-review-title')),
         'checkin-review': async (k) => (await ev(`location.hash`)).startsWith('#/check-ins/' + k + '/') && (await visible('#v2-ci-panel')) && (await exists('#v2-ci-panel .v2-ci-shell')),
         client: async (k) => (await ev(`location.hash`)) === '#/clients/' + k && (await exists(`#v2-cl-detail .v2-cd[data-key="${k}"]`)),
+        offer: async (k) => (await visible('#v2-tq-panel')) && /Sofia/.test(await txt('#v2-tq-panel')) && /call/i.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`))
+          && (await ev(`!!document.querySelector('#v2-tq-panel [data-tqo="client"], #v2-tq-panel [data-tqsend]')`)),
         journey: async (k) => (await visible('#v2-tq-panel')) && /Jonah Reyes/.test(await txt('#v2-tq-panel')) && /two weeks left/.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`)),
       };
       for (const [k, e] of Object.entries(EXPECT).filter(([, e]) => e.list === 'today')) {
@@ -377,10 +379,20 @@ const knownBug = (name, holds, detail) => {
           const where = { hash: await ev('location.hash'), reviewModal: await ev(`document.getElementById('cc-review-modal').classList.contains('open')`), ciPanel: await visible('#v2-ci-panel') };
           if (e.opens === 'checkin-review') knownBug(`"${e.label}" on a ${e.src} row opens the check-in review (#/check-ins/${k}/<iso>)`, okOpen, where);
           else t(`"${e.label}" opens the ${e.opens.replace('-', ' ')}`, okOpen, where);
-          if (e.opens === 'journey') { await click('#v2-tq-panel [data-tqclose]'); await idle(150); t('journey panel closes with ✕', !(await visible('#v2-tq-panel'))); }
+          if (e.opens === 'journey' || e.opens === 'offer') { await click('#v2-tq-panel [data-tqclose]'); await idle(150); t('journey panel closes with ✕', !(await visible('#v2-tq-panel'))); }
           if (e.opens === 'review-modal') { await ev(`closeReviewModal(); 1`); t('review modal closes', !(await ev(`document.getElementById('cc-review-modal').classList.contains('open')`))); }
         }, { shot: 'today_open_' + e.src });
       }
+      await step('Offer with no journey draft: a ready Block 2 call message from the client\'s numbers', async () => {
+        await backToToday();
+        await ev(`Object.keys(CI_DRAFTS).forEach(function (k) { if (CI_DRAFTS[k].client_key === 'sofia_m') delete CI_DRAFTS[k]; }); 1`);
+        await click('[data-tqgo="sofia_m"]'); await idle(300);
+        const msg = await ev(`(document.querySelector('#v2-tq-panel textarea') || {}).value || ''`);
+        t('panel opens with a drafted message (weeks done + 10-min call, no price)', (await visible('#v2-tq-panel')) && /^Hey Sofia, 16 weeks done/.test(msg) && /10-min call/.test(msg) && !/\$/.test(msg), msg);
+        t('Copy / Open client page offered', (await count('#v2-tq-panel [data-tqo]')) >= 2);
+        await click('#v2-tq-panel [data-tqo="client"]'); await idle(400);
+        t('Open client page -> #/clients/sofia_m', (await ev('location.hash')) === '#/clients/sofia_m');
+      }, { shot: 'today_offer_generated' });
       await step('Today ••• menu, wins panel, search', async () => {
         await backToToday();
         await click('[data-tqmore="kwame_a"]'); await idle(150);
