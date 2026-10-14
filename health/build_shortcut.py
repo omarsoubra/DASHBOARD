@@ -66,7 +66,8 @@ def post(fields):
 # de-duplicates iPhone + Watch the same way). Resting heart rate: the latest reading. One POST each, steps first.
 f = find("Steps", False); detail(f, "Value", "StepsList"); detail(f, "Source", "StepsSources")
 post([("stepsList", "StepsList"), ("stepsSources", "StepsSources")])
-f = find("Active Energy", False, "kcal"); detail(f, "Value", "ActiveList"); detail(f, "Source", "ActiveSources")
+# "Active Energy" in the editor is stored as "Active Calories" (read back from iOS 2026-10-14)
+f = find("Active Calories", False, "kcal"); detail(f, "Value", "ActiveList"); detail(f, "Source", "ActiveSources")
 post([("activeList", "ActiveList"), ("activeSources", "ActiveSources")])
 f = find("Resting Heart Rate", True); detail(f, "Value", "RestingHR")
 post([("restingHr", "RestingHR")])
