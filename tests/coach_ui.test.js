@@ -413,6 +413,19 @@ const knownBug = (name, holds, detail) => {
         t('the Check-ins button opens the check-in review', owen && /Review/.test(owen.label));
         await click('[data-tqf="today"]'); await idle(150);
       });
+      await step('Check-in review: Apple Health week + why the scale is not moving (Marcus, cut)', async () => {
+        await backToToday();
+        await ev(`(function () { var l = _checkInsForClient(_dashboardData.marcus_vell); window.openCheckInReview('marcus_vell', l[0].timestamp); return 1; })()`); await idle(700);
+        const h = await txt('.cc-ci-health');
+        t('health block: steps, sleep, active kcal, resting HR for the week before the check-in', /Apple Health/.test(await txt('#v2-ci-panel .sec-health h3')) && /3,800/.test(h) && /5h 40/.test(h) && /65 bpm/.test(h), h);
+        t('steps drop called out with the size of the drop', /Steps down 64% on the week before \(3,800\/day vs 10,500\)/.test(h), h);
+        t('"Likely why the scale isn’t moving": steps fell + kcal estimate, and short sleep', /Likely why/.test(h) && /Steps fell to 3,800\/day \(from 10,500\): about \d+ kcal a day less burned/.test(h) && /short sleep raises hunger/.test(h), h);
+        t('resting heart rate up on their usual is flagged', /Resting heart rate up 7 bpm/.test(h), h);
+        await ev(`closeCheckInReview(); 1`); await idle(300);
+        await ev(`(function () { var l = _checkInsForClient(_dashboardData.isla_b); window.openCheckInReview('isla_b', l[0].timestamp); return 1; })()`); await idle(700);
+        t('no Apple Health block for a client who is not connected (Isla)', !(await exists('.cc-ci-health')));
+        await ev(`closeCheckInReview(); 1`); await idle(300);
+      }, { shot: 'checkin_review_health' });
       await step('AI review flags a check-in: it turns red and jumps above reviews', async () => {
         await backToToday();
         await ev(`(function () { var orig = window._apPriority; window.__apOrig = orig; window._apPriority = function (c, sum, m) { var r = orig(c, sum, m);

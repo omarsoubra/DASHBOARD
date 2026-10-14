@@ -176,6 +176,9 @@ function build(now = Date.now()) {
     resting_hr: 56 + d % 4, sleep_min: d === 0 ? 452 : 420 + d % 60, received_at: dAgo(d), sources: { steps: { "Kwame's iPhone": 3000, 'Apple Watch': 5400 }, sleep: { deep: 51, rem: 50, awake: 27 } } });
   for (let d = 15; d >= 3; d--) hrows.push({ storage_key: 'ravi_m', day: sydDay(d), steps: 6500 + d * 90, active_kcal: 380, exercise_min: 25, resting_hr: 62, sleep_min: null, received_at: dAgo(d),
     sources: { steps: { Connect: 6500 } } });
+  // marcus (cut, scale going up): the week before his check-in (12 d ago) steps fell 10,500 -> 3,800/day and sleep 5h40
+  for (let d = 26; d >= 13; d--) hrows.push({ storage_key: 'marcus_vell', day: sydDay(d), steps: d >= 20 ? 10500 : 3800, active_kcal: d >= 20 ? 620 : 240, exercise_min: d >= 20 ? 40 : 5,
+    resting_hr: d >= 20 ? 58 : 65, sleep_min: d >= 20 ? 450 : 340, received_at: dAgo(d), sources: { steps: { Connect: d >= 20 ? 10500 : 3800 } } });
   // amara: Apple Health shows short sleep 3 nights running + steps down ~55% week on week -> 'sleep' tops her quiet reason
   for (let d = 14; d >= 1; d--) hrows.push({ storage_key: 'amara_d', day: sydDay(d), steps: d >= 8 ? 9000 : 4000, active_kcal: 300, exercise_min: 10, resting_hr: 64,
     sleep_min: d <= 3 ? 320 + d * 5 : 430, received_at: dAgo(d), sources: { steps: { Connect: d >= 8 ? 9000 : 4000 } } });

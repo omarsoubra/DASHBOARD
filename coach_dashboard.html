@@ -2222,6 +2222,14 @@ body.v2-ci-open { overflow: hidden; }
 .v2-rd.is-sent .v2-rd-text { color: var(--v2-ink2); background: var(--v2-ws); }
 .v2-ci-sec.sec-reply { border-color: var(--v2-ink2); }
 .v2-ci-hint { margin: 6px 0 0; font-size: 11px; color: var(--v2-muted); }
+.cc-ci-health { margin: 14px 0; padding: 12px 14px; border: 1px solid var(--v2-line, #e3e5ea); border-radius: 12px; }
+.cc-ci-health .col-title { font: 600 11px 'DM Mono', ui-monospace, monospace; letter-spacing: .1em; color: var(--v2-muted, #7a7e8c); margin-bottom: 8px; }
+.cc-ci-health .cc-ci-context { margin: 0; }
+.cc-ci-health .hsub { font-size: 11.5px; color: var(--v2-muted, #7a7e8c); margin-top: 2px; }
+.cc-ci-health .hwhy { background: var(--v2-red-soft, #fdecea); border-radius: 10px; padding: 9px 12px; margin-bottom: 10px; font-size: 13.5px; }
+.cc-ci-health .hwhy ul, .cc-ci-health .hins { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; }
+.cc-ci-health .hins li.warn { color: var(--v2-red, #d0423b); } .cc-ci-health .hins li.info { color: var(--v2-ink2, #4a4d5a); }
+.cc-ci-health .hok { font-size: 13px; color: var(--v2-accent-ink, #00845b); margin-top: 8px; }
 #v2-ci-panel .v2-ci-actions { display: flex; gap: 8px; justify-content: flex-end; margin: 0; padding: 0; }
 #v2-ci-panel .v2-ci-actions .cc-btn { height: 38px; padding: 0 16px; border-radius: 8px; font: 600 13px 'Inter', system-ui, sans-serif; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink); cursor: pointer; }
 #v2-ci-panel .v2-ci-actions .cc-btn.primary { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; flex: 1; }
@@ -6039,6 +6047,71 @@ var CI_DRAFTS = {};
 // APPLE HEALTH V1 (Omar 2026-10-14): daily totals each client's iPhone Shortcut sends (steps, active kcal, exercise
 // minutes, resting HR, sleep). Coach-only read (healthGet). Optional: no data / no action -> nothing changes.
 var HEALTH = { rows: {}, status: {}, loaded: false };
+// ── HEALTH INSIGHT (Omar 2026-10-14): Apple Health data read into the check-in review + the AI verdict ─────────────
+// The week before a check-in (7 complete days) against the week before that. Same rules as client_template
+// agent_workspace/bin/checkin_review.py HEALTH_RULES, so the dashboard and the drafted replies say the same thing.
+var HEALTH_RULES = { minDays: 4, minNights: 3, lowSteps: 6000, stepsDropPct: 25, shortSleepMin: 360, lowSleepMin: 420, rhrUpBpm: 5, stallKg14: -0.2 };
+function _hDay(ms) { return new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); }
+function _hm(m) { m = Math.round(m); return Math.floor(m / 60) + 'h ' + ('0' + (m % 60)).slice(-2); }
+function healthInsight(client, endIso, sum) {
+  if (!client || !HEALTH.loaded) return null;
+  var rows = HEALTH.rows[client.storageKey] || []; if (!rows.length) return null;
+  var R = HEALTH_RULES, end = endIso ? Date.parse(endIso) : Date.now(); if (isNaN(end)) end = Date.now();
+  var D = function (n) { return _hDay(end - n * 86400000); };
+  var win = function (from, to) { return rows.filter(function (r) { return r.day <= D(from) && r.day >= D(to); }); };
+  var avg = function (rs, f, min) { var v = rs.map(function (r) { return r[f]; }).filter(function (x) { return x != null; }); return v.length >= min ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
+  var wk = win(1, 7), pw = win(8, 14), base = win(1, 28);
+  var h = {
+    days: wk.length,
+    steps: avg(wk, 'steps', R.minDays), stepsPrev: avg(pw, 'steps', R.minDays),
+    sleep: avg(wk, 'sleep_min', R.minNights),
+    active: avg(wk, 'active_kcal', R.minDays), activePrev: avg(pw, 'active_kcal', R.minDays),
+    exercise: wk.reduce(function (a, r) { return a + (r.exercise_min || 0); }, 0),
+    rhr: avg(win(1, 7), 'resting_hr', 3), rhrBase: avg(win(8, 28), 'resting_hr', 5),
+    insights: [], explain: [],
+  };
+  if (!wk.length) return h;
+  h.stepsPct = h.steps != null && h.stepsPrev ? Math.round((h.steps / h.stepsPrev - 1) * 100) : null;
+  var fmt = function (n) { return Math.round(n).toLocaleString('en-AU'); };
+  var lowMove = h.steps != null && (h.steps < R.lowSteps || (h.stepsPct != null && h.stepsPct <= -R.stepsDropPct));
+  if (h.steps != null && h.stepsPct != null && h.stepsPct <= -R.stepsDropPct) h.insights.push({ lvl: 'warn', text: 'Steps down ' + Math.abs(h.stepsPct) + '% on the week before (' + fmt(h.steps) + '/day vs ' + fmt(h.stepsPrev) + ')' });
+  else if (h.steps != null && h.steps < R.lowSteps) h.insights.push({ lvl: 'warn', text: 'Low daily movement: ' + fmt(h.steps) + ' steps/day' });
+  if (h.sleep != null && h.sleep < R.shortSleepMin) h.insights.push({ lvl: 'warn', text: 'Short sleep: ' + _hm(h.sleep) + ' a night on average' });
+  else if (h.sleep != null && h.sleep < R.lowSleepMin) h.insights.push({ lvl: 'info', text: 'Sleep under 7 h: ' + _hm(h.sleep) + ' a night' });
+  if (h.rhr != null && h.rhrBase != null && h.rhr - h.rhrBase >= R.rhrUpBpm) h.insights.push({ lvl: 'warn', text: 'Resting heart rate up ' + Math.round(h.rhr - h.rhrBase) + ' bpm on their usual (fatigue, stress or getting sick)' });
+  // why the scale isn't moving on a cut: movement and sleep, with the energy it costs
+  var sw = Number(client.startWeight), gw = Number(client.goalWeight), cut = isFinite(sw) && isFinite(gw) && gw < sw;
+  var t14 = null; try { t14 = _weightTrendKgLast14(sum || (_dashboardData || {})[client.storageKey] || {}); } catch (e) {}
+  h.stalled = cut && t14 !== null && t14 >= R.stallKg14;
+  if (h.stalled) {
+    var kg = Number(((sum || {}).latestWeight)) || sw || 75;
+    if (lowMove && h.stepsPrev && h.steps < h.stepsPrev) {
+      var kcal = Math.round((h.stepsPrev - h.steps) * kg * 0.0005 / 10) * 10;
+      h.explain.push('Steps fell to ' + fmt(h.steps) + '/day (from ' + fmt(h.stepsPrev) + '): about ' + kcal + ' kcal a day less burned. Get steps back before cutting calories.');
+    } else if (lowMove) h.explain.push('Only ' + fmt(h.steps) + ' steps/day: more daily movement is the first lever before cutting calories.');
+    if (h.sleep != null && h.sleep < R.lowSleepMin) h.explain.push('Sleeping ' + _hm(h.sleep) + ': short sleep raises hunger and water retention, which hides fat loss on the scale.');
+  }
+  return h;
+}
+function healthInsightHtml(h) {
+  if (!h) return '';
+  if (!h.days) return '<div class="cc-ci-health"><div class="col-title">APPLE HEALTH · WEEK BEFORE THE CHECK-IN</div><div class="na">Connected, but nothing synced that week.</div></div>';
+  var e = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var cell = function (lbl, val, sub) { return '<div class="item"><div class="lbl">' + lbl + '</div>' + (val == null ? '<span class="na">—</span>' : e(val)) + (sub ? '<div class="hsub">' + e(sub) + '</div>' : '') + '</div>'; };
+  var fmt = function (n) { return Math.round(n).toLocaleString('en-AU'); };
+  return '<div class="cc-ci-health"><div class="col-title">APPLE HEALTH · WEEK BEFORE THE CHECK-IN (' + h.days + ' of 7 days synced)</div>' +
+    (h.explain.length ? '<div class="hwhy"><b>Likely why the scale isn’t moving</b><ul>' + h.explain.map(function (x) { return '<li>' + e(x) + '</li>'; }).join('') + '</ul></div>' : '') +
+    '<div class="cc-ci-context">' +
+      cell('Steps / day', h.steps == null ? null : fmt(h.steps), h.stepsPct == null ? null : (h.stepsPct > 0 ? '+' : '') + h.stepsPct + '% vs week before') +
+      cell('Sleep / night', h.sleep == null ? null : _hm(h.sleep), null) +
+      cell('Active kcal / day', h.active == null ? null : fmt(h.active), h.activePrev ? 'week before ' + fmt(h.activePrev) : null) +
+      cell('Exercise', h.exercise ? h.exercise + ' min' : null, null) +
+      cell('Resting HR', h.rhr == null ? null : Math.round(h.rhr) + ' bpm', h.rhrBase == null ? null : 'usual ' + Math.round(h.rhrBase)) +
+    '</div>' +
+    (h.insights.length ? '<ul class="hins">' + h.insights.map(function (i) { return '<li class="' + i.lvl + '">' + e(i.text) + '</li>'; }).join('') + '</ul>' : '<div class="hok">Movement and sleep look normal this week.</div>') +
+  '</div>';
+}
+
 async function loadHealth() {
   try {
     const r = await coachFetch('healthGet', { days: 30 });
@@ -8161,6 +8234,7 @@ function openCheckInReview(storageKey, iso) {
       <div class="item"><div class="lbl">Current next action</div>${nextAct}</div>
       ${macrosHtml}
     </div>
+    ${(function () { try { return healthInsightHtml(healthInsight(c, iso, sum)); } catch (e) { return ''; } })()}
     ${curr.notes ? '<div class="cc-ci-notes"><strong style="color:var(--cc-muted);font-size:0.72rem;text-transform:uppercase;">Client notes</strong><br/>' + esc(curr.notes) + '</div>' : ''}
     ${apBriefHtml}
     <label>Outcome <span style="color:var(--cc-red);">*</span></label>
@@ -12407,6 +12481,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var d = CI_DRAFTS && CI_DRAFTS[r.client.storageKey + '|' + ci.timestamp], drafted = d && !d.sent_at;
       var head = 'Check-in' + (ci.week ? ' wk ' + ci.week : '') + ' · ' + ago(ci.timestamp);
       var txt = ap && ap.reason ? head + ' · ' + ap.reason : head;   // the verdict itself is the AI chip on the row
+      var hi = null; try { hi = healthInsight(r.client, ci.timestamp, r.sum); } catch (e) {}
+      if (hi && hi.explain.length) txt += ' · Apple Health: ' + hi.explain[0].split(':')[0];
+      else if (hi && hi.insights.length) txt += ' · Apple Health: ' + hi.insights[0].text;
       if (drafted) txt += ' · reply drafted';
       add(r.client, ap && ap.priority === 'NEEDS_ATTENTION' ? 'aicheckin' : 'checkin', txt,
         r.gap ? { kind: 'open', label: 'Open' } : { kind: 'ci', label: drafted ? 'Review & send' : 'Review', iso: ci.timestamp, ai: ap && ap.priority });
@@ -13626,7 +13703,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var kids = Array.prototype.slice.call(body.children);
     var pick = function (sel) { var el = body.querySelector(':scope > ' + sel); return el; };
     var title = pick('h3'), sub = pick('.cc-ci-sub');
-    var flags = pick('.cc-ci-flags'), cols = pick('.cc-ci-cols'), notes = pick('.cc-ci-notes'), brief = pick('.ap-brief');
+    var flags = pick('.cc-ci-flags'), cols = pick('.cc-ci-cols'), notes = pick('.cc-ci-notes'), brief = pick('.ap-brief'), health = pick('.cc-ci-health');
     var contexts = kids.filter(function (el) { return el.classList.contains('cc-ci-context'); });
     var reviewed = contexts.length > 1 ? contexts[0] : (contexts[0] && /Reviewed/.test(contexts[0].textContent) && !/14-day weight trend/.test(contexts[0].textContent) ? contexts[0] : null);
     var context = contexts.filter(function (el) { return el !== reviewed; })[0] || null;
@@ -13660,6 +13737,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (context) a.appendChild(context);
     main.insertAdjacentHTML('beforeend', section('What changed', '', 'sec-changed'));
     main.lastChild.appendChild(a);
+    // A2. Apple Health: the week before the check-in + why the scale isn't moving (Omar 2026-10-14)
+    if (health) {
+      var ht = health.querySelector('.col-title'), htxt = ht ? ht.textContent.replace(/^APPLE HEALTH · /, '') : '';
+      if (ht) ht.remove();
+      main.insertAdjacentHTML('beforeend', section('Apple Health', htxt.toLowerCase(), 'sec-health'));
+      main.lastChild.appendChild(health);
+    }
     // B. Autopilot assessment (draft moves to the action panel) - skipped when an agent reply exists (its notes replace it)
     var rdB = typeof ciDraftFor === 'function' ? ciDraftFor(key, iso) : null;
     if (brief && !rdB) {
