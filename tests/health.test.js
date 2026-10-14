@@ -83,7 +83,7 @@ const B = (r) => r.__body;
   t('no values refused', B(await M.healthLog({ healthKey: key, steps: '' })).error === 'no_values');
   t('a date older than 7 days refused', B(await M.healthLog({ healthKey: key, date: '2020-01-01', steps: 5 })).error === 'bad_date');
   t('a bad key is refused', B(await M.healthLog({ healthKey: 'lih_' + '0'.repeat(40), steps: 5 })).error === 'invalid_key' && B(await M.healthLog({ healthKey: "x'; drop", steps: 5 })).error === 'invalid_key');
-  T.health_keys[0].uploads_today = 30; T.health_keys[0].uploads_day = today;
+  T.health_keys[0].uploads_today = 60; T.health_keys[0].uploads_day = today;
   t('rate limit per day', B(await M.healthLog({ healthKey: key, steps: 5 })).error === 'rate_limited');
   T.health_keys[0].uploads_today = 0;
   t('only the coach reads', B(await M.healthGet({ coachToken: 'x' })).error === 'unauthorized');
@@ -116,12 +116,18 @@ const B = (r) => r.__body;
   t('each reading lands on its own Sydney day; yesterday gets its FINAL total (incl. after 9pm); largest device wins',
     v4.ok && rowY && rowY.steps === 9000 && rowT && rowT.steps === 300, { v4, rowY, rowT });
   t('per-device totals are kept (who wears what)', rowY.sources && rowY.sources.steps["Zain's Garmin"] === 9000 && rowY.sources.steps["Zain's iPhone"] === 4000, rowY && rowY.sources);
-  await M.healthLog({ healthKey: k4, stepsList: '9500', stepsSources: "Zain's Garmin", stepsDates: syd(1, '23:00') });
-  t('a later run re-sends yesterday: its row is updated, not duplicated', T.health_daily.filter((r) => r.day === yst).length === 1 && T.health_daily.find((r) => r.day === yst).steps === 9500);
+  // the next run (rolling 24 h) re-sends two of yesterday's readings plus a 23:00 walk nobody had sent yet
+  await M.healthLog({ healthKey: k4, stepsList: '500\n3500\n700', stepsSources: "Zain's Garmin\nZain's Garmin\nZain's Garmin", stepsDates: [syd(1, '21:40'), syd(1, '18:00'), syd(1, '23:00')].join('\n') });
+  t('a later run completes yesterday: re-sent readings count once, the late 23:00 walk is added (9,700)', T.health_daily.filter((r) => r.day === yst).length === 1 && T.health_daily.find((r) => r.day === yst).steps === 9700, T.health_daily.find((r) => r.day === yst));
   t('readings older than 7 days are ignored', B(await M.healthLog({ healthKey: k4, stepsList: '10', stepsSources: 'x', stepsDates: '2020-01-01T10:00:00+11:00' })).error === 'no_values');
   // the 3-day window's OLDEST day arrives cut part-way: it must never lower a finished day
-  await M.healthLog({ healthKey: k4, stepsList: '1200', stepsSources: "Zain's Garmin", stepsDates: syd(1, '23:30') });
-  t('a partial re-send never lowers a finished day (per device the larger total is kept)', T.health_daily.find((r) => r.day === yst).steps === 9500);
+  await M.healthLog({ healthKey: k4, stepsList: '5000', stepsSources: "Zain's Garmin", stepsDates: syd(1, '09:00') });
+  t('a slice holding only part of a day never lowers it (readings are merged, not replaced)', T.health_daily.find((r) => r.day === yst).steps === 9700);
+  // iOS caps one send at ~100 Health items: the Shortcut sends the newest 90 and the oldest 90; overlap counts once
+  const many = Array.from({ length: 150 }, (_, i) => ({ v: 10, d: new Date(Date.parse(syd(0, '00:30')) + i * 5 * 60000).toISOString().replace('Z', '+00:00') }));
+  const slice = (xs) => ({ healthKey: k4, stepsList: xs.map((x) => x.v).join('\n'), stepsSources: xs.map(() => "Zain's Apple Watch").join('\n'), stepsDates: xs.map((x) => x.d).join('\n') });
+  await M.healthLog(slice(many.slice(0, 90))); await M.healthLog(slice(many.slice(60)));
+  t('newest-90 + oldest-90 slices of a 150-reading day: 1,500 steps, the 30 overlapping readings once', T.health_daily.find((r) => r.day === tdy).sources.steps["Zain's Apple Watch"] === 1500, T.health_daily.find((r) => r.day === tdy).sources.steps);
   // sleep, in the exact format iOS 26 Shortcuts writes (read back from Omar's Garmin data 2026-10-14): one long In Bed,
   // then stages. Last night 22:40 -> 06:40 in bed; asleep = 22:41-01:00 + 01:30-06:30 (a 30-min Awake gap) = 7h19m.
   const night = [['In Bed', syd(1, '22:40'), syd(0, '06:40')], ['Core', syd(1, '22:41'), syd(1, '23:30')], ['Deep', syd(1, '23:30'), syd(0, '00:20')],
@@ -133,7 +139,7 @@ const B = (r) => r.__body;
   const rs = T.health_daily.find((r) => r.day === tdy);
   t('sleep: time asleep (no In Bed, no Awake, overlaps merged) lands on the day you wake up', sl.ok && rs.sleep_min === 439, { sl, rs });
   t('sleep stages kept for the coach (deep / REM / core / awake minutes)', rs.sources.sleep && rs.sources.sleep.deep === 50 && rs.sources.sleep.rem === 40 && rs.sources.sleep.awake === 30, rs.sources);
-  t('exercise minutes + resting heart rate on their own day; earlier steps on that day untouched', rs.exercise_min === 32 && rs.resting_hr === 54 && rs.steps === 300, rs);
+  t('exercise minutes + resting heart rate on their own day; earlier steps on that day untouched', rs.exercise_min === 32 && rs.resting_hr === 54 && rs.steps === 1500, rs);
   await M.healthLog({ healthKey: k4, sleepValues: 'Core', sleepStarts: syd(0, '05:00'), sleepEnds: syd(0, '06:30') });
   t('a cut-off night re-sent later never lowers sleep', T.health_daily.find((r) => r.day === tdy).sleep_min === 439);
   t('a sleep stage longer than 16 h is ignored (bad data)', B(await M.healthLog({ healthKey: k4, sleepValues: 'Core', sleepStarts: syd(3, '00:00'), sleepEnds: syd(0, '00:00') })).error === 'no_values');

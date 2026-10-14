@@ -1206,7 +1206,7 @@ async function coachClientHistory(body: any) {
 const HEALTH_CONSENT_VERSION = 'health-v1-2026-10-14';
 const HEALTH_SETUP_URL = 'https://omarsoubra.github.io/DASHBOARD/health/';
 const HEALTH_KEY_RE = /^lih_[0-9a-f]{40}$/;
-const HEALTH_MAX_UPLOADS_PER_DAY = 30;
+const HEALTH_MAX_UPLOADS_PER_DAY = 60;   // v5 Shortcut: 6 small POSTs per run
 function sydneyDate(ms: number): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 }
@@ -1313,6 +1313,20 @@ function healthDay(raw: string): string | null {
   const t = Date.parse(String(raw ?? '').trim());
   return Number.isFinite(t) ? sydneyDate(t) : null;
 }
+/** Readings (values / sources / start dates as newline lists) -> { day: { "source|start ms": value } }. iOS lets a
+ *  Shortcut send at most ~100 Health items at once (150 is refused), so the v5 Shortcut sends each day in small
+ *  overlapping slices (newest 90, oldest 90). Keyed by device + exact start time, a reading sent twice counts once. */
+function healthReadings(vals: any, srcs: any, dates: any): Record<string, Record<string, number>> {
+  const v = String(vals ?? '').split(/\r?\n/), s = String(srcs ?? '').split(/\r?\n/), d = String(dates ?? '').split(/\r?\n/);
+  const out: Record<string, Record<string, number>> = {};
+  v.forEach((x, i) => {
+    const n = healthNum(x), t = Date.parse(String(d[i] ?? '').trim());
+    if (n === null || !Number.isFinite(t)) return;
+    const src = (s[i] || 'unknown').trim().slice(0, 60).replace(/\|/g, '/') || 'unknown';
+    (out[sydneyDate(t)] ??= {})[src + '|' + t] = n;
+  });
+  return out;
+}
 /** Readings (values / sources / start dates as newline lists) -> { day: { source: sum } }. */
 function healthBuckets(vals: any, srcs: any, dates: any): Record<string, Record<string, number>> {
   const v = String(vals ?? '').split(/\r?\n/), s = String(srcs ?? '').split(/\r?\n/), d = String(dates ?? '').split(/\r?\n/);
@@ -1354,9 +1368,9 @@ function healthSleep(vals: any, starts: any, ends: any): Record<string, { min: n
   return out;
 }
 async function healthLogDays(row: any, body: any, today: string, used: number) {
-  const steps = healthBuckets(body?.stepsList, body?.stepsSources, body?.stepsDates);
-  const active = healthBuckets(body?.activeList, body?.activeSources, body?.activeDates);
-  const exercise = healthBuckets(body?.exerciseList, body?.exerciseSources, body?.exerciseDates);
+  const steps = healthReadings(body?.stepsList, body?.stepsSources, body?.stepsDates);
+  const active = healthReadings(body?.activeList, body?.activeSources, body?.activeDates);
+  const exercise = healthReadings(body?.exerciseList, body?.exerciseSources, body?.exerciseDates);
   const sleep = healthSleep(body?.sleepValues, body?.sleepStarts, body?.sleepEnds);
   // resting heart rate: the latest reading, on its own day
   const rhr: Record<string, number> = {};
@@ -1367,23 +1381,22 @@ async function healthLogDays(row: any, body: any, today: string, used: number) {
   if (!days.length) return err('no_values');
   const nowIso = new Date().toISOString(), saved: Record<string, unknown> = {};
   const round = (m: Record<string, number>) => Object.fromEntries(Object.entries(m).map(([k, n]) => [k, Math.round(n)]));
-  // The Shortcut re-sends a rolling window (the last 3 days), so its OLDEST day can be cut part-way. A day's totals only
-  // ever grow as readings arrive: per device keep the larger of what we have and what came in, then the largest device
-  // wins (Apple Health's own de-duplication of iPhone + Watch). A partial re-send can never lower a finished day.
-  const merge = (old: Record<string, number> | undefined, inc: Record<string, number> | undefined) => {
-    const m: Record<string, number> = { ...(old ?? {}) };
-    for (const [k, n] of Object.entries(inc ?? {})) m[k] = Math.max(m[k] ?? 0, Math.round(n));
-    return m;
-  };
-  const top = (m: Record<string, number>) => Object.keys(m).length ? Math.max(...Object.values(m)) : null;
+  // Every reading is kept per day (device + exact start time), so the slices of one run and the overlapping window of
+  // the next run merge without double counting, and yesterday's late readings complete yesterday. Per device the
+  // readings are summed; the largest device wins (Apple Health's own de-duplication of iPhone + Watch / Garmin).
   for (const day of days) {
     const { data: ex } = await admin.from('health_daily').select('id, sources, steps, active_kcal, exercise_min, sleep_min').eq('client_id', row.client_id).eq('day', day).maybeSingle();
     const src: Record<string, any> = { ...(ex?.sources ?? {}) }, fields: Record<string, unknown> = {};
     const grow = (col: string, key: string, inc: Record<string, number> | undefined, max: number) => {
       if (!inc) return;
-      const m = merge(src[key], inc), n = top(m);
+      const r: Record<string, number> = { ...((src.r ?? {})[key] ?? {}), ...inc };
+      const per: Record<string, number> = {};
+      for (const [k, n] of Object.entries(r)) { const d = k.slice(0, k.lastIndexOf('|')); per[d] = (per[d] ?? 0) + n; }
+      const n = Object.keys(per).length ? Math.round(Math.max(...Object.values(per))) : null;
       if (n === null || n > max) return;
-      src[key] = m; fields[col] = Math.max(n, ex?.[col] ?? 0);
+      src.r = { ...(src.r ?? {}), [key]: r };
+      src[key] = Object.fromEntries(Object.entries(per).map(([k, x]) => [k, Math.round(x)]));
+      fields[col] = n;
     };
     grow('steps', 'steps', steps[day], 150000);
     grow('active_kcal', 'active', active[day], 10000);

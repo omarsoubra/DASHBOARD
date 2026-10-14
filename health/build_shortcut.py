@@ -9,6 +9,10 @@ v4 (2026-10-14, formats read back on Omar's iPhone): 'Start Date is in the last 
 ISO start time, so yesterday is re-sent with its final total; sleep stages ("Sleep": In Bed / Core / Deep / REM / Awake with start + end);
 exercise minutes ("Exercise Time", min); latest resting heart rate with its time. Three POSTs: steps + active, sleep, exercise + resting HR.
 An empty type (e.g. no Exercise Minutes from a Garmin) sends empty lists and does not stop the shortcut.
+v5 (2026-10-14): iOS refuses to let one action send more than ~100 Health items (100 allowed, 150 refused: "not allowed,
+you can allow this in Settings") and Group-by-Day adds iPhone + Garmin together. So: the last 24 h (rolling - a 9pm run
+also completes yesterday), each type in slices of at most 90 readings (newest 90, oldest 90); the server keys every
+reading by device + start time, so overlaps count once.
 
 usage: build_shortcut.py <out.shortcut> [--key-file F --name N --api URL]   (--key-file: a private test copy with the code built in; --api: test receiver)
 then:  shortcuts sign --mode anyone --input <out> --output <signed>
@@ -38,9 +42,10 @@ acts.append({"WFWorkflowActionIdentifier": "is.workflow.actions.setvariable", "W
 
 ISO = [{"WFDateFormatStyle": "ISO 8601", "WFISO8601IncludeTime": True, "Type": "WFDateFormatVariableAggrandizement"}]
 def var_iso(v): return {"Value": {"string": "\ufffc", "attachmentsByRange": {"{0, 1}": {"VariableName": v, "Type": "Variable", "Aggrandizements": ISO}}}, "WFSerializationType": "WFTextTokenString"}
-WINDOW_DAYS = "3"
+WINDOW_DAYS = "1"   # rolling 24 h
+SLICE = 90.0         # iOS refuses ~100+ Health items per action
 
-def find(hktype, single, unit=None):
+def find(hktype, single, unit=None, order="Latest First"):
     """Find Health Samples of the last WINDOW_DAYS days (rolling). single: the latest one sample (resting heart rate)."""
     f = U()
     p = {"WFContentItemFilter": {"Value": {"WFActionParameterFilterPrefix": 1, "WFActionParameterFilterTemplates": [
@@ -48,10 +53,8 @@ def find(hktype, single, unit=None):
             {"Property": "Start Date", "Operator": 1001, "Values": {"Unit": {"Value": 16, "WFSerializationType": "WFCalendarUnitSubstitutableState"},
                                                                      "Number": {"Value": WINDOW_DAYS, "WFSerializationType": "WFNumberStringSubstitutableState"}}, "Removable": False, "Bounded": True}],
             "WFContentPredicateBoundedDate": False}, "WFSerializationType": "WFContentPredicateTableTemplate"},
-         "WFContentItemSortProperty": "Start Date", "WFContentItemSortOrder": "Latest First",
-         "WFContentItemLimitEnabled": bool(single), "WFHKSampleFilteringFillMissing": False, "UUID": f}
-    if single:
-        p["WFContentItemLimitNumber"] = 1.0
+         "WFContentItemSortProperty": "Start Date", "WFContentItemSortOrder": order,
+         "WFContentItemLimitEnabled": True, "WFContentItemLimitNumber": 1.0 if single else SLICE, "WFHKSampleFilteringFillMissing": False, "UUID": f}
     if unit:
         p["WFHKSampleFilteringUnit"] = unit
     acts.append({"WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity", "WFWorkflowActionParameters": p})
@@ -71,17 +74,15 @@ def post(fields):
                                                                     item("date", var_tok("Day"))] + [item(k, var_iso(v) if k.endswith(("Dates", "Starts", "Ends", "Date")) else var_tok(v)) for k, v in fields]},
                          "WFSerializationType": "WFDictionaryFieldValue"}}})
 
-# v4: every reading of the last 3 days with its source and ISO start time; the server buckets each into its own Sydney
-# day and sums per source (largest device wins = Apple Health's de-duplication of iPhone + Watch / Garmin).
-f = find("Steps", False); detail(f, "Value", "StepsList"); detail(f, "Source", "StepsSources"); detail(f, "Start Date", "StepsDates")
-# "Active Energy" in the editor is stored as "Active Calories" (read back from iOS 2026-10-14)
-f = find("Active Calories", False, "kcal"); detail(f, "Value", "ActiveList"); detail(f, "Source", "ActiveSources"); detail(f, "Start Date", "ActiveDates")
-post([("stepsList", "StepsList"), ("stepsSources", "StepsSources"), ("stepsDates", "StepsDates"),
-      ("activeList", "ActiveList"), ("activeSources", "ActiveSources"), ("activeDates", "ActiveDates")])
-# sleep stages (category samples: Value is the stage name; Source comes back empty, so the server merges overlaps instead)
-f = find("Sleep", False); detail(f, "Value", "SleepValues"); detail(f, "Start Date", "SleepStarts"); detail(f, "End Date", "SleepEnds")
+# v5: newest 90 and oldest 90 readings of the last 24 h per type, each with device + ISO start time (one POST each)
+for hk, unit, k, V in (("Steps", None, "steps", "Steps"), ("Active Calories", "kcal", "active", "Active")):   # "Active Energy" is stored as "Active Calories"
+    for order in ("Latest First", "Oldest First"):
+        f = find(hk, False, unit, order); detail(f, "Value", V + "List"); detail(f, "Source", V + "Sources"); detail(f, "Start Date", V + "Dates")
+        post([(k + "List", V + "List"), (k + "Sources", V + "Sources"), (k + "Dates", V + "Dates")])
+# sleep stages of the last 24 h (category samples: Value is the stage; Source comes back empty, the server merges overlaps)
+f = find("Sleep", False, None, "Oldest First"); detail(f, "Value", "SleepValues"); detail(f, "Start Date", "SleepStarts"); detail(f, "End Date", "SleepEnds")
 post([("sleepValues", "SleepValues"), ("sleepStarts", "SleepStarts"), ("sleepEnds", "SleepEnds")])
-# "Exercise Minutes" in the editor is stored as "Exercise Time"
+# "Exercise Minutes" is stored as "Exercise Time"; + the latest resting heart rate with its time
 f = find("Exercise Time", False, "min"); detail(f, "Value", "ExerciseList"); detail(f, "Source", "ExerciseSources"); detail(f, "Start Date", "ExerciseDates")
 f = find("Resting Heart Rate", True); detail(f, "Value", "RestingHR"); detail(f, "Start Date", "RestingHRDate")
 post([("exerciseList", "ExerciseList"), ("exerciseSources", "ExerciseSources"), ("exerciseDates", "ExerciseDates"),
