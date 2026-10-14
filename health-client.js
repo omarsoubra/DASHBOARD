@@ -20,8 +20,8 @@
   'use strict';
   if (window.LockedInHealth) return;
 
-  var SHORTCUT_URL = 'https://www.icloud.com/shortcuts/af0a290b59944b59a21c702a91730db5';
-  var SHORTCUT_NAME = 'LOCKED IN Activity';
+  var SHORTCUT_URL = 'https://www.icloud.com/shortcuts/3e90791bd8de432cb4814e28188ad8a2';
+  var SHORTCUT_NAME = 'LOCKED IN Health';
   var VERSION = 'health-v1-2026-10-14';
   var UA = navigator.userAgent || '';
   var IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -307,7 +307,7 @@
         stop.setAttribute('disabled', 'disabled');
         api('healthSelfDisconnect').then(function () {
           put('k', null); put('ran', null); put('added', null); status = { connected: false, days: [] }; render();
-          frame('manage', [el('h3', { text: 'Sharing stopped' }), el('p', { text: 'Your Apple Health data has been deleted. You can also delete the LOCKED IN Activity shortcut and its automation in the Shortcuts app.' }),
+          frame('manage', [el('h3', { text: 'Sharing stopped' }), el('p', { text: 'Your Apple Health data has been deleted. You can also delete the LOCKED IN Health shortcut and its automation in the Shortcuts app.' }),
             el('button', { type: 'button', class: 'lih-cta', on: { click: function () { close(); } } }, ['Done'])]);
         }).catch(function () { stop.removeAttribute('disabled'); stop.textContent = 'Couldn’t stop — tap to retry'; });
       });

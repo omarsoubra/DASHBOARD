@@ -75,9 +75,9 @@
   <div id="setup" hidden>
     <div class="card">
       <div class="step">Step 2 of 3</div>
-      <h2>Add the LOCKED IN Activity Shortcut</h2>
+      <h2>Add the LOCKED IN Health Shortcut</h2>
       <p>Tap the button. Your code is copied for you.</p>
-      <a class="btn" id="shortcutBtn" href="https://www.icloud.com/shortcuts/af0a290b59944b59a21c702a91730db5">Add the Shortcut</a>
+      <a class="btn" id="shortcutBtn" href="https://www.icloud.com/shortcuts/3e90791bd8de432cb4814e28188ad8a2">Add the Shortcut</a>
       <p style="margin-top:12px">Then on the next screen:</p>
       <ol>
         <li>Tap <strong>Set Up Shortcut</strong>.</li>
@@ -89,9 +89,9 @@
       <div class="step">Step 3 of 3</div>
       <h2>Turn it on</h2>
       <ol>
-        <li>Open the <strong>Shortcuts</strong> app and tap <strong>LOCKED IN Activity</strong> once. Tap <strong>Allow</strong> / <strong>Always Allow</strong> for everything it asks.</li>
+        <li>Open the <strong>Shortcuts</strong> app and tap <strong>LOCKED IN Health</strong> once. Tap <strong>Allow</strong> / <strong>Always Allow</strong> for everything it asks.</li>
         <li>Tap <strong>Automation</strong> at the bottom → <strong>+</strong> → <strong>Time of Day</strong>.</li>
-        <li>Pick <strong>9:00 PM</strong>, <strong>Daily</strong>, <strong>Run Immediately</strong> → <strong>Next</strong> → <strong>LOCKED IN Activity</strong>.</li>
+        <li>Pick <strong>9:00 PM</strong>, <strong>Daily</strong>, <strong>Run Immediately</strong> → <strong>Next</strong> → <strong>LOCKED IN Health</strong>.</li>
       </ol>
       <button class="btn ghost" id="checkBtn">Check it worked</button>
       <p id="checkMsg" style="margin-top:10px" hidden></p>
@@ -109,7 +109,7 @@
     <h2>Stop sharing</h2>
     <p>This switches the link off straight away and deletes every day of Apple Health data Omar has received from you.</p>
     <button class="btn danger" id="offBtn">Stop sharing and delete my data</button>
-    <p class="muted" style="margin-top:10px">Also delete the LOCKED IN Activity shortcut and its automation in the Shortcuts app.</p>
+    <p class="muted" style="margin-top:10px">Also delete the LOCKED IN Health shortcut and its automation in the Shortcuts app.</p>
   </div>
 
   <div id="stopped" class="card status" hidden>
@@ -122,8 +122,8 @@
   var API_URL = 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
   // iCloud link of the LOCKED IN Health shortcut (its import question asks for the code). Empty until published.
   // Apple's iCloud link: opens the Shortcuts app's own "Add Shortcut" screen. Built by health/build_shortcut.py, signed with
-  // `shortcuts sign --mode anyone`, added to Omar's library and shared from there (2026-10-14, v3: verified on Omar's iPhone - 55 steps = Health app).
-  var SHORTCUT_URL = 'https://www.icloud.com/shortcuts/af0a290b59944b59a21c702a91730db5';
+  // `shortcuts sign --mode anyone`, added to Omar's library and shared from there (v5 2026-10-14: 24 h in <=90-reading slices + sleep/exercise; verified on Omar's iPhone - 203 steps vs Health 201, sleep 7h33).
+  var SHORTCUT_URL = 'https://www.icloud.com/shortcuts/3e90791bd8de432cb4814e28188ad8a2';
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).hidden = !on; };
 
