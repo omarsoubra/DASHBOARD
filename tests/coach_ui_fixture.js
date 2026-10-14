@@ -61,6 +61,7 @@ function build(now = Date.now()) {
   client({ storageKey: 'elena_p', displayName: 'Elena Petrova', programType: 'Cut', startWeight: 69, goalWeight: 63, startDate: startForWeek(10), durationWeeks: 16, phaseCount: 4, phone: '+61400000111' });
   client({ storageKey: 'leila_h', displayName: 'Leila Haddad', programType: 'Fat Loss', startWeight: 81, goalWeight: 72, startDate: startForWeek(8), phone: '+61400000112' });
   client({ storageKey: 'amara_d', displayName: 'Amara Diallo', programType: 'Lean Bulk', programGoal: 'lean_bulk', startWeight: 58, goalWeight: 62, startDate: startForWeek(3), phone: '+61400000113' });
+  client({ storageKey: 'zara_k', displayName: 'Zara Kim', programType: 'Recomp', startWeight: 64, goalWeight: 62, startDate: startForWeek(2), phone: '+61400000119', lastMeaningfulCoachReview: dAgo(1) });
   client({ storageKey: 'ben_t', displayName: 'Ben Thornton', programType: 'Recomp', startWeight: 79, goalWeight: 77, startDate: startForWeek(2), phone: '+61400000114', lastMeaningfulCoachReview: dAgo(1) });
   client({ storageKey: 'owen_c', displayName: 'Owen Clarke', programType: 'Cut', startWeight: 101, goalWeight: 92, startDate: startForWeek(10), phone: '+61400000115' });
   client({ storageKey: 'hana_s', displayName: 'Hana Sato', programType: 'Fat Loss', startWeight: 74, goalWeight: 68, startDate: sydDay(-3), programStatus: 'onboarding', phone: '+61400000116' });
@@ -107,7 +108,7 @@ function build(now = Date.now()) {
   sum('ravi_m').weightHistory.push({ ts: iso(now - 7 * HOUR), kg: 85.6 }); lift('ravi_m', dAgo(1, 8), 'Pull Up', 10, 8);
   checkin('ravi_m', dAgo(3, 9), 5, 85.9);
   // jonah, sofia, kwame, felix, ben: engaged
-  for (const [k, kg, dk] of [['jonah_r', 83.2, 0.02], ['sofia_m', 57.4, 0.02], ['kwame_a', 85.1, 0.01], ['felix_w', 76.4, -0.03], ['ben_t', 78.6, -0.05], ['elena_p', 65.2, -0.05]]) {
+  for (const [k, kg, dk] of [['jonah_r', 83.2, 0.02], ['sofia_m', 57.4, 0.02], ['kwame_a', 85.1, 0.01], ['felix_w', 76.4, -0.03], ['ben_t', 78.6, -0.05], ['elena_p', 65.2, -0.05], ['zara_k', 63.4, -0.03]]) {
     dailyWeights(k, 12, 0, kg, dk); meals(k, [0, 1, 2, 3, 4, 5]); lift(k, dAgo(1, 8), 'Bench Press', 70, 8); lift(k, dAgo(3, 8), 'Back Squat', 90, 6);
     checkin(k, dAgo(4, 9), 1, kg);
   }
@@ -150,7 +151,7 @@ function build(now = Date.now()) {
   markReviewed('tomasz_b', ciTs('tomasz_b'), 'checkin_feedback', 'Push calories via shakes.');
   markReviewed('nadia_k', ciTs('nadia_k'), 'no_change', '');
   markReviewed('ravi_m', ciTs('ravi_m'), 'nutrition_adjusted', 'Dropped 100 kcal.');
-  for (const k of ['jonah_r', 'sofia_m', 'kwame_a', 'felix_w', 'ben_t', 'elena_p', 'amara_d']) markReviewed(k, ciTs(k), 'no_change', '');
+  for (const k of ['jonah_r', 'sofia_m', 'kwame_a', 'felix_w', 'ben_t', 'elena_p', 'amara_d', 'zara_k']) markReviewed(k, ciTs(k), 'no_change', '');
   markReviewed('priya_n', ciTs('priya_n', 1), 'no_change', '');
   markReviewed('marcus_vell', ciTs('marcus_vell'), 'no_change', '');
   markReviewed('isla_b', ciTs('isla_b', 1), 'no_change', '');
@@ -182,7 +183,12 @@ function build(now = Date.now()) {
   // amara: Apple Health shows short sleep 3 nights running + steps down ~55% week on week -> 'sleep' tops her quiet reason
   for (let d = 14; d >= 1; d--) hrows.push({ storage_key: 'amara_d', day: sydDay(d), steps: d >= 8 ? 9000 : 4000, active_kcal: 300, exercise_min: 10, resting_hr: 64,
     sleep_min: d <= 3 ? 320 + d * 5 : 430, received_at: dAgo(d), sources: { steps: { Connect: d >= 8 ? 9000 : 4000 } } });
-  const health = { rows: hrows, status: {
+  // zara: otherwise on track, but the last 3 days resting HR 65 vs her usual 57 and ~5h40 sleep -> recovery dip (early warning);
+  // steps ~6,000/day against her 9,500 target -> under target
+  for (let d = 20; d >= 0; d--) hrows.push({ storage_key: 'zara_k', day: sydDay(d), steps: 6000, active_kcal: 280, exercise_min: 20,
+    resting_hr: d <= 2 ? 65 : 57, sleep_min: d <= 2 ? 340 : 440, received_at: dAgo(d), sources: { steps: { "Zara's Apple Watch": 6000 } } });
+  const health = { targets: { zara_k: { steps: 9500, baseline: 8000, days: 14 }, marcus_vell: { steps: 12000, baseline: 10500, days: 14 } }, rows: hrows, status: {
+    zara_k: { state: 'active', consentAt: dAgo(21), lastUsedAt: hAgo(3), issuedAt: dAgo(22) },
     kwame_a: { state: 'active', consentAt: dAgo(20), lastUsedAt: hAgo(6), issuedAt: dAgo(21) },
     ravi_m: { state: 'active', consentAt: dAgo(16), lastUsedAt: dAgo(3), issuedAt: dAgo(17) },
     hana_s: { state: 'pending', consentAt: null, lastUsedAt: null, issuedAt: dAgo(1) },
@@ -249,6 +255,7 @@ const EXPECT = {
   kwame_a: { src: 'unlock', label: 'Send code', opens: 'code', list: 'today' },
   felix_w: { src: 'task', label: 'Do it', opens: 'client', list: 'today' },
   elena_p: { src: 'broken', label: 'Open', opens: 'client', list: 'today' },
+  zara_k: { src: 'recovery', label: 'Check in', opens: 'recovery', list: 'today' },
   amara_d: { src: 'sleep', label: 'Check in', opens: 'client', list: 'week' },
 };
 const NEVER_IN_QUEUE = ['hana_s', 'diego_f', 'grace_o', 'ben_t'];   // onboarding / paused / archived / on track

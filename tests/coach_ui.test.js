@@ -87,7 +87,7 @@ const INIT = String.raw`
       case 'rosterGet': return { ok: true, ts: FX.rosterTs, roster: FX.roster };
       case 'rosterPut': { FX.roster = b.roster; FX.rosterTs = Number(b.ts) || Date.now(); try { localStorage.setItem('__fx_cloud', JSON.stringify({ ts: FX.rosterTs, roster: FX.roster })); } catch (e) {} return { ok: true }; }
       case 'checkinDraftsGet': return { ok: true, drafts: drafts };
-      case 'healthGet': return { ok: true, rows: FX.health.rows, status: FX.health.status };
+      case 'healthGet': return { ok: true, rows: FX.health.rows, status: FX.health.status, targets: FX.health.targets || {} };
       case 'accountList': return { ok: true, clients: FX.accounts };
       case 'intakeList': return { ok: true, intakes: FX.intakes };
       case 'coachWorkoutCompletions': return { ok: true, generatedAt: new Date().toISOString(), windowDays: 42, clients: FX.cwv };
@@ -385,6 +385,8 @@ const knownBug = (name, holds, detail) => {
         client: async (k) => (await ev(`location.hash`)) === '#/clients/' + k && (await exists(`#v2-cl-detail .v2-cd[data-key="${k}"]`)),
         code: async (k) => { await idle(400); const box = await txt('#v2-tq-panel .v2-tq-codebox'); const msg = await ev(`(document.querySelector('#v2-tq-panel textarea') || {}).value || ''`);
           return (await visible('#v2-tq-panel')) && /KWAME20/.test(box) && /Phase 2 \(Build\)/.test(msg) && /enter code: KWAME20/.test(msg) && (await exists('#v2-tq-panel [data-tqc="copy"]')); },
+        recovery: async (k) => { const p = await txt('#v2-tq-panel'); const msg = await ev(`(document.querySelector('#v2-tq-panel textarea') || {}).value || ''`);
+          return (await visible('#v2-tq-panel')) && /Zara Kim/.test(p) && /65 bpm vs their usual 57 \(\+8\)/.test(p) && /lighter week/.test(msg) && !/sick|ill|virus|heart rate/i.test(msg); },
         offer: async (k) => (await visible('#v2-tq-panel')) && /Sofia/.test(await txt('#v2-tq-panel')) && /call/i.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`))
           && (await ev(`!!document.querySelector('#v2-tq-panel [data-tqo="client"], #v2-tq-panel [data-tqsend]')`)),
         journey: async (k) => (await visible('#v2-tq-panel')) && /Jonah Reyes/.test(await txt('#v2-tq-panel')) && /two weeks left/.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`)),
@@ -402,7 +404,7 @@ const knownBug = (name, holds, detail) => {
             await click('#v2-tq-panel [data-tqc="code"]'); await idle(150);
             t('Copy code puts just the code on the clipboard', (await ev(`__ui.copied[__ui.copied.length - 1]`)) === 'KWAME20', await ev(`__ui.copied.slice(-1)`));
           }
-          if (e.opens === 'journey' || e.opens === 'offer' || e.opens === 'code') { await click('#v2-tq-panel [data-tqclose]'); await idle(150); t('journey panel closes with ✕', !(await visible('#v2-tq-panel'))); }
+          if (e.opens === 'journey' || e.opens === 'offer' || e.opens === 'code' || e.opens === 'recovery') { await click('#v2-tq-panel [data-tqclose]'); await idle(150); t('journey panel closes with ✕', !(await visible('#v2-tq-panel'))); }
           if (e.opens === 'review-modal') { await ev(`closeReviewModal(); 1`); t('review modal closes', !(await ev(`document.getElementById('cc-review-modal').classList.contains('open')`))); }
         }, { shot: 'today_open_' + e.src });
       }
@@ -426,6 +428,16 @@ const knownBug = (name, holds, detail) => {
         t('no Apple Health block for a client who is not connected (Isla)', !(await exists('.cc-ci-health')));
         await ev(`closeCheckInReview(); 1`); await idle(300);
       }, { shot: 'checkin_review_health' });
+      await step('Step targets + early warning (Zara)', async () => {
+        await backToToday();
+        const z = (await tqRows()).find((r) => r.key === 'zara_k');
+        t('recovery dip row: resting HR +8 (65 vs usual 57), sleep 5h 40, "lighter week?"', z && /Recovery dip: resting HR \+8 bpm \(65 vs usual 57\), sleep 5h 40 · lighter week\?/.test(z.why), z);
+        t('...and her under-target steps ride along (6,000/day vs 9,500)', z && /Under step target: 6,000\/day vs 9,500/.test(z.all), z);
+        t('recovery dip is "need you today" but not red (an offer, not an alarm)', z && !z.hot);
+        await ev(`(function () { var l = _checkInsForClient(_dashboardData.marcus_vell); window.openCheckInReview('marcus_vell', l[0].timestamp); return 1; })()`); await idle(700);
+        t('check-in review shows the step target next to the steps', /target 12,000/.test(await txt('.cc-ci-health')));
+        await ev(`closeCheckInReview(); 1`); await idle(300);
+      });
       await step('AI review flags a check-in: it turns red and jumps above reviews', async () => {
         await backToToday();
         await ev(`(function () { var orig = window._apPriority; window.__apOrig = orig; window._apPriority = function (c, sum, m) { var r = orig(c, sum, m);

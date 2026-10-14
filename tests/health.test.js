@@ -15,10 +15,10 @@ const T = { clients: [{ id: 'c1', storage_key: 'bishoy_shaker', display_name: 'B
 let seq = 0;
 function from(t) {
   const q = { f: [], isn: [], gte: null, mode: 'select', payload: null, single: false, order: null, lim: null, ret: false };
-  const rows = () => T[t].filter((r) => q.f.every(([c, v]) => r[c] === v) && q.isn.every(([c, v]) => (r[c] ?? null) === v) && (!q.gte || r[q.gte[0]] >= q.gte[1]) && (!q.inn || q.inn[1].includes(r[q.inn[0]])) && (!q.neq || r[q.neq[0]] !== q.neq[1]));
+  const rows = () => T[t].filter((r) => q.f.every(([c, v]) => r[c] === v) && q.isn.every(([c, v]) => (r[c] ?? null) === v) && (!q.gte || r[q.gte[0]] >= q.gte[1]) && (!q.inn || q.inn[1].includes(r[q.inn[0]])) && (!q.neq || r[q.neq[0]] !== q.neq[1]) && (!q.notnull || r[q.notnull] != null));
   const b = {
     select: () => { q.ret = true; return b; }, eq: (c, v) => { q.f.push([c, v]); return b; }, is: (c, v) => { q.isn.push([c, v]); return b; },
-    gte: (c, v) => { q.gte = [c, v]; return b; }, in: (c, vs) => { q.inn = [c, vs]; return b; }, neq: (c, v) => { q.neq = [c, v]; return b; }, order: (c, o) => { q.order = [c, o.ascending]; return b; }, limit: (n) => { q.lim = n; return b; },
+    gte: (c, v) => { q.gte = [c, v]; return b; }, not: (c, op, v) => { q.notnull = c; return b; }, in: (c, vs) => { q.inn = [c, vs]; return b; }, neq: (c, v) => { q.neq = [c, v]; return b; }, order: (c, o) => { q.order = [c, o.ascending]; return b; }, limit: (n) => { q.lim = n; return b; },
     maybeSingle: () => { q.single = true; return b; },
     insert: (o) => { q.mode = 'insert'; q.payload = o; return b; }, update: (o) => { q.mode = 'update'; q.payload = o; return b; }, delete: () => { q.mode = 'delete'; return b; },
     then: (res) => {
@@ -49,7 +49,7 @@ const ENTITLED = new Set(['bishoy_shaker', 'zain_hussein']);
 const requireCapability = async (k) => ENTITLED.has(k) ? { ok: true } : { ok: false, reason: 'forbidden_tier' };
 const capabilityDenied = (r) => err(r || 'forbidden_tier');
 new Function('admin', 'ok', 'err', 'verifyCoachToken', 'verifyClientToken', 'requireCapability', 'capabilityDenied', 'logEfError', 'CI_KEY_RE', 'sha256', 'crypto', 'exports',
-  js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, healthSelfStatus, healthSelfConnect, healthSelfDisconnect, sydneyDate, HEALTH_CONSENT_VERSION });')(
+  js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, healthSelfStatus, healthSelfConnect, healthSelfDisconnect, sydneyDate, HEALTH_CONSENT_VERSION, healthStepTarget });')(
   admin, ok, err, (t) => t === 'coach', verifyClientToken, requireCapability, capabilityDenied, () => {}, /^[a-z0-9_]{1,64}$/, sha256, globalThis.crypto, M);
 
 let pass = 0, fail = 0;
@@ -145,6 +145,24 @@ const B = (r) => r.__body;
   t('a sleep stage longer than 16 h is ignored (bad data)', B(await M.healthLog({ healthKey: k4, sleepValues: 'Core', sleepStarts: syd(3, '00:00'), sleepEnds: syd(0, '00:00') })).error === 'no_values');
   const st4 = B(await M.healthSelfStatus({ storageKey: 'zain_hussein', token: 'tok-zain_hussein' }));
   t('self status reports when the phone last synced', st4.connected && !!st4.lastSyncAt, st4);
+
+  console.log('step target');
+  const ST = M.healthStepTarget;
+  t('usual 6,200 -> target 7,500 (usual + 1,500, rounded to 500)', ST([6000, 6200, 6400, 6100, 6300, 6250, 6150]).steps === 7500);
+  t('median, so one huge day does not move it', ST([6000, 6200, 30000, 6100, 6300, 6250, 6150]).steps === 7500);
+  t('very low usual (2,500) -> floor 7,000', ST([2500, 2400, 2600, 2500, 2550, 2450, 2500]).steps === 7000);
+  t('usual 11,000 -> capped at 12,000', ST(Array(7).fill(11000)).steps === 12000);
+  t('already 14,200 a day -> keeps their own 14,000', ST(Array(10).fill(14200)).steps === 14000);
+  t('fewer than 7 days of steps -> no target yet', ST([8000, 8000, 8000]) === null);
+  t('only the FIRST 14 days count (later weeks never move it)', ST(Array(14).fill(8000).concat(Array(20).fill(2000))).steps === 9500);
+  T.health_keys = []; T.health_daily = [];
+  const tk = B(await M.healthSelfConnect({ storageKey: 'zain_hussein', token: 'tok-zain_hussein', agree: true, version: M.HEALTH_CONSENT_VERSION })).healthKey;
+  const dd = (n) => M.sydneyDate(Date.now() - n * 864e5) + 'T12:00:00+11:00';
+  for (let n = 9; n >= 1; n--) await M.healthLog({ healthKey: tk, stepsList: '8000', stepsSources: "Zain's iPhone", stepsDates: dd(n) });
+  const s8 = B(await M.healthSelfStatus({ storageKey: 'zain_hussein', token: 'tok-zain_hussein' }));
+  t('the app gets the target (healthSelfStatus.stepTarget)', s8.stepTarget && s8.stepTarget.steps === 9500 && s8.stepTarget.baseline === 8000, s8.stepTarget);
+  const g8 = B(await M.healthGet({ coachToken: 'coach' }));
+  t('the coach dashboard gets every client\'s target (healthGet.targets)', g8.targets && g8.targets.zain_hussein && g8.targets.zain_hussein.steps === 9500, g8.targets);
 
   console.log('in-app (client login)');
   T.health_keys = []; T.health_daily = [];

@@ -6046,11 +6046,13 @@ function updateSyncStatus() {
 var CI_DRAFTS = {};
 // APPLE HEALTH V1 (Omar 2026-10-14): daily totals each client's iPhone Shortcut sends (steps, active kcal, exercise
 // minutes, resting HR, sleep). Coach-only read (healthGet). Optional: no data / no action -> nothing changes.
-var HEALTH = { rows: {}, status: {}, loaded: false };
+var HEALTH = { rows: {}, status: {}, targets: {}, loaded: false };
 // ── HEALTH INSIGHT (Omar 2026-10-14): Apple Health data read into the check-in review + the AI verdict ─────────────
 // The week before a check-in (7 complete days) against the week before that. Same rules as client_template
 // agent_workspace/bin/checkin_review.py HEALTH_RULES, so the dashboard and the drafted replies say the same thing.
-var HEALTH_RULES = { minDays: 4, minNights: 3, lowSteps: 6000, stepsDropPct: 25, shortSleepMin: 360, lowSleepMin: 420, rhrUpBpm: 5, stallKg14: -0.2 };
+var HEALTH_RULES = { minDays: 4, minNights: 3, lowSteps: 6000, stepsDropPct: 25, shortSleepMin: 360, lowSleepMin: 420, rhrUpBpm: 5, stallKg14: -0.2,
+  underTargetRatio: 0.85,                       // weekly average under 85% of the client's own step target
+  recovery: { days: 3, rhrUpBpm: 5, sleepMaxMin: 390, minRhrDays: 2 } };   // early warning: last 3 days
 function _hDay(ms) { return new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); }
 function _hm(m) { m = Math.round(m); return Math.floor(m / 60) + 'h ' + ('0' + (m % 60)).slice(-2); }
 function healthInsight(client, endIso, sum) {
@@ -6073,8 +6075,11 @@ function healthInsight(client, endIso, sum) {
   if (!wk.length) return h;
   h.stepsPct = h.steps != null && h.stepsPrev ? Math.round((h.steps / h.stepsPrev - 1) * 100) : null;
   var fmt = function (n) { return Math.round(n).toLocaleString('en-AU'); };
-  var lowMove = h.steps != null && (h.steps < R.lowSteps || (h.stepsPct != null && h.stepsPct <= -R.stepsDropPct));
+  h.target = ((HEALTH.targets || {})[client.storageKey] || {}).steps || null;
+  h.underTarget = h.target && h.steps != null && h.steps < h.target * R.underTargetRatio;
+  var lowMove = h.steps != null && (h.steps < R.lowSteps || h.underTarget || (h.stepsPct != null && h.stepsPct <= -R.stepsDropPct));
   if (h.steps != null && h.stepsPct != null && h.stepsPct <= -R.stepsDropPct) h.insights.push({ lvl: 'warn', text: 'Steps down ' + Math.abs(h.stepsPct) + '% on the week before (' + fmt(h.steps) + '/day vs ' + fmt(h.stepsPrev) + ')' });
+  else if (h.underTarget) h.insights.push({ lvl: 'warn', text: 'Under their step target: ' + fmt(h.steps) + '/day vs ' + fmt(h.target) });
   else if (h.steps != null && h.steps < R.lowSteps) h.insights.push({ lvl: 'warn', text: 'Low daily movement: ' + fmt(h.steps) + ' steps/day' });
   if (h.sleep != null && h.sleep < R.shortSleepMin) h.insights.push({ lvl: 'warn', text: 'Short sleep: ' + _hm(h.sleep) + ' a night on average' });
   else if (h.sleep != null && h.sleep < R.lowSleepMin) h.insights.push({ lvl: 'info', text: 'Sleep under 7 h: ' + _hm(h.sleep) + ' a night' });
@@ -6088,10 +6093,28 @@ function healthInsight(client, endIso, sum) {
     if (lowMove && h.stepsPrev && h.steps < h.stepsPrev) {
       var kcal = Math.round((h.stepsPrev - h.steps) * kg * 0.0005 / 10) * 10;
       h.explain.push('Steps fell to ' + fmt(h.steps) + '/day (from ' + fmt(h.stepsPrev) + '): about ' + kcal + ' kcal a day less burned. Get steps back before cutting calories.');
-    } else if (lowMove) h.explain.push('Only ' + fmt(h.steps) + ' steps/day: more daily movement is the first lever before cutting calories.');
+    } else if (h.underTarget) h.explain.push('Averaging ' + fmt(h.steps) + ' steps/day against their ' + fmt(h.target) + ' target: hitting the target is the first lever before cutting calories.');
+    else if (lowMove) h.explain.push('Only ' + fmt(h.steps) + ' steps/day: more daily movement is the first lever before cutting calories.');
     if (h.sleep != null && h.sleep < R.lowSleepMin) h.explain.push('Sleeping ' + _hm(h.sleep) + ': short sleep raises hunger and water retention, which hides fat loss on the scale.');
   }
   return h;
+}
+// Early warning (Omar 2026-10-14): resting HR 5+ bpm over their usual on 2 of the last 3 days AND sleep averaging under
+// 6 h 30 - the pattern before people get sick, burn out or quietly drop off. A "lighter week?" check-in, never a diagnosis.
+function healthRecovery(client) {
+  if (!client || !HEALTH.loaded) return null;
+  var rows = HEALTH.rows[client.storageKey] || []; if (!rows.length) return null;
+  var R = HEALTH_RULES.recovery, now = Date.now(), D = function (n) { return _hDay(now - n * 86400000); };
+  var last = rows.filter(function (r) { return r.day >= D(R.days - 1); });            // today + the 2 days before
+  var usualRows = rows.filter(function (r) { return r.day < D(R.days - 1) && r.day >= D(28) && r.resting_hr != null; });
+  if (usualRows.length < 5) return null;
+  var usual = usualRows.reduce(function (a, r) { return a + r.resting_hr; }, 0) / usualRows.length;
+  var hi = last.filter(function (r) { return r.resting_hr != null && r.resting_hr - usual >= R.rhrUpBpm; });
+  var sl = last.filter(function (r) { return r.sleep_min != null; });
+  var sleep = sl.length >= 2 ? sl.reduce(function (a, r) { return a + r.sleep_min; }, 0) / sl.length : null;
+  if (hi.length < R.minRhrDays || sleep == null || sleep >= R.sleepMaxMin) return null;
+  var rhr = Math.round(hi.reduce(function (a, r) { return a + r.resting_hr; }, 0) / hi.length);
+  return { rhr: rhr, usual: Math.round(usual), up: rhr - Math.round(usual), sleep: sleep, days: hi.length };
 }
 function healthInsightHtml(h) {
   if (!h) return '';
@@ -6102,7 +6125,7 @@ function healthInsightHtml(h) {
   return '<div class="cc-ci-health"><div class="col-title">APPLE HEALTH · WEEK BEFORE THE CHECK-IN (' + h.days + ' of 7 days synced)</div>' +
     (h.explain.length ? '<div class="hwhy"><b>Likely why the scale isn’t moving</b><ul>' + h.explain.map(function (x) { return '<li>' + e(x) + '</li>'; }).join('') + '</ul></div>' : '') +
     '<div class="cc-ci-context">' +
-      cell('Steps / day', h.steps == null ? null : fmt(h.steps), h.stepsPct == null ? null : (h.stepsPct > 0 ? '+' : '') + h.stepsPct + '% vs week before') +
+      cell('Steps / day', h.steps == null ? null : fmt(h.steps), [h.target ? 'target ' + fmt(h.target) : '', h.stepsPct == null ? '' : (h.stepsPct > 0 ? '+' : '') + h.stepsPct + '% vs week before'].filter(Boolean).join(' · ') || null) +
       cell('Sleep / night', h.sleep == null ? null : _hm(h.sleep), null) +
       cell('Active kcal / day', h.active == null ? null : fmt(h.active), h.activePrev ? 'week before ' + fmt(h.activePrev) : null) +
       cell('Exercise', h.exercise ? h.exercise + ' min' : null, null) +
@@ -6118,7 +6141,7 @@ async function loadHealth() {
     if (!r || r.ok === false) return;
     const rows = {};
     (r.rows || []).forEach(function (x) { (rows[x.storage_key] = rows[x.storage_key] || []).push(x); });
-    HEALTH = { rows: rows, status: r.status || {}, loaded: true };
+    HEALTH = { rows: rows, status: r.status || {}, targets: r.targets || {}, loaded: true };
     document.querySelectorAll('[data-health-key]').forEach(function (el) { _healthFill(el.getAttribute('data-health-key')); });
     try { if (window.UIV2 && UIV2.renderToday && (!location.hash || location.hash.indexOf('#/today') === 0)) UIV2.renderToday(); } catch (e) {}   // Health rows on Today
   } catch (e) { /* optional */ }
@@ -12448,9 +12471,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return !!e.done && Date.now() - e.at < 7 * 86400000;        // done: hidden for up to 7 days unless it changes
   }
   function tqTomorrow() { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(5, 0, 0, 0); return d.getTime(); }
-  var TQ_RANK = { broken: 0, attn: 1, aicheckin: 1.5, noreply: 2, finished: 3, journey: 4, task: 5, unlock: 6, checkin: 7, reply: 8, review: 9,
+  var TQ_RANK = { broken: 0, attn: 1, aicheckin: 1.5, noreply: 2, finished: 3, journey: 4, task: 5, unlock: 6, checkin: 7, reply: 8, recovery: 8.5, review: 9,
                   sleep: 18, steps: 19, health: 20, watch: 21, quiet: 22, ending: 23, unlocknext: 24 };
-  var TQ_TODAY = { broken: 1, attn: 1, aicheckin: 1, noreply: 1, finished: 1, journey: 1, task: 1, unlock: 1, checkin: 1, reply: 1, review: 1 };
+  var TQ_TODAY = { broken: 1, attn: 1, aicheckin: 1, recovery: 1, noreply: 1, finished: 1, journey: 1, task: 1, unlock: 1, checkin: 1, reply: 1, review: 1 };
   function tqCollect(clients, data) {
     var by = {}, waiting = [], inactive = 0;
     var active = clients.filter(function (c) { return _isActiveClient(c) && c.storageKey !== 'omar'; });
@@ -12537,8 +12560,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
         var mean = function (from, to) { var v = rows.filter(function (r) { return r.steps != null && r.day <= dayAgo(from) && r.day > dayAgo(to); }).map(function (r) { return r.steps; });
           return v.length >= 4 ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
         var now7 = mean(1, 8), prev7 = mean(8, 15);                  // whole days only: today is still filling up
+        var tgt = ((HEALTH.targets || {})[c.storageKey] || {}).steps;
         if (now7 !== null && prev7 && prev7 >= 3000 && now7 <= prev7 * 0.6)
           add(c, 'steps', 'Steps down ' + Math.round((1 - now7 / prev7) * 100) + '% this week (' + Math.round(now7).toLocaleString('en-AU') + '/day)', { kind: 'open', label: 'Check in' });
+        else if (now7 !== null && tgt && now7 < tgt * HEALTH_RULES.underTargetRatio)
+          add(c, 'steps', 'Under step target: ' + Math.round(now7).toLocaleString('en-AU') + '/day vs ' + tgt.toLocaleString('en-AU'), { kind: 'open', label: 'Check in' });
+        var rec = healthRecovery(c);
+        if (rec) add(c, 'recovery', 'Recovery dip: resting HR +' + rec.up + ' bpm (' + rec.rhr + ' vs usual ' + rec.usual + '), sleep ' + _hm(rec.sleep) + ' · lighter week?', { kind: 'recovery', label: 'Check in' });
       });
     } catch (e) {}
     var items = Object.keys(by).map(function (k) {
@@ -12687,6 +12715,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (a.kind === 'journey') return tqJourney(a.jm);
     if (a.kind === 'offer') return tqOffer(key);
     if (a.kind === 'code') return tqCode(key, a.phase, a.early);
+    if (a.kind === 'recovery') return tqRecovery(key);
     openDetail(key);
   }
   function tqPanel(html) {
@@ -12808,6 +12837,29 @@ window.addEventListener('beforeinstallprompt', (e) => {
       $('v2-tq-code').innerHTML = 'Couldn’t read ' + esc(first) + '’s page (offline?). <button type="button" class="v2-link" data-tqc="client">Open client page</button>';
       $('v2-tq-panel').onclick = function (e) { if (e.target.closest('[data-tqc="client"]')) { tqClosePanel(); openDetail(key); } };
     });
+  }
+  // Early warning (Omar 2026-10-14): a caring "how are you feeling / lighter week?" message. Never names illness or numbers
+  // the client didn't share with Omar directly - it's an offer, the coach decides.
+  function tqRecovery(key) {
+    var c = (COACH.clients || []).find(function (x) { return x.storageKey === key; }); if (!c) return;
+    var rec = healthRecovery(c), first = String(c.displayName || key).split(' ')[0], phone = jmWa(c.phone);
+    var msg = 'Hey ' + first + ', quick one: your recovery has dipped the last few days (sleep’s been short and your body’s working harder at rest). How are you feeling?\n\n' +
+      'If you’re run down, let’s make this a lighter week: same sessions, one less set on each exercise and leave 3 reps in the tank. Food stays the same. Sound good?';
+    tqPanel('<div><h3>' + esc(c.displayName || key) + '</h3><div class="sub">Recovery dip · Apple Health</div></div>' +
+      (rec ? '<ul class="v2-rd-notes"><li>Resting heart rate ' + rec.rhr + ' bpm vs their usual ' + rec.usual + ' (+' + rec.up + ') on ' + rec.days + ' of the last 3 days</li>' +
+        '<li>Sleep ' + _hm(rec.sleep) + ' a night on average over the same days</li><li>Common before illness, burnout or a drop-off. Offer a lighter week; never diagnose.</li></ul>' : '') +
+      '<textarea class="v2-rd-text" rows="7" aria-label="Message">' + esc(msg) + '</textarea>' +
+      '<div class="v2-rd-actions">' + (phone ? '<button type="button" class="v2-btn primary" data-tqr="wa">Open in WhatsApp</button>' : '') +
+      '<button type="button" class="v2-btn' + (phone ? '' : ' primary') + '" data-tqr="copy">Copy</button>' +
+      '<button type="button" class="v2-btn ghost" data-tqr="client">Open client page</button></div>');
+    var p = $('v2-tq-panel'), ta = p.querySelector('textarea');
+    p.onclick = function (e) {
+      var b = e.target.closest('[data-tqr]'); if (!b) return; var a = b.getAttribute('data-tqr');
+      var sentIt = function (what) { tqClosePanel(); tqToast(what + ' · ' + first + ' marked done'); tqResolve(key, 'done'); };
+      if (a === 'client') { tqClosePanel(); return openDetail(key); }
+      if (a === 'wa') { window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); return sentIt('Opened in WhatsApp'); }
+      tqCopy(ta, function () { sentIt('Copied'); });
+    };
   }
   function tqCopy(ta, done) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); document.execCommand('copy'); done(); });

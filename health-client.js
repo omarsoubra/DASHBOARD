@@ -96,6 +96,7 @@
       '.lih-m{border-radius:14px;padding:11px 12px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}',
       '.lih-m b{display:block;font-size:22px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.lih-m:first-child b{font-size:26px}',
       '.lih-m span{display:block;font-size:11px;color:rgba(244,245,248,.66);margin-top:1px}',
+      '.lih-goal{height:4px;border-radius:99px;background:rgba(255,255,255,.12);margin-top:7px;overflow:hidden}.lih-goal i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ff6b8a,#ff9f6b)}.lih-goal.hit i{background:#30d158}',
       '.lih-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:rgba(244,245,248,.66)}',
       '.lih-acts{display:inline-flex;gap:6px}.lih-link{border:0;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:#f4f5f8;font:inherit;font-size:12.5px;font-weight:600;',
       ' display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:99px;cursor:pointer;line-height:1;white-space:nowrap}',
@@ -140,6 +141,16 @@
       return (d.toDateString() === y.toDateString() ? 'yesterday ' : d.toLocaleDateString('en-AU', { weekday: 'short' }) + ' ') + t;
     } catch (e) { return ''; }
   }
+  // steps against the client's own goal (their usual + 1,500, set by the server from their first two weeks)
+  function stepsTile(d) {
+    var t = status && status.stepTarget && status.stepTarget.steps, kids = [el('b', { text: fmtInt(d.steps) })];
+    if (!t || d.steps == null) { kids.push(el('span', { text: 'steps' })); return el('div', { class: 'lih-m' }, kids); }
+    var pct = Math.min(100, Math.round(d.steps / t * 100)), hit = d.steps >= t;
+    kids.push(el('span', { text: hit ? 'steps · goal hit ✓' : 'of ' + fmtInt(t) + ' goal' }));
+    var bar = el('div', { class: 'lih-goal' + (hit ? ' hit' : '') }, [el('i', { style: 'width:' + pct + '%' })]);
+    kids.push(bar);
+    return el('div', { class: 'lih-m', title: 'Your goal: your usual ' + fmtInt(status.stepTarget.baseline) + ' + 1,500 a day' }, kids);
+  }
   function card() {
     var c = el('div', { class: 'lih-card', id: 'lih-card' }, [el('div', { class: 'lih-aurora' })]);
     var connected = status && status.connected, days = (status && status.days) || [];
@@ -158,7 +169,7 @@
       c.appendChild(el('div', { class: 'lih-row' }, [el('div', { class: 'lih-orb' }, [svg(HEART)]),
         el('div', { class: 'lih-tx' }, [el('b', { text: 'Apple Health' }), el('span', { text: d.day === today() ? 'Today so far' : 'Last synced day' })])]));
       c.appendChild(el('div', { class: 'lih-metrics' }, [
-        el('div', { class: 'lih-m' }, [el('b', { text: fmtInt(d.steps) }), el('span', { text: 'steps' })]),
+        stepsTile(d),
         el('div', { class: 'lih-m' }, [el('b', { text: fmtInt(d.active_kcal) }), el('span', { text: 'active kcal' })]),
         d.sleep_min != null
           ? el('div', { class: 'lih-m' }, [el('b', { text: fmtSleep(d.sleep_min) }), el('span', { text: 'sleep' })])

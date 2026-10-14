@@ -1448,6 +1448,30 @@ async function healthClientRow(key: string): Promise<{ id: string; key: string }
   if (!c?.id) return err('unknown_client');
   return { id: c.id, key };
 }
+// STEP TARGET (Omar 2026-10-14): each client's own goal from their first two weeks of synced steps - their usual (median of
+// the first 14 days with steps, 7+ needed) + 1,500, rounded to 500, between 7,000 and 12,000 (anyone already above 12,000
+// keeps their own number). Fixed once set, so it never chases a bad week. Same number in the app, the coach dashboard and
+// the check-in briefs.
+const STEP_TARGET = { firstDays: 14, minDays: 7, plus: 1500, min: 7000, max: 12000, round: 500 };
+function healthStepTarget(stepsByDayAsc: number[]): { steps: number; baseline: number; days: number } | null {
+  const v = stepsByDayAsc.filter((x) => typeof x === 'number' && x >= 0).slice(0, STEP_TARGET.firstDays);
+  if (v.length < STEP_TARGET.minDays) return null;
+  const s = v.slice().sort((a, b) => a - b), mid = Math.floor(s.length / 2);
+  const baseline = Math.round(s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2);
+  const r = (n: number) => Math.round(n / STEP_TARGET.round) * STEP_TARGET.round;
+  const steps = baseline >= STEP_TARGET.max ? r(baseline) : Math.min(STEP_TARGET.max, Math.max(STEP_TARGET.min, r(baseline + STEP_TARGET.plus)));
+  return { steps, baseline, days: v.length };
+}
+async function healthTargetsFor(clientIds: string[] | null): Promise<Record<string, { steps: number; baseline: number; days: number }>> {
+  let q = admin.from('health_daily').select('client_id, storage_key, day, steps').not('steps', 'is', null).order('day', { ascending: true }).limit(20000);
+  if (clientIds) q = q.in('client_id', clientIds);
+  const { data } = await q;
+  const by: Record<string, number[]> = {};
+  for (const r of data ?? []) (by[r.storage_key] ??= []).push(r.steps);
+  const out: Record<string, { steps: number; baseline: number; days: number }> = {};
+  for (const [k, v] of Object.entries(by)) { const t = healthStepTarget(v); if (t) out[k] = t; }
+  return out;
+}
 async function healthSelfStatus(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
   if (!v.ok) return err(v.reason ?? 'unauthorized');
@@ -1459,7 +1483,8 @@ async function healthSelfStatus(body: any) {
   const { data: rows } = await admin.from('health_daily').select('day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at')
     .eq('client_id', c.id).gte('day', since).order('day', { ascending: false }).limit(8);
   const active = !!(k ?? [])[0]?.consent_at;
-  return ok({ connected: active, days: active ? (rows ?? []) : [], lastSyncAt: active ? ((k ?? [])[0]?.last_used_at ?? null) : null, consentVersion: HEALTH_CONSENT_VERSION });
+  const stepTarget = active ? ((await healthTargetsFor([c.id]))[c.key] ?? null) : null;
+  return ok({ connected: active, days: active ? (rows ?? []) : [], lastSyncAt: active ? ((k ?? [])[0]?.last_used_at ?? null) : null, consentVersion: HEALTH_CONSENT_VERSION, stepTarget });
 }
 async function healthSelfConnect(body: any) {
   const v = await verifyClientToken(body?.token, body?.storageKey);
@@ -1502,7 +1527,7 @@ async function healthGet(body: any) {
   const { data: keys } = await admin.from('health_keys').select('storage_key, consent_at, revoked_at, last_used_at, created_at').is('revoked_at', null);
   const status: Record<string, unknown> = {};
   for (const k of keys ?? []) status[k.storage_key] = { state: k.consent_at ? 'active' : 'pending', consentAt: k.consent_at, lastUsedAt: k.last_used_at, issuedAt: k.created_at };
-  return ok({ rows: rows ?? [], status });
+  return ok({ rows: rows ?? [], status, targets: await healthTargetsFor(null) });
 }
 
 async function registryGetPrivate(body: any) {

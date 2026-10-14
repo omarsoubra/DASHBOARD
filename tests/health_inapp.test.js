@@ -21,7 +21,7 @@ const INIT = String.raw`
     var b = {}; try { b = JSON.parse((o && o.body) || '{}'); } catch (e) {}
     __h.calls.push(b.type);
     var r = { ok: true };
-    if (b.type === 'healthSelfStatus') r = { ok: true, connected: __h.connected, days: __h.days, lastSyncAt: __h.lastSyncAt, consentVersion: 'health-v1-2026-10-14' };
+    if (b.type === 'healthSelfStatus') r = { ok: true, connected: __h.connected, days: __h.days, lastSyncAt: __h.lastSyncAt, consentVersion: 'health-v1-2026-10-14', stepTarget: __h.stepTarget || null };
     else if (b.type === 'healthSelfConnect') r = (b.agree === true && b.version === 'health-v1-2026-10-14') ? (__h.connected = true, { ok: true, healthKey: '${CODE}' }) : { ok: false, error: 'consent_required' };
     else if (b.type === 'healthSelfDisconnect') { __h.connected = false; __h.days = []; r = { ok: true, revoked: true, deleted: 1 }; }
     return new Promise(function (res) { setTimeout(function () { res(new Response(JSON.stringify(r), { status: 200, headers: { 'Content-Type': 'application/json' } })); }, 40); });
@@ -95,6 +95,10 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     t('a fresh sync turns it green ("You\'re synced") and the card goes live again', await page.eval(`document.querySelector('.lih-sheet').dataset.step === 'done'`) && !/paused/i.test(await q('#lih-card')));
     await click('.lih-sheet .lih-cta'); await wait(500);
     await page.eval(`__h.days[0].sleep_min = 452; document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(700);
+    await page.eval(`__h.stepTarget = { steps: 9500, baseline: 8000, days: 14 }; document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(700);
+    t('step goal: "of 9,500 goal" + a progress bar at 89%', /of 9,500 goal/.test(await q('#lih-card')) && /width:\s*89%/.test(await page.eval(`document.querySelector('#lih-card .lih-goal i').getAttribute('style')`)), await q('#lih-card'));
+    await page.eval(`__h.days[0].steps = 10234; document.dispatchEvent(new Event('visibilitychange')); 1`); await wait(700);
+    t('goal reached: "goal hit ✓" and a full green bar', /goal hit ✓/.test(await q('#lih-card')) && await page.eval(`document.querySelector('#lih-card .lih-goal').classList.contains('hit')`));
     t('with sleep (v4): the third tile is last night\'s sleep, e.g. "7h 32"', /7h 32/.test(await q('#lih-card')) && /sleep/.test(await q('#lih-card')), await q('#lih-card'));
     await page.eval(`document.getElementById('lih-card').scrollIntoView({ block: 'center' }); 1`); await wait(200);
     await shot('8_sleep_card.png');
