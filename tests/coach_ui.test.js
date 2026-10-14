@@ -33,7 +33,7 @@ const TOKEN = 'coach-ui-harness-FAKE-token-0000';
 const FX = build(Date.now());
 
 // Reads the page may make while merely viewing. Anything else is treated as a write.
-const READ_TYPES = ['dashboard', 'rosterGet', 'checkinDraftsGet', 'healthGet', 'accountList', 'intakeList', 'coachWorkoutCompletions',
+const READ_TYPES = ['dashboard', 'rosterGet', 'checkinDraftsGet', 'healthGet', 'coachSettingsGet', 'accountList', 'intakeList', 'coachWorkoutCompletions',
   'clientProgram', 'progressionHistory', 'progressionCompute', 'weightLog', 'photosGet', 'overrideGet', 'coachPushStatus', 'registryGetPrivate',
   'coachClientHistory', 'entitlementsGet', 'intakeGet', 'legacyQueueGet'];
 
@@ -85,6 +85,8 @@ const INIT = String.raw`
     switch (t) {
       case 'dashboard': return { ok: true, dashboard: FX.dashboard };
       case 'rosterGet': return { ok: true, ts: FX.rosterTs, roster: FX.roster };
+      case 'coachSettingsGet': { var cr = null; try { cr = JSON.parse(localStorage.getItem('__fx_rules') || 'null'); } catch (e) {} return { ok: true, rules: cr || {} }; }
+      case 'coachSettingsPut': { try { localStorage.setItem('__fx_rules', JSON.stringify(b.rules || {})); } catch (e) {} return { ok: true, rules: b.rules || {} }; }
       case 'rosterPut': { FX.roster = b.roster; FX.rosterTs = Number(b.ts) || Date.now(); try { localStorage.setItem('__fx_cloud', JSON.stringify({ ts: FX.rosterTs, roster: FX.roster })); } catch (e) {} return { ok: true }; }
       case 'checkinDraftsGet': return { ok: true, drafts: drafts };
       case 'healthGet': return { ok: true, rows: FX.health.rows, status: FX.health.status, targets: FX.health.targets || {} };
@@ -438,6 +440,32 @@ const knownBug = (name, holds, detail) => {
         t('check-in review shows the step target next to the steps', /target 12,000/.test(await txt('.cc-ci-health')));
         await ev(`closeCheckInReview(); 1`); await idle(300);
       });
+      await step('Rules panel: tune a threshold, the queue follows, saved for every device', async () => {
+        await backToToday();
+        await click('#v2-tq-rules'); await idle(250);
+        const n = await count('#v2-tq-panel .v2-tq-rule');
+        t('Rules panel lists every rule in plain words (16), grouped', n === 16 && /Engagement/i.test(await txt('#v2-tq-panel')) && /Apple Health/i.test(await txt('#v2-tq-panel')), n);
+        const before = (await tqRows()).find((r) => r.key === 'marcus_vell');
+        t('Marcus is flagged: weight up 0.90 kg in 14 days (default rule 0.6 kg)', before && /Weight trending wrong direction/.test(before.all), before);
+        for (let i = 0; i < 4; i++) { await click('#v2-tq-panel [data-rule="wrongWayKg14"] [data-rd="1"]'); await idle(60); }
+        t('stepper: 0.6 -> 1 kg, marked changed with its default', /^1$/.test((await txt('#v2-tq-panel [data-rule="wrongWayKg14"] output')).trim()) && /default 0.6/.test(await txt('#v2-tq-panel [data-rule="wrongWayKg14"]')));
+        await idle(900);
+        t('saved to the server (coachSettingsPut) with only the changed rule', await ev(`(function(){ var r = JSON.parse(localStorage.getItem('__fx_rules') || '{}'); return r.wrongWayKg14 === 1 && Object.keys(r).length === 1; })()`));
+        t('"Saved for every device ✓"', /Saved for every device/.test(await txt('#v2-tq-rstate')));
+        await click('#v2-tq-panel [data-tqclose]'); await idle(200);
+        const after = (await tqRows()).find((r) => r.key === 'marcus_vell');
+        t('the queue follows straight away: Marcus\'s +0.9 kg is no longer a wrong-way flag', !after || !/Weight trending wrong direction/.test(after.all), after);
+        await boot('?rules=2#/today'); await go('#/clients', 200); await go('#/today', 700);
+        t('another load reads the rule back from the server', await ev(`CC.WRONG_WAY_KG14 === 1`));
+        await click('#v2-tq-rules'); await idle(200); await click('#v2-tq-panel [data-rreset]'); await idle(900);
+        t('Reset to defaults: back to 0.6, server copy empty, Marcus flagged again', await ev(`CC.WRONG_WAY_KG14 === 0.6 && JSON.parse(localStorage.getItem('__fx_rules')) && Object.keys(JSON.parse(localStorage.getItem('__fx_rules'))).length === 0`)
+          && /Weight trending wrong direction/.test(((await tqRows()).find((r) => r.key === 'marcus_vell') || {}).all || ''));
+        await shot('today_rules_panel');
+        await click('#v2-tq-panel [data-tqclose]'); await idle(150);
+        await key('r'); await idle(200);
+        t('keyboard R opens the Rules panel', await visible('#v2-tq-panel') && /Your rules/.test(await txt('#v2-tq-panel h3')));
+        await click('#v2-tq-panel [data-tqclose]'); await idle(150);
+      }, { writes: ['coachSettingsPut'] });
       await step('AI review flags a check-in: it turns red and jumps above reviews', async () => {
         await backToToday();
         await ev(`(function () { var orig = window._apPriority; window.__apOrig = orig; window._apPriority = function (c, sum, m) { var r = orig(c, sum, m);

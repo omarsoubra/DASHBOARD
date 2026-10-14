@@ -1903,6 +1903,15 @@ details.v2-fallback > .v2-fallback-body > p { margin: 0 0 12px; color: var(--v2-
 .v2-tq-panel .x { position: absolute; top: 14px; right: 14px; border: 0; background: var(--v2-grey-soft); border-radius: 50%; width: 32px; height: 32px; color: var(--v2-ink2); cursor: pointer; font-size: 14px; }
 .v2-tq-toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--v2-ink); color: #fff; padding: 10px 16px; border-radius: 12px; font: 13.5px 'Inter', system-ui, sans-serif; z-index: 140; pointer-events: none; }
 .v2-act-page .v2-card { max-width: 860px; }
+.v2-tq-rgroup { display: grid; gap: 2px; }
+.v2-tq-rg { font: 600 11px 'DM Mono', ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--v2-muted); margin: 6px 0 4px; }
+.v2-tq-rule { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--v2-line2); }
+.v2-tq-rule .rl b { display: block; font-weight: 500; font-size: 14px; color: var(--v2-ink); }
+.v2-tq-rule .rl small { font-size: 12px; color: var(--v2-muted); }
+.v2-tq-rule.changed .rl small { color: var(--v2-accent-ink); }
+.v2-tq-step { display: inline-flex; align-items: center; border: 1px solid var(--v2-line); border-radius: 10px; overflow: hidden; }
+.v2-tq-step button { border: 0; background: var(--v2-grey-soft); width: 32px; height: 32px; font-size: 16px; cursor: pointer; color: var(--v2-ink); }
+.v2-tq-step output { min-width: 68px; text-align: center; font: 500 13px 'DM Mono', ui-monospace, monospace; color: var(--v2-ink); }
 .v2-tq-code { display: grid; gap: 12px; font-size: 14px; color: var(--v2-ink2); }
 .v2-tq-codebox { display: flex; align-items: center; gap: 12px; border: 1px solid var(--v2-line); border-radius: 12px; padding: 12px 14px; background: var(--v2-ws); }
 .v2-tq-codebox span { font: 600 11px 'DM Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--v2-muted); }
@@ -2539,6 +2548,7 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
         <header class="v2-tq-strip">
           <span class="v2-tq-hello" id="v2-date"></span>
           <div class="v2-head-actions">
+            <button class="v2-btn sm ghost" id="v2-tq-rules" type="button" data-tqrules="1" title="The thresholds behind these flags (R)">⚙ Rules</button>
             <button class="v2-btn sm ghost v2-tq-bell" id="v2-m-bell" type="button" hidden></button>
             <div class="v2-search">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -2565,7 +2575,7 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
           <div class="v2-tq-qhead"><h2 id="v2-tq-wintitle">Wins this week</h2><span>one tap to celebrate</span></div>
           <div class="v2-tq-wins" id="v2-tq-wins"></div>
         </section>
-        <div class="v2-tq-keys"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>D</kbd> done</span><span><kbd>S</kbd> snooze</span><span><kbd>1</kbd>–<kbd>4</kbd> filters</span></div>
+        <div class="v2-tq-keys"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>D</kbd> done</span><span><kbd>S</kbd> snooze</span><span><kbd>1</kbd>–<kbd>4</kbd> filters</span><span><kbd>R</kbd> rules</span></div>
         <div class="v2-tq-scrim" id="v2-tq-scrim" hidden></div>
         <aside class="v2-tq-panel" id="v2-tq-panel" aria-label="Message" hidden></aside>
       </section>
@@ -6050,7 +6060,7 @@ var HEALTH = { rows: {}, status: {}, targets: {}, loaded: false };
 // ── HEALTH INSIGHT (Omar 2026-10-14): Apple Health data read into the check-in review + the AI verdict ─────────────
 // The week before a check-in (7 complete days) against the week before that. Same rules as client_template
 // agent_workspace/bin/checkin_review.py HEALTH_RULES, so the dashboard and the drafted replies say the same thing.
-var HEALTH_RULES = { minDays: 4, minNights: 3, lowSteps: 6000, stepsDropPct: 25, shortSleepMin: 360, lowSleepMin: 420, rhrUpBpm: 5, stallKg14: -0.2,
+var HEALTH_RULES = { minDays: 4, minNights: 3, lowSteps: 6000, stepsDropPct: 30, shortSleepMin: 360, lowSleepMin: 420, rhrUpBpm: 5, stallKg14: -0.2,
   underTargetRatio: 0.85,                       // weekly average under 85% of the client's own step target
   recovery: { days: 3, rhrUpBpm: 5, sleepMaxMin: 390, minRhrDays: 2 } };   // early warning: last 3 days
 function _hDay(ms) { return new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); }
@@ -6296,6 +6306,10 @@ async function loadAll() {
     _lastSyncMs = Date.now();
     _syncStatus = 'ok';
     loadCheckinDrafts();                     // agent-drafted replies (optional; never blocks the dashboard)
+    if (!window.__coachRulesLoaded) {        // the coach's flag rules (once per page load; the Rules panel saves changes)
+      window.__coachRulesLoaded = true;
+      coachRulesLoad().then(function () { try { if (window.UIV2 && UIV2.renderToday && UIV2.route === 'today') UIV2.renderToday(); } catch (e) {} });
+    }
     loadHealth();                            // Apple Health daily totals (optional; never blocks the dashboard)
     // Merge the registry into the roster BEFORE rendering so new program
     // files show up as onboarding without needing a manual reload.
@@ -7171,17 +7185,17 @@ function computeAttention(client, sum) {
       const goal = client.programGoal || '';
       const isCut  = /fat_loss|cut/.test(goal);
       const isBulk = /bulk|underweight/.test(goal);
-      if (isCut && trend14 > 0.6) {
+      if (isCut && trend14 > CC.WRONG_WAY_KG14) {
         add('PROGRESS', 'red', CC_TIER.ACTION,
           'Weight trending wrong direction on a cut',
           'Up ' + trend14.toFixed(2) + 'kg over 14 days', 0, { clearKind: 'episode', episodeKey: _trendKey });
         bump('red', 'PROGRESS', CC_TIER.ACTION);
-      } else if (isBulk && trend14 < -0.6) {
+      } else if (isBulk && trend14 < -CC.WRONG_WAY_KG14) {
         add('PROGRESS', 'red', CC_TIER.ACTION,
           'Weight dropping on a bulk',
           'Down ' + Math.abs(trend14).toFixed(2) + 'kg over 14 days', 0, { clearKind: 'episode', episodeKey: _trendKey });
         bump('red', 'PROGRESS', CC_TIER.ACTION);
-      } else if (Math.abs(trend14) < 0.3 && !isBulk) {
+      } else if (Math.abs(trend14) < CC.STALL_KG14 && !isBulk) {
         add('PROGRESS', 'amber', CC_TIER.WATCH,
           'Weight trend stalled 14 days',
           trend14.toFixed(2) + 'kg change over 14 days', 0, { clearKind: 'episode', episodeKey: _trendKey });
@@ -7725,6 +7739,66 @@ CC.WATCH_DEFAULT_LIMIT = 5;              // default rows shown in Watchlist
 // (null) is NEVER counted as staleness.
 CC.DISENGAGE_STALE_DAYS = 14;                 // normal operating threshold
 CC.DISENGAGE_STALE_DAYS_PROTECTED = 21;       // higher during rollout protection window
+// Progress + Today thresholds that used to be literal numbers (Omar 2026-10-14: tunable from the Rules panel)
+CC.WRONG_WAY_KG14 = 0.6;      // weight the wrong way over 14 days -> urgent
+CC.STALL_KG14 = 0.3;          // less than this either way over 14 days -> stalled (watch)
+CC.QUIET_DAYS = 3;            // no logs for N days -> "gone quiet"
+CC.INACTIVE_DAYS = 14;        // no logs for N days -> inactive (archive or check in)
+CC.NO_REPLY_HOURS = 24;       // after your message, nothing from them -> back in the queue
+CC.BLOCK_ENDING_WEEKS = 3;    // flag the last N weeks of a block
+
+// ── COACH RULES (Omar 2026-10-14): every threshold behind Today's flags, tuned from the Rules panel. Saved on the server
+// (coachSettingsGet/Put) so every device and the check-in briefs use the same numbers; only changed values are stored.
+var COACH_RULES = [
+  { id: 'checkinStaleDays', g: 'Engagement', label: 'Check-in overdue after', unit: 'days', step: 1, get: function () { return CC.CHECKIN_STALE_DAYS; }, set: function (v) { CC.CHECKIN_STALE_DAYS = v; } },
+  { id: 'weighinStaleDays', g: 'Engagement', label: 'Weigh-in overdue after', unit: 'days', step: 1, get: function () { return CC.WEIGHIN_STALE_DAYS; }, set: function (v) { CC.WEIGHIN_STALE_DAYS = v; } },
+  { id: 'reviewStaleDays', g: 'Engagement', label: 'Your review overdue after', unit: 'days', step: 1, get: function () { return CC.MEANINGFUL_REVIEW_STALE_DAYS; }, set: function (v) { CC.MEANINGFUL_REVIEW_STALE_DAYS = v; } },
+  { id: 'quietDays', g: 'Engagement', label: 'Gone quiet after (no logs)', unit: 'days', step: 1, get: function () { return CC.QUIET_DAYS; }, set: function (v) { CC.QUIET_DAYS = v; } },
+  { id: 'disengageDays', g: 'Engagement', label: 'Disengaged (urgent) after', unit: 'days', step: 1, get: function () { return CC.DISENGAGE_STALE_DAYS; }, set: function (v) { CC.DISENGAGE_STALE_DAYS = v; } },
+  { id: 'inactiveDays', g: 'Engagement', label: 'Inactive (archive or check in) after', unit: 'days', step: 1, get: function () { return CC.INACTIVE_DAYS; }, set: function (v) { CC.INACTIVE_DAYS = v; } },
+  { id: 'wrongWayKg14', g: 'Progress', label: 'Weight going the wrong way by more than', unit: 'kg in 14 days', step: 0.1, get: function () { return CC.WRONG_WAY_KG14; }, set: function (v) { CC.WRONG_WAY_KG14 = v; } },
+  { id: 'stallKg14', g: 'Progress', label: 'Stalled: weight moved less than', unit: 'kg in 14 days', step: 0.1, get: function () { return CC.STALL_KG14; }, set: function (v) { CC.STALL_KG14 = v; } },
+  { id: 'noReplyHours', g: 'Messages & programme', label: 'Back in your queue if nothing from them in', unit: 'hours', step: 6, get: function () { return CC.NO_REPLY_HOURS; }, set: function (v) { CC.NO_REPLY_HOURS = v; } },
+  { id: 'blockEndingWeeks', g: 'Messages & programme', label: 'Flag a block ending in its last', unit: 'weeks', step: 1, get: function () { return CC.BLOCK_ENDING_WEEKS; }, set: function (v) { CC.BLOCK_ENDING_WEEKS = v; } },
+  { id: 'lowSteps', g: 'Apple Health', label: 'Low movement under', unit: 'steps a day', step: 500, get: function () { return HEALTH_RULES.lowSteps; }, set: function (v) { HEALTH_RULES.lowSteps = v; } },
+  { id: 'stepsDropPct', g: 'Apple Health', label: 'Steps drop of', unit: '% week on week', step: 5, get: function () { return HEALTH_RULES.stepsDropPct; }, set: function (v) { HEALTH_RULES.stepsDropPct = v; } },
+  { id: 'underTargetPct', g: 'Apple Health', label: 'Under step target below', unit: '% of their target', step: 5, get: function () { return Math.round(HEALTH_RULES.underTargetRatio * 100); }, set: function (v) { HEALTH_RULES.underTargetRatio = v / 100; } },
+  { id: 'shortSleepMin', g: 'Apple Health', label: 'Short sleep under', unit: 'min a night', step: 15, fmt: function (v) { return Math.floor(v / 60) + 'h ' + ('0' + v % 60).slice(-2); }, get: function () { return HEALTH_RULES.shortSleepMin; }, set: function (v) { HEALTH_RULES.shortSleepMin = v; } },
+  { id: 'recoveryRhrUp', g: 'Apple Health', label: 'Recovery dip: resting HR up by', unit: 'bpm (2 of 3 days)', step: 1, get: function () { return HEALTH_RULES.recovery.rhrUpBpm; }, set: function (v) { HEALTH_RULES.recovery.rhrUpBpm = v; } },
+  { id: 'recoverySleepMaxMin', g: 'Apple Health', label: '...with sleep under', unit: 'min a night', step: 15, fmt: function (v) { return Math.floor(v / 60) + 'h ' + ('0' + v % 60).slice(-2); }, get: function () { return HEALTH_RULES.recovery.sleepMaxMin; }, set: function (v) { HEALTH_RULES.recovery.sleepMaxMin = v; } },
+];
+// same bounds as the api's COACH_RULE_BOUNDS
+var COACH_RULE_BOUNDS = { checkinStaleDays: [3, 21], weighinStaleDays: [3, 21], reviewStaleDays: [3, 21], disengageDays: [5, 45], quietDays: [2, 10], inactiveDays: [7, 60],
+  wrongWayKg14: [0.2, 3], stallKg14: [0.1, 1.5], noReplyHours: [6, 96], blockEndingWeeks: [1, 6], lowSteps: [2000, 15000], stepsDropPct: [10, 70],
+  underTargetPct: [50, 100], shortSleepMin: [240, 480], recoveryRhrUp: [2, 20], recoverySleepMaxMin: [300, 480] };
+var COACH_RULE_DEFAULTS = {};
+var COACH_RULES_STORE = 'coach_rules_v1';
+function coachRulesInit() { COACH_RULES.forEach(function (r) { if (COACH_RULE_DEFAULTS[r.id] === undefined) COACH_RULE_DEFAULTS[r.id] = r.get(); }); }
+function coachRulesApply(changed) {
+  coachRulesInit();
+  COACH_RULES.forEach(function (r) {
+    var v = changed && changed[r.id] !== undefined ? Number(changed[r.id]) : COACH_RULE_DEFAULTS[r.id], b = COACH_RULE_BOUNDS[r.id];
+    if (!isFinite(v) || (b && (v < b[0] || v > b[1]))) v = COACH_RULE_DEFAULTS[r.id];
+    r.set(v);
+  });
+}
+function coachRulesChanged() {
+  var out = {}; COACH_RULES.forEach(function (r) { var v = r.get(); if (Math.abs(v - COACH_RULE_DEFAULTS[r.id]) > 1e-9) out[r.id] = Math.round(v * 100) / 100; }); return out;
+}
+async function coachRulesLoad() {
+  try { var cached = JSON.parse(localStorage.getItem(COACH_RULES_STORE) || 'null'); if (cached) coachRulesApply(cached); } catch (e) {}
+  try {
+    var r = await coachFetch('coachSettingsGet', {});
+    if (r && r.ok && r.rules) { coachRulesApply(r.rules); try { localStorage.setItem(COACH_RULES_STORE, JSON.stringify(r.rules)); } catch (e) {} }
+  } catch (e) { /* offline: the cached rules stay */ }
+}
+coachRulesInit();
+try { var _cr0 = JSON.parse(localStorage.getItem(COACH_RULES_STORE) || 'null'); if (_cr0) coachRulesApply(_cr0); } catch (e) {}   // this device's last copy, before the server answers
+async function coachRulesSave() {
+  var ch = coachRulesChanged();
+  try { localStorage.setItem(COACH_RULES_STORE, JSON.stringify(ch)); } catch (e) {}
+  try { var r = await coachFetch('coachSettingsPut', { rules: ch }); return !!(r && r.ok); } catch (e) { return false; }
+}
 
 // ── Check-in identifier + review metadata helpers ──
 function _ciId(storageKey, isoTs) { return storageKey + '::' + isoTs; }
@@ -12513,7 +12587,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (drafted) r._draftShown = true;
     });
     // drafts: replies ready, journey messages, and replies sent but nothing back from the client
-    var REPLY_H = 24;
+    var REPLY_H = CC.NO_REPLY_HOURS;
     Object.keys(CI_DRAFTS || {}).forEach(function (k) {
       var d = CI_DRAFTS[k], c = byKey[d.client_key]; if (!c || !_isActiveClient(c)) return;
       var journey = String(d.checkin_ts).indexOf('journey:') === 0;
@@ -12535,10 +12609,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (w > 1 && w % 4 === 1 && (w - 1) / 4 < nph) add(c, 'unlock', 'Unlock code due · phase ' + ((w - 1) / 4 + 1), { kind: 'code', label: 'Send code', phase: (w - 1) / 4 + 1 });
       else if (w && w % 4 === 0 && w / 4 < nph) add(c, 'unlocknext', 'Unlock code next week · phase ' + (w / 4 + 1), { kind: 'code', label: 'Get code', phase: w / 4 + 1, early: true });
       if (w !== null && w > L) add(c, 'finished', 'Finished their block (wk ' + w + ') · no next block yet', { kind: 'offer', label: 'Offer' });
-      else if (w !== null && w >= L - 2) add(c, 'ending', 'Block ending · wk ' + w + '/' + L, { kind: 'offer', label: 'Book call' });
+      else if (w !== null && w > L - CC.BLOCK_ENDING_WEEKS) add(c, 'ending', 'Block ending · wk ' + w + '/' + L, { kind: 'offer', label: 'Book call' });
       var la = lastActivity(sum), qd = la === null ? null : Math.floor((Date.now() - la) / 86400000);
-      if (qd !== null && qd >= 3 && qd < 14) add(c, 'quiet', 'Gone quiet ' + qd + ' days', { kind: 'open', label: 'Nudge' });
-      else if (qd !== null && qd >= 14) inactive++;
+      if (qd !== null && qd >= CC.QUIET_DAYS && qd < CC.INACTIVE_DAYS) add(c, 'quiet', 'Gone quiet ' + qd + ' days', { kind: 'open', label: 'Nudge' });
+      else if (qd !== null && qd >= CC.INACTIVE_DAYS) inactive++;
       if (_pageHealth && _pageHealth[c.storageKey] === false) add(c, 'broken', 'Client page not loading', { kind: 'open', label: 'Open' });
       if (c.nextCoachAction && c.nextCoachActionDue) {
         var od = _daysSinceIso(c.nextCoachActionDue);
@@ -12561,7 +12635,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
           return v.length >= 4 ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
         var now7 = mean(1, 8), prev7 = mean(8, 15);                  // whole days only: today is still filling up
         var tgt = ((HEALTH.targets || {})[c.storageKey] || {}).steps;
-        if (now7 !== null && prev7 && prev7 >= 3000 && now7 <= prev7 * 0.6)
+        if (now7 !== null && prev7 && prev7 >= 3000 && now7 <= prev7 * (1 - HEALTH_RULES.stepsDropPct / 100))
           add(c, 'steps', 'Steps down ' + Math.round((1 - now7 / prev7) * 100) + '% this week (' + Math.round(now7).toLocaleString('en-AU') + '/day)', { kind: 'open', label: 'Check in' });
         else if (now7 !== null && tgt && now7 < tgt * HEALTH_RULES.underTargetRatio)
           add(c, 'steps', 'Under step target: ' + Math.round(now7).toLocaleString('en-AU') + '/day vs ' + tgt.toLocaleString('en-AU'), { kind: 'open', label: 'Check in' });
@@ -12664,7 +12738,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
           '<button type="button" class="v2-tq-more" data-tqmore="' + esc(it.key) + '" aria-label="More for ' + esc(c.displayName || it.key) + '">•••</button></div>';
       }).join('');
     }
-    $('v2-tq-foot').innerHTML = R.inactive ? R.inactive + ' inactive 14+ days · <a href="#/clients">archive or check in →</a>' : '';
+    $('v2-tq-foot').innerHTML = R.inactive ? R.inactive + ' inactive ' + CC.INACTIVE_DAYS + '+ days · <a href="#/clients">archive or check in →</a>' : '';
 
     // waiting on client
     $('v2-tq-waitsec').hidden = !R.waiting.length;
@@ -12861,6 +12935,40 @@ window.addEventListener('beforeinstallprompt', (e) => {
       tqCopy(ta, function () { sentIt('Copied'); });
     };
   }
+  // Rules panel (Omar 2026-10-14): every threshold behind Today's flags, in plain words, with − / +. Saved on the server
+  // (all devices + the check-in briefs); the queue re-ranks as you change them.
+  var _tqRulesT = null;
+  function tqRules() {
+    var groups = [];
+    COACH_RULES.forEach(function (r) { if (groups.indexOf(r.g) < 0) groups.push(r.g); });
+    var show = function (r) { var v = r.get(); return (r.fmt ? r.fmt(v) : (Math.round(v * 10) / 10).toLocaleString('en-AU')); };
+    var row = function (r) {
+      var changed = Math.abs(r.get() - COACH_RULE_DEFAULTS[r.id]) > 1e-9;
+      return '<div class="v2-tq-rule' + (changed ? ' changed' : '') + '" data-rule="' + r.id + '"><div class="rl"><b>' + esc(r.label) + '</b><small>' + esc(r.unit) +
+        (changed ? ' · default ' + esc(r.fmt ? r.fmt(COACH_RULE_DEFAULTS[r.id]) : String(COACH_RULE_DEFAULTS[r.id])) : '') + '</small></div>' +
+        '<div class="v2-tq-step"><button type="button" data-rd="-1" aria-label="Less">−</button><output>' + esc(show(r)) + '</output><button type="button" data-rd="1" aria-label="More">+</button></div></div>';
+    };
+    tqPanel('<div><h3>Your rules</h3><div class="sub">What puts a client in your queue · saved for every device</div></div>' +
+      groups.map(function (g) { return '<div class="v2-tq-rgroup"><div class="v2-tq-rg">' + esc(g) + '</div>' + COACH_RULES.filter(function (r) { return r.g === g; }).map(row).join('') + '</div>'; }).join('') +
+      '<div class="v2-rd-actions"><button type="button" class="v2-btn ghost" data-rreset="1">Reset to defaults</button><span class="v2-rd-state" id="v2-tq-rstate"></span></div>');
+    var p = $('v2-tq-panel');
+    var save = function () {
+      $('v2-tq-rstate').textContent = 'Saving…';
+      clearTimeout(_tqRulesT);
+      _tqRulesT = setTimeout(function () { coachRulesSave().then(function (ok) { var st = $('v2-tq-rstate'); if (st) st.textContent = ok ? 'Saved for every device ✓' : 'Saved on this device only (offline?)'; }); }, 500);
+      safeRenderToday();
+    };
+    p.onclick = function (e) {
+      var b = e.target.closest('[data-rd]'), x;
+      if (b) {
+        var rw = b.closest('[data-rule]'), r = COACH_RULES.filter(function (q) { return q.id === rw.getAttribute('data-rule'); })[0], bd = COACH_RULE_BOUNDS[r.id];
+        var v = Math.round((r.get() + r.step * +b.getAttribute('data-rd')) * 100) / 100;
+        r.set(Math.min(bd[1], Math.max(bd[0], v)));
+        rw.outerHTML = row(r); save(); return;
+      }
+      if ((x = e.target.closest('[data-rreset]'))) { coachRulesApply({}); tqRules(); save(); }
+    };
+  }
   function tqCopy(ta, done) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); document.execCommand('copy'); done(); });
     else { ta.select(); document.execCommand('copy'); done(); }
@@ -12893,6 +13001,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if ((el = t.closest('[data-tqf]'))) { TQ.filter = el.getAttribute('data-tqf'); TQ.sel = 0; tqCloseMenu(); return safeRenderToday(); }
     if ((el = t.closest('[data-tqgo]'))) { tqCloseMenu(); ev.stopPropagation(); return tqOpen(el.getAttribute('data-tqgo')); }
     if ((el = t.closest('[data-tqwin]'))) { return tqWin(el.getAttribute('data-tqwin')); }
+    if (t.closest('[data-tqrules]')) { return tqRules(); }
     if (t.closest('[data-tqclose]') || t.id === 'v2-tq-scrim') { return tqClosePanel(); }
     if ((el = t.closest('[data-tqmore]'))) {
       ev.stopPropagation(); tqCloseMenu();
@@ -12923,6 +13032,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     else if (k === 'enter' && it) { e.preventDefault(); tqOpen(it.key); }
     else if (k === 'd' && it) tqResolve(it.key, 'done');
     else if (k === 's' && it) tqResolve(it.key, 'snooze');
+    else if (k === 'r') tqRules();
     else if (k >= '1' && k <= '4') { TQ.filter = ['today', 'checkin', 'week', 'ok'][+k - 1]; TQ.sel = 0; safeRenderToday(); }
   });
 

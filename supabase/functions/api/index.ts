@@ -601,6 +601,8 @@ Deno.serve(async (req) => {
       case 'rosterGet':          return rosterGet(body);
       case 'rosterPut':          return rosterPut(body);
       case 'checkinDraftsGet':   return checkinDraftsGet(body);
+      case 'coachSettingsGet':   return coachSettingsGet(body);
+      case 'coachSettingsPut':   return coachSettingsPut(body);
       case 'checkinDraftsPut':   return checkinDraftsPut(body);
       case 'checkinDraftMark':   return checkinDraftMark(body);
       case 'coachClientHistory': return coachClientHistory(body);
@@ -1126,9 +1128,42 @@ async function checkinDraftsGet(body: any) {
   const since = new Date(Date.now() - days * 86400000).toISOString();
   const { data, error } = await admin.from('checkin_drafts')
     .select('client_key, checkin_ts, action, for_coach, draft, created_at, sent_at')
-    .gte('created_at', since).order('created_at', { ascending: false }).limit(500);
+    .gte('created_at', since).neq('client_key', COACH_SETTINGS_KEY).order('created_at', { ascending: false }).limit(500);
   if (error) return err('read_failed');
   return ok({ drafts: data ?? [] });
+}
+// ── COACH RULES (Omar 2026-10-14): the thresholds behind Today's flags, tuned from the dashboard and kept on the server
+// so every device (and the check-in briefs) use the same numbers. Stored as one reserved row in checkin_drafts (coach-only
+// table, no migration): client_key '_coach', checkin_ts 'settings:rules'. Only known rules, only within bounds.
+const COACH_SETTINGS_KEY = '_coach', COACH_SETTINGS_TS = 'settings:rules';
+const COACH_RULE_BOUNDS: Record<string, [number, number]> = {
+  checkinStaleDays: [3, 21], weighinStaleDays: [3, 21], reviewStaleDays: [3, 21], disengageDays: [5, 45],
+  quietDays: [2, 10], inactiveDays: [7, 60], wrongWayKg14: [0.2, 3], stallKg14: [0.1, 1.5],
+  noReplyHours: [6, 96], blockEndingWeeks: [1, 6],
+  lowSteps: [2000, 15000], stepsDropPct: [10, 70], underTargetPct: [50, 100], shortSleepMin: [240, 480],
+  recoveryRhrUp: [2, 20], recoverySleepMaxMin: [300, 480],
+};
+async function coachSettingsGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const { data } = await admin.from('checkin_drafts').select('draft, created_at').eq('client_key', COACH_SETTINGS_KEY).eq('checkin_ts', COACH_SETTINGS_TS).maybeSingle();
+  let rules = {}; try { rules = JSON.parse(data?.draft || '{}') || {}; } catch (_) { rules = {}; }
+  return ok({ rules, updatedAt: data?.created_at ?? null });
+}
+async function coachSettingsPut(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const inRules = body?.rules && typeof body.rules === 'object' ? body.rules : null;
+  if (!inRules) return err('bad_rules');
+  const clean: Record<string, number> = {};
+  for (const [k, v] of Object.entries(inRules)) {
+    const b = COACH_RULE_BOUNDS[k], n = Number(v);
+    if (!b) return err('unknown_rule', { rule: k });
+    if (!Number.isFinite(n) || n < b[0] || n > b[1]) return err('out_of_range', { rule: k, min: b[0], max: b[1] });
+    clean[k] = n;
+  }
+  const { error } = await admin.from('checkin_drafts').upsert({ client_key: COACH_SETTINGS_KEY, checkin_ts: COACH_SETTINGS_TS, action: 'settings',
+    for_coach: [], draft: JSON.stringify(clean), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'client_key,checkin_ts' });
+  if (error) return err('write_failed');
+  return ok({ rules: clean });
 }
 async function checkinDraftsPut(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');

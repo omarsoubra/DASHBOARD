@@ -14,9 +14,10 @@ function table() {
   q.select = () => q; q.order = () => q; q.limit = () => q;
   q.gte = (c, v) => { q.gte = [c, v]; return q; };
   q.eq = (c, v) => { q.f.push([c, v]); return q; };
+  q.neq = (c, v) => { q.nf = [c, v]; return q; }; q.maybeSingle = () => { q.single = true; return q; };
   q.update = (p) => { q.upd = p; return q; };
   q.upsert = async (rows) => {
-    for (const r of rows) {
+    for (const r of [].concat(rows)) {
       const ex = ROWS.find(x => x.client_key === r.client_key && x.checkin_ts === r.checkin_ts);
       if (ex) Object.assign(ex, r); else ROWS.push(Object.assign({ created_at: new Date().toISOString(), sent_at: null }, r));
     }
@@ -27,7 +28,8 @@ function table() {
       const hit = ROWS.filter(r => q.f.every(([c, v]) => r[c] === v)); hit.forEach(r => Object.assign(r, q.upd));
       return res({ data: hit.map(r => ({ sent_at: r.sent_at })), error: null });
     }
-    return res({ data: ROWS.filter(r => !q.gte || r[q.gte[0]] >= q.gte[1]), error: null });
+    const out = ROWS.filter(r => (!Array.isArray(q.gte) || r[q.gte[0]] >= q.gte[1]) && q.f.every(([c, v]) => r[c] === v) && (!q.nf || r[q.nf[0]] !== q.nf[1]));
+    return res({ data: q.single ? (out[0] || null) : out, error: null });
   };
   return q;
 }
@@ -38,7 +40,7 @@ const err = (r, e = {}) => json({ ok: false, error: r, ...e });
 const verifyCoachToken = (t) => t === 'coach';
 const M = {};
 new Function('admin', 'ok', 'err', 'verifyCoachToken', 'exports',
-  js + '\nObject.assign(exports, { checkinDraftsGet, checkinDraftsPut, checkinDraftMark });')(admin, ok, err, verifyCoachToken, M);
+  js + '\nObject.assign(exports, { checkinDraftsGet, checkinDraftsPut, checkinDraftMark, coachSettingsGet, coachSettingsPut });')(admin, ok, err, verifyCoachToken, M);
 
 let pass = 0, fail = 0;
 const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { fail++; console.log('  FAIL ' + n + (d ? '  -- ' + JSON.stringify(d).slice(0, 300) : '')); } };
@@ -60,6 +62,16 @@ const D = { clientKey: 'bishoy_shaker', checkinTs: '2026-10-12T09:15:00.000Z', a
   t('unmark clears sent_at', B(await M.checkinDraftMark({ coachToken: 'coach', clientKey: D.clientKey, checkinTs: D.checkinTs, sent: false })).sent_at === null && ROWS[0].sent_at === null);
   t('a bad client key is refused', B(await M.checkinDraftsPut({ coachToken: 'coach', drafts: [Object.assign({}, D, { clientKey: "x'; drop" })] })).error === 'bad_draft');
   t('marking an unknown check-in -> not_found', B(await M.checkinDraftMark({ coachToken: 'coach', clientKey: 'nobody', checkinTs: '2026-10-12T09:15:00.000Z' })).error === 'not_found');
+  // coach rules (Omar 2026-10-14)
+  t('rules: coach token required', B(await M.coachSettingsPut({ coachToken: 'x', rules: { quietDays: 4 } })).error === 'unauthorized' && B(await M.coachSettingsGet({})).error === 'unauthorized');
+  t('rules: empty at first', JSON.stringify(B(await M.coachSettingsGet({ coachToken: 'coach' })).rules) === '{}');
+  const sp = B(await M.coachSettingsPut({ coachToken: 'coach', rules: { quietDays: 4, wrongWayKg14: 0.8, lowSteps: 7000 } }));
+  t('rules: saved and read back on any device', sp.ok && B(await M.coachSettingsGet({ coachToken: 'coach' })).rules.wrongWayKg14 === 0.8, sp);
+  t('rules: an unknown rule is refused', B(await M.coachSettingsPut({ coachToken: 'coach', rules: { deleteEverything: 1 } })).error === 'unknown_rule');
+  t('rules: out-of-range refused (quiet 0 days)', B(await M.coachSettingsPut({ coachToken: 'coach', rules: { quietDays: 0 } })).error === 'out_of_range');
+  t('rules: the settings row never shows up as a draft', !B(await M.checkinDraftsGet({ coachToken: 'coach' })).drafts.some((d) => d.client_key === '_coach'));
+  await M.coachSettingsPut({ coachToken: 'coach', rules: { quietDays: 5 } });
+  t('rules: saving again replaces (one row, last write wins)', ROWS.filter((r) => r.client_key === '_coach').length === 1 && B(await M.coachSettingsGet({ coachToken: 'coach' })).rules.quietDays === 5);
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();
