@@ -149,6 +149,9 @@ export const TEMPLATES: Record<string, Template> = {
   meal_slot:         { kind: 'meal_reminder', title: 'Meal time 🍽️', body: 'Your planned meal is ready in LOCKED IN.', url: './?li=nutrition', tag: 'li-meal', ttlSec: 3600 },
   // Coach only (the `_coach` device, never a client): body = today's morning headline. Opens the dashboard.
   coach_morning:     { kind: 'coach_morning', title: 'This morning', body: '', url: './coach_dashboard.html', tag: 'li-coach-morning', ttlSec: 6 * 3600 },
+  // Omar 2026-10-14: replaces the per-check-in EmailJS email. Coach-facing, so it shares the coach_morning kind (the
+  // kind is a category; the tag and dedupe key are its own) - no schema change.
+  coach_checkin:     { kind: 'coach_morning', title: 'New check-in', body: 'Tap to review their check-in.', url: './coach_dashboard.html', tag: 'li-coach-checkin', ttlSec: 12 * 3600 },
 };
 
 /** Meal slot k's lock-screen text: the ordinal only ("Meal 2 time"), never a food, time or amount. */
@@ -596,6 +599,39 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return r.status;
   }
 
+  /** New client check-ins -> the coach's phone (Omar 2026-10-14, replaces the check-in email). One per client per Sydney
+   *  day, only check-ins from the last 2 hours (a first run never floods), never the coach's own, at most 6 per tick. */
+  async function coachCheckinStep(v: VapidKeys, nowMs: number, nowIso: string): Promise<string> {
+    const coachId = await coachClientId();
+    if (!coachId) return 'no_coach_account';
+    if ((await activeDeviceCount(coachId)) === 0) return 'no_device';
+    const { data: cis, error } = await admin.from('check_ins').select('client_key, submitted_at')
+      .gte('submitted_at', new Date(nowMs - 2 * 3600_000).toISOString()).order('submitted_at', { ascending: true }).limit(50);
+    if (error) throw new Error(error.message);
+    const fresh = (cis ?? []).filter((c: any) => c.client_key && c.client_key !== 'omar' && !String(c.client_key).startsWith('_'));
+    if (!fresh.length) return 'none';
+    const { data: names } = await admin.from('clients').select('storage_key, display_name').in('storage_key', [...new Set(fresh.map((c: any) => c.client_key))]);
+    const nameOf: Record<string, string> = Object.fromEntries((names ?? []).map((r: any) => [r.storage_key, String(r.display_name || r.storage_key).split(' ')[0]]));
+    let sent = 0;
+    for (const c of fresh) {
+      if (sent >= 6) break;
+      const day = localParts(Date.parse(c.submitted_at), COACH_TZ).date;
+      const key = `coach_checkin:${c.client_key}:${day}`;
+      const { data: seen } = await admin.from('notification_events').select('id').eq('dedupe_key', key).limit(1);
+      if ((seen ?? []).length) continue;
+      // lock-screen safe: a first name and nothing else - no weight, no numbers (push_proof E8)
+      const tpl: Template = { ...TEMPLATES.coach_checkin, title: (nameOf[c.client_key] || 'A client') + ' just checked in' };
+      const got = await claim({
+        client_id: coachId, storage_key: COACH_KEY, kind: tpl.kind, dedupe_key: key, status: 'claimed',
+        title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'system', created_at: nowIso, eligible_at: nowIso, period_key: day,
+      });
+      if (got === 'duplicate' || !got) continue;
+      await deliver(got.id, coachId, tpl, v, nowMs);
+      sent++;
+    }
+    return 'sent:' + sent;
+  }
+
   // ── pushSubscribe (= the explicit opt-in) ─────────────────────────────────
   async function pushSubscribe(body: any): Promise<Response> {
     const a = await authClient(body);
@@ -860,12 +896,14 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const nowIso = new Date(nowMs).toISOString();
     const summary = { clients: 0, due: 0, sent: 0, duplicates: 0, suppressed: {} as Record<string, number>, stateErrors: 0, deferredSent: 0,
                       checkinStages: { due: 0, followup: 0, final: 0 } as Record<string, number>,
-                      training: { primary: 0, followup: 0 } as Record<string, number>, meals: 0, coachMorning: '' };
+                      training: { primary: 0, followup: 0 } as Record<string, number>, meals: 0, coachMorning: '', coachCheckins: '' };
     const bump = (r: string) => { summary.suppressed[r] = (summary.suppressed[r] ?? 0) + 1; };
 
     // ── Coach morning report: independent of every client reminder below ──
     try { summary.coachMorning = await coachMorningStep(v, nowMs, nowIso); }
     catch (e) { summary.coachMorning = 'error'; summary.stateErrors++; log('pushTick', 'coach_morning_failed', String((e as any)?.message ?? e)); }
+    try { summary.coachCheckins = await coachCheckinStep(v, nowMs, nowIso); }
+    catch (e) { summary.coachCheckins = 'error'; summary.stateErrors++; log('pushTick', 'coach_checkin_failed', String((e as any)?.message ?? e)); }
 
     // ── V2 check-in adherence sequence: one step per client per tick ───────
     // evaluateCheckinStage says which stage (if any) is open; decideReminder

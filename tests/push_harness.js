@@ -101,7 +101,7 @@ const SCHEMA = {
   push_plan_facts: parseColumns('push_plan_facts'),
   workout_completions: parseColumns('workout_completions'),
   // Existing tables: only the columns the push function touches (all exist in production).
-  clients: new Set(['id', 'storage_key', 'is_paused', 'start_date', 'is_internal', 'entitlement_legacy']),
+  clients: new Set(['id', 'storage_key', 'is_paused', 'start_date', 'is_internal', 'entitlement_legacy', 'display_name']),   // display_name: coach check-in push (2026-10-14)
   client_entitlements: new Set(['id', 'client_id', 'product_code', 'status', 'starts_at', 'ends_at', 'source']),
   client_sessions: new Set(['storage_key', 'token_hash', 'salt', 'access_status', 'client_id']),
   weight_logs: new Set(['id', 'client_id', 'client_key', 'logged_at', 'weight_kg']),

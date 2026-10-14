@@ -136,6 +136,30 @@ test('CM5 no device -> nothing claimed (a phone added at 07:10 still gets today\
   eq((await w2.tick()).j.summary.coachMorning, 'no_coach_account');
 });
 
+test('CM8 a new check-in pings the coach within a tick (replaces the email): once per client per day, never his own, never old ones', async () => {
+  const w = await coachWorld();
+  w.clock.now = at('2026-10-14', '14:00');
+  eq((await w.tick()).j.summary.coachCheckins, 'no_device', 'no phone registered -> nothing');
+  await w.coachSub(w.newSub('web.push.apple.com'));
+  const zain = w.db.T.clients.find((c) => c.storage_key === 'zain_hussein'); zain.display_name = 'Zain Hussein';
+  const ago = (min) => iso(w.clock.now - min * 60000);
+  w.db.T.check_ins.push({ id: 90, client_key: 'zain_hussein', submitted_at: ago(5), week_number: 5, weight_kg: 79.8 },
+                        { id: 91, client_key: 'omar', submitted_at: ago(3), week_number: 6, weight_kg: 80 },
+                        { id: 92, client_key: 'hassan_x', submitted_at: ago(60 * 5), week_number: 4, weight_kg: 90 });
+  const before = w.svc.received.length;
+  const r = await w.tick();
+  eq(r.j.summary.coachCheckins, 'sent:1', JSON.stringify(r.j.summary) + ' ' + JSON.stringify(w.logs.filter((l) => /coach_checkin/.test(l))));
+  const p = w.svc.received[w.svc.received.length - 1].payload;
+  eq(w.svc.received.length - before, 1, 'one push: Zain only (not the coach himself, not a 5-hour-old check-in)');
+  eq(p.title, 'Zain just checked in'); eq(p.body, 'Tap to review their check-in.'); eq(p.url, './coach_dashboard.html');
+  assert(!/\d|kg/.test(p.title + p.body), 'no weight or numbers on the lock screen');
+  w.db.T.check_ins.push({ id: 93, client_key: 'zain_hussein', submitted_at: ago(1), week_number: 5, weight_kg: 79.7 });   // a re-submit
+  w.clock.now += 15 * 60000;
+  eq((await w.tick()).j.summary.coachCheckins, 'sent:0', 'a re-submit the same day does not ping again');
+  eq(w.svc.received.length - before, 1);
+  assertNoLeak(w);
+});
+
 test('CM6 all clear; a failing read is contained (client reminders still run)', async () => {
   const w = await coachWorld({ roster: [{ storageKey: 'calm', displayName: 'Calm C', startDate: '2026-10-05' }] });
   await w.coachSub(w.newSub('web.push.apple.com'));

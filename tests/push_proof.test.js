@@ -405,7 +405,7 @@ test('E8 templates are lock-screen safe (no numbers, no targets/units/body data)
     // Scope-relative; the only query allowed is a daily-reminder deep link to an existing shell section.
     // The coach morning report (coach's own phone only) opens the coach dashboard page in the same scope.
     assert(/^\.\/[A-Za-z0-9#_-]*$/.test(t.url) || /^\.\/\?li=(training|nutrition)$/.test(t.url) ||
-      (k === 'coach_morning' && t.url === './coach_dashboard.html'), k + ': url is scope-relative');
+      ((k === 'coach_morning' || k === 'coach_checkin') && t.url === './coach_dashboard.html'), k + ': url is scope-relative');
   }
 });
 
