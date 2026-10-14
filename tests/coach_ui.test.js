@@ -56,6 +56,9 @@ const INIT = String.raw`
   // fake cloud at the same timestamp, so the page has no reason to push the roster.
   try {
     if (/[?&]fresh=1/.test(location.search)) { localStorage.clear(); sessionStorage.clear(); }
+    // fake cloud: what rosterPut stored (kept across reloads like the real server), else the fixture
+    var cloud = null; try { cloud = JSON.parse(localStorage.getItem('__fx_cloud') || 'null'); } catch (e) {}
+    if (cloud && cloud.roster) { FX.roster = cloud.roster; FX.rosterTs = cloud.ts; }
     localStorage.setItem('sbo_coach_token', TOKEN);
     localStorage.setItem('coach_clients_v1', JSON.stringify(FX.roster));
     localStorage.setItem('coach_clients_v1_ts', String(FX.rosterTs));
@@ -82,6 +85,7 @@ const INIT = String.raw`
     switch (t) {
       case 'dashboard': return { ok: true, dashboard: FX.dashboard };
       case 'rosterGet': return { ok: true, ts: FX.rosterTs, roster: FX.roster };
+      case 'rosterPut': { FX.roster = b.roster; FX.rosterTs = Number(b.ts) || Date.now(); try { localStorage.setItem('__fx_cloud', JSON.stringify({ ts: FX.rosterTs, roster: FX.roster })); } catch (e) {} return { ok: true }; }
       case 'checkinDraftsGet': return { ok: true, drafts: drafts };
       case 'healthGet': return { ok: true, rows: FX.health.rows, status: FX.health.status };
       case 'accountList': return { ok: true, clients: FX.accounts };
@@ -356,7 +360,11 @@ const knownBug = (name, holds, detail) => {
           t(`filter "${f}": pressed, title set, ${f === 'ok' ? 'on-track empty state' : 'row count = card count (' + num + ')'}`,
             pressed === 'true' && (f === 'ok' ? /clients on track/.test(await txt('#v2-tq-list')) && num >= 1 : rows.length === num), { f, num, rows: rows.length, title: await txt('#v2-tq-title') });
           if (f === 'checkin') t('filter "checkin" holds Priya, Isla, Tomasz', ['priya_n', 'isla_b', 'tomasz_b'].every((k) => rows.some((r) => r.key === k)), rows.map((r) => r.key));
-          if (f === 'week') t('filter "week" holds Amara (quiet) and Ravi (Apple Health sync stopped)', rows.some((r) => r.key === 'amara_d' && /Gone quiet \d+ days/.test(r.why)) && rows.some((r) => r.key === 'ravi_m' && /Apple Health/.test(r.why)), rows);
+          if (f === 'week') {
+            t('filter "week" holds Amara (Apple Health short sleep) and Ravi (Apple Health sync stopped)', rows.some((r) => r.key === 'amara_d' && /Sleeping 5h \d\d avg the last 3 nights/.test(r.why)) && rows.some((r) => r.key === 'ravi_m' && /Apple Health/.test(r.why)), rows);
+            const tip = await ev(`document.querySelector('.v2-tq-row[data-tqk="amara_d"] .v2-tq-why').getAttribute('title')`);
+            t('Amara also carries "steps down" and "gone quiet" (+2)', /Steps down 5\d% this week \(4,000\/day\)/.test(tip) && /Gone quiet/.test(tip), tip);
+          }
           await shot('today_filter_' + f);
         }
         await tqFilter('today');
@@ -446,6 +454,10 @@ const knownBug = (name, holds, detail) => {
         await key('s'); await idle(600);
         t('"s" snoozes the selected row', !(await exists('.v2-tq-row[data-tqk="kwame_a"]')));
         t('done / snooze stored in localStorage v2_tq_state_v1', await ev(`(function(){ var s = JSON.parse(localStorage.getItem('v2_tq_state_v1') || '{}'); return !!(s.felix_w && s.felix_w.done && s.sofia_m && s.sofia_m.until && s.nadia_k && s.kwame_a); })()`));
+        t('done / snooze also saved on the client in the synced roster (todayState) and pushed (rosterPut)',
+          await ev(`(function(){ var l = JSON.parse(localStorage.getItem(LS_CLIENTS) || '[]'); var g = function (k) { return (l.find(function (c) { return c.storageKey === k; }) || {}).todayState; };
+            return !!(g('felix_w') && g('felix_w').done && g('sofia_m') && g('sofia_m').until && g('nadia_k') && g('kwame_a')); })()`)
+          && (await ev(`__ui.calls.filter(function (c) { return c.type === 'rosterPut'; }).length`)) >= 4);
         // Enter opens the selected row's flow
         await blurAll(); await ev(`(function(){ var r = document.querySelector('.v2-tq-row[data-tqk="marcus_vell"]'); r.click(); return 1; })()`);
         await key('Enter'); await idle(300);
@@ -453,13 +465,19 @@ const knownBug = (name, holds, detail) => {
         await ev(`closeReviewModal(); 1`);
         rows = await tqRows();
         t('keyboard triage left the other rows in place', rows.length >= 4 && rows[0].key !== undefined, { first, now: rows.map((r) => r.key) });
-      });
+      }, { writes: ['rosterPut'] });
       await step('Today state survives a reload', async () => {
         await boot('#/today');      // no ?fresh -> localStorage kept
         await go('#/clients', 200); await go('#/today', 500);
         const keys = (await tqRows()).map((r) => r.key);
         t('done + snoozed rows stay hidden after reload', !['felix_w', 'sofia_m', 'nadia_k', 'kwame_a'].some((k) => keys.includes(k)) && keys.includes('marcus_vell'), keys);
-        await ev(`localStorage.removeItem('v2_tq_state_v1'); 1`); await go('#/clients'); await go('#/today', 600);
+        // another device: no local done/snooze copy; it loads the roster from the (fake) cloud
+        await ev(`localStorage.removeItem('v2_tq_state_v1'); 1`); await boot('?device=2#/today'); await go('#/clients', 200); await go('#/today', 600);
+        const other = (await tqRows()).map((r) => r.key);
+        t('another device (no local copy) still hides them: the synced roster carries done / snooze', !['felix_w', 'sofia_m', 'nadia_k', 'kwame_a'].some((k) => other.includes(k)), other);
+        await ev(`(function(){ var l = loadClients(); l.forEach(function (c) { delete c.todayState; }); localStorage.setItem(LS_CLIENTS, JSON.stringify(l)); COACH.clients = l;
+          var cl = JSON.parse(localStorage.getItem('__fx_cloud') || 'null'); if (cl) { cl.roster.forEach(function (c) { delete c.todayState; }); localStorage.setItem('__fx_cloud', JSON.stringify(cl)); } return 1; })()`);
+        await go('#/clients'); await go('#/today', 600);
         const back = (await tqRows()).map((r) => r.key);
         t('clearing the state brings them back', ['felix_w', 'sofia_m', 'nadia_k', 'kwame_a'].every((k) => back.includes(k)), back);
       });

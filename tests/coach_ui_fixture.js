@@ -16,7 +16,7 @@
 //   felix   coach task due today                               -> task      -> Do it
 //   elena   client page 404 + pre-rollout check-in             -> broken    -> Open
 //   leila   week 8 of 12, check-in overdue 16 d               -> attention / unlocknext
-//   amara   gone quiet 5 days                                  -> quiet (Coming up)
+//   amara   gone quiet 5 days + Apple Health: short sleep, steps down -> sleep (Coming up), +quiet +steps
 //   ben     week 2, daily logs, reviewed yesterday             -> on track
 //   owen    inactive 20 days                                   -> inactive footer
 //   hana    onboarding (starts in 3 days, Apple Health link pending, linked intake)
@@ -176,6 +176,9 @@ function build(now = Date.now()) {
     resting_hr: 56 + d % 4, sleep_min: d === 0 ? 452 : 420 + d % 60, received_at: dAgo(d), sources: { steps: { "Kwame's iPhone": 3000, 'Apple Watch': 5400 }, sleep: { deep: 51, rem: 50, awake: 27 } } });
   for (let d = 15; d >= 3; d--) hrows.push({ storage_key: 'ravi_m', day: sydDay(d), steps: 6500 + d * 90, active_kcal: 380, exercise_min: 25, resting_hr: 62, sleep_min: null, received_at: dAgo(d),
     sources: { steps: { Connect: 6500 } } });
+  // amara: Apple Health shows short sleep 3 nights running + steps down ~55% week on week -> 'sleep' tops her quiet reason
+  for (let d = 14; d >= 1; d--) hrows.push({ storage_key: 'amara_d', day: sydDay(d), steps: d >= 8 ? 9000 : 4000, active_kcal: 300, exercise_min: 10, resting_hr: 64,
+    sleep_min: d <= 3 ? 320 + d * 5 : 430, received_at: dAgo(d), sources: { steps: { Connect: d >= 8 ? 9000 : 4000 } } });
   const health = { rows: hrows, status: {
     kwame_a: { state: 'active', consentAt: dAgo(20), lastUsedAt: hAgo(6), issuedAt: dAgo(21) },
     ravi_m: { state: 'active', consentAt: dAgo(16), lastUsedAt: dAgo(3), issuedAt: dAgo(17) },
@@ -243,7 +246,7 @@ const EXPECT = {
   kwame_a: { src: 'unlock', label: 'Send code', opens: 'client', list: 'today' },
   felix_w: { src: 'task', label: 'Do it', opens: 'client', list: 'today' },
   elena_p: { src: 'broken', label: 'Open', opens: 'client', list: 'today' },
-  amara_d: { src: 'quiet', label: 'Nudge', opens: 'client', list: 'week' },
+  amara_d: { src: 'sleep', label: 'Check in', opens: 'client', list: 'week' },
 };
 const NEVER_IN_QUEUE = ['hana_s', 'diego_f', 'grace_o', 'ben_t'];   // onboarding / paused / archived / on track
 

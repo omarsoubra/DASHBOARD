@@ -6040,7 +6040,7 @@ async function loadHealth() {
     (r.rows || []).forEach(function (x) { (rows[x.storage_key] = rows[x.storage_key] || []).push(x); });
     HEALTH = { rows: rows, status: r.status || {}, loaded: true };
     document.querySelectorAll('[data-health-key]').forEach(function (el) { _healthFill(el.getAttribute('data-health-key')); });
-    try { if (!location.hash || location.hash.indexOf('#/today') === 0) renderToday(); } catch (e) {}   // the This-morning sync-stopped row
+    try { if (window.UIV2 && UIV2.renderToday && (!location.hash || location.hash.indexOf('#/today') === 0)) UIV2.renderToday(); } catch (e) {}   // Health rows on Today
   } catch (e) { /* optional */ }
 }
 function _healthAvg(rows, f) { var v = rows.map(function (r) { return r[f]; }).filter(function (x) { return x != null; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; }
@@ -12359,14 +12359,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function tqState() { try { return JSON.parse(localStorage.getItem(TQ_STORE) || '{}') || {}; } catch (e) { return {}; } }
   function tqSave(s) { try { localStorage.setItem(TQ_STORE, JSON.stringify(s)); } catch (e) {} }
   function tqHidden(it, s) {
-    var e = s[it.key]; if (!e) return false;
+    // synced copy on the client (roster, follows the coach to every device) wins; this device's copy is the fallback
+    var e = (it.c && it.c.todayState) || s[it.key]; if (!e) return false;
     if (e.sig !== it.sig && String(e.sig).split(':')[0] !== it.sig) return false;   // the main reason changed: show it again
     if (e.until && Date.now() < e.until) return true;           // snoozed
     return !!e.done && Date.now() - e.at < 7 * 86400000;        // done: hidden for up to 7 days unless it changes
   }
   function tqTomorrow() { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(5, 0, 0, 0); return d.getTime(); }
   var TQ_RANK = { broken: 0, attn: 1, noreply: 2, finished: 3, journey: 4, task: 5, unlock: 6, checkin: 7, reply: 8, review: 9,
-                  health: 20, watch: 21, quiet: 22, ending: 23, unlocknext: 24 };
+                  sleep: 18, steps: 19, health: 20, watch: 21, quiet: 22, ending: 23, unlocknext: 24 };
   var TQ_TODAY = { broken: 1, attn: 1, noreply: 1, finished: 1, journey: 1, task: 1, unlock: 1, checkin: 1, reply: 1, review: 1 };
   function tqCollect(clients, data) {
     var by = {}, waiting = [], inactive = 0;
@@ -12428,6 +12429,24 @@ window.addEventListener('beforeinstallprompt', (e) => {
       }
     });
     try { if (HEALTH.loaded) _healthStale().forEach(function (k) { add(byKey[k], 'health', 'Apple Health sync stopped (36 h+)', { kind: 'open', label: 'Check' }); }); } catch (e) {}
+    // Apple Health signals (Omar 2026-10-14): short sleep 3 nights running; steps down 40%+ week on week
+    try {
+      if (HEALTH.loaded) active.forEach(function (c) {
+        var rows = (HEALTH.rows[c.storageKey] || []).slice().sort(function (a, b) { return a.day < b.day ? 1 : -1; });
+        if (!rows.length) return;
+        var dayAgo = function (n) { return new Date(Date.now() - n * 86400000).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); };
+        var sl = rows.filter(function (r) { return r.sleep_min != null && r.day >= dayAgo(4); }).slice(0, 3);
+        if (sl.length === 3 && sl.every(function (r) { return r.sleep_min < 360; })) {
+          var avg = Math.round(sl.reduce(function (a, r) { return a + r.sleep_min; }, 0) / 3);
+          add(c, 'sleep', 'Sleeping ' + Math.floor(avg / 60) + 'h ' + ('0' + (avg % 60)).slice(-2) + ' avg the last 3 nights (Apple Health)', { kind: 'open', label: 'Check in' });
+        }
+        var mean = function (from, to) { var v = rows.filter(function (r) { return r.steps != null && r.day <= dayAgo(from) && r.day > dayAgo(to); }).map(function (r) { return r.steps; });
+          return v.length >= 4 ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
+        var now7 = mean(1, 8), prev7 = mean(8, 15);                  // whole days only: today is still filling up
+        if (now7 !== null && prev7 && prev7 >= 3000 && now7 <= prev7 * 0.6)
+          add(c, 'steps', 'Steps down ' + Math.round((1 - now7 / prev7) * 100) + '% this week (' + Math.round(now7).toLocaleString('en-AU') + '/day)', { kind: 'open', label: 'Check in' });
+      });
+    } catch (e) {}
     var items = Object.keys(by).map(function (k) {
       var it = by[k];
       it.reasons.sort(function (a, b) { return a.rank - b.rank; });
@@ -12549,9 +12568,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   function tqResolve(key, how) {
     var it = TQ.items.filter(function (x) { return x.key === key; })[0]; if (!it) return;
-    var s = tqState();
-    s[key] = how === 'snooze' ? { sig: it.sig, until: tqTomorrow(), at: Date.now() } : { sig: it.sig, done: 1, at: Date.now() };
-    tqSave(s);
+    var s = tqState(), entry = how === 'snooze' ? { sig: it.sig, until: tqTomorrow(), at: Date.now() } : { sig: it.sig, done: 1, at: Date.now() };
+    s[key] = entry; tqSave(s);
+    // sync across devices the same way reviews do: on the client in the roster, then pushRoster (fresh-device guarded)
+    try {
+      var list = loadClients(), cl = list.find(function (x) { return x.storageKey === key; });
+      if (cl) { cl.todayState = entry; saveClients(list); COACH.clients = list; pushRoster(); }
+    } catch (e) { console.warn('[today] sync done/snooze', e); }
     tqToast((it.c.displayName || key) + (how === 'snooze' ? ' snoozed until tomorrow' : ' done ✓'));
     var row = document.querySelector('.v2-tq-row[data-tqk="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
