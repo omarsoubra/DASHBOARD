@@ -71,6 +71,10 @@ const B = (r) => r.__body;
     l1.ok && l1.day === today && d1.client_id === 'c1' && d1.steps === 8432 && d1.active_kcal === 513 && d1.exercise_min === 34 && d1.resting_hr === 58 && d1.sleep_min === 450, d1);
   await M.healthLog({ healthKey: key, steps: 9100 });
   t('a later run updates; a missing value never erases one', T.health_daily.length === 1 && T.health_daily[0].steps === 9100 && T.health_daily[0].sleep_min === 450, T.health_daily[0]);
+  const ps = B(await M.healthLog({ healthKey: key, stepsList: '10\n20\n25\n15', stepsSources: "Omar's iPhone\nOmar's iPhone\nOmar's Apple Watch\nOmar's Apple Watch",
+                                   activeList: '0.4\n0.6', activeSources: 'Watch\nWatch' }));
+  t('reading lists: summed per source, largest source wins (no iPhone + Watch double count)',
+    ps.ok && T.health_daily[0].steps === 40 && T.health_daily[0].active_kcal === 1 && ps.stepsBySource["Omar's iPhone"] === 30 && ps.stepsBySource["Omar's Apple Watch"] === 40, ps);
   t('out-of-range refused', B(await M.healthLog({ healthKey: key, steps: 999999 })).error === 'out_of_range');
   t('no values refused', B(await M.healthLog({ healthKey: key, steps: '' })).error === 'no_values');
   t('a date older than 7 days refused', B(await M.healthLog({ healthKey: key, date: '2020-01-01', steps: 5 })).error === 'bad_date');

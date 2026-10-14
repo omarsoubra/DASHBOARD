@@ -1262,6 +1262,20 @@ async function healthLog(body: any) {
   }
   const int = (v: number | null, lo: number, hi: number) => v === null ? null : Math.round(v) >= lo && Math.round(v) <= hi ? Math.round(v) : NaN;
   const sleepMin = healthNum(body?.sleepMin) ?? (healthNum(body?.sleepHours) !== null ? (healthNum(body?.sleepHours) as number) * 60 : null);
+  // v2 Shortcut: every reading of today with its source (newline lists, as Shortcuts writes a list into JSON text).
+  // Apple Health de-duplicates overlapping sources (iPhone + Watch); summing per source and taking the largest source
+  // matches it without double counting.
+  const perSource = (vals: any, srcs: any): { total: number | null; sources: Record<string, number> } => {
+    const v = String(vals ?? '').split(/\r?\n/).map((x) => healthNum(x));
+    if (!v.some((x) => x !== null)) return { total: null, sources: {} };
+    const sl = String(srcs ?? '').split(/\r?\n/);
+    const sums: Record<string, number> = {};
+    v.forEach((x, i) => { if (x !== null) { const k = (sl[i] || 'unknown').trim().slice(0, 60) || 'unknown'; sums[k] = (sums[k] ?? 0) + x; } });
+    return { total: Math.max(...Object.values(sums)), sources: Object.fromEntries(Object.entries(sums).map(([k, n]) => [k, Math.round(n)])) };
+  };
+  const stepsPS = perSource(body?.stepsList, body?.stepsSources), activePS = perSource(body?.activeList, body?.activeSources);
+  if (stepsPS.total !== null) body.steps = stepsPS.total;
+  if (activePS.total !== null) body.activeKcal = activePS.total;
   const vals = {
     steps: int(healthNum(body?.steps), 0, 150000), active_kcal: int(healthNum(body?.activeKcal), 0, 10000),
     exercise_min: int(healthNum(body?.exerciseMin), 0, 1440), resting_hr: int(healthNum(body?.restingHr), 20, 250),
@@ -1279,7 +1293,8 @@ async function healthLog(body: any) {
     : await admin.from('health_daily').insert({ client_id: row.client_id, storage_key: row.storage_key, day, ...fields, received_at: nowIso });
   if (error) { logEfError('healthLog', row.storage_key, 'write_failed', error.message); return err('write_failed'); }
   await admin.from('health_keys').update({ last_used_at: nowIso, uploads_today: used + 1, uploads_day: today }).eq('id', row.id);
-  return ok({ day, saved: Object.keys(fields) });
+  return ok({ day, saved: Object.keys(fields), ...(Object.keys(stepsPS.sources).length ? { stepsBySource: stepsPS.sources } : {}),
+              ...(Object.keys(activePS.sources).length ? { activeBySource: activePS.sources } : {}) });
 }
 async function healthRevoke(body: any) {
   const isCoach = verifyCoachToken(body?.coachToken);
