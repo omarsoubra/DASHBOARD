@@ -45,9 +45,12 @@ const err = (r, e = {}) => json({ ok: false, error: r, ...e });
 const sha256 = async (s) => nodeCrypto.createHash('sha256').update(s).digest('hex');
 const M = {};
 const verifyClientToken = async (tok, key) => tok === 'tok-' + String(key).toLowerCase() ? { ok: true, storageKey: String(key).toLowerCase() } : { ok: false, reason: 'bad_token' };
-new Function('admin', 'ok', 'err', 'verifyCoachToken', 'verifyClientToken', 'logEfError', 'CI_KEY_RE', 'sha256', 'crypto', 'exports',
+const ENTITLED = new Set(['bishoy_shaker', 'zain_hussein']);
+const requireCapability = async (k) => ENTITLED.has(k) ? { ok: true } : { ok: false, reason: 'forbidden_tier' };
+const capabilityDenied = (r) => err(r || 'forbidden_tier');
+new Function('admin', 'ok', 'err', 'verifyCoachToken', 'verifyClientToken', 'requireCapability', 'capabilityDenied', 'logEfError', 'CI_KEY_RE', 'sha256', 'crypto', 'exports',
   js + '\nObject.assign(exports, { healthKeyIssue, healthStatus, healthConsent, healthLog, healthRevoke, healthGet, healthSelfStatus, healthSelfConnect, healthSelfDisconnect, sydneyDate, HEALTH_CONSENT_VERSION });')(
-  admin, ok, err, (t) => t === 'coach', verifyClientToken, () => {}, /^[a-z0-9_]{1,64}$/, sha256, globalThis.crypto, M);
+  admin, ok, err, (t) => t === 'coach', verifyClientToken, requireCapability, capabilityDenied, () => {}, /^[a-z0-9_]{1,64}$/, sha256, globalThis.crypto, M);
 
 let pass = 0, fail = 0;
 const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { fail++; console.log('  FAIL ' + n + (d ? '  -- ' + JSON.stringify(d).slice(0, 300) : '')); } };
@@ -117,6 +120,9 @@ const B = (r) => r.__body;
   const sd = B(await M.healthSelfDisconnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' }));
   t('disconnect: own key revoked + own data deleted, nobody else\'s', sd.revoked && sd.deleted === 1 && T.health_daily.length === 1 && T.health_daily[0].client_id === 'c2'
     && B(await M.healthSelfStatus({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' })).connected === false, sd);
+  ENTITLED.delete('bishoy_shaker');
+  t('a lapsed client cannot connect', B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION })).error === 'forbidden_tier');
+  t('... but can always stop sharing + delete', B(await M.healthSelfDisconnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' })).revoked === true);
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();

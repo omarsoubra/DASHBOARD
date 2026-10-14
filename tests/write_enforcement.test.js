@@ -246,6 +246,7 @@ const denied = (r) => r.ok === false && ['forbidden_tier', 'provisioning_incompl
     accountClaim:         'single-use coach-issued link; sets that client\'s own login, returns no data',
     accountSession:       'verified Supabase session -> device key for its OWN client; no data returned',
     accountSignOut:       'revokes the presented device key only',
+    healthSelfDisconnect: 'withdraws consent + deletes the caller\'s OWN health data; must work even when lapsed',
   };
   const dispatch = [...SRC.matchAll(/case '(\w+)':\s*return (?:(\w+)\(|clientWrite\('(\w+)')/g)]
     .map(m => ({ action: m[1], handler: m[2] || 'clientWrite' }));

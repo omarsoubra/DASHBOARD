@@ -232,6 +232,12 @@ function capabilityDenied(reason: string | undefined) {
 // is safe for a specific reason. Do not add another without a reason of the
 // same kind.
 //
+//   healthSelfDisconnect  Apple Health (2026-10-14). Stops sharing and DELETES
+//                   the caller's own health data. A lapsed or revoked client
+//                   must still be able to withdraw consent and erase sensitive
+//                   health information (Australian Privacy Act), so it is never
+//                   gated on a coaching entitlement. Own data only; returns no data.
+//
 //   authClient      Bootstrap. Answers "is this token valid for this key, and
 //                   is the account active?" and nothing else. It returns no
 //                   program, nutrition, log or photo data. Gating it would
@@ -1321,17 +1327,20 @@ async function healthRevoke(body: any) {
   return ok({ revoked: true, deleted });
 }
 // IN-APP (Omar 2026-10-14): the client connects from inside their own app with their existing login, no link from the
-// coach. Auth = the client's own access token (verifyClientToken); a client can only ever touch their own key and data.
-async function healthClientId(body: any): Promise<{ id: string; key: string } | Response> {
-  const v = await verifyClientToken(body?.token, body?.storageKey);
-  if (!v.ok) return err(v.reason ?? 'unauthorized');
-  const key = String(v.storageKey ?? '').toLowerCase();
+// coach. Auth = the client's own access token; a client can only ever touch their own key and data. Status and connect
+// need an active coaching entitlement; disconnect never does (see the ungated allow-list: deleting your own health data
+// must always be possible).
+async function healthClientRow(key: string): Promise<{ id: string; key: string } | Response> {
   const { data: c } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
   if (!c?.id) return err('unknown_client');
   return { id: c.id, key };
 }
 async function healthSelfStatus(body: any) {
-  const c = await healthClientId(body); if (c instanceof Response) return c;
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const gate = await requireCapability(String(v.storageKey).toLowerCase(), 'view_progress');
+  if (!gate.ok) return capabilityDenied(gate.reason);
+  const c = await healthClientRow(String(v.storageKey).toLowerCase()); if (c instanceof Response) return c;
   const { data: k } = await admin.from('health_keys').select('consent_at').eq('client_id', c.id).is('revoked_at', null).limit(1);
   const since = sydneyDate(Date.now() - 7 * 86400000);
   const { data: rows } = await admin.from('health_daily').select('day, steps, active_kcal, exercise_min, resting_hr, sleep_min, received_at')
@@ -1340,7 +1349,11 @@ async function healthSelfStatus(body: any) {
   return ok({ connected: active, days: active ? (rows ?? []) : [], consentVersion: HEALTH_CONSENT_VERSION });
 }
 async function healthSelfConnect(body: any) {
-  const c = await healthClientId(body); if (c instanceof Response) return c;
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const gate = await requireCapability(String(v.storageKey).toLowerCase(), 'view_progress');
+  if (!gate.ok) return capabilityDenied(gate.reason);
+  const c = await healthClientRow(String(v.storageKey).toLowerCase()); if (c instanceof Response) return c;
   if (body?.agree !== true || body?.version !== HEALTH_CONSENT_VERSION) return err('consent_required');
   const now = new Date().toISOString();
   await admin.from('health_keys').update({ revoked_at: now, revoked_by: 'replaced' }).eq('client_id', c.id).is('revoked_at', null);
@@ -1353,7 +1366,9 @@ async function healthSelfConnect(body: any) {
   return ok({ healthKey: upload });
 }
 async function healthSelfDisconnect(body: any) {
-  const c = await healthClientId(body); if (c instanceof Response) return c;
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const c = await healthClientRow(String(v.storageKey).toLowerCase()); if (c instanceof Response) return c;
   await admin.from('health_keys').update({ revoked_at: new Date().toISOString(), revoked_by: 'client' }).eq('client_id', c.id).is('revoked_at', null);
   const { data } = await admin.from('health_daily').delete().eq('client_id', c.id).select('id');
   return ok({ revoked: true, deleted: (data ?? []).length });
