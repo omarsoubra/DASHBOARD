@@ -15,10 +15,10 @@ const T = { clients: [{ id: 'c1', storage_key: 'bishoy_shaker', display_name: 'B
 let seq = 0;
 function from(t) {
   const q = { f: [], isn: [], gte: null, mode: 'select', payload: null, single: false, order: null, lim: null, ret: false };
-  const rows = () => T[t].filter((r) => q.f.every(([c, v]) => r[c] === v) && q.isn.every(([c, v]) => (r[c] ?? null) === v) && (!q.gte || r[q.gte[0]] >= q.gte[1]));
+  const rows = () => T[t].filter((r) => q.f.every(([c, v]) => r[c] === v) && q.isn.every(([c, v]) => (r[c] ?? null) === v) && (!q.gte || r[q.gte[0]] >= q.gte[1]) && (!q.inn || q.inn[1].includes(r[q.inn[0]])) && (!q.neq || r[q.neq[0]] !== q.neq[1]));
   const b = {
     select: () => { q.ret = true; return b; }, eq: (c, v) => { q.f.push([c, v]); return b; }, is: (c, v) => { q.isn.push([c, v]); return b; },
-    gte: (c, v) => { q.gte = [c, v]; return b; }, order: (c, o) => { q.order = [c, o.ascending]; return b; }, limit: (n) => { q.lim = n; return b; },
+    gte: (c, v) => { q.gte = [c, v]; return b; }, in: (c, vs) => { q.inn = [c, vs]; return b; }, neq: (c, v) => { q.neq = [c, v]; return b; }, order: (c, o) => { q.order = [c, o.ascending]; return b; }, limit: (n) => { q.lim = n; return b; },
     maybeSingle: () => { q.single = true; return b; },
     insert: (o) => { q.mode = 'insert'; q.payload = o; return b; }, update: (o) => { q.mode = 'update'; q.payload = o; return b; }, delete: () => { q.mode = 'delete'; return b; },
     then: (res) => {
@@ -159,6 +159,16 @@ const B = (r) => r.__body;
   t('self status: connected + today\'s row', ss.connected === true && ss.days.length === 1 && ss.days[0].steps === 1234, ss);
   const sc2 = B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION }));
   t('connecting again replaces the old key (old one dead)', B(await M.healthLog({ healthKey: sc.healthKey, steps: 5 })).error === 'invalid_key' && B(await M.healthLog({ healthKey: sc2.healthKey, steps: 5 })).ok);
+  // Omar 2026-10-14: "Set it up" tapped twice - the Shortcut holds the FIRST code; it must keep working
+  T.health_keys = []; T.health_daily = [];
+  const dk1 = B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION })).healthKey;
+  const dk2 = B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION })).healthKey;
+  t('set-up tapped twice within 30 min: the first (unused) code still uploads', B(await M.healthLog({ healthKey: dk1, steps: 42 })).ok === true);
+  t('... and the spare second code is then switched off (one working code per client)', B(await M.healthLog({ healthKey: dk2, steps: 1 })).error === 'invalid_key'
+    && T.health_keys.filter((k) => k.client_id === 'c1' && !k.revoked_at).length === 1);
+  T.health_keys.forEach((k) => { if (!k.revoked_at) k.created_at = new Date(Date.now() - 31 * 60000).toISOString(); k.last_used_at = null; });
+  B(await M.healthSelfConnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker', agree: true, version: M.HEALTH_CONSENT_VERSION }));
+  t('an unused code older than 30 min is replaced by a new set-up', B(await M.healthLog({ healthKey: dk1, steps: 1 })).error === 'invalid_key');
   const zk = B(await M.healthSelfConnect({ storageKey: 'zain_hussein', token: 'tok-zain_hussein', agree: true, version: M.HEALTH_CONSENT_VERSION })).healthKey;
   await M.healthLog({ healthKey: zk, steps: 777 });
   const sd = B(await M.healthSelfDisconnect({ storageKey: 'bishoy_shaker', token: 'tok-bishoy_shaker' }));

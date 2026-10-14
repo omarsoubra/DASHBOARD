@@ -5960,10 +5960,13 @@ function _healthFill(key) {
   var hrs = function (m) { return (m / 60).toFixed(1); };
   var last14 = rows.filter(function (r) { return r.day > _healthDayAgo(14); });
   var max = Math.max.apply(null, last14.map(function (r) { return r.steps || 0; }).concat([1]));
-  var bars = last14.map(function (r) { var h = Math.max(2, Math.round((r.steps || 0) / max * 48));
+  // always 14 day slots (oldest -> today), so one day of data is one bar, not a full-width block
+  var byDay = {}; last14.forEach(function (r) { byDay[r.day] = r; });
+  var slots = []; for (var i = 13; i >= 0; i--) { var dk = _healthDayAgo(i); slots.push(byDay[dk] || { day: dk, steps: null }); }
+  var bars = slots.map(function (r) { var h = Math.max(2, Math.round((r.steps || 0) / max * 48));
     return '<div title="' + esc_(r.day) + ': ' + (r.steps != null ? int(r.steps) + ' steps' : 'no steps') + '" style="flex:1;display:flex;align-items:flex-end;height:50px"><div style="width:100%;height:' + h + 'px;background:var(--v2-accent, #00E5A0);border-radius:3px;opacity:' + (r.steps != null ? 1 : .25) + '"></div></div>'; }).join('');
   var lastDay = rows.length ? rows[rows.length - 1].day : null;
-  el.innerHTML = '<div class="v2-cd-stats" style="margin:0 0 12px">' +
+  el.innerHTML = '<div class="v2-cd-stats" style="margin:0 0 12px;grid-template-columns:repeat(auto-fit,minmax(104px,1fr))">' +
       stat('Steps / day', 'steps', '', int) + stat('Active kcal', 'active_kcal', '', int) + stat('Exercise', 'exercise_min', ' min', int) +
       stat('Sleep', 'sleep_min', ' h', hrs) + stat('Resting HR', 'resting_hr', ' bpm', int) + '</div>' +
     (last14.length ? '<div style="display:flex;gap:3px;align-items:flex-end;margin-bottom:6px">' + bars + '</div><div class="v2-muted" style="font-size:12px;margin-bottom:10px">Steps, last 14 days · averages are the last 7 days vs the 7 before</div>' : '') +
@@ -5991,8 +5994,9 @@ function _healthDevices(rows) {
     if (!src) continue;
     var kinds = [];
     Object.keys(src).forEach(function (n) {
-      var k = /watch/i.test(n) ? 'Apple Watch' : /garmin|forerunner|fenix|venu|vivo/i.test(n) ? 'Garmin' : /whoop/i.test(n) ? 'WHOOP' : /oura/i.test(n) ? 'Oura' :
-              /fitbit/i.test(n) ? 'Fitbit' : /iphone/i.test(n) ? 'iPhone' : 'Other app';
+      // Garmin's app writes to Health as "Connect"; an iPhone shows under the phone's own name (e.g. "Omar")
+      var k = /watch/i.test(n) ? 'Apple Watch' : /garmin|forerunner|fenix|venu|vivo|^connect$/i.test(n) ? 'Garmin' : /whoop/i.test(n) ? 'WHOOP' : /oura/i.test(n) ? 'Oura' :
+              /fitbit/i.test(n) ? 'Fitbit' : /iphone/i.test(n) ? 'iPhone' : (String(n).trim().slice(0, 24) || 'Other app');
       if (kinds.indexOf(k) < 0) kinds.push(k);
     });
     return kinds.join(' · ');

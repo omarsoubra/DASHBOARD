@@ -1218,7 +1218,7 @@ function healthNum(v: any): number | null {
 }
 async function healthKeyRow(key: unknown) {
   if (typeof key !== 'string' || !HEALTH_KEY_RE.test(key)) return null;
-  const { data } = await admin.from('health_keys').select('id, client_id, storage_key, consent_at, revoked_at, uploads_today, uploads_day')
+  const { data } = await admin.from('health_keys').select('id, client_id, storage_key, consent_at, revoked_at, uploads_today, uploads_day, last_used_at')
     .eq('key_hash', await sha256(key)).maybeSingle();
   return data ?? null;
 }
@@ -1259,6 +1259,9 @@ async function healthLog(body: any) {
   const row = await healthKeyRow(body?.healthKey);
   if (!row || row.revoked_at) return err('invalid_key');
   if (!row.consent_at) return err('consent_required');
+  // first upload with this code: it is the one on the phone, so any spare code from a repeated set-up is switched off
+  if (!row.last_used_at) await admin.from('health_keys').update({ revoked_at: new Date().toISOString(), revoked_by: 'superseded' })
+    .eq('client_id', row.client_id).is('revoked_at', null).neq('id', row.id);
   const nowMs = Date.now(), today = sydneyDate(nowMs);
   const used = row.uploads_day === today ? (row.uploads_today ?? 0) : 0;
   if (used >= HEALTH_MAX_UPLOADS_PER_DAY) return err('rate_limited');
@@ -1466,7 +1469,13 @@ async function healthSelfConnect(body: any) {
   const c = await healthClientRow(String(v.storageKey).toLowerCase()); if (c instanceof Response) return c;
   if (body?.agree !== true || body?.version !== HEALTH_CONSENT_VERSION) return err('consent_required');
   const now = new Date().toISOString();
-  await admin.from('health_keys').update({ revoked_at: now, revoked_by: 'replaced' }).eq('client_id', c.id).is('revoked_at', null);
+  // Setting up again replaces the old code - except one made in the last 30 minutes that has never uploaded: tapping
+  // "Set it up" twice must not break the Shortcut that was just added with the first code (Omar 2026-10-14). Whichever
+  // code uploads first wins; healthLog then switches the spare off.
+  const grace = new Date(Date.now() - 30 * 60000).toISOString();
+  const { data: act } = await admin.from('health_keys').select('id, created_at, last_used_at').eq('client_id', c.id).is('revoked_at', null);
+  const old = (act ?? []).filter((k: any) => k.last_used_at || !(k.created_at > grace)).map((k: any) => k.id);
+  if (old.length) await admin.from('health_keys').update({ revoked_at: now, revoked_by: 'replaced' }).in('id', old);
   const raw = new Uint8Array(20); crypto.getRandomValues(raw);
   const upload = 'lih_' + Array.from(raw, (b) => b.toString(16).padStart(2, '0')).join('');
   const { error } = await admin.from('health_keys').insert({ client_id: c.id, storage_key: c.key, key_hash: await sha256(upload), created_at: now,
