@@ -52,7 +52,7 @@
 
   <!-- 1. consent -->
   <div id="consent" class="card" hidden>
-    <div class="step">Step 1 of 4</div>
+    <div class="step">Step 1 of 3</div>
     <h2 id="hello">Share your daily activity with Omar</h2>
     <p>Once a day your iPhone sends Omar these <strong>daily totals</strong> from Apple Health (including your Apple Watch):</p>
     <ul>
@@ -71,33 +71,29 @@
     <button class="btn" id="agreeBtn" disabled>I agree — continue</button>
   </div>
 
-  <!-- 2-4. setup -->
+  <!-- 2-3. setup -->
   <div id="setup" hidden>
     <div class="card">
-      <div class="step">Step 2 of 4</div>
-      <h2>Copy your code</h2>
-      <p>This code links the Shortcut to your coaching. Keep it private.</p>
-      <div class="code" id="code"></div>
-      <button class="btn" id="copyBtn">Copy code</button>
-    </div>
-    <div class="card">
-      <div class="step">Step 3 of 4</div>
+      <div class="step">Step 2 of 3</div>
       <h2>Add the LOCKED IN Shortcut</h2>
-      <p>Tap below, then <strong>Add Shortcut</strong>. When it asks for your code, <strong>paste</strong> it.</p>
-      <a class="btn" id="shortcutBtn" href="#" target="_blank" rel="noopener">Add the Shortcut</a>
-      <p class="muted" id="shortcutLater" hidden>Omar will send you the Shortcut link separately.</p>
-      <p class="muted" style="margin-top:10px">The first time it runs, your iPhone asks what Apple Health data the Shortcut may read — tap <strong>Allow</strong> for each item.</p>
+      <p>Tap the button. Your code is copied for you.</p>
+      <a class="btn" id="shortcutBtn" href="LOCKED-IN-Health.shortcut">Add the Shortcut</a>
+      <p style="margin-top:12px">Then on the next screen:</p>
+      <ol>
+        <li>Tap <strong>Set Up Shortcut</strong> (or <strong>Add Shortcut</strong>).</li>
+        <li>Tap the code box, then <strong>Paste</strong>, then <strong>Add Shortcut</strong>.</li>
+      </ol>
+      <p class="muted" style="margin-top:8px">If it asks to download the file first, tap <strong>Download</strong>, then open it.</p>
+      <details style="margin-top:10px"><summary class="muted">Show my code</summary><div class="code" id="code"></div></details>
     </div>
     <div class="card">
-      <div class="step">Step 4 of 4</div>
-      <h2>Make it run every night</h2>
+      <div class="step">Step 3 of 3</div>
+      <h2>Turn it on</h2>
       <ol>
-        <li>Open the <strong>Shortcuts</strong> app and tap <strong>Automation</strong> at the bottom.</li>
-        <li>Tap <strong>+</strong> (or <strong>New Automation</strong>), then <strong>Time of Day</strong>.</li>
-        <li>Choose <strong>9:00 PM</strong>, <strong>Daily</strong>, and <strong>Run Immediately</strong>. Tap <strong>Next</strong>.</li>
-        <li>Pick <strong>LOCKED IN Health</strong> and tap <strong>Done</strong>.</li>
+        <li>Open the <strong>Shortcuts</strong> app and tap <strong>LOCKED IN Health</strong> once. Tap <strong>Allow</strong> for everything it asks.</li>
+        <li>Tap <strong>Automation</strong> at the bottom → <strong>+</strong> → <strong>Time of Day</strong>.</li>
+        <li>Pick <strong>9:00 PM</strong>, <strong>Daily</strong>, <strong>Run Immediately</strong> → <strong>Next</strong> → <strong>LOCKED IN Health</strong>.</li>
       </ol>
-      <p>Now run the Shortcut once yourself (tap it in the Shortcuts app) to test it.</p>
       <button class="btn ghost" id="checkBtn">Check it worked</button>
       <p id="checkMsg" style="margin-top:10px" hidden></p>
     </div>
@@ -107,7 +103,7 @@
   <div id="connected" class="card status" hidden>
     <h2><span class="ok">✓</span> Apple Health connected</h2>
     <p id="lastMsg"></p>
-    <p class="muted">Want to set it up on a new phone? Use the steps above again with the same code.</p>
+    <p class="muted">New phone? Do steps 2 and 3 again.</p>
   </div>
 
   <div id="off" class="card" hidden>
@@ -126,7 +122,7 @@
 (function () {
   var API_URL = 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
   // iCloud link of the LOCKED IN Health shortcut (its import question asks for the code). Empty until published.
-  var SHORTCUT_URL = '';
+  var SHORTCUT_URL = 'LOCKED-IN-Health.shortcut';   // signed shortcut (health/build_shortcut.py + `shortcuts sign --mode anyone`)
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).hidden = !on; };
 
@@ -154,7 +150,7 @@
     version = st.consentVersion;
     if (st.firstName) $('hello').textContent = 'Hey ' + st.firstName + ' — share your daily activity with Omar';
     $('code').textContent = key;
-    if (SHORTCUT_URL) $('shortcutBtn').href = SHORTCUT_URL; else { show('shortcutBtn', false); show('shortcutLater', true); }
+    $('shortcutBtn').href = SHORTCUT_URL;
     show('consent', !st.active);
     show('setup', !!st.active);
     show('off', !!st.active);
@@ -176,10 +172,8 @@
       load(); window.scrollTo(0, 0);
     }).catch(function () { $('agreeBtn').disabled = false; $('agreeBtn').textContent = 'Could not save — tap to try again'; });
   });
-  $('copyBtn').addEventListener('click', function () {
-    var done = function () { $('copyBtn').textContent = 'Copied ✓'; setTimeout(function () { $('copyBtn').textContent = 'Copy code'; }, 1800); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(key).then(done, function () { selectCode(); });
-    else selectCode();
+  $('shortcutBtn').addEventListener('click', function () {
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(key); } catch (e) {}
   });
   function selectCode() { var r = document.createRange(); r.selectNodeContents($('code')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   $('checkBtn').addEventListener('click', function () {
