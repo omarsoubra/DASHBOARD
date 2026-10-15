@@ -31,7 +31,7 @@ const srv = http.createServer((req, res) => {
   const m = /^\/clients\/([a-z0-9_]+)\/(index\.html)?$/.exec(u);
   if (m && m[1] === '_no_router') body = FALLBACK_PAGE;
   else if (m && fs.existsSync(path.join(ROOT, 'clients', m[1], 'index.html'))) body = fs.readFileSync(path.join(ROOT, 'clients', m[1], 'index.html'));
-  else if (u === '/sw.js' || u === '/push-client.js') { body = fs.readFileSync(path.join(ROOT, u)); type = 'text/javascript'; }
+  else if (u === '/sw.js' || u === '/push-client.js' || u === '/account-setup.js') { body = fs.readFileSync(path.join(ROOT, u)); type = 'text/javascript'; }
   if (body === null) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': type });
   res.end(body);
@@ -70,7 +70,8 @@ const srv = http.createServer((req, res) => {
   await send('Fetch.enable', { patterns: [{ urlPattern: '*supabase.co*' }] }, s);
   const ev = async (expr) => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }, s)).result.value;
   const open = async (url) => { await send('Page.navigate', { url }, s); await sleep(2200); };
-  const active = () => ev(`(document.querySelector('.section.active')||{}).id||null`);
+  // Home is section-home on classic pages and section-cv2home under Client UI V2: both count as "home".
+  const active = () => ev(`(() => { const id = (document.querySelector('.section.active')||{}).id || null; return id === 'section-cv2home' ? 'section-home' : id; })()`);
 
   for (const key of KEYS) {
     const base = `http://127.0.0.1:9941/clients/${key}/`;
@@ -134,7 +135,9 @@ const srv = http.createServer((req, res) => {
     return out;
   })()`);
   check('ui: rows are exactly check-in, program updates, training, meals, quiet hours', ui.rowsBoth.join('|') === 'Weekly check-in|Program updates|Training reminders|Meal reminders|Quiet hours', ui.rowsBoth);
-  check('ui: plan-synced wording, no internal schedule shown', /Synced with your training plan/.test(ui.textBoth) && /Synced with your meal plan/.test(ui.textBoth) && !/\d{1,2}:\d{2}\s*(AM|PM)?\s*(Meal|Training)|Meal 1|Training days|Follow-up/.test(ui.textBoth), ui.textBoth);
+  // Since 2026-10-11 the server sends the schedule in force (training days/time, lunch/dinner) and the
+  // rows show it; with no schedule detail in the response the rows fall back to plan wording.
+  check('ui: no schedule detail from the server → plan wording, no per-meal or follow-up rows', /From your training plan/.test(ui.textBoth) && /From your meal plan/.test(ui.textBoth) && !/Meal 1|Follow-up/.test(ui.textBoth), ui.textBoth);
   check('ui: no training/meal/follow-up time controls exist', ui.timeInputsForSchedule === 0, ui.selects);
   check('ui: only quiet-hours (and check-in) time selects remain', ui.selects.every((l) => /Quiet hours|Check-in reminder time/.test(l)), ui.selects);
   check('ui: unknown training schedule → no Training row', ui.rowsNoTraining.join('|') === 'Weekly check-in|Program updates|Meal reminders|Quiet hours', ui.rowsNoTraining);
