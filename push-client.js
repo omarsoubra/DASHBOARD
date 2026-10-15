@@ -599,6 +599,20 @@
     } catch (e) {}
   }
 
+  // WEIGH-IN TREND, SET LOGGING + PRs, PHOTO COMPARE, EATING OUT (2026-10-15): plus-client.js, next to this file,
+  // same login, same isolation.
+  function bootPlus(opts) {
+    try {
+      var api = String(opts.pushUrl || '').replace(/\/push$/, '/api');
+      var start = function () { try { window.LockedInPlus.boot({ storageKey: opts.storageKey, getToken: opts.getToken, apiUrl: api }); } catch (e) {} };
+      if (window.LockedInPlus) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'plus-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   window.LockedInPush = {
     mount: function (opts) {
       var p = new Push(opts);
@@ -606,6 +620,7 @@
       p.init();
       bootHealth(opts || {});
       bootWeek(opts || {});
+      bootPlus(opts || {});
       return p;
     },
   };
