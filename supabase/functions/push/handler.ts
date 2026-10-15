@@ -152,6 +152,7 @@ export const TEMPLATES: Record<string, Template> = {
   // Omar 2026-10-14: replaces the per-check-in EmailJS email. Coach-facing, so it shares the coach_morning kind (the
   // kind is a category; the tag and dedupe key are its own) - no schema change.
   coach_checkin:     { kind: 'coach_morning', title: 'New check-in', body: 'Tap to review their check-in.', url: './coach_dashboard.html', tag: 'li-coach-checkin', ttlSec: 12 * 3600 },
+  coach_alert:       { kind: 'coach_morning', title: 'WhatsApp', body: '', url: './coach_dashboard.html', tag: 'li-coach-alert', ttlSec: 12 * 3600 },
 };
 
 /** Meal slot k's lock-screen text: the ordinal only ("Meal 2 time"), never a food, time or amount. */
@@ -630,6 +631,45 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
       sent++;
     }
     return 'sent:' + sent;
+  }
+
+  // ── coachAlert (Omar 2026-10-16): the WhatsApp agent on Omar's Mac hands a client message to his phone.
+  // Coach token; only the coach's own `_coach` devices. Lock-screen safe: a fixed body per alert kind and a first
+  // name (letters only) - nothing from the message itself. <= 40 a day.
+  const COACH_ALERT_BODIES: Record<string, string> = {
+    health: 'Health or injury message. Reply yourself.',
+    change: 'Asked about a food or training change.',
+    account: 'Account, payment or access question.',
+    media: 'Sent a photo, voice note or file.',
+    other: 'Needs your reply.',
+    system: 'WhatsApp agent needs you: check the Mac.',
+  };
+  async function coachAlert(body: any): Promise<Response> {
+    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    const alert = String(body?.alert ?? '');
+    const text = Object.prototype.hasOwnProperty.call(COACH_ALERT_BODIES, alert) ? COACH_ALERT_BODIES[alert] : '';
+    if (!text) return err('unknown_alert', 400);
+    const requestId = String(body?.requestId ?? '');
+    if (!REQUEST_ID_RE.test(requestId)) return err('bad_requestId', 400);
+    const name = String(body?.name ?? '').replace(/[^\p{L} '-]/gu, '').trim().slice(0, 20) || 'A client';
+    const v = await vapidOrNull();
+    if (!v) return err('push_not_configured', 503);
+    const coachId = await coachClientId();
+    if (!coachId) return err('no_coach_account', 404);
+    const nowMs = now();
+    const nowIso = new Date(nowMs).toISOString();
+    const { count } = await admin.from('notification_events').select('id', { count: 'exact', head: true })
+      .eq('client_id', coachId).like('dedupe_key', 'coach_alert:%').gte('created_at', new Date(nowMs - 86400_000).toISOString());
+    if ((count ?? 0) >= 40) return err('daily_cap_reached', 429);
+    const tpl: Template = { ...TEMPLATES.coach_alert, title: alert === 'system' ? 'LOCKED IN agent' : `${name} on WhatsApp`, body: text };
+    const got = await claim({
+      client_id: coachId, storage_key: COACH_KEY, kind: tpl.kind, dedupe_key: `coach_alert:${requestId}`, status: 'claimed',
+      title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'coach', request_id: requestId, created_at: nowIso, eligible_at: nowIso,
+    });
+    if (got === 'duplicate') return ok({ duplicate: true, delivered: 0 });
+    if (!got) return err('write_failed', 500);
+    const r = await deliver(got.id, coachId, tpl, v, nowMs);
+    return ok({ eventId: got.id, status: r.status, delivered: r.results.filter((x) => x.outcome === 'delivered').length });
   }
 
   // ── pushSubscribe (= the explicit opt-in) ─────────────────────────────────
@@ -1363,6 +1403,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
         case 'coachPushSend':   return await coachPushSend(body);
         case 'coachPushStatus': return await coachPushStatus(body);
         case 'coachPushSubscribe': return await coachPushSubscribe(body);
+        case 'coachAlert':      return await coachAlert(body);
         case 'pushTick':        return await pushTick(req);
         case 'programUpdated':  return await programUpdated(req, body);
         case 'planFactsSync':   return await planFactsSync(req, body);

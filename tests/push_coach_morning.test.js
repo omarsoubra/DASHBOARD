@@ -195,4 +195,30 @@ test('CM7 headline rules (pure)', async () => {
   eq(M.blockWeeks({ durationWeeks: '16' }), 16); eq(M.blockWeeks({}), 12);
 });
 
+test('CM9 coachAlert (WhatsApp agent, Omar 2026-10-16): coach token, coach devices only, fixed lock-screen text, dedupe, daily cap', async () => {
+  const w = await coachWorld();
+  const req = (extra = {}) => w.call({ type: 'coachAlert', coachToken: COACH_HASH, alert: 'health', name: 'Zac', requestId: 'wa_' + Math.random().toString(16).slice(2, 14), ...extra });
+  eq((await req({ coachToken: 'nope' })).status, 401, 'bad token refused');
+  eq((await req({ alert: 'free text' })).status, 400, 'unknown alert refused');
+  eq((await req({ alert: 'constructor' })).status, 400, 'prototype key refused');
+  eq((await req({ requestId: 'x' })).status, 400, 'bad requestId');
+  const none = await req();
+  eq(none.status, 200); eq(none.j.delivered, 0, 'no coach device -> nothing delivered');
+  const s = w.newSub('web.push.apple.com');
+  await w.coachSub(s);
+  const before = w.svc.received.length;
+  const r = await req({ name: 'Zac<script>99kg' , requestId: 'wa_fixed_000001' });
+  eq(r.status, 200); eq(r.j.delivered, 1, JSON.stringify(r.j));
+  const p = w.svc.received[w.svc.received.length - 1].payload;
+  eq(p.title, 'Zacscriptkg on WhatsApp', 'name: letters only'); eq(p.body, 'Health or injury message. Reply yourself.'); eq(p.url, './coach_dashboard.html');
+  eq((await req({ requestId: 'wa_fixed_000001' })).j.duplicate, true, 'same requestId -> duplicate');
+  eq(w.svc.received.length - before, 1, 'one push');
+  const sys = await req({ alert: 'system', name: '' });
+  eq(w.svc.received[w.svc.received.length - 1].payload.title, 'LOCKED IN agent');
+  assert(w.db.T.notification_events.filter((e) => String(e.dedupe_key).startsWith('coach_alert:')).every((e) => e.client_id === w.coachId), 'only the coach');
+  for (let i = 0; i < 40; i++) await req();
+  eq((await req()).status, 429, 'daily cap');
+  assertNoLeak(w);
+});
+
 run('push_coach_morning');
