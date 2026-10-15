@@ -35,6 +35,19 @@
      * Styling inherits the host page (CSS variables, fonts); base rules use
        :where() so the page's own styles always win.
    ========================================================================== */
+// In-app login setup (2026-10-15) rides on this shared file so no client page
+// needs editing: load ./account-setup.js from the same folder, once.
+(function () {
+  try {
+    var me = document.currentScript && document.currentScript.src;
+    if (!me || document.getElementById('li-account-setup')) return;
+    var s = document.createElement('script');
+    s.id = 'li-account-setup'; s.defer = true;
+    s.src = me.replace(/push-client\.js(\?.*)?$/, 'account-setup.js');
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {}
+})();
+
 (function () {
   'use strict';
 

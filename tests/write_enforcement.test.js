@@ -245,6 +245,8 @@ const denied = (r) => r.ok === false && ['forbidden_tier', 'provisioning_incompl
     accountInviteInspect: 'single-use coach-issued link; first name + expiry only',
     accountClaim:         'single-use coach-issued link; sets that client\'s own login, returns no data',
     accountSession:       'verified Supabase session -> device key for its OWN client; no data returned',
+    accountSelfStatus:    'verified client token -> its OWN account state (active/none + canSetup); no data returned',
+    accountSelfSetup:     'verified client token (never a key published in the public page) -> login for its OWN client only',
     accountSignOut:       'revokes the presented device key only',
     healthSelfDisconnect: 'withdraws consent + deletes the caller\'s OWN health data; must work even when lapsed',
   };

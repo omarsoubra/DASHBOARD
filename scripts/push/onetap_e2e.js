@@ -34,6 +34,7 @@ const path = require('path');
 const KEYS = process.argv.slice(2);
 if (!KEYS.length) { console.error('usage: onetap_e2e.js <storage_key> …'); process.exit(2); }
 const ROOT = path.join(__dirname, '..', '..');
+const CHROME = { p: null };   // killed on every exit path, so a crash never leaves a browser on the port
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const SHOT_DIR = process.env.SHOT_DIR || '';   // optional: phone-size screenshots of the sheet
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
@@ -43,7 +44,7 @@ const srv = http.createServer((req, res) => {
   let body = null, type = 'text/html';
   const m = /^\/clients\/([a-z0-9_]+)\/(index\.html)?$/.exec(u);
   if (m && fs.existsSync(path.join(ROOT, 'clients', m[1], 'index.html'))) body = fs.readFileSync(path.join(ROOT, 'clients', m[1], 'index.html'));
-  else if (u === '/sw.js' || u === '/push-client.js') { body = fs.readFileSync(path.join(ROOT, u)); type = 'text/javascript'; }
+  else if (u === '/sw.js' || u === '/push-client.js' || u === '/account-setup.js') { body = fs.readFileSync(path.join(ROOT, u)); type = 'text/javascript'; }
   if (body === null) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': type });
   res.end(body);
@@ -73,7 +74,7 @@ const FAKE_OS = `(() => {
 (async () => {
   await new Promise((r) => srv.listen(9951, '127.0.0.1', r));
   const PROFILE = fs.mkdtempSync(path.join(os.tmpdir(), 'onetap-e2e-'));
-  const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', ['--headless=new', `--user-data-dir=${PROFILE}`,
+  const chrome = CHROME.p = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', ['--headless=new', `--user-data-dir=${PROFILE}`,
     '--remote-debugging-port=9953', '--no-first-run', '--disable-background-networking', '--disable-component-update', '--disable-sync', 'about:blank'], { stdio: 'ignore' });
   let ver; for (let i = 0; i < 60 && !ver; i++) { try { ver = await (await fetch('http://127.0.0.1:9953/json/version')).json(); } catch { await sleep(200); } }
   const ws = new WebSocket(ver.webSocketDebuggerUrl); await new Promise((r) => (ws.onopen = r));
@@ -134,6 +135,10 @@ const FAKE_OS = `(() => {
   const ls = (k) => ev(`localStorage.getItem(${JSON.stringify(k)})`);
   const tap = (label) => ev(`(() => { const b = [...document.querySelectorAll('#lip-ask button')].find(x => x.textContent === ${JSON.stringify(label)}); if (!b) return false; b.click(); return true; })()`);
 
+  // Warm-up: the very first page in a brand-new browser profile (cold cache, first
+  // service-worker install) boots far slower than any later one. Load it once, discard.
+  await send('Page.navigate', { url: `${ORIGIN}/clients/${KEYS[0]}/` }, s); await sleep(9000); await reset();
+
   for (const key of KEYS) {
     const url = `${ORIGIN}/clients/${key}/?t=e2e-token-${key}`;
     const open = async (u = url) => { await send('Page.navigate', { url: u }, s); await sleep(3200); };
@@ -148,6 +153,8 @@ const FAKE_OS = `(() => {
     const shot = async (name) => { if (!SHOT_DIR) return; const { data } = await send('Page.captureScreenshot', { format: 'png' }, s); fs.writeFileSync(path.join(SHOT_DIR, `${key}_${name}.png`), Buffer.from(data, 'base64')); };
     if (SHOT_DIR) await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, s);
     if (SHOT_DIR) await open();
+    // A cold first start (service worker install) can take longer than the fixed wait: poll.
+    for (let i = 0; i < 40 && !(await sheet()); i++) await sleep(250);
     let sh = await sheet();
     await shot('1_ask');
     check(P('A1 sheet appears on open for a rollout client'), !!sh, sh);
@@ -270,7 +277,7 @@ const FAKE_OS = `(() => {
   ws.close(); chrome.kill(); srv.close();
   try { fs.rmSync(PROFILE, { recursive: true, force: true }); } catch {}
   let fail = 0;
-  for (const c of checks) { console.log(`  ${c.pass ? 'PASS' : 'FAIL'}  ${c.name}${c.pass ? '' : '   ' + JSON.stringify(c.detail).slice(0, 200)}`); if (!c.pass) fail++; }
+  for (const c of checks) { console.log(`  ${c.pass ? 'PASS' : 'FAIL'}  ${c.name}${c.pass ? '' : '   ' + String(JSON.stringify(c.detail)).slice(0, 200)}`); if (!c.pass) fail++; }
   console.log(`\nonetap_e2e: ${checks.length - fail} passed, ${fail} failed, ${checks.length} total`);
   process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => { console.error(e); try { CHROME.p && CHROME.p.kill(); } catch {} process.exit(1); });

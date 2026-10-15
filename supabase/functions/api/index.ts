@@ -258,6 +258,12 @@ function capabilityDenied(reason: string | undefined) {
 //                   (only its sha256 is stored). Inspect returns the first name
 //                   and expiry only; claim sets that client's own login and links
 //                   it to that client's profile. Neither returns client data.
+//   accountSelfStatus / accountSelfSetup   In-app login setup (2026-10-15).
+//                   Authorised by the phone's OWN verified access key, never a
+//                   key that appears in the client's public page. Status returns
+//                   only active/none + canSetup; setup creates that client's own
+//                   login. Neither returns client data. Not gated on a coaching
+//                   capability: a login is how a client reaches their account.
 //   accountSession  Exchanges a verified Supabase session for a device key bound
 //                   to the session's OWN client. Returns no programme or log
 //                   data; every data op the key is later used for is gated.
@@ -626,6 +632,9 @@ Deno.serve(async (req) => {
       case 'accountClaim':         return accountClaim(body);
       case 'accountSession':       return accountSession(body);
       case 'accountSignOut':       return accountSignOut(body);
+      case 'accountSelfStatus':    return accountSelfStatus(body);
+      case 'accountSelfSetup':     return accountSelfSetup(body);
+      case 'accountLegacyAudit':   return accountLegacyAudit(body);
       case 'setClientProgram':   return setClientProgram(body);
       case 'clientProgram':      return clientProgram(body);
       case 'entitlementsGet':    return entitlementsGet(body);
@@ -1011,6 +1020,107 @@ async function accountSignOut(body: any) {
       .eq('token_hash', await sha256(token)).eq('storage_key', storageKey).is('revoked_at', null);
   }
   return ok({});
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// IN-APP LOGIN SETUP (Omar 2026-10-15). A client already signed in to their own
+// app on their own phone sets an email + password there — no invite link.
+//
+// Identity is the phone's existing access key (verifyClientToken). One extra
+// rule: a key that appears in the client's PUBLIC page source (the old
+// CLIENT_TOKEN_LEGACY fallback on older shells) proves nothing, so such a key
+// may never create a login — that client gets a personal invite link instead
+// (needs_invite). If the public page cannot be read the answer is the same:
+// fail closed. Nothing here changes the existing key; the app keeps working.
+// ══════════════════════════════════════════════════════════════════════════
+const PUBLIC_PAGE_BASE = 'https://omarsoubra.github.io/DASHBOARD/clients/';
+
+/** true = this key is visible in the client's public page (or the page can't be checked). */
+async function keyIsPublic(storageKey: string, token: string): Promise<boolean> {
+  if (!/^[a-z0-9_]{2,40}$/.test(storageKey)) return true;
+  try {
+    const r = await fetch(`${PUBLIC_PAGE_BASE}${storageKey}/?v=${Date.now()}`, { redirect: 'error', cache: 'no-store' });
+    if (!r.ok) return true;
+    return (await r.text()).includes(token);
+  } catch { return true; }
+}
+
+// client: may this phone set up a login in the app?
+async function accountSelfStatus(body: any) {
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(body.storageKey).toLowerCase();
+  const t = await accountTarget(key);
+  if (!t || !t.profile) return ok({ account: 'none', canSetup: false });
+  if (t.profile.auth_user_id) return ok({ account: 'active', canSetup: false });
+  return ok({ account: 'none', canSetup: !(await keyIsPublic(key, String(body.token))) });
+}
+
+// client: create the login for the client this phone is already signed in as.
+async function accountSelfSetup(body: any) {
+  const v = await verifyClientToken(body?.token, body?.storageKey);
+  if (!v.ok) return err(v.reason ?? 'unauthorized');
+  const key = String(body.storageKey).toLowerCase();
+  const email = String(body?.email ?? '').trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return err('bad_email');
+  const pwErr = passwordProblem(body?.password);
+  if (pwErr) return err(pwErr);
+  const t = await accountTarget(key);
+  if (!t || !t.profile) return err('unknown_client');
+  if (t.accessStatus === 'revoked' || t.accessStatus === 'suspended') return err('access_not_active');
+  if (t.profile.auth_user_id) return err('account_exists');
+  if (await keyIsPublic(key, String(body.token))) return err('needs_invite');
+  const nowIso = new Date().toISOString();
+  const { data: created, error: cErr } = await admin.auth.admin.createUser({
+    email, password: body.password, email_confirm: true, app_metadata: { storage_key: key },
+  });
+  if (cErr || !created?.user?.id) return err(/already|registered|exists/i.test(cErr?.message ?? '') ? 'email_in_use' : 'account_create_failed');
+  const { data: linked, error: lErr } = await admin.from('profiles')
+    .update({ auth_user_id: created.user.id, email, updated_at: nowIso })
+    .eq('id', t.profile.id).is('auth_user_id', null).select('id');
+  if (lErr || !(linked ?? []).length) {
+    await admin.auth.admin.deleteUser(created.user.id);         // never leave an orphan login (double tap / race)
+    return err('account_exists');
+  }
+  return ok({ email });
+}
+
+// coach: who can set up in the app, and who needs a personal invite link?
+// Returns booleans and dates only — never a key, hash or salt.
+async function accountLegacyAudit(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const [{ data: clients }, { data: profiles }, { data: sessions }, { data: queue }] = await Promise.all([
+    admin.from('clients').select('id, storage_key, display_name, profile_id, is_internal'),
+    admin.from('profiles').select('id, auth_user_id'),
+    admin.from('client_sessions').select('storage_key, token_hash, salt, access_status'),
+    admin.from('legacy_intake_queue').select('client_key, received_at, reason').eq('status', 'pending'),
+  ]);
+  const prof = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  const sess = new Map((sessions ?? []).map((x: any) => [x.storage_key, x]));
+  const rows = await Promise.all((clients ?? []).filter((c: any) => !c.is_internal).map(async (c: any) => {
+    const sx: any = sess.get(c.storage_key);
+    let publishedKey = false, publishedKeyWorks = false, pageReadable = true;
+    try {
+      const r = await fetch(`${PUBLIC_PAGE_BASE}${c.storage_key}/?v=${Date.now()}`, { redirect: 'error', cache: 'no-store' });
+      if (!r.ok) pageReadable = false;
+      else {
+        const m = /CLIENT_TOKEN_LEGACY\s*=\s*['"]([^'"]{16,200})['"]/.exec(await r.text());
+        if (m) {
+          publishedKey = true;
+          publishedKeyWorks = !!sx && (await sha256(m[1] + (sx.salt ?? ''))) === sx.token_hash;
+        }
+      }
+    } catch { pageReadable = false; }
+    const q = (queue ?? []).filter((x: any) => String(x.client_key ?? '').toLowerCase() === c.storage_key);
+    return {
+      storageKey: c.storage_key, name: c.display_name ?? null,
+      account: (prof.get(c.profile_id) as any)?.auth_user_id ? 'active' : 'none',
+      accessStatus: sx ? String(sx.access_status ?? 'active') : 'none',
+      pageReadable, publishedKey, publishedKeyWorks,
+      tokenlessAttempts: q.length, lastTokenlessAt: q.map((x: any) => x.received_at).sort().pop() ?? null,
+    };
+  }));
+  return ok({ clients: rows });
 }
 // ═══════════════════════════════════════ END CLIENT-ACCOUNTS-V1
 
