@@ -24,7 +24,7 @@
   if (window.LockedInPlus) return;
   var o = null;
   var DAY = 864e5;
-  var EAT_OUT_ON = false;   // Omar 2026-10-15: eating out on hold (built + tested, not shown)
+  var EAT_OUT_ON = true;    // Omar 2026-10-15: GO (GYG, KFC, Nando's, Oporto, Subway + lighter orders)
 
   // ── helpers ───────────────────────────────────────────────────────────────────────────────────────────────────────
   function el(tag, attrs, kids) {
@@ -123,6 +123,21 @@
       '.lip-tips{margin:6px 0 14px;padding:12px 14px;border-radius:14px;background:var(--c-surface2,#f5f3ef);font-size:13.5px;line-height:1.5}',
       '.lip-tips ul{margin:0;padding-left:18px}.lip-tips li{margin:2px 0}',
       '.lip-back{font:inherit;font-size:13px;font-weight:700;background:none;border:0;color:var(--c-accent,#e8542e);cursor:pointer;padding:0;margin:0 0 10px}',
+      '.lip-chains{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 6px}',
+      '.lip-chain{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px;border-radius:16px;border:1px solid var(--c-line,#e7e2d9);background:var(--c-surface,#fff);color:inherit;font:inherit;cursor:pointer;text-align:left}',
+      '.lip-chain .ic{font-size:26px;line-height:1}.lip-chain b{font-size:15px;font-weight:800}',
+      '.lip-seclabel{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted,#5d636b);margin:16px 0 8px}',
+      '.lip-tips li b{display:block;font-size:13.5px;font-weight:700}.lip-tips li small{display:block;font-size:12.5px;color:var(--c-muted,#5d636b);margin:1px 0 6px}',
+      '.lip-search{display:block;font-size:15px;font-weight:500;margin:0 0 10px}',
+      '.lip-groups{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}.lip-groups .lip-chip{flex:0 0 auto}',
+      '.lip-gname{font-size:13px;font-weight:800;margin:14px 0 6px}',
+      '.lip-swaps{margin:14px 0 0;padding:10px 12px;border-radius:14px;border:1px solid var(--c-line,#e7e2d9);background:var(--c-surface,#fff);font-size:13px}',
+      '.lip-swaps summary{cursor:pointer;font-weight:700}.lip-swaps ul{margin:8px 0 0;padding-left:18px}.lip-swaps li{margin:0 0 6px}.lip-swaps b{font-weight:700}.lip-swaps small{display:block;color:var(--c-muted,#5d636b)}',
+      '.lip-lite{color:var(--c-ok,#0f7a48)!important;font-weight:700}',
+      '.lip-tip{color:var(--c-muted,#5d636b)!important;margin-top:3px!important}',
+      '.lip-choice.on{border-color:var(--c-ok,#0f7a48);box-shadow:0 0 0 1px var(--c-ok,#0f7a48) inset}',
+      '.lip-mods{margin:6px 0 2px;padding-left:16px;font-size:13px}.lip-mods li{margin:2px 0}.lip-mods i{font-style:normal;font-weight:700;color:var(--c-ok,#0f7a48);margin-left:6px}',
+      '.lip-act{color:var(--c-accent,#e8542e)!important;font-weight:700;margin-top:6px!important}',
       '.lip-note{font-size:12px;color:var(--c-muted,#5d636b);margin:6px 0 0}',
       '.lip-toast{position:fixed;left:16px;right:16px;bottom:calc(var(--c-nav-total,84px) + 12px);z-index:2147483000;background:#16181c;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;font-weight:600;box-shadow:0 12px 30px -10px rgba(0,0,0,.4);max-width:520px;margin:0 auto}',
     ].join('');
@@ -498,90 +513,12 @@
   function trackerShown() { var s = document.getElementById('section-tracker'); return !!(s && s.offsetParent !== null && getComputedStyle(s).display !== 'none'); }
 
   // ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-  // 4. EATING OUT / TRAVEL (Nutrition)
+  // 4. EATING OUT (Nutrition): GYG, KFC, Nando's, Oporto, Subway
   // ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-  /* Typical restaurant portions, approximate (chain nutrition panels + AUSNUT averages). [name, how to order, kcal, P, C, F] */
-  var EAT = [
-    { id: 'charcoal', name: 'Charcoal chicken / Lebanese', ic: '🍗', tips: ['Chicken first: breast, skin off.', 'Garlic sauce on the side: 1 tbsp is ~100 kcal.', 'Tabouli or salad instead of chips.', 'Skip the bread basket or have half.'], items: [
-      ['Quarter chicken (breast), skin off + tabouli', 'Garlic sauce on the side', 420, 52, 15, 16],
-      ['Half chicken, skin off + salad', 'Garlic on the side', 640, 85, 12, 26],
-      ['Chicken shish plate, rice + salad', 'Light garlic, no chips', 760, 58, 82, 20],
-      ['Chicken shawarma wrap', 'Light garlic, extra salad', 560, 38, 56, 19],
-      ['Mixed grill plate, no chips', 'Shish + kafta, salad', 820, 70, 25, 46],
-      ['Falafel wrap', 'Hummus, salad', 600, 18, 74, 25],
-      ['Chicken plate with chips + full garlic', 'Treat-size', 1350, 60, 110, 72],
-    ] },
-    { id: 'kebab', name: 'Kebab / Turkish', ic: '🥙', tips: ['Chicken or mixed, not lamb-heavy.', 'One sauce, light. Chilli is free.', 'Snack packs are 1,500+ kcal: share one or skip.'], items: [
-      ['Chicken kebab', 'Light sauce, extra salad', 650, 42, 66, 22],
-      ['Chicken shish plate + salad, no rice', 'Sauce on the side', 480, 55, 15, 20],
-      ['Turkish pide, chicken', 'Half of one', 520, 30, 60, 17],
-      ['Lamb kebab, garlic + BBQ', 'Treat-size', 950, 40, 75, 52],
-      ['HSP (halal snack pack), small', 'Share it', 1500, 55, 110, 90],
-    ] },
-    { id: 'burger', name: 'Burgers', ic: '🍔', tips: ['Grilled chicken beats crumbed.', 'No mayo / aioli: saves 100–200 kcal.', 'Side salad or share the chips.', 'Water or zero-sugar drink.'], items: [
-      ['Grilled chicken burger', 'No mayo, side salad', 520, 40, 48, 17],
-      ['Single beef burger', 'No mayo, side salad', 600, 34, 45, 29],
-      ['Lettuce-wrap beef burger', 'Low-carb', 420, 32, 9, 27],
-      ['Double beef + cheese burger', 'No chips', 850, 52, 46, 50],
-      ['Burger + chips + soft drink', 'Treat-size', 1300, 38, 150, 58],
-    ] },
-    { id: 'periperi', name: 'Peri-peri chicken', ic: '🌶️', tips: ['Breast over thigh for more protein per kcal.', 'Corn, salad or rice as the side. Chips are the trap.', 'Hot sauce is basically free.'], items: [
-      ['Quarter chicken breast + side salad', '', 400, 48, 10, 18],
-      ['Chicken breast wrap', '', 560, 42, 55, 18],
-      ['Double chicken breast + rice', '', 760, 76, 80, 12],
-      ['Chicken burger + corn', '', 640, 42, 62, 22],
-      ['Half chicken + chips', 'Treat-size', 1150, 80, 70, 60],
-    ] },
-    { id: 'japanese', name: 'Sushi / Japanese', ic: '🍣', tips: ['Sashimi and teriyaki chicken are the protein wins.', 'Hand rolls are ~180 kcal each and low protein; 4 is a meal.', 'Skip tempura and mayo rolls.'], items: [
-      ['Salmon sashimi (10) + edamame', '', 460, 46, 12, 25],
-      ['Chicken teriyaki don, regular', '', 700, 36, 105, 13],
-      ['4 hand rolls (chicken / tuna)', '', 720, 28, 120, 12],
-      ['Chicken katsu curry', 'Treat-size', 1050, 40, 120, 42],
-    ] },
-    { id: 'mexican', name: 'Mexican', ic: '🌯', tips: ['Bowl instead of burrito saves the tortilla (~300 kcal).', 'Chicken + beans + salsa; go easy on cheese, sour cream, guac.'], items: [
-      ['Chicken burrito bowl', 'No cheese / sour cream', 600, 45, 66, 16],
-      ['Chicken burrito, regular', 'Salsa, no sour cream', 850, 50, 100, 25],
-      ['2 chicken tacos', 'Soft shells', 480, 32, 44, 18],
-      ['Nachos with everything', 'Treat-size', 1300, 45, 110, 75],
-    ] },
-    { id: 'pizza', name: 'Pizza / Italian', ic: '🍕', tips: ['Thin crust, chicken or seafood toppings.', 'Have 2–3 slices with a salad, not the whole pizza.', 'Tomato-based pasta beats creamy.'], items: [
-      ['2 slices thin-crust chicken pizza + salad', '', 560, 30, 60, 21],
-      ['3 slices thin-crust chicken pizza', '', 780, 42, 90, 28],
-      ['Chicken pasta, tomato sauce', 'Regular size', 780, 45, 100, 20],
-      ['Large pizza, whole', 'Treat-size', 2000, 85, 220, 80],
-    ] },
-    { id: 'indian', name: 'Indian', ic: '🍛', tips: ['Tandoori and tikka are grilled: best picks.', 'Creamy curries (butter, korma) are heavy; share one.', '1 roti or 1 cup rice, not both.'], items: [
-      ['Tandoori chicken (half) + salad', '', 460, 56, 10, 21],
-      ['Chicken tikka + 1 roti', '', 560, 46, 40, 21],
-      ['Butter chicken + 1 cup rice', '', 860, 40, 85, 38],
-      ['Curry + rice + garlic naan', 'Treat-size', 1400, 45, 160, 60],
-    ] },
-    { id: 'asian', name: 'Thai / Chinese', ic: '🥡', tips: ['Stir-fries with chicken or beef + steamed rice.', 'Fried rice, pad thai and honey chicken run 900+.', 'Ask for less oil.'], items: [
-      ['Chicken + veg stir-fry, steamed rice', '', 640, 40, 80, 16],
-      ['Beef + broccoli, steamed rice', '', 700, 40, 80, 22],
-      ['Pad thai, chicken', '', 880, 35, 100, 34],
-      ['Honey chicken + fried rice', 'Treat-size', 1300, 40, 170, 48],
-    ] },
-    { id: 'subs', name: 'Subs / sandwiches', ic: '🥪', tips: ['Double the meat, skip the cheese.', 'Sweet chilli or mustard over mayo-based sauces.', 'Wholemeal or a wrap.'], items: [
-      ['6-inch chicken breast sub', 'Double meat, no cheese, light sauce', 480, 46, 47, 9],
-      ['Footlong chicken sub', 'No cheese, light sauce', 720, 56, 95, 12],
-      ['Chicken + salad wrap (café)', '', 480, 32, 45, 17],
-    ] },
-    { id: 'cafe', name: 'Café / brunch', ic: '☕', tips: ['Eggs are your protein. Ask for 3.', 'Skip the hash brown and hollandaise.', 'Iced coffee and smoothies can be 300–500 kcal.'], items: [
-      ['3 eggs on 1 slice sourdough', 'Poached or scrambled', 380, 24, 26, 18],
-      ['Omelette + 1 toast', 'Chicken / veg', 480, 34, 26, 26],
-      ['Chicken + avocado on toast', '', 560, 36, 40, 26],
-      ['Big breakfast (eggs, sausage, hash brown, toast)', 'Treat-size', 1100, 45, 70, 70],
-    ] },
-  ];
-  var TRAVEL = [
-    ['Airport / flights', ['Chicken wrap or sushi + a protein bar or yoghurt.', 'Pack a shaker with whey: add water after security.', 'Skip the pastries and lollies: 400–600 kcal you won\'t notice.']],
-    ['Hotel breakfast', ['Build it like your plan: eggs or yoghurt first, then fruit and 1–2 toast.', 'Pastries, hash browns and juice are the traps.']],
-    ['Servo / road trip', ['Protein milk (~30 g protein), jerky, nuts (small handful), bananas.', 'Big chocolate milk is a meal (~600 kcal).']],
-    ['Training away', ['Do the session anyway: on Train, tap Swap exercise if the gym doesn\'t have something.', 'No gym: push-ups, squats, lunges, backpack rows. Same sets, high reps, close to failure.', 'Walk: aim for your step goal in a new city.']],
-    ['How to log', ['Eating out: tap Eating out on the meal you\'re replacing, pick the closest option, then Log swap.', 'Not sure? Pick the bigger number. Rough is better than nothing.']],
-  ];
-
+  /* Menus come from eatout-data.js (next to this file): each chain's OFFICIAL Australian nutrition figures, pork and bacon
+     left out. Loaded only when the sheet opens.
+     Item = [name, kcal, P, C, F, lighter|0, tip?]; lighter = [order as, kcal, P, C, F, [[change, kcal delta], ...]] built
+     from the chain's published modifier / component figures. */
   function openMeals() {
     var out = [];
     [].slice.call(document.querySelectorAll('#cv2-nutri .cv2-meal:not(.note)')).forEach(function (m) {
@@ -594,7 +531,23 @@
     });
     return out;
   }
-  var S = { meal: null, cuisine: null, tab: 'out' };
+  var S = { meal: null, chain: null, group: null, q: '', more: false, detail: null };
+  var EOD = null, EODloading = null;
+  function loadMenus() {
+    if (EOD) return Promise.resolve(EOD);
+    if (window.LockedInEatOutData) return Promise.resolve(EOD = window.LockedInEatOutData);
+    if (EODloading) return EODloading;
+    EODloading = new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      var me = document.querySelector('script[src*="plus-client.js"]');
+      s.src = me ? me.src.replace(/plus-client\.js.*$/, 'eatout-data.js') : '../../eatout-data.js';
+      s.async = true;
+      s.onload = function () { EOD = window.LockedInEatOutData || null; EOD ? res(EOD) : rej(new Error('no_data')); };
+      s.onerror = function () { EODloading = null; rej(new Error('load_failed')); };
+      document.head.appendChild(s);
+    });
+    return EODloading;
+  }
   function closeSheet() { var b = document.getElementById('lip-bd'); if (b) b.remove(); document.removeEventListener('keydown', escKey); }
   function escKey(e) { if (e.key === 'Escape') closeSheet(); }
   function sheet(build) {
@@ -613,23 +566,60 @@
     if (r < 0.85) return { cls: 'lite', text: '−' + Math.round(target - kcal) + ' kcal' };
     return { cls: 'fit', text: 'Fits' };
   }
+  function vals(it, lite) { var L = lite && it[5]; return L ? { name: L[0], k: L[1], p: L[2], c: L[3], f: L[4] } : { name: it[0], k: it[1], p: it[2], c: it[3], f: it[4] }; }
+  /* Best picks: main dishes ranked by how close they land to the meal's calories, protein as the tie-breaker, fried /
+     creamy picks sink. When the meal is tight, an item's lighter order competes too (and usually wins). */
+  function bestPicks(ch, m) {
+    var cand = [];
+    ch.g.forEach(function (g) { if (g.main) g.i.forEach(function (it) { cand.push({ it: it, lite: false }); if (it[5]) cand.push({ it: it, lite: true }); }); });
+    var score = function (x) {
+      var v = vals(x.it, x.lite), fatPct = v.k ? v.f * 9 / v.k : 0;
+      return Math.abs(v.k - m.cal) / (m.cal || 1) - Math.min(v.p / (m.p || 1), 1.3) * 0.45 + Math.max(0, fatPct - 0.35) * 1.2;
+    };
+    var seen = {}, out = [];
+    cand.filter(function (x) { var v = vals(x.it, x.lite); return v.k > 0 && v.k <= m.cal * 1.2; })
+      .sort(function (a, b) { return score(a) - score(b); })
+      .forEach(function (x) { if (out.length < 6 && !seen[x.it[0]]) { seen[x.it[0]] = 1; out.push(x); } });
+    return out;
+  }
+  function itemRow(it, ch, m, lite) {
+    var v = vals(it, lite), tg = fitTag(v.k, m.cal), L = it[5];
+    var kids = [el('b', {}, [v.name, tg ? el('span', { class: 'lip-tag ' + tg.cls, text: tg.text }) : null]),
+      el('small', { text: v.p + ' g protein · ' + v.c + ' g carbs · ' + v.f + ' g fat' })];
+    if (lite) kids.push(el('small', { class: 'lip-lite', text: '✓ Lighter order: ' + (it[1] - v.k) + ' kcal less than standard' }));
+    else if (L) kids.push(el('small', { class: 'lip-lite', text: 'Lighter: ' + L[1] + ' kcal (' + L[5].map(function (x) { return x[0].toLowerCase(); }).join(', ') + ')' }));
+    if (!lite && it[6]) kids.push(el('small', { class: 'lip-tip', text: '💡 ' + it[6] }));
+    return el('button', { type: 'button', class: 'lip-opt', on: { click: function () { if (L) { S.detail = { it: it, lite: !!lite }; renderSheet(document.querySelector('.lip-sh')); } else logOut(m, ch, v); } } }, [
+      el('span', {}, kids),
+      el('span', { class: 'k' }, [String(v.k), el('small', { text: ' kcal' })]),
+    ]);
+  }
+  function renderDetail(sh, ch, m) {
+    var it = S.detail.it, L = it[5], std = vals(it, false), lt = vals(it, true);
+    sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ ' + ch.name, on: { click: function () { S.detail = null; renderSheet(sh); } } }));
+    sh.appendChild(el('p', { class: 'sub', text: it[0] + '. Your ' + m.name.toLowerCase() + ' budget: ' + m.cal + ' kcal, ' + m.p + ' g protein.' }));
+    var card = function (title, v, sub, list, primary) {
+      var tg = fitTag(v.k, m.cal);
+      return el('button', { type: 'button', class: 'lip-opt lip-choice' + (primary ? ' on' : ''), on: { click: function () { logOut(m, ch, v); } } }, [
+        el('span', {}, [el('b', {}, [title, tg ? el('span', { class: 'lip-tag ' + tg.cls, text: tg.text }) : null]), el('small', { text: sub }),
+          list ? el('ul', { class: 'lip-mods' }, list.map(function (x) { return el('li', {}, [x[0], el('i', { text: (x[1] > 0 ? '+' : '−') + Math.abs(x[1]) + ' kcal' })]); })) : null,
+          el('small', { class: 'lip-act', text: 'Log this →' })]),
+        el('span', { class: 'k' }, [String(v.k), el('small', { text: ' kcal' })]),
+      ]);
+    };
+    var lighterFirst = std.k > m.cal * 1.05;
+    var a = card('Lighter order', lt, 'Ask for: ' + L[0] + ' · ' + lt.p + ' g protein', L[5], lighterFirst);
+    var b = card('As it comes', std, std.p + ' g protein · ' + std.c + ' g carbs · ' + std.f + ' g fat', null, !lighterFirst);
+    if (lighterFirst) { sh.appendChild(a); sh.appendChild(b); } else { sh.appendChild(b); sh.appendChild(a); }
+    sh.appendChild(el('p', { class: 'lip-note', text: 'Lighter numbers use ' + ch.name + (/s$/.test(ch.name) ? '\'' : '\'s') + ' published figures for each change.' }));
+  }
   function renderSheet(sh) {
     sh.innerHTML = '';
     sh.appendChild(el('button', { type: 'button', class: 'lip-x', 'aria-label': 'Close', text: '×', on: { click: closeSheet } }));
-    sh.appendChild(el('h3', { text: S.tab === 'travel' ? 'Travelling' : 'Eating out' }));
-    var tabs = el('div', { class: 'lip-tabs' }, [['out', 'Eating out'], ['travel', 'Travelling']].map(function (t) {
-      return el('button', { type: 'button', class: 'lip-chip' + (S.tab === t[0] ? ' on' : ''), text: t[1], on: { click: function () { S.tab = t[0]; renderSheet(sh); } } });
-    }));
-    if (S.tab === 'travel') {
-      sh.appendChild(el('p', { class: 'sub', text: 'Stay on track away from home. Nothing here changes your plan.' }));
-      sh.appendChild(tabs);
-      TRAVEL.forEach(function (t) { sh.appendChild(el('div', { class: 'lip-tips' }, [el('b', { text: t[0] }), el('ul', {}, t[1].map(function (x) { return el('li', { text: x }); }))])); });
-      return;
-    }
+    sh.appendChild(el('h3', { text: 'Eating out' }));
     var meals = openMeals();
     if (!S.meal) {
       sh.appendChild(el('p', { class: 'sub', text: 'Which meal are you eating out for? You\'ll get picks that fit it.' }));
-      sh.appendChild(tabs);
       if (!meals.length) { sh.appendChild(el('p', { class: 'lip-line m', text: 'Every meal on this day is already logged.' })); return; }
       meals.forEach(function (m) {
         sh.appendChild(el('button', { type: 'button', class: 'lip-opt', on: { click: function () { S.meal = m; renderSheet(sh); } } }, [
@@ -640,54 +630,86 @@
       return;
     }
     var m = S.meal;
-    if (!S.cuisine) {
-      sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ Change meal', on: { click: function () { S.meal = null; renderSheet(sh); } } }));
-      sh.appendChild(el('p', { class: 'sub', text: 'Instead of ' + m.name + ' (' + m.cal + ' kcal, ' + m.p + ' g protein). Where are you eating?' }));
-      EAT.forEach(function (c) {
-        sh.appendChild(el('button', { type: 'button', class: 'lip-opt', on: { click: function () { S.cuisine = c.id; renderSheet(sh); } } }, [
-          el('span', {}, [el('b', { text: c.ic + '  ' + c.name })]), el('span', { class: 'k', text: '›' }),
-        ]));
-      });
+    if (!EOD) {
+      sh.appendChild(el('p', { class: 'sub', text: 'Loading menus…' }));
+      loadMenus().then(function () { if (document.body.contains(sh)) renderSheet(sh); }, function () { if (document.body.contains(sh)) { sh.lastChild.textContent = 'Couldn\'t load the menus. Check your connection and try again.'; } });
       return;
     }
-    var cu = EAT.filter(function (c) { return c.id === S.cuisine; })[0];
-    sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ ' + cu.name, on: { click: function () { S.cuisine = null; renderSheet(sh); } } }));
-    sh.appendChild(el('p', { class: 'sub', text: 'Your ' + m.name.toLowerCase() + ' budget: ' + m.cal + ' kcal, ' + m.p + ' g protein. Tap one to log it.' }));
-    sh.appendChild(el('div', { class: 'lip-tips' }, [el('ul', {}, cu.tips.map(function (x) { return el('li', { text: x }); }))]));
-    var items = cu.items.slice().sort(function (a, b) {
-      var sa = Math.abs(a[2] - m.cal) / (m.cal || 1) - Math.min(a[3] / (m.p || 1), 1.2) * 0.25, sb = Math.abs(b[2] - m.cal) / (m.cal || 1) - Math.min(b[3] / (m.p || 1), 1.2) * 0.25;
-      return sa - sb;
-    });
-    items.forEach(function (it) {
-      var tg = fitTag(it[2], m.cal);
-      sh.appendChild(el('button', { type: 'button', class: 'lip-opt', on: { click: function () { logOut(m, cu, it); } } }, [
-        el('span', {}, [el('b', {}, [it[0], tg ? el('span', { class: 'lip-tag ' + tg.cls, text: tg.text }) : null]), el('small', { text: (it[1] ? it[1] + ' · ' : '') + it[3] + ' g protein' })]),
-        el('span', { class: 'k' }, ['~' + it[2], el('small', { text: ' kcal' })]),
-      ]));
-    });
-    sh.appendChild(el('p', { class: 'lip-note', text: 'Numbers are typical restaurant portions, so treat them as a guide. You can adjust before logging.' }));
+    if (!S.chain) {
+      if (meals.length > 1) sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ Change meal', on: { click: function () { S.meal = null; renderSheet(sh); } } }));
+      sh.appendChild(el('p', { class: 'sub', text: 'Instead of ' + m.name + ' (' + m.cal + ' kcal, ' + m.p + ' g protein). Where are you eating?' }));
+      sh.appendChild(el('div', { class: 'lip-chains' }, EOD.chains.map(function (c) {
+        return el('button', { type: 'button', class: 'lip-chain', on: { click: function () { S.chain = c.id; S.group = null; S.q = ''; S.more = false; S.detail = null; renderSheet(sh); } } }, [el('span', { class: 'ic', text: c.ic }), el('b', { text: c.name })]);
+      })));
+      sh.appendChild(el('p', { class: 'lip-note', text: 'Official Australian menu numbers. Pork and bacon items aren\'t shown. Halal status varies by store, so check if it matters to you.' }));
+      return;
+    }
+    var ch = EOD.chains.filter(function (c) { return c.id === S.chain; })[0];
+    if (S.detail) { renderDetail(sh, ch, m); return; }
+    sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ All places', on: { click: function () { S.chain = null; renderSheet(sh); } } }));
+    sh.appendChild(el('p', { class: 'sub', text: ch.ic + ' ' + ch.name + ' instead of ' + m.name.toLowerCase() + ': ' + m.cal + ' kcal, ' + m.p + ' g protein. Tap one to log it.' }));
+
+    var picks = bestPicks(ch, m);
+    if (picks.length && !S.q && !S.group) {
+      sh.appendChild(el('div', { class: 'lip-seclabel', text: 'Best picks for this meal' }));
+      picks.forEach(function (x) { sh.appendChild(itemRow(x.it, ch, m, x.lite)); });
+    }
+    if (ch.hacks.length && !S.q && !S.group) {
+      var hk = ch.hacks.slice(0, S.more ? ch.hacks.length : 4);
+      sh.appendChild(el('div', { class: 'lip-seclabel', text: 'Order it smarter' }));
+      sh.appendChild(el('div', { class: 'lip-tips' }, [el('ul', {}, hk.map(function (h) { return el('li', {}, [el('b', { text: h[0] }), h[1] ? el('small', { text: h[1] }) : null]); }))]));
+      if (ch.hacks.length > 4 && !S.more) sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: 'More tips', on: { click: function () { S.more = true; renderSheet(sh); } } }));
+    }
+
+    sh.appendChild(el('div', { class: 'lip-seclabel', text: 'Full menu' }));
+    var search = el('input', { class: 'lip-in lip-search', type: 'search', placeholder: 'Search ' + ch.name + '…', 'aria-label': 'Search the menu', value: S.q });
+    sh.appendChild(search);
+    sh.appendChild(el('div', { class: 'lip-chips lip-groups' }, [el('button', { type: 'button', class: 'lip-chip' + (!S.group ? ' on' : ''), text: 'All', on: { click: function () { S.group = null; renderSheet(sh); } } })].concat(ch.g.map(function (g) {
+      return el('button', { type: 'button', class: 'lip-chip' + (S.group === g.n ? ' on' : ''), text: g.n, on: { click: function () { S.group = g.n; renderSheet(sh); } } });
+    }))));
+    var list = el('div', { class: 'lip-list' });
+    var fill = function () {
+      list.innerHTML = '';
+      var q = S.q.toLowerCase().trim(), n = 0;
+      ch.g.forEach(function (g) {
+        if (S.group && g.n !== S.group) return;
+        var its = g.i.filter(function (it) { return !q || it[0].toLowerCase().indexOf(q) >= 0; });
+        if (!its.length) return;
+        if (!S.group) list.appendChild(el('div', { class: 'lip-gname', text: g.n }));
+        its.forEach(function (it) { n++; list.appendChild(itemRow(it, ch, m)); });
+      });
+      if (!n) list.appendChild(el('p', { class: 'lip-line m', text: 'Nothing matches. Try another word.' }));
+    };
+    search.addEventListener('input', function () { S.q = search.value; fill(); });
+    fill();
+    sh.appendChild(list);
+    if (ch.swaps.length) {
+      sh.appendChild(el('details', { class: 'lip-swaps' }, [el('summary', { text: 'Has pork or bacon? Have this instead (' + ch.swaps.length + ')' }),
+        el('ul', {}, ch.swaps.map(function (s) { return el('li', {}, [el('b', { text: s[0].replace(/\bMild\s+/g, '') }), el('small', { text: '→ ' + s[1] })]); }))]));
+    }
+    sh.appendChild(el('p', { class: 'lip-note', text: 'From ' + ch.src + '. Standard builds; extras and sauces change the numbers, and you can adjust before logging.' }));
   }
   /* Hands over to the page's own Swap form for that meal, pre-filled. The client still taps "Log swap" there. */
-  function logOut(m, cu, it) {
+  function logOut(m, ch, v) {
     closeSheet();
     try { window.cv2Meal('swap', m.i); } catch (e) { return; }
     var tries = 0;
     (function fill() {
       var d = document.getElementById('sw-desc');
       if (!d || d.offsetParent === null) { if (++tries < 20) return setTimeout(fill, 60); return; }
-      var set = function (id, v) { var n = document.getElementById(id); if (n) { n.value = String(v); try { n.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} } };
+      var set = function (id, x) { var n = document.getElementById(id); if (n) { n.value = String(x); try { n.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} } };
       try { var ex = document.getElementById('sw2-extra'); if (ex && ex.hidden && typeof window.sw2ToggleExtra === 'function') window.sw2ToggleExtra(); } catch (e) {}
-      set('sw-desc', it[0] + ' (' + cu.name + ')'); set('sw-cal', it[2]); set('sw-p', it[3]); set('sw-c', it[4]); set('sw-f', it[5]);
+      set('sw-desc', ch.name + ': ' + v.name); set('sw-cal', v.k); set('sw-p', v.p); set('sw-c', v.c); set('sw-f', v.f);
     })();
   }
-  function openEatOut() { S = { meal: null, cuisine: null, tab: 'out' }; var o1 = openMeals(); if (o1.length === 1) S.meal = o1[0]; sheet(renderSheet); }
+  function openEatOut() { S = { meal: null, chain: null, group: null, q: '', more: false, detail: null }; var o1 = openMeals(); if (o1.length === 1) S.meal = o1[0]; loadMenus().catch(function () {}); sheet(renderSheet); }
   function renderEatOut() {
     try {
       var box = document.getElementById('cv2-nutri'); if (!box || document.getElementById('lip-eo')) return;
       var first = box.querySelector('.cv2-meal'); if (!first || !first.parentNode) return;
       var b = el('button', { type: 'button', class: 'lip-eo', id: 'lip-eo', on: { click: openEatOut } }, [
         el('span', { class: 'ic', text: '🍽️' }),
-        el('span', {}, [el('b', { text: 'Eating out or travelling?' }), el('small', { text: 'Picks that fit your plan, ready to log' })]),
+        el('span', {}, [el('b', { text: 'Eating out?' }), el('small', { text: 'GYG, KFC, Nando\'s, Oporto, Subway: picks that fit this meal' })]),
         el('i', { text: '›' }),
       ]);
       first.parentNode.insertBefore(b, first);
@@ -714,5 +736,5 @@
       loadWeights(true);
     } catch (e) {}
   }
-  window.LockedInPlus = { boot: boot, _t: { trendOf: trendOf, paceOf: paceOf, lastReps: lastReps, priorBest: priorBest, fitTag: fitTag, eatOut: function () { EAT_OUT_ON = true; renderEatOut(); } } };
+  window.LockedInPlus = { boot: boot, _t: { trendOf: trendOf, paceOf: paceOf, lastReps: lastReps, priorBest: priorBest, fitTag: fitTag, bestPicks: bestPicks, eatOut: function () { EAT_OUT_ON = true; renderEatOut(); } } };
 })();

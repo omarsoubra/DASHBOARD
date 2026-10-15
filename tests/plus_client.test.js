@@ -2,7 +2,7 @@
 // against a fake backend. Nothing leaves the machine.
 //   Home weigh-in: trend + pace + goal date · log today · outlier check · "✓ today"
 //   Train: reps pre-filled from last time (in range) · a heavier set -> PR moment · a first-ever exercise -> no PR
-//   Progress: photo compare (slider + side by side, view chips) · Nutrition: eating out -> swap form pre-filled
+//   Progress: photo compare (slider + side by side, view chips) · Nutrition: eating out (5 chains, lighter orders) -> swap form pre-filled
 //   no script errors
 // usage: node tests/plus_client.test.js [client_key] [--shots dir]
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -124,27 +124,52 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
 
     // ── eating out ──
     await page.eval(`document.querySelector('#cv2-nav [data-id="nutrition"]').click(); 1`); await wait(700);
-    t('eating out is on hold: no bar on Nutrition by default', await page.eval(`!document.getElementById('lip-eo')`));
-    await page.eval(`LockedInPlus._t.eatOut(); 1`); await wait(200);
-    t('Nutrition has an "Eating out or travelling?" bar above the meals', await page.eval(`(function () { var b = document.getElementById('lip-eo'); return !!b && !!b.closest('#cv2-nutri') && b.nextElementSibling && b.nextElementSibling.classList.contains('cv2-meal'); })()`));
+    t('Nutrition has an "Eating out?" bar above the meals', await page.eval(`(function () { var b = document.getElementById('lip-eo'); return !!b && !!b.closest('#cv2-nutri') && b.nextElementSibling && b.nextElementSibling.classList.contains('cv2-meal'); })()`));
     await page.eval(`document.getElementById('lip-eo').click(); 1`); await wait(300);
     const s1 = await q('.lip-sh');
     t('the sheet asks which meal (open meals with kcal)', !!s1 && /Which meal/.test(s1) && /kcal/.test(s1), s1);
     await shot('7_eo_meal.png');
-    await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-opt')).slice(-1)[0].click(); 1`); await wait(200);
-    await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-opt')).filter(function (b) { return /Charcoal/.test(b.textContent); })[0].click(); 1`); await wait(200);
+    await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-opt')).slice(-1)[0].click(); 1`); await wait(900);
     const s2 = await q('.lip-sh');
-    t('cuisine picks show kcal, protein and a fit tag against the meal budget', /budget: \d+ kcal/.test(s2) && /~\d+ kcal/.test(s2) && /(Fits|kcal|Treat|Light)/.test(s2), s2);
-    await shot('8_eo_picks.png');
-    await page.eval(`document.querySelectorAll('.lip-sh .lip-opt')[0].click(); 1`); await wait(900);
+    t('after the meal: the 5 chains (menus lazy-loaded from eatout-data.js)', /Guzman y Gomez/.test(s2) && /KFC/.test(s2) && /Nando's/.test(s2) && /Oporto/.test(s2) && /Subway/.test(s2) && await page.eval(`!!window.LockedInEatOutData && !!document.querySelector('script[src*="eatout-data.js"]')`), s2);
+    await shot('8_eo_chains.png');
+    await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-chain')).filter(function (b) { return /KFC/.test(b.textContent); })[0].click(); 1`); await wait(300);
+    const s3 = await q('.lip-sh');
+    t('KFC: best picks with kcal + protein + fit tag, smarter-ordering tips, the full menu', /Best picks for this meal/i.test(s3) && /Order it smarter/i.test(s3) && /Full menu/i.test(s3) && /Zinger/.test(s3) && /g protein/.test(s3) && /(Fits|kcal)/.test(s3), s3.slice(0, 600));
+    t('best picks never exceed the meal by more than 20%', await page.eval(`(function () { var m = { cal: 945, p: 60 }; var ch = LockedInEatOutData.chains[1]; var p = LockedInPlus._t.bestPicks(ch, m); return p.length > 0 && p.every(function (x) { var k = x.lite ? x.it[5][1] : x.it[1]; return k <= 945 * 1.2; }); })()`));
+    t('no pork or bacon anywhere in the menus', await page.eval(`!/pork|bacon|\\bham\\b|salami|pepperoni|b\\.m\\.t/i.test(JSON.stringify(LockedInEatOutData.chains.map(function (c) { return c.g; })))`));
+    t('pork/bacon swaps listed with an alternative', /Has pork or bacon\? Have this instead/.test(s3));
+    await shot('9_eo_kfc.png');
+    await page.eval(`(function () { var s = document.querySelector('.lip-sh .lip-search'); s.value = 'zinger burger'; s.dispatchEvent(new Event('input')); })()`); await wait(150);
+    const rows = await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-list .lip-opt b')).map(function (b) { return b.firstChild.textContent; })`);
+    t('search filters the full menu', rows.length > 0 && rows.every(function (r) { return /zinger burger/i.test(r); }), rows);
+    t('KFC burgers carry the "ask for no mayo" tip (no invented number)', /Ask for no mayo/.test(await q('.lip-sh .lip-list')) && await page.eval(`LockedInEatOutData.chains[1].g.some(function (g) { return g.i.some(function (it) { return /Zinger Burger/.test(it[0]) && /no mayo/.test(it[6] || '') && !it[5]; }); })`));
+    await page.eval(`(function () { var s = document.querySelector('.lip-sh .lip-search'); s.value = ''; s.dispatchEvent(new Event('input')); [].slice.call(document.querySelectorAll('.lip-sh .lip-groups .lip-chip')).filter(function (b) { return b.textContent === 'Sides'; })[0].click(); })()`); await wait(150);
+    t('category chips narrow to one section (Sides)', /Chips/.test(await q('.lip-sh .lip-list')) && !/Zinger Burger/.test(await q('.lip-sh .lip-list')));
+    await page.eval(`(function () { [].slice.call(document.querySelectorAll('.lip-sh .lip-groups .lip-chip')).filter(function (b) { return b.textContent === 'Burgers'; })[0].click(); })()`); await wait(150);
+    const pickName = await page.eval(`document.querySelector('.lip-sh .lip-list .lip-opt b').firstChild.textContent`);
+    await page.eval(`document.querySelector('.lip-sh .lip-list .lip-opt').click(); 1`); await wait(900);
     const sw = await page.eval(`({ desc: (document.getElementById('sw-desc') || {}).value, cal: (document.getElementById('sw-cal') || {}).value, p: (document.getElementById('sw-p') || {}).value, vis: !!(document.getElementById('sw-desc') && document.getElementById('sw-desc').offsetParent) })`);
-    t('tapping one opens the page\'s Swap form pre-filled (client still taps Log swap)', sw.vis && /\(Charcoal chicken/.test(sw.desc) && +sw.cal > 0 && +sw.p > 0, sw);
-    await shot('9_eo_swapform.png');
-    await page.eval(`(function () { if (typeof closeSwapModal === 'function') closeSwapModal(); cv2Go('cv2home'); document.querySelector('#cv2-nav [data-id="nutrition"]').click(); LockedInPlus._t.eatOut(); })()`); await wait(600);
-    await page.eval(`(function () { document.getElementById('lip-eo').click(); [].slice.call(document.querySelectorAll('.lip-sh .lip-chip')).filter(function (x) { return /Travelling/.test(x.textContent); })[0].click(); })()`); await wait(200);
-    t('Travelling tab shows airport / hotel / training-away tips', /Airport/.test(await q('.lip-sh')) && /Training away/.test(await q('.lip-sh')));
-    await shot('10_travel.png');
-    await page.eval(`document.querySelector('.lip-x').click(); 1`);
+    t('tapping one opens the page\'s Swap form pre-filled "KFC: <item>" (client still taps Log swap)', sw.vis && sw.desc === 'KFC: ' + pickName && +sw.cal > 0 && +sw.p > 0, sw);
+    await shot('10_eo_swapform.png');
+    await page.eval(`(function () { if (typeof closeSwapModal === 'function') closeSwapModal(); })()`);
+    // lighter orders: Nando's PERinaise Classic -> detail with "Lighter order" + "As it comes"
+    await page.eval(`(function () { cv2Go('cv2home'); document.querySelector('#cv2-nav [data-id="nutrition"]').click(); })()`); await wait(600);
+    await page.eval(`(function () { document.getElementById('lip-eo').click(); })()`); await wait(200);
+    await page.eval(`(function () { if (!document.querySelector('.lip-sh .lip-chain')) { var o = [].slice.call(document.querySelectorAll('.lip-sh .lip-opt')); o[o.length - 1].click(); } })()`); await wait(300);
+    await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-chain')).filter(function (b) { return /Nando/.test(b.textContent); })[0].click(); 1`); await wait(200);
+    await page.eval(`(function () { var s = document.querySelector('.lip-sh .lip-search'); s.value = 'perinaise classic · chicken breast, portuguese'; s.dispatchEvent(new Event('input')); })()`); await wait(150);
+    const rowTxt = await q('.lip-sh .lip-list .lip-opt');
+    t('a row with a lighter order shows "Lighter: N kcal (no mayo, ...)"', /Lighter: \d+ kcal \(no mayo/.test(rowTxt || ''), rowTxt);
+    await page.eval(`document.querySelector('.lip-sh .lip-list .lip-opt').click(); 1`); await wait(200);
+    const det = await q('.lip-sh');
+    t('tapping it shows both: "Lighter order" (what to ask for, each change with its kcal) and "As it comes"', /Lighter order/.test(det) && /As it comes/.test(det) && /Ask for: .*no mayo/i.test(det) && /−35 kcal/.test(det), det && det.slice(0, 500));
+    await shot('11_eo_lighter_detail.png');
+    const lt = await page.eval(`(function () { var b = [].slice.call(document.querySelectorAll('.lip-sh .lip-choice')).filter(function (x) { return /Lighter order/.test(x.textContent); })[0]; var k = +b.querySelector('.k').firstChild.textContent; b.click(); return k; })()`); await wait(900);
+    const sw2 = await page.eval(`({ desc: (document.getElementById('sw-desc') || {}).value, cal: (document.getElementById('sw-cal') || {}).value })`);
+    t('logging the lighter order pre-fills its own (lower) numbers', +sw2.cal === lt && /no mayo/i.test(sw2.desc) && lt < 457, { lt: lt, sw2: sw2 });
+    await page.eval(`(function () { if (typeof closeSwapModal === 'function') closeSwapModal(); })()`);
+    t('best picks use the lighter order when the meal is tight', await page.eval(`(function () { var ch = LockedInEatOutData.chains[2]; var p = LockedInPlus._t.bestPicks(ch, { cal: 420, p: 35 }); return p.some(function (x) { return x.lite; }) && p.every(function (x) { var k = x.lite ? x.it[5][1] : x.it[1]; return k <= 420 * 1.2; }); })()`));
 
     const errs = page.errors.filter((x) => !/Failed to load resource|favicon|service ?worker|disabled in test|net::ERR/i.test(x));
     t('no script errors', errs.length === 0, errs);
