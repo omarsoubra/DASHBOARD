@@ -34,7 +34,7 @@ const FX = build(Date.now());
 
 // Reads the page may make while merely viewing. Anything else is treated as a write.
 const READ_TYPES = ['dashboard', 'rosterGet', 'checkinDraftsGet', 'healthGet', 'coachSettingsGet', 'accountList', 'intakeList', 'coachWorkoutCompletions',
-  'clientProgram', 'progressionHistory', 'progressionCompute', 'weightLog', 'photosGet', 'overrideGet', 'coachPushStatus', 'registryGetPrivate',
+  'clientProgram', 'progressionHistory', 'progressionCompute', 'weightLog', 'photosGet', 'testimonialsGet', 'overrideGet', 'coachPushStatus', 'registryGetPrivate',
   'coachClientHistory', 'entitlementsGet', 'intakeGet', 'legacyQueueGet'];
 
 // Static third-party assets coach_dashboard.html links in <head>; served from local stubs, never fetched.
@@ -89,6 +89,8 @@ const INIT = String.raw`
       case 'coachSettingsPut': { try { localStorage.setItem('__fx_rules', JSON.stringify(b.rules || {})); } catch (e) {} return { ok: true, rules: b.rules || {} }; }
       case 'rosterPut': { FX.roster = b.roster; FX.rosterTs = Number(b.ts) || Date.now(); try { localStorage.setItem('__fx_cloud', JSON.stringify({ ts: FX.rosterTs, roster: FX.roster })); } catch (e) {} return { ok: true }; }
       case 'checkinDraftsGet': return { ok: true, drafts: drafts };
+      case 'testimonialsGet': return { ok: true, testimonials: FX.testimonials };
+      case 'testimonialLinkCreate': return { ok: true, token: 'FakeTokenForTheHarnessOnly0123456789abcdefg', firstName: 'Kwame', expiresAt: new Date(Date.now() + 30 * 864e5).toISOString() };
       case 'healthGet': return { ok: true, rows: FX.health.rows, status: FX.health.status, targets: FX.health.targets || {} };
       case 'accountList': return { ok: true, clients: FX.accounts };
       case 'intakeList': return { ok: true, intakes: FX.intakes };
@@ -583,6 +585,47 @@ const knownBug = (name, holds, detail) => {
         await click('#v2-activity .v2-row[data-act="open"]'); await idle(400);
         t('tapping a feed row opens that client', /^#\/clients\/[a-z_]+$/.test(await ev('location.hash')));
       }, { shot: 'activity' });
+
+      // ── TESTIMONIALS (Omar 2026-10-16) ──
+      await step('Testimonials: answers, consent, story cards', async () => {
+        await go('#/testimonials', 600);
+        t('Testimonials page is the active page', await ev(`document.getElementById('v2-page-testimonials').classList.contains('active')`));
+        const list = await txt('#v2-ts-list');
+        t('lists the answered and the waiting one', /Priya/.test(list) && /Answered/.test(list) && /Kwame/.test(list) && /Waiting/.test(list), list);
+        t('consent chips on the answered one', /Name: yes/.test(list) && /Photos: face hidden/.test(list) && /Numbers: yes/.test(list), list);
+        await click('#v2-ts-list .v2-row[data-act="ts-open"][data-key="1"]'); await idle(200);
+        const body = await txt('.v2-ts-body');
+        t('opening it shows the answers', /Before I started/i.test(body) && /Kept starting over every Monday/.test(body), body);
+        t('the private answer is shown but never offered as a story', /private/i.test(body) && (await count('.v2-ts-ans.priv [data-act="ts-story"]')) === 0 && (await count('.v2-ts-ans:not(.priv) [data-act="ts-story"]')) >= 4);
+        await ev(`(function () { var p = document.querySelector('.v2-ts-ans p[data-q="q2"]'), r = document.createRange(); r.setStart(p.firstChild, 0); r.setEnd(p.firstChild, 27); var s = getSelection(); s.removeAllRanges(); s.addRange(r); return 1; })()`);
+        await click('.v2-ts-ans [data-q="q2"][data-act="ts-story"]'); await idle(300);
+        t('Make story uses the highlighted words', (await ev(`document.getElementById('v2-ts-quote').value`)) === 'Down 6 kg and my squat went', await ev(`document.getElementById('v2-ts-quote').value`));
+        t('credit = first name (she said yes to her name)', (await ev(`document.getElementById('v2-ts-credit').value`)) === 'Priya' && !(await ev(`document.getElementById('v2-ts-credit').readOnly`)));
+        t('result line allowed (she said yes to numbers)', !(await ev(`document.getElementById('v2-ts-result').disabled`)));
+        await ev(`(function () { var r = document.getElementById('v2-ts-result'); r.value = '-6 kg in 12 weeks'; r.dispatchEvent(new Event('input')); return 1; })()`); await idle(200);
+        const px = await ev(`(function () { var c = document.getElementById('v2-ts-canvas'), d = c.getContext('2d').getImageData(0, 0, 1080, 1920).data, n = 0; for (var i = 0; i < d.length; i += 4 * 97) if (d[i] > 200) n++; return { w: c.width, h: c.height, light: n }; })()`);
+        t('story canvas is 1080 x 1920 with text drawn on it', px.w === 1080 && px.h === 1920 && px.light > 200, px);
+        await shot('testimonial_story');
+        await ev(`document.querySelector('[data-ts="theme"][data-v="orange"]').click(); 1`); await idle(150);
+        t('colour switch redraws (orange background)', await ev(`(function () { var d = document.getElementById('v2-ts-canvas').getContext('2d').getImageData(20, 20, 1, 1).data; return d[0] > 200 && d[1] < 120; })()`));
+        await ev(`document.querySelector('[data-ts="close"]').click(); 1`); await idle(100);
+        t('story editor closes', await ev(`document.getElementById('v2-ts-modal').hidden`));
+        await click('[data-act="ts-photos"]'); await idle(700);
+        t('before / after loads her photos (photosGet) into Before/After pickers', (await count('#v2-ts-pa option')) === 3 && (await ev(`document.getElementById('v2-ts-pa').value !== document.getElementById('v2-ts-pb').value`)));
+        t('face hidden: blur starts on and cannot go below 12%', (await ev(`+document.getElementById('v2-ts-blur').value`)) >= 12 && (await ev(`+document.getElementById('v2-ts-blur').min`)) === 12);
+        await idle(300); await shot('testimonial_photos');
+        await ev(`document.querySelector('[data-ts="close"]').click(); 1`); await idle(100);
+      }, { shot: 'testimonials' });
+      await step('Testimonials: ask for one (write allowed: testimonialLinkCreate)', async () => {
+        await click('[data-act="ts-ask"]'); await idle(200);
+        t('ask opens with a client picker', (await count('#v2-ts-who option')) >= 10);
+        await ev(`(function () { var s = document.getElementById('v2-ts-who'); s.value = 'kwame_a'; return 1; })()`);
+        await ev(`document.querySelector('[data-ts="create"]').click(); 1`); await idle(500);
+        const msg = await ev(`(document.getElementById('v2-ts-msg') || {}).value || ''`);
+        t('the message carries the private link to testimonial.html', /testimonial\.html\?t=FakeTokenForTheHarnessOnly/.test(msg) && /Kwame/.test(msg), msg);
+        t('WhatsApp or Copy offered', (await count('.v2-ts-actions a[href^="https://wa.me/"]')) + (await count('[data-ts="copy"]')) >= 1);
+        await ev(`document.querySelector('[data-ts="close"]').click(); 1`); await idle(100);
+      }, { writes: ['testimonialLinkCreate'] });
 
       // ── CLIENTS list ──
       await step('Clients', async () => {

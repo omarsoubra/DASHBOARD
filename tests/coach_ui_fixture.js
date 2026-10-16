@@ -231,13 +231,21 @@ function build(now = Date.now()) {
     { url: '/__fixture/photo.svg?v=front-w6', urlKind: 'signed', view: 'front', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=side-w6', urlKind: 'signed', view: 'side', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
   ] };
+  // ── testimonials (testimonialsGet) ──
+  const testimonials = [
+    { id: 2, client_key: 'kwame_a', first_name: 'Kwame', created_at: dAgo(2), expires_at: dAgo(-28), submitted_at: null, updated_at: null, answers: {}, consent: {} },
+    { id: 1, client_key: 'priya_n', first_name: 'Priya', created_at: dAgo(5), expires_at: dAgo(-25), submitted_at: dAgo(3), updated_at: dAgo(3),
+      answers: { name: 'Priya', q1: 'Kept starting over every Monday.', q2: 'Down 6 kg and my squat went from 40 to 70 kg. I actually like training now.', q3: 'Protein first, every meal.',
+        q4: 'The weekly check-ins kept me honest.', q5: 'Just start, the plan does the thinking.', q6: 'More recipe variety.' },
+      consent: { name: 'yes', photos: 'face_hidden', numbers: 'yes' } },
+  ];
   const progressionHistory = { priya_n: { hip_thrust: [{ ts: dAgo(3), exerciseName: 'Hip Thrust', decision: 'PROGRESS_LOAD', applied: true, prevLoad: '100', nextLoad: '105', reason: 'Top of the rep range on all sets at RPE 8.' }] } };
 
   const rosterTs = now - 3 * DAY;
   const registry = { schemaVersion: 1, generatedAt: dAgo(1), generatedBy: 'coach_ui_fixture', clientCount: R.length, clients: R.map((c) => ({ storageKey: c.storageKey, programUrl: c.programUrl })) };
 
   return {
-    now, roster: R, rosterTs, dashboard: D, drafts, health, accounts, intakes, cwv, programs, weightLogs, photos, progressionHistory, registry,
+    now, roster: R, rosterTs, dashboard: D, drafts, testimonials, health, accounts, intakes, cwv, programs, weightLogs, photos, progressionHistory, registry,
     pageStatus: { elena_p: 404 },                   // clients/<key>/index.html HEAD -> 404 for Elena only ("client page not loading")
     ciTs: { priya: ciTs('priya_n'), isla: ciTs('isla_b'), tomasz: ciTs('tomasz_b'), ravi: ciTs('ravi_m') },
   };

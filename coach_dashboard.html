@@ -1688,6 +1688,32 @@ a.v2-kpi:hover, button.v2-kpi:hover { border-color: #c9ccd4; }
 .v2-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .v2-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .v2-card { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; box-shadow: 0 1px 2px rgba(20,22,30,.03); min-width: 0; }
+/* TESTIMONIALS (Omar 2026-10-16) */
+.v2-ts-item + .v2-ts-item { border-top: 1px solid var(--v2-line2); }
+.v2-ts-item .v2-row-sub { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.v2-ts-body { padding: 4px 12px 16px; display: grid; gap: 10px; }
+.v2-ts-tip, .v2-ts-note { margin: 0; font-size: 12.5px; color: var(--v2-muted); }
+.v2-ts-ans { border: 1px solid var(--v2-line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; justify-items: start; }
+.v2-ts-ans.priv { background: var(--v2-grey-soft); border-style: dashed; }
+.v2-ts-q { font: 500 11px/1 'DM Mono', monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--v2-muted); }
+.v2-ts-ans p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--v2-ink); white-space: pre-wrap; user-select: text; }
+.v2-ts-foot { display: flex; gap: 8px; flex-wrap: wrap; }
+.v2-ts-modal { position: fixed; inset: 0; z-index: 400; background: rgba(12,13,19,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.v2-ts-modal[hidden] { display: none; }
+.v2-ts-sheet { background: var(--v2-card); color: var(--v2-ink); border-radius: 14px; padding: 20px; width: min(100%, 980px); max-height: calc(100vh - 32px); overflow: auto; display: grid; gap: 8px; font-family: 'Inter', system-ui, sans-serif; }
+.v2-ts-sheet h3 { margin: 0; font-size: 18px; }
+.v2-ts-sub { margin: 0 0 6px; color: var(--v2-muted); font-size: 13px; }
+.v2-ts-lab { font-size: 12px; font-weight: 600; color: var(--v2-ink2); margin-top: 6px; }
+.v2-ts-in { width: 100%; font: inherit; font-size: 14px; border: 1px solid var(--v2-line); border-radius: 8px; padding: 9px 10px; background: #fff; color: var(--v2-ink); box-sizing: border-box; }
+.v2-ts-in[readonly], .v2-ts-in[disabled] { background: var(--v2-grey-soft); color: var(--v2-muted); }
+.v2-ts-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.v2-ts-actions a.v2-btn { display: inline-flex; align-items: center; text-decoration: none; }
+.v2-ts-state { margin: 4px 0 0; font-size: 13px; color: var(--v2-ink2); min-height: 1.2em; }
+.v2-ts-story { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.v2-ts-prev canvas { width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: 12px; display: block; background: #0f1013; box-shadow: 0 8px 30px -12px rgba(0,0,0,.4); }
+.v2-ts-form { display: grid; gap: 4px; min-width: 0; }
+.v2-ts-form input[type=range] { width: 100%; }
+@media (max-width: 720px) { .v2-ts-story { grid-template-columns: 1fr; } .v2-ts-prev { max-width: 260px; margin: 0 auto; width: 100%; } }
 .v2-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 16px 8px; }
 .v2-card-head h2 { font: 600 15px/1.3 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); }
 .v2-card-head .v2-meta { font-size: 12px; color: var(--v2-muted); }
@@ -2531,6 +2557,7 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
       <a class="v2-nav" href="#/clients" data-route="clients" title="Clients"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 010 6.4"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg><span class="v2-label">Clients</span></a>
       <a class="v2-nav" href="#/check-ins" data-route="check-ins" title="Check-ins"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/></svg><span class="v2-label">Check-ins</span><span class="v2-badge" id="v2-badge-checkins"></span></a>
       <a class="v2-nav" href="#/activity" data-route="activity" title="Activity"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span class="v2-label">Activity</span></a>
+      <a class="v2-nav" href="#/testimonials" data-route="testimonials" title="Testimonials"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 9.5h7M8.5 12.5h4"/></svg><span class="v2-label">Testimonials</span></a>
       <div class="v2-nav-group"><span class="v2-label">SYSTEM</span></div>
       <a class="v2-nav" href="#/admin" data-route="admin" title="Admin"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="v2-label">Admin</span></a>
       <div class="v2-side-foot">
@@ -2584,6 +2611,13 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
       <section class="v2-page v2-act-page" id="v2-page-activity" data-page="activity">
         <header class="v2-pagehead"><div><h1>Activity</h1><p>Everything clients logged in the last 24 hours, newest first.</p></div></header>
         <section class="v2-card"><div class="v2-card-head"><h2>Recent activity</h2><span class="v2-meta" id="v2-act-sub"></span></div><div class="v2-card-body" id="v2-activity"></div></section>
+      </section>
+
+      <!-- TESTIMONIALS (Omar 2026-10-16): private link per client, answers + consent, story images -->
+      <section class="v2-page" id="v2-page-testimonials" data-page="testimonials">
+        <header class="v2-pagehead"><div><h1>Testimonials</h1><p>Send a client their private link, read what they said, and turn it into a story.</p></div>
+          <div class="v2-head-actions"><button class="v2-btn" type="button" data-act="ts-refresh">Refresh</button><button class="v2-btn primary" type="button" data-act="ts-ask">+ Ask for a testimonial</button></div></header>
+        <section class="v2-card"><div class="v2-card-head"><h2>Responses</h2><span class="v2-meta" id="v2-ts-sub"></span></div><div class="v2-card-body" id="v2-ts-list"></div></section>
       </section>
 
       <!-- CLIENTS (Phase 1: the current roster, unchanged) -->
@@ -12242,7 +12276,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   var UIV2 = window.UIV2 = { enabled: enabled, route: null };
   if (!enabled) return;                       // classic layout: nothing below runs
 
-  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'activity': 'Activity', 'onboarding': 'Onboarding', 'admin': 'Admin' };   // Onboarding page rendered by the Phase 4 block
+  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'activity': 'Activity', 'testimonials': 'Testimonials', 'onboarding': 'Onboarding', 'admin': 'Admin' };   // Onboarding page rendered by the Phase 4 block
   var BASE_TITLE = document.title;
   var state = { attnAll: false, actAll: false };
   var esc = function (s) {
@@ -12311,6 +12345,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (changed) window.scrollTo(0, 0);
     if (r === 'today') safeRenderToday();
     if (r === 'activity' && UIV2.renderActivity) UIV2.renderActivity();
+    if (r === 'testimonials' && UIV2.renderTestimonials) UIV2.renderTestimonials();
     if (r === 'admin') renderAdminBits();
   }
   window.addEventListener('hashchange', applyRoute);
@@ -13057,6 +13092,253 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (el.getAttribute('data-act') === 'open') openDetail(el.getAttribute('data-key'));
   });
   UIV2.renderActivity = function () { try { renderActivity(); } catch (e) { console.warn('[ui-v2] Activity render failed', e); } };
+
+  // ── TESTIMONIALS (Omar 2026-10-16): private link per client -> testimonial.html -> answers + sharing consent here ->
+  // 9:16 story images (quote card, before/after card) to post on Instagram. The link token is shown once (only its hash
+  // is stored). Story text and photos follow the client's own consent: no name / initials / first name, numbers only if
+  // allowed, photos only if allowed (face hidden blurs the top of each photo). The private answer (q6) is never offered.
+  var TS = { list: null, loading: false, open: null, made: null };
+  var TS_Q = { q1: 'Before I started', q2: 'What changed', q3: 'Most useful thing I learnt', q4: 'The app + check-ins', q5: 'What I\'d tell a mate', q6: 'Could\'ve been better (private)' };
+  var TS_PUBLIC = ['q1', 'q2', 'q3', 'q4', 'q5'];
+  function tsAgo(iso) { var t = Date.parse(iso); if (!isFinite(t)) return ''; var m = Math.max(0, Math.floor((Date.now() - t) / 60000)); return m < 60 ? (m < 1 ? 'now' : m + 'm ago') : m < 1440 ? Math.floor(m / 60) + 'h ago' : Math.floor(m / 1440) + 'd ago'; }
+  function tsClient(key) { return (COACH.clients || []).filter(function (c) { return c.storageKey === key; })[0] || null; }
+  function tsName(r) { var a = r.answers || {}; return String(a.name || r.first_name || r.client_key).trim(); }
+  function tsCredit(r) {
+    var c = (r.consent || {}).name, n = tsName(r);
+    if (c === 'yes') return n;
+    if (c === 'initials') return n.charAt(0).toUpperCase() + '.';
+    return 'LOCKED IN client';
+  }
+  function tsChipFor(v, label) { return '<span class="v2-chip ' + (v === 'yes' ? 'green' : v === 'no' || !v ? 'grey' : 'amber') + '">' + label + ': ' + esc(v === 'face_hidden' ? 'face hidden' : v || 'no') + '</span>'; }
+  function tsLoad(force) {
+    if (TS.loading || (TS.list && !force)) return;
+    TS.loading = true;
+    coachFetch('testimonialsGet', {}).then(function (j) { TS.loading = false; if (j && j.ok) { TS.list = j.testimonials || []; renderTestimonials(); } else { TS.list = TS.list || []; renderTestimonials(j && j.error); } },
+      function () { TS.loading = false; renderTestimonials('offline'); });
+  }
+  function renderTestimonials(error) {
+    var box = $('v2-ts-list'); if (!box) return;
+    if (TS.list === null) { box.innerHTML = '<div class="v2-empty">Loading…</div>'; tsLoad(); return; }
+    var L = TS.list;
+    $('v2-ts-sub').textContent = L.filter(function (r) { return r.submitted_at; }).length + ' answered · ' + L.filter(function (r) { return !r.submitted_at; }).length + ' waiting';
+    if (error) box.innerHTML = '<div class="v2-empty">Couldn\'t load testimonials (' + esc(error) + '). Refresh to try again.</div>';
+    else if (!L.length) box.innerHTML = '<div class="v2-empty">No testimonials yet. Tap “Ask for a testimonial” to send a client their private link.</div>';
+    else box.innerHTML = L.map(function (r) {
+      var c = tsClient(r.client_key), who = esc((c && c.displayName) || tsName(r));
+      var expired = !r.submitted_at && Date.parse(r.expires_at) < Date.now();
+      var st = r.submitted_at ? '<span class="v2-chip green">Answered ' + esc(tsAgo(r.updated_at || r.submitted_at)) + '</span>'
+        : expired ? '<span class="v2-chip grey">Link expired</span>' : '<span class="v2-chip amber">Waiting · sent ' + esc(tsAgo(r.created_at)) + '</span>';
+      var open = TS.open === r.id;
+      var head = row({ click: 'ts-open', key: String(r.id), title: who, sub: r.submitted_at ? tsChipFor((r.consent || {}).name, 'Name') + ' ' + tsChipFor((r.consent || {}).photos, 'Photos') + ' ' + tsChipFor((r.consent || {}).numbers, 'Numbers') : '', actions: st });
+      if (!open || !r.submitted_at) return '<div class="v2-ts-item">' + head + '</div>';
+      var a = r.answers || {};
+      var qs = Object.keys(TS_Q).filter(function (q) { return a[q]; }).map(function (q) {
+        var pub = TS_PUBLIC.indexOf(q) >= 0;
+        return '<div class="v2-ts-ans' + (pub ? '' : ' priv') + '"><div class="v2-ts-q">' + esc(TS_Q[q]) + '</div><p data-q="' + q + '">' + esc(a[q]) + '</p>' +
+          (pub ? '<button type="button" class="v2-btn sm" data-act="ts-story" data-key="' + r.id + '" data-q="' + q + '">Make story</button>' : '') + '</div>';
+      }).join('');
+      var photos = (r.consent || {}).photos;
+      return '<div class="v2-ts-item open">' + head + '<div class="v2-ts-body">' +
+        '<p class="v2-ts-tip">Highlight the part you want, then tap Make story. You can still edit the words on the next screen.</p>' + qs +
+        '<div class="v2-ts-foot">' + (photos === 'yes' || photos === 'face_hidden' ? '<button type="button" class="v2-btn" data-act="ts-photos" data-key="' + r.id + '">Before / after story</button>' : '<span class="v2-ts-note">No photos: ' + esc(tsName(r)) + ' didn\'t agree to share them.</span>') +
+        '</div></div></div>';
+    }).join('');
+  }
+  // ── ask: create a private link for one client ──
+  function tsAsk() {
+    var cl = (COACH.clients || []).filter(function (c) { return c.storageKey && c.storageKey.charAt(0) !== '_'; })
+      .sort(function (a, b) { return String(a.displayName).localeCompare(String(b.displayName)); });
+    tsModal('<h3>Ask for a testimonial</h3><p class="v2-ts-sub">Creates a private link for one client. It works for 30 days and only they can answer it.</p>' +
+      '<label class="v2-ts-lab" for="v2-ts-who">Client</label><select id="v2-ts-who" class="v2-ts-in">' + cl.map(function (c) { return '<option value="' + esc(c.storageKey) + '">' + esc(c.displayName || c.storageKey) + '</option>'; }).join('') + '</select>' +
+      '<div class="v2-ts-actions"><button type="button" class="v2-btn primary" data-ts="create">Create link</button><button type="button" class="v2-btn ghost" data-ts="close">Cancel</button></div><p class="v2-ts-state" id="v2-ts-state"></p>');
+  }
+  function tsCreate() {
+    var key = $('v2-ts-who').value, st = $('v2-ts-state'); st.textContent = 'Creating…';
+    coachFetch('testimonialLinkCreate', { client: key }).then(function (j) {
+      if (!j || !j.ok) { st.textContent = 'Couldn\'t create the link (' + ((j && j.error) || 'error') + ').'; return; }
+      var url = new URL('testimonial.html?t=' + encodeURIComponent(j.token), location.href).href;
+      var c = tsClient(key), first = j.firstName || 'mate', phone = jmWa(c && c.phone);
+      var msg = 'Hey ' + first + ', appreciate you bro. Would you mind filling this in about your block? Takes 3 minutes:\n' + url;
+      TS.list = null; tsLoad(true);
+      tsModal('<h3>Link for ' + esc(first) + '</h3><p class="v2-ts-sub">Copy it now. For security it isn\'t shown again (you can always make a new one).</p>' +
+        '<textarea class="v2-ts-in" id="v2-ts-msg" rows="5" aria-label="Message">' + esc(msg) + '</textarea>' +
+        '<div class="v2-ts-actions">' + (phone ? '<a class="v2-btn primary" target="_blank" rel="noopener" href="https://wa.me/' + phone + '?text=' + encodeURIComponent(msg) + '">Open in WhatsApp</a>' : '') +
+        '<button type="button" class="v2-btn' + (phone ? '' : ' primary') + '" data-ts="copy">Copy message</button><button type="button" class="v2-btn ghost" data-ts="close">Done</button></div>' +
+        '<p class="v2-ts-state" id="v2-ts-state">' + (phone ? '' : 'No phone number saved for ' + esc(first) + '. Copy, then paste it in WhatsApp.') + '</p>');
+    }, function () { st.textContent = 'Couldn\'t reach the server. Try again.'; });
+  }
+  // ── modal ──
+  function tsModal(html) {
+    var m = $('v2-ts-modal');
+    if (!m) { m = document.createElement('div'); m.id = 'v2-ts-modal'; m.className = 'v2-ts-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); document.body.appendChild(m);
+      m.addEventListener('click', function (e) { if (e.target === m) tsClose(); var b = e.target.closest('[data-ts]'); if (b) tsAction(b.getAttribute('data-ts'), b); }); }
+    m.innerHTML = '<div class="v2-ts-sheet">' + html + '</div>'; m.hidden = false;
+  }
+  function tsClose() { var m = $('v2-ts-modal'); if (m) { m.hidden = true; m.innerHTML = ''; } TS.made = null; }
+  function tsAction(a, b) {
+    if (a === 'close') return tsClose();
+    if (a === 'create') return tsCreate();
+    if (a === 'copy') { var ta = $('v2-ts-msg'); try { navigator.clipboard.writeText(ta.value).then(function () { $('v2-ts-state').textContent = 'Copied.'; }, function () { ta.select(); }); } catch (e) { ta.select(); } return; }
+    if (a === 'render') return tsDraw();
+    if (a === 'save') return tsSave(false);
+    if (a === 'share') return tsSave(true);
+    if (a === 'theme') { TS.made.theme = b.getAttribute('data-v'); return tsDraw(); }
+  }
+  // ── story cards (1080 x 1920) ──
+  var TS_THEMES = { dark: { bg: '#0f1013', ink: '#f4f2ee', muted: '#9a9ea8', accent: '#ff6a43' }, orange: { bg: '#e8542e', ink: '#ffffff', muted: '#ffe1d6', accent: '#15171b' }, light: { bg: '#f4f2ee', ink: '#15171b', muted: '#5f646c', accent: '#e8542e' } };
+  var tsLogo = null;
+  function tsLoadImg(src, cors) { return new Promise(function (res, rej) { var i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.onload = function () { res(i); }; i.onerror = rej; i.src = src; }); }
+  function tsWrap(ctx, text, maxW) {
+    var out = [];
+    String(text).split(/\n+/).forEach(function (para) {
+      var words = para.split(/\s+/).filter(Boolean), line = '';
+      words.forEach(function (w) { var t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; });
+      if (line) out.push(line);
+    });
+    return out;
+  }
+  function tsStoryQuote(rid, q) {
+    var r = (TS.list || []).filter(function (x) { return String(x.id) === String(rid); })[0]; if (!r) return;
+    var full = (r.answers || {})[q] || '', sel = '';
+    try { var s = window.getSelection(), p = document.querySelector('.v2-ts-ans p[data-q="' + q + '"]'); if (s && p && p.contains(s.anchorNode) && String(s).trim()) sel = String(s).trim(); } catch (e) {}
+    TS.made = { kind: 'quote', r: r, theme: 'dark' };
+    var nums = (r.consent || {}).numbers === 'yes';
+    tsModal('<h3>Story: ' + esc(tsName(r)) + '</h3><div class="v2-ts-story">' +
+      '<div class="v2-ts-prev"><canvas id="v2-ts-canvas" width="1080" height="1920" aria-label="Story preview"></canvas></div><div class="v2-ts-form">' +
+      '<label class="v2-ts-lab" for="v2-ts-quote">Quote (cut it down to the best line)</label><textarea class="v2-ts-in" id="v2-ts-quote" rows="6">' + esc(sel || full) + '</textarea>' +
+      '<label class="v2-ts-lab" for="v2-ts-credit">Credit</label><input class="v2-ts-in" id="v2-ts-credit" value="' + esc(tsCredit(r)) + '"' + ((r.consent || {}).name === 'yes' ? '' : ' readonly') + '>' +
+      ((r.consent || {}).name === 'yes' ? '' : '<p class="v2-ts-note">' + esc(tsName(r)) + ' chose ' + ((r.consent || {}).name === 'initials' ? 'initials only' : 'no name') + ', so this is locked.</p>') +
+      '<label class="v2-ts-lab" for="v2-ts-result">Result line' + (nums ? ' (optional)' : '') + '</label><input class="v2-ts-in" id="v2-ts-result" placeholder="' + (nums ? 'e.g. −4.7 kg in 12 weeks' : 'Not allowed: they said no to sharing numbers') + '"' + (nums ? '' : ' disabled') + '>' +
+      '<label class="v2-ts-lab" for="v2-ts-footer">Footer</label><input class="v2-ts-in" id="v2-ts-footer" value="1:1 online coaching">' +
+      '<div class="v2-ts-lab">Colour</div><div class="v2-ts-actions">' + Object.keys(TS_THEMES).map(function (k) { return '<button type="button" class="v2-btn sm" data-ts="theme" data-v="' + k + '">' + k.charAt(0).toUpperCase() + k.slice(1) + '</button>'; }).join('') + '</div>' +
+      '<div class="v2-ts-actions"><button type="button" class="v2-btn primary" data-ts="save">Save image</button>' + (navigator.canShare ? '<button type="button" class="v2-btn" data-ts="share">Share…</button>' : '') + '<button type="button" class="v2-btn ghost" data-ts="close">Close</button></div>' +
+      '<p class="v2-ts-state" id="v2-ts-state"></p></div></div>');
+    ['v2-ts-quote', 'v2-ts-credit', 'v2-ts-result', 'v2-ts-footer'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('input', tsDraw); });
+    tsDraw();
+  }
+  function tsBrand(ctx, T, y) {
+    var draw = function () {
+      if (tsLogo) ctx.drawImage(tsLogo, 96, y - 52, 72, 72);
+      ctx.fillStyle = T.ink; ctx.font = '800 40px Inter, system-ui, sans-serif'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText('LOCKED IN', tsLogo ? 188 : 96, y);
+    };
+    draw();
+  }
+  function tsDraw() {
+    var m = TS.made, cv = $('v2-ts-canvas'); if (!m || !cv) return;
+    var ctx = cv.getContext('2d'), T = TS_THEMES[m.theme] || TS_THEMES.dark, W = 1080, H = 1920;
+    if (!tsLogo) { tsLoadImg('brand/lockedin-icon-v1-180.png').then(function (i) { tsLogo = i; tsDraw(); }, function () {}); }
+    ctx.fillStyle = T.bg; ctx.fillRect(0, 0, W, H);
+    if (m.kind === 'photos') return tsDrawPhotos(ctx, T);
+    tsBrand(ctx, T, 190);
+    var q = ($('v2-ts-quote').value || '').trim(), credit = ($('v2-ts-credit').value || '').trim(), res = ($('v2-ts-result') && !$('v2-ts-result').disabled ? $('v2-ts-result').value : '').trim();
+    var size = 92, lines, lh;
+    do { ctx.font = '700 ' + size + 'px Inter, system-ui, sans-serif'; lines = tsWrap(ctx, q, W - 192); lh = Math.round(size * 1.22); size -= 4; } while (lines.length * lh > (res ? 820 : 960) && size > 36);
+    ctx.font = '700 ' + (size + 4) + 'px Inter, system-ui, sans-serif';
+    var resLines = res ? Math.min(2, Math.ceil(res.length / 16)) : 0;
+    var blockH = 170 + lines.length * lh + (credit ? 100 : 0) + resLines * 120;      // quote mark + text + credit + result
+    var y = Math.max(300, Math.round((H - 260 - blockH) / 2) + 130);
+    ctx.fillStyle = T.accent; ctx.font = '900 260px Georgia, serif'; ctx.fillText('“', 80, y + 170);
+    y += 170; ctx.font = '700 ' + (size + 4) + 'px Inter, system-ui, sans-serif'; ctx.fillStyle = T.ink;
+    lines.forEach(function (l) { ctx.fillText(l, 96, y + lh * 0.8); y += lh; });
+    y += 90;
+    if (credit) { ctx.fillStyle = T.accent; ctx.font = '600 44px "DM Mono", ui-monospace, monospace'; ctx.fillText('— ' + credit.toUpperCase(), 96, y); y += 50; }
+    if (res) { ctx.fillStyle = T.ink; ctx.font = '400 120px "Bebas Neue", Impact, sans-serif'; tsWrap(ctx, res.toUpperCase(), W - 192).slice(0, 2).forEach(function (l) { y += 120; ctx.fillText(l, 96, y); }); }
+    ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText(($('v2-ts-footer').value || '').trim(), 96, H - 150);
+  }
+  // before / after
+  function tsStoryPhotos(rid) {
+    var r = (TS.list || []).filter(function (x) { return String(x.id) === String(rid); })[0]; if (!r) return;
+    TS.made = { kind: 'photos', r: r, theme: 'dark', photos: null, a: 0, b: 0, blur: (r.consent || {}).photos === 'face_hidden' ? 26 : 0, imgs: {} };
+    tsModal('<h3>Before / after: ' + esc(tsName(r)) + '</h3><div class="v2-ts-story"><div class="v2-ts-prev"><canvas id="v2-ts-canvas" width="1080" height="1920" aria-label="Story preview"></canvas></div><div class="v2-ts-form" id="v2-ts-pform"><p class="v2-ts-note">Loading photos…</p></div></div>');
+    coachFetch('photosGet', { client: r.client_key }).then(function (j) {
+      var ps = ((j && j.photos) || []).filter(function (p) { return p.urlKind === 'signed' && p.url; });
+      if (!ps.length) { $('v2-ts-pform').innerHTML = '<p class="v2-ts-note">No photos on file for this client.</p><div class="v2-ts-actions"><button type="button" class="v2-btn ghost" data-ts="close">Close</button></div>'; return; }
+      ps.sort(function (x, y) { return Date.parse(x.ts) - Date.parse(y.ts); });
+      var m = TS.made; m.photos = ps;
+      var front = ps.filter(function (p) { return /front/i.test(p.view); });
+      m.a = ps.indexOf(front[0] || ps[0]); m.b = ps.indexOf(front[front.length - 1] || ps[ps.length - 1]);
+      var opt = function (cur) { return ps.map(function (p, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc((p.label || ('Week ' + p.week)) + ' · ' + (p.view || '') + ' · ' + new Date(p.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) + '</option>'; }).join(''); };
+      var face = (r.consent || {}).photos === 'face_hidden';
+      $('v2-ts-pform').innerHTML = '<label class="v2-ts-lab" for="v2-ts-pa">Before</label><select class="v2-ts-in" id="v2-ts-pa">' + opt(m.a) + '</select>' +
+        '<label class="v2-ts-lab" for="v2-ts-pb">After</label><select class="v2-ts-in" id="v2-ts-pb">' + opt(m.b) + '</select>' +
+        '<label class="v2-ts-lab" for="v2-ts-blur">Hide face: blur the top ' + '<b id="v2-ts-blurv">' + m.blur + '</b>%</label><input type="range" id="v2-ts-blur" min="' + (face ? 12 : 0) + '" max="50" value="' + m.blur + '">' +
+        (face ? '<p class="v2-ts-note">' + esc(tsName(r)) + ' asked for their face to be hidden, so the blur can\'t go below 12%. Check the preview before posting.</p>' : '') +
+        '<label class="v2-ts-lab" for="v2-ts-result">Result line' + ((r.consent || {}).numbers === 'yes' ? ' (optional)' : '') + '</label><input class="v2-ts-in" id="v2-ts-result"' + ((r.consent || {}).numbers === 'yes' ? ' placeholder="e.g. −4.7 kg in 12 weeks"' : ' disabled placeholder="Not allowed: they said no to sharing numbers"') + '>' +
+        '<label class="v2-ts-lab" for="v2-ts-footer">Footer</label><input class="v2-ts-in" id="v2-ts-footer" value="1:1 online coaching">' +
+        '<div class="v2-ts-actions"><button type="button" class="v2-btn primary" data-ts="save">Save image</button>' + (navigator.canShare ? '<button type="button" class="v2-btn" data-ts="share">Share…</button>' : '') + '<button type="button" class="v2-btn ghost" data-ts="close">Close</button></div><p class="v2-ts-state" id="v2-ts-state"></p>';
+      $('v2-ts-pa').addEventListener('change', function () { m.a = +this.value; tsDraw(); });
+      $('v2-ts-pb').addEventListener('change', function () { m.b = +this.value; tsDraw(); });
+      $('v2-ts-blur').addEventListener('input', function () { m.blur = +this.value; $('v2-ts-blurv').textContent = m.blur; tsDraw(); });
+      ['v2-ts-result', 'v2-ts-footer'].forEach(function (id) { $(id).addEventListener('input', tsDraw); });
+      tsDraw();
+    }, function () { $('v2-ts-pform').innerHTML = '<p class="v2-ts-note">Couldn\'t load photos. Try again.</p>'; });
+  }
+  function tsPhotoImg(i) {
+    var m = TS.made, p = m.photos[i]; if (m.imgs[i]) return m.imgs[i];
+    m.imgs[i] = 'loading';
+    tsLoadImg(p.url, true).then(function (img) { m.imgs[i] = img; tsDraw(); }, function () { m.imgs[i] = 'error'; tsDraw(); });
+    return 'loading';
+  }
+  function tsCover(ctx, img, x, y, w, h, blurPct) {
+    var s = Math.max(w / img.width, h / img.height), sw = w / s, sh = h / s, sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    if (blurPct > 0) {
+      var bh = Math.round(h * blurPct / 100);
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, bh); ctx.clip(); ctx.filter = 'blur(28px)';
+      for (var k = 0; k < 3; k++) ctx.drawImage(img, sx, sy, sw, sh, x - 40, y - 40, w + 80, h + 80);
+      ctx.filter = 'none'; ctx.restore();
+      if (!('filter' in ctx)) { ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, bh); }
+    }
+    ctx.restore();
+  }
+  function tsDrawPhotos(ctx, T) {
+    var m = TS.made, W = 1080, H = 1920;
+    tsBrand(ctx, T, 150);
+    if (!m.photos) return;
+    var top = 220, ph = 1340, gap = 16, w = (W - 96 * 2 - gap) / 2;
+    [[m.a, 'BEFORE'], [m.b, 'AFTER']].forEach(function (pair, k) {
+      var x = 96 + k * (w + gap), img = tsPhotoImg(pair[0]);
+      ctx.fillStyle = '#22252b'; ctx.fillRect(x, top, w, ph);
+      if (img && img !== 'loading' && img !== 'error') tsCover(ctx, img, x, top, w, ph, m.blur);
+      else { ctx.fillStyle = T.muted; ctx.font = '600 32px Inter, system-ui, sans-serif'; ctx.fillText(img === 'error' ? 'Photo couldn’t load' : 'Loading…', x + 30, top + 80); }
+      ctx.fillStyle = k ? T.accent : 'rgba(0,0,0,.65)'; ctx.fillRect(x + 20, top + ph - 92, k ? 190 : 230, 66);
+      ctx.fillStyle = k ? (m.theme === 'orange' ? '#ffffff' : '#15171b') : '#ffffff'; ctx.font = '400 56px "Bebas Neue", Impact, sans-serif'; ctx.fillText(pair[1], x + 40, top + ph - 40);
+    });
+    var res = ($('v2-ts-result') && !$('v2-ts-result').disabled ? $('v2-ts-result').value : '').trim();
+    if (res) { ctx.fillStyle = T.ink; ctx.font = '400 116px "Bebas Neue", Impact, sans-serif'; ctx.fillText(res.toUpperCase().slice(0, 28), 96, top + ph + 150); }
+    ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText((($('v2-ts-footer') || {}).value || '').trim(), 96, H - 120);
+  }
+  function tsSave(share) {
+    var cv = $('v2-ts-canvas'), st = $('v2-ts-state'), m = TS.made; if (!cv || !m) return;
+    var name = 'lockedin-' + String(m.r.client_key) + '-' + m.kind + '.png';
+    try {
+      cv.toBlob(function (blob) {
+        if (!blob) { st.textContent = 'Couldn\'t make the image.'; return; }
+        var file = typeof File === 'function' ? new File([blob], name, { type: 'image/png' }) : null;
+        if (share && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file] }).then(function () { st.textContent = 'Shared.'; }, function () {});
+          return;
+        }
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+        st.textContent = 'Saved ' + name + '.';
+      }, 'image/png');
+    } catch (e) { st.textContent = m.kind === 'photos' ? 'The photos can\'t be exported from this browser. Try Chrome or Safari.' : 'Couldn\'t make the image.'; }
+  }
+  $('v2-page-testimonials').addEventListener('click', function (ev) {
+    var el = ev.target.closest('[data-act]'); if (!el) return;
+    var a = el.getAttribute('data-act'), k = el.getAttribute('data-key');
+    if (a === 'ts-ask') return tsAsk();
+    if (a === 'ts-refresh') { TS.list = null; return renderTestimonials(); }
+    if (a === 'ts-open') { TS.open = TS.open === +k ? null : +k; return renderTestimonials(); }
+    if (a === 'ts-story') return tsStoryQuote(k, el.getAttribute('data-q'));
+    if (a === 'ts-photos') return tsStoryPhotos(k);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('v2-ts-modal') && !$('v2-ts-modal').hidden) tsClose(); });
+  UIV2.renderTestimonials = function () { try { renderTestimonials(); } catch (e) { console.warn('[ui-v2] Testimonials render failed', e); } };
+  UIV2._ts = { credit: tsCredit, wrap: tsWrap, ago: tsAgo };
 
   // ── Global client search (Today) — read-only filter over COACH.clients ──
   var sInput = $('v2-search'), sBox = $('v2-search-results'), sHl = 0, sHits = [];

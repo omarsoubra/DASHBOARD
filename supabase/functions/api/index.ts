@@ -232,6 +232,11 @@ function capabilityDenied(reason: string | undefined) {
 // is safe for a specific reason. Do not add another without a reason of the
 // same kind.
 //
+//   testimonialFormGet / testimonialSubmit  Testimonials (2026-10-16). No client
+//                   token at all: a coach-issued 30-day link token reaches ONE
+//                   testimonials row. Returns only what that person typed and
+//                   their first name; writes only their own answers + consent.
+//
 //   healthSelfDisconnect  Apple Health (2026-10-14). Stops sharing and DELETES
 //                   the caller's own health data. A lapsed or revoked client
 //                   must still be able to withdraw consent and erase sensitive
@@ -667,6 +672,10 @@ Deno.serve(async (req) => {
       case 'progressionCompute':   return progressionCompute(body);
       case 'progressionApply':     return progressionApply(body);
       case 'progressionHistory':   return progressionHistory(body);
+      case 'testimonialLinkCreate': return testimonialLinkCreate(body);
+      case 'testimonialFormGet':   return testimonialFormGet(body);
+      case 'testimonialSubmit':    return testimonialSubmit(body);
+      case 'testimonialsGet':      return testimonialsGet(body);
       default: return err('unknown_type');
     }
   } catch (e) {
@@ -4123,4 +4132,82 @@ async function progressionHistory(body: any): Promise<Response> {
   }
 
   return ok({ history, storageKey });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// TESTIMONIALS V1 (Omar 2026-10-16). The coach creates a private link for one client; the client answers on
+// testimonial.html; the coach reads the answers + sharing consent and turns them into story cards in the dashboard.
+// The link token is the only credential on the client side: 32 random bytes, only its sha256 stored, 30-day expiry.
+// It reaches one row only and returns only what that client typed (plus their first name). No client data is read.
+// ══════════════════════════════════════════════════════════════════════════
+const TESTI_TTL_DAYS = 30;
+const TESTI_QS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
+const TESTI_CONSENT: Record<string, string[]> = { name: ['yes', 'initials', 'no'], photos: ['yes', 'face_hidden', 'no'], numbers: ['yes', 'no'] };
+const TESTI_KEY_RE = /^[a-z0-9_]{1,64}$/;
+
+async function testiByToken(tok: unknown) {
+  if (typeof tok !== 'string' || tok.length < 30 || tok.length > 100 || !/^[A-Za-z0-9_-]+$/.test(tok)) return null;
+  const { data } = await admin.from('testimonials')
+    .select('id, client_key, first_name, expires_at, submitted_at, answers, consent')
+    .eq('token_hash', await sha256(tok)).maybeSingle();
+  if (!data || !(Date.parse(data.expires_at) > Date.now())) return null;
+  return data;
+}
+
+async function testimonialLinkCreate(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.client ?? '').toLowerCase();
+  if (!TESTI_KEY_RE.test(key)) return err('bad_client');
+  const { data: c } = await admin.from('clients').select('display_name').eq('storage_key', key).maybeSingle();
+  if (!c) return err('unknown_client');
+  const first = String(c.display_name || key).trim().split(/\s+/)[0].slice(0, 40);
+  const token = randomToken();
+  const expiresAt = new Date(Date.now() + TESTI_TTL_DAYS * 86400000).toISOString();
+  const { error } = await admin.from('testimonials').insert({ client_key: key, first_name: first, token_hash: await sha256(token), expires_at: expiresAt });
+  if (error) return err('write_failed');
+  return ok({ token, firstName: first, expiresAt });
+}
+
+// Public (link token only): the form greets the client and shows any answers they already sent.
+async function testimonialFormGet(body: any) {
+  const row = await testiByToken(body?.t);
+  if (!row) return err('link_invalid');
+  return ok({ firstName: row.first_name, submittedAt: row.submitted_at, answers: row.answers ?? {}, consent: row.consent ?? {} });
+}
+
+// Public (link token only): saves the client's own answers to their own row. Editable until the link expires.
+async function testimonialSubmit(body: any) {
+  const row = await testiByToken(body?.t);
+  if (!row) return err('link_invalid');
+  const a = body?.answers && typeof body.answers === 'object' ? body.answers : {};
+  const answers: Record<string, string> = {};
+  const name = String(a.name ?? '').trim().slice(0, 40);
+  if (name) answers.name = name;
+  for (const q of TESTI_QS) {
+    const v = String(a[q] ?? '').replace(/\r\n?/g, '\n').trim();
+    if (v.length > 1500) return err('too_long', { field: q });
+    if (v) answers[q] = v;
+  }
+  if (!['q1', 'q2', 'q3', 'q4', 'q5'].some((q) => answers[q])) return err('empty');
+  const c = body?.consent && typeof body.consent === 'object' ? body.consent : {};
+  const consent: Record<string, string> = {};
+  for (const [k, allowed] of Object.entries(TESTI_CONSENT)) {
+    const v = String(c[k] ?? '');
+    if (v && !allowed.includes(v)) return err('bad_consent', { field: k });
+    consent[k] = v || 'no';                                      // unanswered = no
+  }
+  const now = new Date().toISOString();
+  const { error } = await admin.from('testimonials')
+    .update({ answers, consent, submitted_at: row.submitted_at ?? now, updated_at: now }).eq('id', row.id);
+  if (error) return err('write_failed');
+  return ok({ submittedAt: row.submitted_at ?? now });
+}
+
+async function testimonialsGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const { data, error } = await admin.from('testimonials')
+    .select('id, client_key, first_name, created_at, expires_at, submitted_at, updated_at, answers, consent')
+    .order('created_at', { ascending: false }).limit(300);
+  if (error) return err('read_failed');
+  return ok({ testimonials: data ?? [] });
 }
