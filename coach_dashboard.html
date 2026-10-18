@@ -1741,6 +1741,8 @@ a.v2-kpi:hover, button.v2-kpi:hover { border-color: #c9ccd4; }
 .v2-chip.green { background: var(--v2-accent-soft); color: var(--v2-accent-ink); }
 .v2-chip.blue { background: var(--v2-blue-soft); color: var(--v2-blue); }
 .v2-chip.grey { background: var(--v2-grey-soft); color: var(--v2-ink2); }
+.v2-exp { display: block; font-size: 11px; line-height: 1.5; color: var(--v2-ink2); white-space: nowrap; }
+.v2-exp .v2-chip { font-size: 10px; padding: 0 6px; }
 
 /* This week */
 .v2-stat { padding: 8px 8px 12px; }
@@ -13584,7 +13586,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '<span class="c-name"><b>' + esc(c.displayName) + '</b><small>' + esc(c.programType || '') + '</small></span>' +
         '<span class="c-status"><span class="v2-chip ' + (LC_CHIP[r.lifecycle] || 'grey') + '">' + esc(r.lifecycle) + '</span>' +
           (c.isPaused ? '' : '<span class="v2-chip ' + STATUS_CHIP[r.statusLabel] + '">' + esc(r.statusLabel) + '</span>') + '</span>' +
-        '<span class="c-wt"><b>' + (r.cur === null ? '<span class="v2-muted">—</span>' : esc(r.cur) + 'kg') + '</b>' + trendHtml(r.trend) + '</span>' +
+        '<span class="c-wt"><b>' + (r.cur === null ? '<span class="v2-muted">—</span>' : esc(r.cur) + 'kg') + '</b>' + trendHtml(r.trend) +
+          '<small class="v2-exp" data-exp-key="' + k + '" data-exp-compact></small></span>' +
         '<span class="c-adh"><i>Adherence </i>' + (r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') + '</span>' +
         '<span class="c-ci"><i>Check-in </i>' + ciHtml(r) + '</span>' +
         '<span class="c-rev"><i>Review </i>' + revHtml(r) + '</span>' +
@@ -13593,7 +13596,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '</div>';
     }).join('');
   }
-  P2.renderList = function () { try { renderList(); } catch (e) { console.warn('[ui-v2] clients render failed', e); } };
+  P2.renderList = function () {
+    try { renderList(); } catch (e) { console.warn('[ui-v2] clients render failed', e); }
+    try { fillExpected($('v2-cl-rows')); } catch (e) { console.warn('[ui-v2] expected weight failed', e); }
+  };
 
   // list events
   function saveState() { ss.set('v2cl_status', S.status); ss.set('v2cl_attn', S.attn); ss.set('v2cl_sort', S.sort); ss.set('v2cl_q', searchEl.value || ''); }
@@ -13643,11 +13649,87 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // ── client detail: V2 layout from the existing section renderers ──
   var origOpen = window.openDetail, origClose = window.closeDetail, origSwitch = window.switchDetailTab,
       origRender = window.renderClientDetailV2, origChart = window.buildWeightChart;
+  // ── EXPECTED WEIGHT (Omar 2026-10-18) ──────────────────────────────────────
+  // Where the client SHOULD weigh today, from the meals on their plan (clients/<key>/expected.json, built by
+  // client_template agent_workspace/bin/expected_weight.py), against their smoothed weigh-ins. Mirror of
+  // expected_weight.evaluate() - keep the two in step (test_expected_weight.py checks the numbers).
+  var EXP = {};
+  function loadExpected(key) {
+    if (EXP[key] !== undefined) return EXP[key] && EXP[key].then ? EXP[key] : Promise.resolve(EXP[key]);
+    EXP[key] = fetch('clients/' + encodeURIComponent(key) + '/expected.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) { EXP[key] = j; return j; });
+    return EXP[key];
+  }
+  function sydDate(ts) {
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date(ts)); } catch (e) { return String(ts).slice(0, 10); }
+  }
+  function dayDiff(a, b) { return Math.round((Date.parse(a + 'T00:00:00Z') - Date.parse(b + 'T00:00:00Z')) / 864e5); }
+  function expectedEval(exp, readings, today) {
+    // readings: [{date:'YYYY-MM-DD', kg}] ; today 'YYYY-MM-DD'
+    var d = dayDiff(today, exp.start_date), res = { day: d, week: Math.floor(d / 7) + 1 };
+    if (d < 0) { res.status = 'not_started'; return res; }
+    d = Math.min(d, exp.curve.length - 1);
+    res.expected_kg = exp.curve[d]; res.plan_end_kg = exp.curve[exp.curve.length - 1];
+    var lo = dayDiff(exp.start_date, '1970-01-01') - 3;
+    var rs = readings.filter(function (x) { var k = dayDiff(x.date, '1970-01-01'); return k >= lo && x.date <= today; });
+    var recent = rs.filter(function (x) { return dayDiff(today, x.date) <= 14; });
+    if (!rs.length || recent.length < 2) { res.status = 'no_recent_weighins'; return res; }
+    var by = {};
+    rs.forEach(function (x) { (by[x.date] = by[x.date] || []).push(x.kg); });
+    var days = Object.keys(by).sort(), ema = null, last = null;
+    days.forEach(function (k) {
+      var v = by[k].slice().sort(function (a, b) { return a - b; }), n = v.length;
+      var m = n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2;
+      if (ema === null) ema = m; else ema = ema + (1 - Math.pow(0.75, Math.max(1, dayDiff(k, last)))) * (m - ema);
+      last = k;
+    });
+    res.actual_kg = Math.round(ema * 100) / 100;
+    var gap = ema - exp.curve[d], band = Math.min(1.5, 0.5 + 0.1 * (d / 7)), dir = res.plan_end_kg - exp.start_weight;
+    res.gap_kg = Math.round(gap * 100) / 100; res.band_kg = Math.round(band * 100) / 100;
+    res.status = Math.abs(gap) <= band ? 'on_track' : ((gap > 0) === (dir <= 0) ? 'behind' : 'ahead');
+    var n = rs.filter(function (x) { return x.date >= exp.start_date; }).length;
+    if (d >= 21 && n >= 8) {
+      var a = Math.min(1, (d - 14) / 28), delta = Math.max(-400, Math.min(400, (exp.curve[d] - ema) * 7700 / d));
+      res.est_tdee = Math.round(exp.tdee0 + a * delta);
+      var w = ema;
+      exp.daily_kcal.slice(d).forEach(function (k) { w -= (res.est_tdee + exp.slope * (w - exp.start_weight) - k) / 7700; });
+      res.projected_end_kg = Math.round(w * 10) / 10;
+    }
+    return res;
+  }
+  function expectedFor(c) {
+    var sum = (window._dashboardData || {})[c.storageKey] || {};
+    var rd = (sum.weightHistory || []).filter(function (x) { return x && x.kg; }).map(function (x) { return { date: sydDate(x.ts), kg: Number(x.kg) }; });
+    return loadExpected(c.storageKey).then(function (exp) { return exp ? { exp: exp, r: expectedEval(exp, rd, sydDate(Date.now())) } : null; });
+  }
+  var EXP_CHIP = { on_track: ['green', 'On track'], behind: ['amber', 'Behind'], ahead: ['blue', 'Ahead'] };
+  function expectedHtml(x, compact) {
+    if (!x) return '<span class="v2-muted">no plan curve</span>';
+    var r = x.r;
+    if (r.status === 'not_started') return '<span class="v2-muted">starts ' + esc(x.exp.start_date) + '</span>';
+    if (r.status === 'no_recent_weighins') return '<span class="v2-muted">exp ' + r.expected_kg.toFixed(1) + 'kg · no recent weigh-ins</span>';
+    var ch = EXP_CHIP[r.status] || ['grey', r.status], sign = r.gap_kg > 0 ? '+' : '';
+    var s = 'exp ' + r.expected_kg.toFixed(1) + ' · act ' + r.actual_kg.toFixed(1) + ' <span class="v2-chip ' + ch[0] + '">' + ch[1] + ' ' + sign + r.gap_kg.toFixed(1) + 'kg</span>';
+    if (!compact && r.projected_end_kg != null) s += '<br><small class="v2-muted">real burn ~' + r.est_tdee + ' kcal (plan ' + x.exp.tdee0 + ') · on course for ' + r.projected_end_kg + 'kg vs plan ' + r.plan_end_kg.toFixed(1) + 'kg</small>';
+    return s;
+  }
+  function fillExpected(root) {
+    (root || document).querySelectorAll('[data-exp-key]').forEach(function (el) {
+      var key = el.getAttribute('data-exp-key'), c = (COACH.clients || []).find(function (x) { return x.storageKey === key; });
+      if (!c) return;
+      expectedFor(c).then(function (x) { if (el.isConnected) el.innerHTML = expectedHtml(x, el.hasAttribute('data-exp-compact')); });
+    });
+  }
+  window.LI_EXPECTED = { load: loadExpected, evaluate: expectedEval, forClient: expectedFor };
+
   function quickStats(c) {
     var r = rosterRow(c);
     var item = function (lbl, val) { return '<div class="v2-cd-stat"><span>' + lbl + '</span><b>' + val + '</b></div>'; };
+    setTimeout(function () { fillExpected(document.querySelector('.v2-cd-stats')); }, 0);
     return '<div class="v2-cd-stats">' +
       item('Weight', r.cur === null ? '<span class="v2-muted">—</span>' : esc(r.cur) + 'kg') +
+      item('Expected today', '<span data-exp-key="' + esc(c.storageKey) + '"><span class="v2-muted">…</span></span>') +
       item('14-day trend', trendHtml(r.trend)) +
       item('Adherence', r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') +
       item('Last check-in', ciHtml(r)) + item('Last review', revHtml(r)) +
@@ -13762,6 +13844,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
   if (typeof origChart === 'function') {
     window.buildWeightChart = async function () {
       var out = await origChart.apply(this, arguments);
+      try {   // expected-weight plan line from the client's meals (dashed): where they should be, day by day
+        var cc = arguments[0], exp = cc && await loadExpected(cc.storageKey);
+        if (exp && typeof _detailChart !== 'undefined' && _detailChart && _detailChart.data) {
+          var pts = [], s0 = Date.parse(exp.start_date + 'T00:00:00Z'), endD = Math.min(exp.curve.length - 1, Math.max(7, dayDiff(sydDate(Date.now()), exp.start_date) + 28));
+          for (var i = 0; i <= endD; i += 1) pts.push({ x: new Date(s0 + i * 864e5).toISOString().slice(0, 10), y: exp.curve[i] });
+          _detailChart.data.datasets.push({ label: 'Plan (expected)', data: pts, borderColor: '#5b6cff', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, fill: false, tension: 0 });
+        }
+      } catch (e) { console.warn('[ui-v2] plan line failed', e); }
       try {
         if (typeof _detailChart !== 'undefined' && _detailChart && _detailChart.options) {
           var o = _detailChart.options;
