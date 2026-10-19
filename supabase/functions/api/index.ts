@@ -664,6 +664,7 @@ Deno.serve(async (req) => {
       case 'intakeSubmit':       return intakeSubmit(body);
       case 'intakeList':         return intakeList(body);
       case 'intakeGet':          return intakeGet(body);    // READ-ONLY: one intake, coaching fields only
+      case 'intakePhotosGet':    return intakePhotosGet(body);   // READ-ONLY: one intake's baseline photos (signed URLs)
       case 'intakeLink':         return intakeLink(body);
       case 'intakePromote':      return intakePromote(body);
       case 'legacyQueueGet':     return legacyQueueGet(body);
@@ -3149,6 +3150,28 @@ async function intakeGet(body: any) {
   }
   const { linked_client_id: _omit, ...fields } = intake as any;   // raw client UUID never leaves the server
   return ok({ intake: fields, linkedStorageKey });
+}
+
+// ── COACH: one intake's baseline photos as short-lived signed URLs (Omar 2026-10-19, physique agent) ──
+// READ-ONLY, coach-only. Lets the onboarding autopilot assess a NEW intake's photos before it is linked to a client
+// (photosGet only covers linked clients). The paths come from this intake's own row - never from the request - and
+// are never returned; only signed URLs (same TTL as photosGet) leave the server.
+async function intakePhotosGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const intakeId = String(body?.intakeId ?? '').trim().toLowerCase();
+  if (!UUID_RE.test(intakeId)) return err('bad_intake_id');
+  const { data: row, error } = await admin.from('intakes')
+    .select('photo_front_path, photo_side_path, photo_back_path').eq('id', intakeId).maybeSingle();
+  if (error) return err('intake_get_failed');
+  if (!row) return err('unknown_intake');
+  const views = (['front', 'side', 'back'] as const).map((v) => ({ view: v, path: (row as any)[`photo_${v}_path`] as string | null }))
+    .filter((x) => typeof x.path === 'string' && x.path.startsWith(`intakes/${intakeId}/`));
+  if (!views.length) return ok({ photos: [], signedUrlTtlSec: SIGNED_URL_TTL_SEC });
+  const { data: signed, error: sErr } = await admin.storage.from(PHOTO_BUCKET)
+    .createSignedUrls(views.map((x) => x.path as string), SIGNED_URL_TTL_SEC);
+  if (sErr || !signed) return err('sign_failed');
+  const photos = views.map((x, n) => ({ view: x.view, url: signed[n]?.signedUrl ?? null, urlKind: signed[n]?.signedUrl ? 'signed' : 'unavailable' }));
+  return ok({ photos, signedUrlTtlSec: SIGNED_URL_TTL_SEC });
 }
 
 // ── COACH: link an intake to a client, then promote its baseline photos ────
