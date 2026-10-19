@@ -4362,12 +4362,12 @@ const phases = {
       ["Deload week (week 4)", "Every 4th week: about 30-40% fewer sets, RIR 3-4, same exercises. Week 4 (21 Oct) doubles as load-finding for the new movements."],
       ["If this is not available", "Use this instead"],
       ["Smith Machine Squat", "Bulgarian Split Squat - otherwise DB Goblet Squat"],
-      ["Flat DB Press", "Smith Machine Incline Press - otherwise DB Floor Press"],
+      ["Smith Machine Incline Press", "Incline DB Press - otherwise Flat DB Press"],
       ["Pull-Up (assisted or weighted)", "Lat Pulldown - otherwise Banded Lat Pulldown"],
-      ["Banded Lying Leg Curl", "DB Romanian Deadlift - otherwise Cable Pull-Through"],
-      ["Cable Pull-Through", "DB Romanian Deadlift - otherwise Banded Lying Leg Curl"],
-      ["Smith Machine Shoulder Press", "Seated DB Shoulder Press - otherwise DB Lateral Raise"],
-      ["Chest-Supported DB Row", "Seated Cable Row - otherwise DB Single-Arm Supported Row"],
+      ["Banded Lying Leg Curl", "Cable Pull-Through - otherwise DB Romanian Deadlift"],
+      ["Machine Hip Thrust (or Smith Hip Thrust)", "Floor Glute Bridge (DB-loaded) - otherwise Cable Pull-Through"],
+      ["Seated Cable Row", "Single-Arm Cable Row - otherwise Lat Pulldown"],
+      ["Single-Arm Cable Row", "Seated Cable Row - otherwise Lat Pulldown"],
     ],
   },
   2: {
@@ -4385,7 +4385,7 @@ const phases = {
         badge: "MANDATORY",
         exercises: [
           { name: "Smith Machine Squat", sets: "4", reps: "6–8", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Flat DB Press", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Smith Machine Incline Press", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
           { name: "Pull-Up (assisted or weighted)", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Banded Lying Leg Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4395,9 +4395,9 @@ const phases = {
         label: "Day 2 — Lower & Pull",
         badge: "MANDATORY",
         exercises: [
-          { name: "DB Romanian Deadlift", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Hip Thrust", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "DB Single-Arm Supported Row", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust (or Smith Hip Thrust)", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Seated Cable Row", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "DB Biceps Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
@@ -4407,7 +4407,7 @@ const phases = {
         exercises: [
           { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Smith Machine Shoulder Press", sets: "5", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported DB Row", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Single-Arm Cable Row", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Bulgarian Split Squat", sets: "4", reps: "8–10 each leg", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Cable Triceps Pushdown", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4430,12 +4430,12 @@ const phases = {
       ["Deload week (week 8)", "Every 4th week: about 30-40% fewer sets, RIR 3-4, same exercises. Week 4 (21 Oct) doubles as load-finding for the new movements."],
       ["If this is not available", "Use this instead"],
       ["Smith Machine Squat", "Bulgarian Split Squat - otherwise DB Goblet Squat"],
-      ["Flat DB Press", "Smith Machine Incline Press - otherwise DB Floor Press"],
+      ["Smith Machine Incline Press", "Incline DB Press - otherwise Flat DB Press"],
       ["Pull-Up (assisted or weighted)", "Lat Pulldown - otherwise Banded Lat Pulldown"],
-      ["Banded Lying Leg Curl", "DB Romanian Deadlift - otherwise Cable Pull-Through"],
-      ["Cable Pull-Through", "DB Romanian Deadlift - otherwise Banded Lying Leg Curl"],
-      ["Smith Machine Shoulder Press", "Seated DB Shoulder Press - otherwise DB Lateral Raise"],
-      ["Chest-Supported DB Row", "Seated Cable Row - otherwise DB Single-Arm Supported Row"],
+      ["Banded Lying Leg Curl", "Cable Pull-Through - otherwise DB Romanian Deadlift"],
+      ["Machine Hip Thrust (or Smith Hip Thrust)", "Floor Glute Bridge (DB-loaded) - otherwise Cable Pull-Through"],
+      ["Seated Cable Row", "Single-Arm Cable Row - otherwise Lat Pulldown"],
+      ["Single-Arm Cable Row", "Seated Cable Row - otherwise Lat Pulldown"],
     ],
   },
   3: {
@@ -4453,7 +4453,7 @@ const phases = {
         badge: "MANDATORY",
         exercises: [
           { name: "Smith Machine Squat", sets: "4", reps: "6–8", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Flat DB Press", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Smith Machine Incline Press", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
           { name: "Pull-Up (assisted or weighted)", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Banded Lying Leg Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4463,9 +4463,9 @@ const phases = {
         label: "Day 2 — Lower & Pull",
         badge: "MANDATORY",
         exercises: [
-          { name: "DB Romanian Deadlift", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Hip Thrust", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "DB Single-Arm Supported Row", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust (or Smith Hip Thrust)", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Seated Cable Row", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "DB Biceps Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
@@ -4475,7 +4475,7 @@ const phases = {
         exercises: [
           { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Smith Machine Shoulder Press", sets: "5", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported DB Row", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Single-Arm Cable Row", sets: "4", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Bulgarian Split Squat", sets: "4", reps: "8–10 each leg", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Cable Triceps Pushdown", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4498,12 +4498,12 @@ const phases = {
       ["Deload week (week 12)", "Every 4th week: about 30-40% fewer sets, RIR 3-4, same exercises. Week 4 (21 Oct) doubles as load-finding for the new movements."],
       ["If this is not available", "Use this instead"],
       ["Smith Machine Squat", "Bulgarian Split Squat - otherwise DB Goblet Squat"],
-      ["Flat DB Press", "Smith Machine Incline Press - otherwise DB Floor Press"],
+      ["Smith Machine Incline Press", "Incline DB Press - otherwise Flat DB Press"],
       ["Pull-Up (assisted or weighted)", "Lat Pulldown - otherwise Banded Lat Pulldown"],
-      ["Banded Lying Leg Curl", "DB Romanian Deadlift - otherwise Cable Pull-Through"],
-      ["Cable Pull-Through", "DB Romanian Deadlift - otherwise Banded Lying Leg Curl"],
-      ["Smith Machine Shoulder Press", "Seated DB Shoulder Press - otherwise DB Lateral Raise"],
-      ["Chest-Supported DB Row", "Seated Cable Row - otherwise DB Single-Arm Supported Row"],
+      ["Banded Lying Leg Curl", "Cable Pull-Through - otherwise DB Romanian Deadlift"],
+      ["Machine Hip Thrust (or Smith Hip Thrust)", "Floor Glute Bridge (DB-loaded) - otherwise Cable Pull-Through"],
+      ["Seated Cable Row", "Single-Arm Cable Row - otherwise Lat Pulldown"],
+      ["Single-Arm Cable Row", "Seated Cable Row - otherwise Lat Pulldown"],
     ],
   },
 };
@@ -12915,7 +12915,7 @@ window.CV2_DEFAULT = 'v2';
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-10-19T07:48:51.724331Z
+  generatedAt: 2026-10-19T08:00:38.180900Z
   clientStorageKey: cruz_rehayem
   configPath: cruz_rehayem.json
   safetyBlockers: 1
