@@ -4289,49 +4289,57 @@ const howTos = {
 const phases = {
   1: {
     label: "Install", weeks: "1–4",
-    desc: "Three full-body sessions a week, every muscle twice. Week 1 is load finding, not testing - there are no kilos printed on this program because you have no logged history yet, and your first session creates it. Compounds run at 3 reps in reserve for the first two weeks while technique settles, then 2. Nothing is added to this block: the job is three sessions a week, both meals logged, and a real step baseline.",
+    desc: "Four sessions a week, split upper and lower, so every muscle is still trained twice. This block also lifts volume: glutes now get hip thrusts on both lower days, and arms and side delts are spread across the week. Most exercises you already know, so your loads carry over. Hip thrust, overhead triceps extension and anything that moved to a new day get a quick find-load in this week-4 session. Compounds run at 2 to 3 reps in reserve, then 2. Four sessions done, both meals logged, a real step baseline.",
     info: [
-      { label: "Weeks", val: "1–4", desc: "Find your loads" },
-      { label: "Sessions", val: "3/wk", desc: "Full body A / B / C, fixed days" },
-      { label: "Volume", val: "47 sets", desc: "Working sets a week, warm-ups not counted" },
+      { label: "Weeks", val: "1–4", desc: "Find loads on new lifts" },
+      { label: "Sessions", val: "4/wk", desc: "Upper A / Lower A / Upper B / Lower B" },
+      { label: "Volume", val: "61 sets", desc: "Working sets a week, warm-ups not counted" },
       { label: "Effort", val: "RIR", desc: "Reps left in the tank on every set - never to failure on the first two lifts" },
     ],
     days: [
       {
-        label: "Day A — Full Body (Quad + Push + Row)",
+        label: "Day A - Upper (Chest + Back + Shoulders + Arms)",
+        badge: "MANDATORY",
+        exercises: [
+          { name: "Flat Dumbbell Press", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
+          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
+          { name: "Seated Dumbbell Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
+          { name: "Triceps Pushdown (rope)", sets: "3", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Cable Curl", sets: "3", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
+        ]
+      },
+      {
+        label: "Day B - Lower (Quads + Hinge + Glutes)",
         badge: "MANDATORY",
         exercises: [
           { name: "Hack Squat (or Leg Press if unavailable)", sets: "3", reps: "8–10", rir: "2–3", weight: "Find load", rest: "2–3 min", rpe: "" },
-          { name: "Flat Dumbbell Press", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
+          { name: "Romanian Deadlift (dumbbell)", sets: "3", reps: "8–10", rir: "2–3", weight: "Find load", rest: "2–3 min", rpe: "" },
+          { name: "Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
           { name: "Seated Leg Curl", sets: "2", reps: "10–12", rir: "1–2", weight: "Find load", rest: "60–90s", rpe: "" },
-          { name: "Dumbbell Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
-          { name: "Triceps Pushdown (rope)", sets: "2", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Cable Lateral Raise (single arm)", sets: "3", reps: "15", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
         ]
       },
       {
-        label: "Day B — Full Body (Hinge + Vertical Pull + Press)",
+        label: "Day C - Upper (Back + Chest + Arms)",
         badge: "MANDATORY",
         exercises: [
-          { name: "Romanian Deadlift (dumbbell)", sets: "3", reps: "8–10", rir: "2–3", weight: "Find load", rest: "2–3 min", rpe: "" },
           { name: "Lat Pulldown (wide, pronated)", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
-          { name: "Seated Dumbbell Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "2", reps: "12–15", rir: "1–2", weight: "Find load", rest: "60s", rpe: "" },
-          { name: "Incline Dumbbell Press (30 degrees)", sets: "2", reps: "10–12", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
-          { name: "Cable Curl", sets: "2", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Incline Dumbbell Press (30 degrees)", sets: "3", reps: "10–12", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
+          { name: "Seated Cable Row (neutral grip)", sets: "3", reps: "10–12", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
+          { name: "Machine Chest Press", sets: "2", reps: "8–10", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
+          { name: "Overhead Tricep Extension (DB)", sets: "3", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Dumbbell Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
         ]
       },
       {
-        label: "Day C — Full Body (Leg Press + Machine Press + Cable Row)",
+        label: "Day D - Lower (Leg Press + Glutes + Hamstrings)",
         badge: "MANDATORY",
         exercises: [
           { name: "Leg Press", sets: "3", reps: "10–12", rir: "2–3", weight: "Find load", rest: "2 min", rpe: "" },
-          { name: "Machine Chest Press", sets: "3", reps: "8–10", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
-          { name: "Seated Cable Row (neutral grip)", sets: "3", reps: "10–12", rir: "2", weight: "Find load", rest: "90s", rpe: "" },
-          { name: "Lying Leg Curl", sets: "2", reps: "12–15", rir: "1–2", weight: "Find load", rest: "60s", rpe: "" },
-          { name: "Cable Lateral Raise (single arm)", sets: "2", reps: "15", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
-          { name: "Dumbbell Hammer Curl", sets: "2", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
-          { name: "Hanging Knee Raise", sets: "2", reps: "10–15", rir: "1–2", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Leg Extension", sets: "2", reps: "12–15", rir: "1–2", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Lying Leg Curl", sets: "3", reps: "12–15", rir: "1–2", weight: "Find load", rest: "60s", rpe: "" },
+          { name: "Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Find load", rest: "2 min", rpe: "" },
+          { name: "Dumbbell Hammer Curl", sets: "3", reps: "10–12", rir: "1", weight: "Find load", rest: "60s", rpe: "" },
         ]
       }
     ],
@@ -4342,57 +4350,65 @@ const phases = {
       ["If the top reps came at 0 RIR", "No load increase. Repeat the same load until the top of the range arrives at the prescribed effort."],
       ["If you miss the bottom of the range twice in a row", "Drop the load 5-10% and rebuild."],
       ["Load increments", "Hack squat and leg press: 5-10kg. Dumbbells: 2kg per hand on presses, 1kg per hand on raises and curls. Machines and cables: one pin. Chest-supported row: 2.5kg."],
-      ["Missed session", "Push the sequence forward - A then B then C. Never stack two sessions into one day."],
+      ["Missed session", "Push the sequence forward - Upper A, Lower A, Upper B, Lower B. Never stack two sessions into one day."],
       ["Missed week", "Same loads, one set fewer per exercise for one week, then resume. Food does not change."],
-      ["Minimum viable week", "Day A then Day B. Two sessions is maintenance, not failure."],
+      ["Minimum viable week", "Upper A then Lower A. Two sessions is maintenance, not failure."],
       ["RULE", "No load increase is earned by the calendar.", "->", "Only by hitting the top of the range at the prescribed RIR.", ""],
     ],
   },
   2: {
     label: "Progress", weeks: "5–8",
-    desc: "Same six or seven exercises, same order. One set is added to the FIRST compound of each day - and only if the last four weeks earned it: three sessions done in three weeks out of four, sleep averaging 6.5h or better, and loads holding or climbing. If any of that is missing you stay on 47 sets and keep progressing reps instead.",
+    desc: "Same exercises, same order. One set is added to the first lift of Upper A, Lower A and Lower B - and only if the last four weeks earned it: at least three sessions a week, sleep averaging 6.5h or better, and loads holding or climbing. If any of that is missing you stay on 61 sets and keep progressing reps instead.",
     info: [
-      { label: "Weeks", val: "5–8", desc: "One set on the opener" },
-      { label: "Sessions", val: "3/wk", desc: "Full body A / B / C, fixed days" },
-      { label: "Volume", val: "50 sets", desc: "Working sets a week, warm-ups not counted" },
+      { label: "Weeks", val: "5–8", desc: "One set on three openers" },
+      { label: "Sessions", val: "4/wk", desc: "Upper A / Lower A / Upper B / Lower B" },
+      { label: "Volume", val: "64 sets", desc: "Working sets a week, warm-ups not counted" },
       { label: "Effort", val: "RIR", desc: "Reps left in the tank on every set - never to failure on the first two lifts" },
     ],
     days: [
       {
-        label: "Day A — Full Body (Quad + Push + Row)",
+        label: "Day A - Upper (Chest + Back + Shoulders + Arms)",
+        badge: "MANDATORY",
+        exercises: [
+          { name: "Flat Dumbbell Press", sets: "4", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Seated Dumbbell Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Triceps Pushdown (rope)", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Cable Curl", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+        ]
+      },
+      {
+        label: "Day B - Lower (Quads + Hinge + Glutes)",
         badge: "MANDATORY",
         exercises: [
           { name: "Hack Squat (or Leg Press if unavailable)", sets: "4", reps: "8–10", rir: "2–3", weight: "Your logged load", rest: "2–3 min", rpe: "" },
-          { name: "Flat Dumbbell Press", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Romanian Deadlift (dumbbell)", sets: "3", reps: "8–10", rir: "2–3", weight: "Your logged load", rest: "2–3 min", rpe: "" },
+          { name: "Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
           { name: "Seated Leg Curl", sets: "2", reps: "10–12", rir: "1–2", weight: "Your logged load", rest: "60–90s", rpe: "" },
-          { name: "Dumbbell Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Triceps Pushdown (rope)", sets: "2", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Cable Lateral Raise (single arm)", sets: "3", reps: "15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
-        label: "Day B — Full Body (Hinge + Vertical Pull + Press)",
+        label: "Day C - Upper (Back + Chest + Arms)",
         badge: "MANDATORY",
         exercises: [
-          { name: "Romanian Deadlift (dumbbell)", sets: "4", reps: "8–10", rir: "2–3", weight: "Your logged load", rest: "2–3 min", rpe: "" },
           { name: "Lat Pulldown (wide, pronated)", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
-          { name: "Seated Dumbbell Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "2", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Incline Dumbbell Press (30 degrees)", sets: "2", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
-          { name: "Cable Curl", sets: "2", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Incline Dumbbell Press (30 degrees)", sets: "3", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Seated Cable Row (neutral grip)", sets: "3", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Machine Chest Press", sets: "2", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Overhead Tricep Extension (DB)", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Dumbbell Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
-        label: "Day C — Full Body (Leg Press + Machine Press + Cable Row)",
+        label: "Day D - Lower (Leg Press + Glutes + Hamstrings)",
         badge: "MANDATORY",
         exercises: [
           { name: "Leg Press", sets: "4", reps: "10–12", rir: "2–3", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Chest Press", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Seated Cable Row (neutral grip)", sets: "3", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
-          { name: "Lying Leg Curl", sets: "2", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Cable Lateral Raise (single arm)", sets: "2", reps: "15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Dumbbell Hammer Curl", sets: "2", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Hanging Knee Raise", sets: "2", reps: "10–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Leg Extension", sets: "2", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Lying Leg Curl", sets: "3", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Dumbbell Hammer Curl", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
         ]
       }
     ],
@@ -4403,57 +4419,65 @@ const phases = {
       ["If the top reps came at 0 RIR", "No load increase. Repeat the same load until the top of the range arrives at the prescribed effort."],
       ["If you miss the bottom of the range twice in a row", "Drop the load 5-10% and rebuild."],
       ["Load increments", "Hack squat and leg press: 5-10kg. Dumbbells: 2kg per hand on presses, 1kg per hand on raises and curls. Machines and cables: one pin. Chest-supported row: 2.5kg."],
-      ["Missed session", "Push the sequence forward - A then B then C. Never stack two sessions into one day."],
+      ["Missed session", "Push the sequence forward - Upper A, Lower A, Upper B, Lower B. Never stack two sessions into one day."],
       ["Missed week", "Same loads, one set fewer per exercise for one week, then resume. Food does not change."],
-      ["Minimum viable week", "Day A then Day B. Two sessions is maintenance, not failure."],
+      ["Minimum viable week", "Upper A then Lower A. Two sessions is maintenance, not failure."],
       ["RULE", "No load increase is earned by the calendar.", "->", "Only by hitting the top of the range at the prescribed RIR.", ""],
     ],
   },
   3: {
     label: "Finish", weeks: "9–12",
-    desc: "One more set, this time on the SECOND compound of each day, on the same recovery gate. Holding your loads on lower bodyweight IS progress - you are moving the same weight carrying less of yourself. The last set of an isolation may go to 0 RIR this block; the first two lifts of a day never do.",
+    desc: "One more set on the second lift of Upper A, Lower A and Upper B, on the same recovery gate. Holding your loads on lower bodyweight IS progress - you are moving the same weight carrying less of yourself. The last set of an isolation may go to 0 RIR this block; the first two lifts of a day never do.",
     info: [
       { label: "Weeks", val: "9–12", desc: "Hold load, chase reps" },
-      { label: "Sessions", val: "3/wk", desc: "Full body A / B / C, fixed days" },
-      { label: "Volume", val: "53 sets", desc: "Working sets a week, warm-ups not counted" },
+      { label: "Sessions", val: "4/wk", desc: "Upper A / Lower A / Upper B / Lower B" },
+      { label: "Volume", val: "67 sets", desc: "Working sets a week, warm-ups not counted" },
       { label: "Effort", val: "RIR", desc: "Reps left in the tank on every set - never to failure on the first two lifts" },
     ],
     days: [
       {
-        label: "Day A — Full Body (Quad + Push + Row)",
+        label: "Day A - Upper (Chest + Back + Shoulders + Arms)",
+        badge: "MANDATORY",
+        exercises: [
+          { name: "Flat Dumbbell Press", sets: "4", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Chest-Supported Row", sets: "4", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Seated Dumbbell Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Triceps Pushdown (rope)", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Cable Curl", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+        ]
+      },
+      {
+        label: "Day B - Lower (Quads + Hinge + Glutes)",
         badge: "MANDATORY",
         exercises: [
           { name: "Hack Squat (or Leg Press if unavailable)", sets: "4", reps: "8–10", rir: "2–3", weight: "Your logged load", rest: "2–3 min", rpe: "" },
-          { name: "Flat Dumbbell Press", sets: "4", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Romanian Deadlift (dumbbell)", sets: "4", reps: "8–10", rir: "2–3", weight: "Your logged load", rest: "2–3 min", rpe: "" },
+          { name: "Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
           { name: "Seated Leg Curl", sets: "2", reps: "10–12", rir: "1–2", weight: "Your logged load", rest: "60–90s", rpe: "" },
-          { name: "Dumbbell Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Triceps Pushdown (rope)", sets: "2", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Cable Lateral Raise (single arm)", sets: "3", reps: "15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
-        label: "Day B — Full Body (Hinge + Vertical Pull + Press)",
+        label: "Day C - Upper (Back + Chest + Arms)",
         badge: "MANDATORY",
         exercises: [
-          { name: "Romanian Deadlift (dumbbell)", sets: "4", reps: "8–10", rir: "2–3", weight: "Your logged load", rest: "2–3 min", rpe: "" },
-          { name: "Lat Pulldown (wide, pronated)", sets: "4", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
-          { name: "Seated Dumbbell Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "2", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Incline Dumbbell Press (30 degrees)", sets: "2", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
-          { name: "Cable Curl", sets: "2", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Lat Pulldown (wide, pronated)", sets: "3", reps: "8–10", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Incline Dumbbell Press (30 degrees)", sets: "4", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Seated Cable Row (neutral grip)", sets: "3", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
+          { name: "Machine Chest Press", sets: "2", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Overhead Tricep Extension (DB)", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Dumbbell Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
-        label: "Day C — Full Body (Leg Press + Machine Press + Cable Row)",
+        label: "Day D - Lower (Leg Press + Glutes + Hamstrings)",
         badge: "MANDATORY",
         exercises: [
           { name: "Leg Press", sets: "4", reps: "10–12", rir: "2–3", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Chest Press", sets: "4", reps: "8–10", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
-          { name: "Seated Cable Row (neutral grip)", sets: "3", reps: "10–12", rir: "2", weight: "Your logged load", rest: "90s", rpe: "" },
-          { name: "Lying Leg Curl", sets: "2", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Cable Lateral Raise (single arm)", sets: "2", reps: "15", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Dumbbell Hammer Curl", sets: "2", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
-          { name: "Hanging Knee Raise", sets: "2", reps: "10–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Leg Extension", sets: "2", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Lying Leg Curl", sets: "3", reps: "12–15", rir: "1–2", weight: "Your logged load", rest: "60s", rpe: "" },
+          { name: "Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Your logged load", rest: "2 min", rpe: "" },
+          { name: "Dumbbell Hammer Curl", sets: "3", reps: "10–12", rir: "1", weight: "Your logged load", rest: "60s", rpe: "" },
         ]
       }
     ],
@@ -4464,9 +4488,9 @@ const phases = {
       ["If the top reps came at 0 RIR", "No load increase. Repeat the same load until the top of the range arrives at the prescribed effort."],
       ["If you miss the bottom of the range twice in a row", "Drop the load 5-10% and rebuild."],
       ["Load increments", "Hack squat and leg press: 5-10kg. Dumbbells: 2kg per hand on presses, 1kg per hand on raises and curls. Machines and cables: one pin. Chest-supported row: 2.5kg."],
-      ["Missed session", "Push the sequence forward - A then B then C. Never stack two sessions into one day."],
+      ["Missed session", "Push the sequence forward - Upper A, Lower A, Upper B, Lower B. Never stack two sessions into one day."],
       ["Missed week", "Same loads, one set fewer per exercise for one week, then resume. Food does not change."],
-      ["Minimum viable week", "Day A then Day B. Two sessions is maintenance, not failure."],
+      ["Minimum viable week", "Upper A then Lower A. Two sessions is maintenance, not failure."],
       ["RULE", "No load increase is earned by the calendar.", "->", "Only by hitting the top of the range at the prescribed RIR.", ""],
     ],
   },
@@ -6645,7 +6669,7 @@ const phaseTargets = {
 };
 
 const DAY_NAMES=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const DAY_TYPES=['Weights - Full Body A','Rest / walk','Weights - Full Body B','Rest / walk','Weights - Full Body C','Rest / walk','Rest'];
+const DAY_TYPES=['Weights - Upper A','Weights - Lower A','Rest / walk','Weights - Upper B','Weights - Lower B','Rest / walk','Rest'];
 
 const mealPlan = {};
 const MEAL_HOWTO = {"7:00am|Eggs & Toast": {"steps": ["Whisk the eggs with salt and pepper.", "Scramble them in a non-stick pan over a gentle heat with the oil until just set.", "Toast the bread and slice the tomato.", "Serve the eggs on the toast with the tomato on the side."], "type": "fresh"}, "1:00pm|Chicken Salad Sandwich": {"steps": ["Season the chicken with salt, pepper and dried herbs, then cook it in a hot pan with the oil until golden and cooked through with no pink in the middle.", "Let the chicken cool, then slice it.", "Build the sandwich with the chicken, lettuce and sliced tomato, spreading a little yoghurt on the bread.", "Wrap it up and pack it in a cold lunch bag with an ice pack."], "type": "fresh"}, "7:30pm|Mince, Rice & Veg": {"steps": ["Cook the rice until fluffy.", "Season the mince with salt, pepper and dried herbs, then cook it in a hot pan with the oil, breaking it up, until browned and cooked through with no pink left.", "Steam the vegetables until just tender.", "Serve the mince over the rice with the vegetables on the side."], "type": "fresh"}, "7:30pm|Steak, Potato & Salad": {"steps": ["Roast the potato until golden and soft in the middle.", "Season the steak with salt and pepper, then cook it in a hot pan until browned outside and cooked how you like it inside.", "Let the steak rest briefly, then slice it.", "Chop the salad ingredients and serve everything together."], "type": "fresh"}, "7:30pm|Mince, Sweet Potato & Veg": {"steps": ["Roast the sweet potato with the oil until soft in the middle and golden at the edges.", "Season the mince with salt, pepper and dried herbs, then cook it in a hot pan, breaking it up, until browned and cooked through with no pink left.", "Steam the vegetables until just tender.", "Serve everything together on a plate."], "type": "fresh"}, "7:30pm|Steak, Rice & Veg": {"steps": ["Cook the rice until fluffy.", "Season the steak with salt and pepper, then cook it in a hot pan until browned outside and cooked how you like it inside.", "Let the steak rest briefly, then slice it, and steam the vegetables until just tender.", "Serve the steak and vegetables with the rice."], "type": "fresh"}, "7:00am|Oats, Yoghurt & Banana": {"steps": ["Heat the oats with the milk, stirring, until thick and creamy.", "Spoon the oats into a bowl.", "Slice the banana over the top.", "Add the yoghurt on the side or on top."], "type": "fresh"}, "1:00pm|Mince, Rice & Salad Box": {"steps": ["Cook the rice, then let it cool.", "Season the mince with salt, pepper and dried herbs, then cook it in a hot pan, breaking it up, until browned and cooked through with no pink left.", "Chop the cucumber and tomato.", "Put the rice, mince and salad in a container and pack it in a cold lunch bag with an ice pack."], "type": "fresh"}, "7:30pm|Chicken, Rice & Veg": {"steps": ["Cook the rice until fluffy.", "Season the chicken with salt, pepper and dried herbs, then cook it in a hot pan with the oil until golden and cooked through with no pink in the middle.", "Steam the vegetables until just tender.", "Serve the chicken on the rice with the vegetables."], "type": "fresh"}, "7:30pm|Chicken Thigh, Potato & Veg": {"steps": ["Roast the potato with the oil until golden and crisp at the edges.", "Season the chicken thigh with salt, pepper and dried herbs, then cook it in a hot pan until golden and cooked through with no pink in the middle.", "Steam the vegetables until just tender.", "Serve everything together on a plate."], "type": "fresh"}, "7:30pm|Chicken, Sweet Potato & Salad": {"steps": ["Roast the sweet potato until soft in the middle and golden at the edges.", "Season the chicken with salt, pepper and dried herbs, then cook it in a hot pan until golden and cooked through with no pink in the middle.", "Chop the salad ingredients.", "Serve the chicken and sweet potato with the salad."], "type": "fresh"}, "7:30pm|Chicken Thigh, Rice & Peas": {"steps": ["Cook the rice until fluffy.", "Season the chicken thigh with salt, pepper and dried herbs, then cook it in a hot pan with the oil until golden and cooked through with no pink in the middle.", "Warm the peas through until just tender.", "Serve the chicken on the rice with the peas."], "type": "fresh"}, "7:00am|Egg & Cheese Sandwich": {"steps": ["Fry the eggs in a non-stick pan until the whites are set and the yolks are cooked how you like them.", "Warm the bread in the pan or a toaster.", "Fill the bread with the eggs, the cheese slice and sliced tomato.", "Fold or roll it up and eat straight away."], "type": "fresh"}, "1:00pm|Chicken, Potato & Salad Box": {"steps": ["Roast the potato with the oil until golden and soft in the middle.", "Season the chicken with salt, pepper and dried herbs, then cook it in a hot pan until golden and cooked through with no pink in the middle.", "Chop the lettuce and cucumber.", "Let everything cool completely, then pack it in a container in a cold lunch bag with an ice pack."], "type": "fresh"}, "7:00am|Cheese Toast, Yoghurt & Apple": {"steps": ["Toast the bread until golden.", "Lay the cheese slices on the hot toast so they soften and melt a little.", "Spoon the yoghurt into a bowl.", "Serve the cheese toast with the yoghurt and the apple on the side."], "type": "fresh"}, "1:00pm|Steak Salad Sandwich": {"steps": ["Season the steak with salt and pepper, then cook it through in a hot pan with the oil until browned all over with no pink in the middle.", "Let the steak rest briefly, then slice it thinly and let it cool.", "Slice the tomato and cucumber and tear the lettuce.", "Fill the bread with the steak and salad, roll it up tightly and pack it in a cold lunch bag with an ice pack."], "type": "fresh"}};
