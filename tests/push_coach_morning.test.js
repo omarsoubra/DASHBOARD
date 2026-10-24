@@ -221,4 +221,21 @@ test('CM9 coachAlert (WhatsApp agent, Omar 2026-10-16): coach token, coach devic
   assertNoLeak(w);
 });
 
+test('CM10 coachAlert summary (Omar 2026-10-24): counts only, integers 0..999, fixed wording', async () => {
+  const w = await coachWorld();
+  await w.coachSub(w.newSub('web.push.apple.com'));
+  const sum = (counts, id) => w.call({ type: 'coachAlert', coachToken: COACH_HASH, alert: 'summary', name: '', counts, requestId: id });
+  const r = await sum({ replies: 12, checkins: 3, handed: 4, ok: true }, 'sum_000000001');
+  eq(r.status, 200); eq(r.j.delivered, 1, JSON.stringify(r.j));
+  const p = w.svc.received[w.svc.received.length - 1].payload;
+  eq(p.title, 'WhatsApp agent'); eq(p.body, 'Today: 12 replies, 3 check-ins, 4 handed to you. All working.');
+  await sum({ replies: 1, checkins: 1, handed: 0, ok: false }, 'sum_000000002');
+  eq(w.svc.received[w.svc.received.length - 1].payload.body, 'Today: 1 reply, 1 check-in, 0 handed to you. Something needs a look on the Mac.');
+  for (const bad of [{ replies: 'x', checkins: 1, handed: 1 }, { replies: 1.5, checkins: 1, handed: 1 }, { replies: 1000, checkins: 1, handed: 1 },
+                     { replies: -1, checkins: 1, handed: 1 }, { replies: 1, checkins: 1 }, null]) {
+    eq((await sum(bad, 'sum_bad_' + Math.random().toString(16).slice(2, 10))).status, 400, 'refused ' + JSON.stringify(bad));
+  }
+  assertNoLeak(w);
+});
+
 run('push_coach_morning');

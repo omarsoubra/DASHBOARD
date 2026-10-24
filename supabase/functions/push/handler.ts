@@ -644,10 +644,19 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     other: 'Needs your reply.',
     system: 'WhatsApp agent needs you: check the Mac.',
   };
+  // Nightly summary (Omar 2026-10-24): counts only - three integers 0..999 and an all-good flag, never client data.
+  function coachSummaryBody(c: any): string {
+    const n = (x: any) => (Number.isInteger(x) && x >= 0 && x <= 999 ? x : null);
+    const r = n(c?.replies), k = n(c?.checkins), h = n(c?.handed);
+    if (r === null || k === null || h === null) return '';
+    return `Today: ${r} ${r === 1 ? 'reply' : 'replies'}, ${k} check-in${k === 1 ? '' : 's'}, ${h} handed to you. ` +
+      (c?.ok === true ? 'All working.' : 'Something needs a look on the Mac.');
+  }
   async function coachAlert(body: any): Promise<Response> {
     if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
     const alert = String(body?.alert ?? '');
-    const text = Object.prototype.hasOwnProperty.call(COACH_ALERT_BODIES, alert) ? COACH_ALERT_BODIES[alert] : '';
+    const text = alert === 'summary' ? coachSummaryBody(body?.counts)
+      : Object.prototype.hasOwnProperty.call(COACH_ALERT_BODIES, alert) ? COACH_ALERT_BODIES[alert] : '';
     if (!text) return err('unknown_alert', 400);
     const requestId = String(body?.requestId ?? '');
     if (!REQUEST_ID_RE.test(requestId)) return err('bad_requestId', 400);
@@ -661,7 +670,8 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const { count } = await admin.from('notification_events').select('id', { count: 'exact', head: true })
       .eq('client_id', coachId).like('dedupe_key', 'coach_alert:%').gte('created_at', new Date(nowMs - 86400_000).toISOString());
     if ((count ?? 0) >= 40) return err('daily_cap_reached', 429);
-    const tpl: Template = { ...TEMPLATES.coach_alert, title: alert === 'system' ? 'LOCKED IN agent' : `${name} on WhatsApp`, body: text };
+    const title = alert === 'system' ? 'LOCKED IN agent' : alert === 'summary' ? 'WhatsApp agent' : `${name} on WhatsApp`;
+    const tpl: Template = { ...TEMPLATES.coach_alert, title, body: text };
     const got = await claim({
       client_id: coachId, storage_key: COACH_KEY, kind: tpl.kind, dedupe_key: `coach_alert:${requestId}`, status: 'claimed',
       title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'coach', request_id: requestId, created_at: nowIso, eligible_at: nowIso,
