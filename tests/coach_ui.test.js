@@ -611,7 +611,7 @@ const knownBug = (name, holds, detail) => {
         await ev(`document.querySelector('[data-ts="close"]').click(); 1`); await idle(100);
         t('story editor closes', await ev(`document.getElementById('v2-ts-modal').hidden`));
         await click('[data-act="ts-photos"]'); await idle(700);
-        t('before / after loads her photos (photosGet) into Before/After pickers', (await count('#v2-ts-pa option')) === 3 && (await ev(`document.getElementById('v2-ts-pa').value !== document.getElementById('v2-ts-pb').value`)));
+        t('before / after loads her photos (photosGet) into Before/After pickers', (await count('#v2-ts-pa option')) === 4 && (await ev(`document.getElementById('v2-ts-pa').value !== document.getElementById('v2-ts-pb').value`)));
         t('face hidden: blur starts on and cannot go below 12%', (await ev(`+document.getElementById('v2-ts-blur').value`)) >= 12 && (await ev(`+document.getElementById('v2-ts-blur').min`)) === 12);
         await idle(300); await shot('testimonial_photos');
         await ev(`document.querySelector('[data-ts="close"]').click(); 1`); await idle(100);
@@ -766,6 +766,28 @@ const knownBug = (name, holds, detail) => {
         t('"Suggested reply" with the agent draft', /Suggested reply/.test(await txt('#v2-ci-panel')) && /Greek yoghurt/.test(await ev(`document.querySelector('#v2-ci-panel .v2-rd-text').value`)));
         await click('#v2-ci-panel [data-rd-more]'); await idle(100);
         t('"1 more" reveals the extra coach note', (await count('#v2-ci-panel .v2-rd-extra:not([hidden])')) === 1);
+        // Photos inside the review (Omar 2026-10-30): no trip to the client page to see them.
+        await idle(400);
+        t('Photos section sits right under the suggested reply', await ev(`(function(){ var s = document.querySelectorAll('#v2-ci-panel .v2-ci-main > .v2-ci-sec'); return s[0].classList.contains('sec-reply') && s[1].classList.contains('sec-photos'); })()`));
+        t('this check-in\'s photos: front + side shown, back marked missing', (await count('#v2-ci-panel .sec-photos .v2-ph-grid img')) === 2 && (await count('#v2-ci-panel .sec-photos .v2-ph-tile.is-empty')) === 1, await txt('#v2-ci-panel .sec-photos'));
+        t('header says Week 6 · 2 photos', /Week 6 · 2 photos/.test(await txt('#v2-ci-panel .sec-photos h3')), await txt('#v2-ci-panel .sec-photos h3'));
+        t('the [PHOTO_…] markers are gone from Client responses, her words stay', !/PHOTO_/.test(await txt('#v2-ci-panel .sec-notes')) && /Hip thrust felt strong/.test(await txt('#v2-ci-panel .sec-notes')), await txt('#v2-ci-panel .sec-notes'));
+        await click('#v2-ci-panel [data-ph-mode="last"]'); await idle(150);
+        t('vs last: week 5 next to week 6, same pose, with weights', (await count('#v2-ci-panel .v2-ph-cmp img')) === 2 && /Week 5[\s\S]*Week 6/.test(await txt('#v2-ci-panel .v2-ph-cmp')) && /62\.8 kg/.test(await txt('#v2-ci-panel .v2-ph-cmp')), await txt('#v2-ci-panel .v2-ph-cmp'));
+        t('…a pose with no photo on either side is disabled (back)', await ev(`document.querySelector('#v2-ci-panel [data-ph-pose="back"]').disabled`));
+        await click('#v2-ci-panel [data-ph-mode="start"]'); await idle(150);
+        t('vs start: the intake baseline (64.2 kg) against this week', /Start[\s\S]*64\.2 kg/.test(await txt('#v2-ci-panel .v2-ph-cmp')) && (await count('#v2-ci-panel .v2-ph-cmp img')) === 2, await txt('#v2-ci-panel .v2-ph-cmp'));
+        await shot('checkin_review_photos_compare');
+        await click('#v2-ci-panel .v2-ph-cmp [data-ph-i="1"]'); await idle(150);
+        await shot('checkin_review_photo_fullscreen');
+        t('tapping a photo opens it full screen', await ev(`!document.getElementById('v2-ph-lb').hidden && /Week 6/.test(document.querySelector('#v2-ph-lb figcaption').textContent)`));
+        await key('ArrowLeft'); await idle(100);
+        t('arrow keys flip between the photos', /Start/.test(await txt('#v2-ph-lb figcaption')), await txt('#v2-ph-lb figcaption'));
+        await key('Escape'); await idle(200);
+        t('Escape closes the photo, not the review', (await ev(`document.getElementById('v2-ph-lb').hidden`)) && (await visible('#v2-ci-panel')));
+        await click('#v2-ci-panel [data-ph-mode="now"]'); await idle(150);
+        t('back to this check-in', (await count('#v2-ci-panel .sec-photos .v2-ph-grid img')) === 2);
+        t('one photosGet per client while the links are fresh', await ev(`__ui.calls.filter(function (c) { return c.type === 'photosGet' && (c.client === 'priya_n' || c.storageKey === 'priya_n'); }).length`) <= 2, await ev(`__ui.calls.filter(function (c) { return c.type === 'photosGet'; }).length`));
         await typeInto('#cc-ci-note', 'harness note'); await idle(100);
         t('typing a note keeps a local draft (sessionStorage), no server write', await ev(`Object.keys(sessionStorage).some(function (k) { return k.indexOf('v2ci_draft_priya_n|') === 0; })`));
         await shot('checkin_review_reply');

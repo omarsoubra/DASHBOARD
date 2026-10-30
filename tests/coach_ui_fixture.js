@@ -92,7 +92,7 @@ function build(now = Date.now()) {
   dailyWeights('priya_n', 13, 0, 63.4, -0.05); meals('priya_n', [0, 1, 2, 3, 4], 2);
   lift('priya_n', dAgo(5, 8), 'Hip Thrust', 100, 8); lift('priya_n', dAgo(3, 8), 'Romanian Deadlift', 70, 8);
   lift('priya_n', hAgo(3), 'Hip Thrust', 105, 8); lift('priya_n', hAgo(3), 'Bulgarian Split Squat', 22, 10, { prescribedExerciseName: 'Walking Lunge' });
-  checkin('priya_n', dAgo(8, 9), 5, 63.1); checkin('priya_n', dAgo(1, 9), 6, 62.8, { notes: 'Hip thrust felt strong, a bit hungry at night.' });
+  checkin('priya_n', dAgo(8, 9), 5, 63.1); checkin('priya_n', dAgo(1, 9), 6, 62.8, { notes: 'Hip thrust felt strong, a bit hungry at night. [PHOTO_FRONT:wk6] [PHOTO_SIDE:wk6]' });
   // tomasz: reviewed check-in 2 d ago, reply drafted but not sent
   dailyWeights('tomasz_b', 12, 0, 70.2, 0.06); meals('tomasz_b', [0, 1, 2, 3, 4]); lift('tomasz_b', dAgo(1, 8), 'Deadlift', 140, 5);
   checkin('tomasz_b', dAgo(2, 9), 3, 70.9, { notes: 'Appetite is hard.' });
@@ -228,6 +228,7 @@ function build(now = Date.now()) {
   Object.keys(D).forEach((k) => { weightLogs[k] = D[k].weightHistory.map((w) => ({ timestamp: w.ts, weightKg: w.kg, notes: null })); });
   const photos = { priya_n: [
     { url: '/__fixture/photo.svg?v=front-base', urlKind: 'signed', view: 'front', week: null, ts: dAgo(40), source: 'intake', intakeId: '00000000-0000-4000-8000-0000000000bb', label: 'Baseline', baselineWeight: 64.2 },
+    { url: '/__fixture/photo.svg?v=front-w5', urlKind: 'signed', view: 'front', week: 5, ts: dAgo(8), source: 'checkin', intakeId: null, label: 'Week 5', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=front-w6', urlKind: 'signed', view: 'front', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=side-w6', urlKind: 'signed', view: 'side', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
   ] };
