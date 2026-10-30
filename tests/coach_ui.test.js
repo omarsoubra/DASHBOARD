@@ -748,6 +748,7 @@ const knownBug = (name, holds, detail) => {
         let k = await rowKeys();
         t('New: Priya + Isla', k.includes('priya_n') && k.includes('isla_b'), k);
         t('Priya row: "Reply ready" chip', /Reply ready/.test(await txt('#v2-ci-rows .v2-ci-row[data-key="priya_n"]')));
+        t('Isla row says B2 · wk 1 (renewed)', /B2 · wk 1/.test(await txt('#v2-ci-rows .v2-ci-row[data-key="isla_b"]')), await txt('#v2-ci-rows .v2-ci-row[data-key="isla_b"]'));
         t('Isla row: sleep / stress flags', /sleep low/.test(await txt('#v2-ci-rows .v2-ci-row[data-key="isla_b"]')) && /stress high/.test(await txt('#v2-ci-rows .v2-ci-row[data-key="isla_b"]')));
         await click('#v2-ci-tabs [data-tab="overdue"]'); await idle(150);
         t('Overdue: Leila', /Leila Haddad/.test(await txt('#v2-ci-rows')), await txt('#v2-ci-rows'));
@@ -809,6 +810,17 @@ const knownBug = (name, holds, detail) => {
         await go('#/check-ins/isla_b/' + encodeURIComponent(FX.ciTs.isla), 500);
         t('autopilot assessment + outcome + next action sections', /Autopilot assessment/.test(await txt('#v2-ci-panel')) && (await exists('#v2-ci-panel #cc-ci-outcome')) && (await exists('#v2-ci-panel #cc-ci-next-action')));
         t('client responses shown', /Exams/.test(await txt('#v2-ci-panel')));
+        // Renewed client (Omar 2026-10-30): Block 2 week 1, the check-in before it is the end of Block 1.
+        t('header: Block 2 · week 1', /Block 2 · week 1/.test(await txt('#v2-ci-panel .v2-ci-head-meta')), await txt('#v2-ci-panel .v2-ci-head-meta'));
+        t('"New block" note in What changed', /New block\.[\s\S]*First check-in of Block 2[\s\S]*end of Block 1/.test(await txt('#v2-ci-panel .sec-changed')), await txt('#v2-ci-panel .sec-changed'));
+        t('comparison column is the end of Block 1, not "previous week"', /END OF BLOCK 1 · WK 12/.test(await txt('#v2-ci-panel .cc-ci-cols')) && !/PREVIOUS WEEK/.test(await txt('#v2-ci-panel .cc-ci-cols')), await txt('#v2-ci-panel .cc-ci-cols'));
+        t('programme line says Block 2 · wk 1/12', /Block 2 · wk 1\/12/.test(await txt('#v2-ci-panel .sec-changed')), await txt('#v2-ci-panel .sec-changed'));
+        await idle(400);
+        t('photos: this check-in is B2 · Week 1, last is B1 wk 12, start becomes "vs day 1"', /B2 · Week 1/.test(await txt('#v2-ci-panel .sec-photos h3')) && /vs last \(B1 wk 12\)/.test(await txt('#v2-ci-panel .sec-photos')) && /vs day 1/.test(await txt('#v2-ci-panel .sec-photos')), await txt('#v2-ci-panel .sec-photos'));
+        await click('#v2-ci-panel [data-ph-mode="last"]'); await idle(150);
+        t('vs last: end of Block 1 next to Block 2 week 1', /B1 · Week 12[\s\S]*B2 · Week 1/.test(await txt('#v2-ci-panel .v2-ph-cmp')), await txt('#v2-ci-panel .v2-ph-cmp'));
+        await click('#v2-ci-panel [data-ph-mode="start"]'); await idle(150);
+        t('vs day 1: the original intake (71.4 kg)', /Day 1[\s\S]*71\.4 kg/.test(await txt('#v2-ci-panel .v2-ph-cmp')), await txt('#v2-ci-panel .v2-ph-cmp'));
         await click('#v2-ci-panel [data-compose]'); await idle(200);
         t('"Message via WhatsApp / SMS…" opens the composer', await ev(`document.getElementById('cd3-compose-overlay').classList.contains('open')`));
         await ev(`_cd3CloseCompose(); 1`);
