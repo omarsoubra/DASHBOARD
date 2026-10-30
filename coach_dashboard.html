@@ -699,6 +699,7 @@
   .cc-ci-delta.worse  { color: var(--cc-red); }
   .cc-ci-delta.flat   { color: var(--cc-muted); }
   .cc-ci-flags { margin-bottom: 0.8rem; }
+  .cc-ci-block { margin-bottom: 0.8rem; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--cc-border, #2a2d35); font-size: 0.85rem; }
   .cc-ci-flags .flag { display: inline-block; margin-right: 6px; margin-bottom: 4px; }
   .cc-ci-notes {
     background: var(--cc-surface2);
@@ -2319,6 +2320,7 @@ body.v2-ci-open { overflow: hidden; }
 #v2-ci-panel .cc-ci-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin-top: 10px; background: none; border: 0; padding: 0; }
 #v2-ci-panel .cc-ci-context .item { font-size: 13px; color: var(--v2-ink); min-width: 0; }
 #v2-ci-panel .cc-ci-context .lbl { font-size: 11px; color: var(--v2-muted); font-weight: 500; text-transform: none; letter-spacing: 0; margin-bottom: 2px; }
+#v2-ci-panel .cc-ci-block { margin: 0 0 10px; padding: 9px 12px; border: 0; border-radius: 10px; background: var(--v2-accent-soft, #eef2ff); color: var(--v2-ink); font-size: 13px; line-height: 1.45; }
 #v2-ci-panel .cc-ci-flags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 4px; }
 #v2-ci-panel .cc-ci-flags .flag, #v2-ci-panel .flag { background: var(--v2-red-soft); color: #b5332c; border: 0; border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 500; }
 #v2-ci-panel .na { color: var(--v2-muted); }
@@ -7953,6 +7955,28 @@ function _checkInsForClient(sum) {
   return arr.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 }
 
+// ── Blocks (Omar 2026-10-30) ──
+// A renewal keeps the client and moves startDate to the new block's day 1, so
+// every check-in before it belongs to an earlier block. Block number: the
+// roster's blockNumber, else "Block N" in the programme name, else 2 once a
+// check-in predates the start (renewed) and 1 otherwise.
+function ciBlockInfo(c, sum) {
+  const s = c && c.startDate ? new Date(String(c.startDate).slice(0, 10) + 'T00:00:00').getTime() : NaN;
+  const startMs = isNaN(s) ? null : s;
+  const list = _checkInsForClient(sum);
+  const renewed = startMs != null && list.some(x => new Date(x.timestamp).getTime() < startMs);
+  const named = parseInt(c && c.blockNumber, 10) || +((String((c && c.programType) || '').match(/block\s*(\d+)/i) || [])[1] || 0);
+  const n = named >= 1 ? named : (renewed ? 2 : 1);
+  const inBlock = ts => startMs == null || new Date(ts).getTime() >= startMs;
+  return { startMs, renewed, n, inBlock, blockOf: ts => (inBlock(ts) ? n : Math.max(1, n - 1)) };
+}
+// "wk 3", or "B2 · wk 3" / "B1 · wk 12" once the client has renewed.
+function ciWeekLabel(c, sum, ci) {
+  if (!ci || !ci.week) return '';
+  const b = ciBlockInfo(c, sum);
+  return (b.renewed ? 'B' + b.blockOf(ci.timestamp) + ' · ' : '') + 'wk ' + ci.week;
+}
+
 // ── Backend payload-shape guard ──
 // TRUE when the dashboard says the client HAS checked in (latestCheckinTs is
 // present) but did NOT include a recentCheckIns[] array (missing / non-array /
@@ -8221,7 +8245,7 @@ function _renderQueueRow(r) {
 
   return `
     <div class="cc-queue-row state-${state}">
-      <div class="qrow-name">${esc(c.displayName)}${reviewedBadge}<span class="qrow-when">${esc(_fmtWhen(ci.timestamp))}${ci.week ? ' · wk ' + ci.week : ''}</span></div>
+      <div class="qrow-name">${esc(c.displayName)}${reviewedBadge}<span class="qrow-when">${esc(_fmtWhen(ci.timestamp))}${ci.week ? ' · ' + esc(ciWeekLabel(c, _dashboardData[c.storageKey], ci)) : ''}</span></div>
       <div class="qrow-metrics">
         ${apBadgesHtml}
         ${weightBlockHtml}
@@ -8279,7 +8303,7 @@ function _renderQueueRowGap(r) {
   const key = esc(c.storageKey);
   return `
     <div class="cc-queue-row state-new">
-      <div class="qrow-name">${esc(c.displayName)}<span class="qrow-when">${ci && ci.week ? 'wk ' + esc(ci.week) : ''}</span></div>
+      <div class="qrow-name">${esc(c.displayName)}<span class="qrow-when">${ci && ci.week ? esc(ciWeekLabel(c, _dashboardData[c.storageKey], ci)) : ''}</span></div>
       <div class="qrow-metrics">
         <div class="ap-badges">
           <span class="ap-badge ap-pri-review">REVIEW</span>
@@ -8344,7 +8368,14 @@ function openCheckInReview(storageKey, iso) {
   ];
   const currCol = rows.map(r => r.curr).join('');
   const prevCol = rows.map(r => r.prev).join('');
-  const weekStr = curr.week ? ' · wk ' + curr.week : '';
+  const blk = ciBlockInfo(c, sum);
+  const weekStr = curr.week ? ' · ' + (blk.renewed ? 'Block ' + blk.blockOf(curr.timestamp) + ' · ' : '') + 'wk ' + curr.week : '';
+  // First check-in of a new block: the comparison column is the end of the last block, not "last week".
+  const crossesBlock = !!prev && blk.inBlock(curr.timestamp) && !blk.inBlock(prev.timestamp);
+  const prevTitle = crossesBlock ? 'END OF BLOCK ' + blk.blockOf(prev.timestamp) + (prev.week ? ' · WK ' + prev.week : '') : 'PREVIOUS WEEK';
+  const blockNote = crossesBlock
+    ? '<div class="cc-ci-block"><b>New block.</b> First check-in of Block ' + blk.n + ' (started ' + esc(new Date(blk.startMs).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) + '). Compared with the end of Block ' + blk.blockOf(prev.timestamp) + '.</div>'
+    : '';
   const flags = [];
   if (curr.sleepHours != null && curr.sleepHours < 6) flags.push('Sleep low');
   if (curr.stress1to10 != null && curr.stress1to10 >= 8) flags.push('Stress high');
@@ -8381,6 +8412,7 @@ function openCheckInReview(storageKey, iso) {
     <h3>${esc(c.displayName)} — check-in ${esc(_fmtWhen(iso))}${esc(weekStr)}</h3>
     <div class="cc-ci-sub">${meta ? 'Already reviewed — read-only unless you resubmit.' : 'Awaiting your review.'}</div>
     ${alreadyReviewedBadge}
+    ${blockNote}
     <div class="cc-ci-flags">${flagsHtml}</div>
     <div class="cc-ci-cols">
       <div class="cc-ci-col">
@@ -8388,13 +8420,13 @@ function openCheckInReview(storageKey, iso) {
         ${currCol}
       </div>
       <div class="cc-ci-col">
-        <div class="col-title">PREVIOUS WEEK</div>
+        <div class="col-title">${prevTitle}</div>
         ${prev ? prevCol : '<div class="na">No prior check-in on file</div>'}
       </div>
     </div>
     <div class="cc-ci-context">
       <div class="item"><div class="lbl">14-day weight trend</div>${trend14 === null ? '<span class="na">unavailable</span>' : trend14.toFixed(2) + 'kg'}</div>
-      <div class="item"><div class="lbl">Current phase / program</div>${esc(phase)}</div>
+      <div class="item"><div class="lbl">Current phase / program</div>${esc(phase)}${blk.renewed ? ' <span class="cc-ci-delta flat">(Block ' + blk.n + ' · wk ' + (programWeek(c.startDate, blockWeeks(c)) || '?') + '/' + blockWeeks(c) + ')</span>' : ''}</div>
       <div class="item"><div class="lbl">Current next action</div>${nextAct}</div>
       ${macrosHtml}
     </div>
@@ -9707,13 +9739,13 @@ function _cd3AccessWarn(c) {
 }
 
 // ── Check-in comparison table ─────────────────────────────────────────────
-function _cd3CheckInTable(sum) {
+function _cd3CheckInTable(sum, c) {
   const raw = (sum && Array.isArray(sum.recentCheckIns)) ? sum.recentCheckIns : [];
   const list = raw.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   if (!list.length) return _cd3Empty('No check-ins yet.');
   const cols = [
     { label: 'Date',    get: ci => String(ci.timestamp || '').slice(0,10) },
-    { label: 'Wk',     get: ci => ci.week || '—' },
+    { label: 'Wk',     get: ci => (c ? ciWeekLabel(c, sum, ci).replace(/wk /, '') : ci.week) || '—' },
     { label: 'Weight', get: ci => ci.weightKg != null ? ci.weightKg + ' kg' : '—' },
     { label: 'Diet',   get: ci => (ci.dietAdherence1to10 || '—') + '/10' },
     { label: 'Train',  get: ci => (ci.trainingAdherence1to10 || '—') + '/10' },
@@ -9852,7 +9884,7 @@ function _cd3PanelProgress(c, sum, metrics30) {
 
       <div class="cd3-card">
         <div class="cd3-card-h">Check-in comparison</div>
-        ${_cd3CheckInTable(sum)}
+        ${_cd3CheckInTable(sum, c)}
       </div>
 
       <div class="cd3-card">
@@ -13793,7 +13825,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
             (workouts.length ? renderWorkoutLogTable(workouts) : _cd3Empty('No workouts logged yet.')) + '</div></details></div>';
       case 'checkins': {
         var latest = _lastCheckInIso(sum);
-        return '<div class="cd3-panel-body">' + card('Check-in comparison', _cd3CheckInTable(sum)) +
+        return '<div class="cd3-panel-body">' + card('Check-in comparison', _cd3CheckInTable(sum, c)) +
           (latest && Array.isArray(sum.recentCheckIns) && sum.recentCheckIns.length
             ? '<div><button class="cd3-btn" type="button" onclick="openCheckInReview(\'' + esc(key) + '\',\'' + esc(sum.recentCheckIns[0].timestamp) + '\')">Open latest check-in</button></div>' : '') +
           '</div>';
@@ -14099,7 +14131,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     if (r.gap) {
       return '<div class="v2-ci-row">' +
-        '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + (ci.week ? 'wk ' + esc(ci.week) : '') + '</span></div>' +
+        '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + (ci.week ? esc(ciWeekLabel(c, _dashboardData[c.storageKey], ci)) : '') + '</span></div>' +
         '<div class="ci-status"><span class="v2-chip amber">REVIEW</span></div>' +
         '<div class="ci-metrics">' + mute('Data unavailable — decision pending') + '</div>' +
         '<div class="ci-summary">A check-in is on file, but its summary data isn\'t loaded right now.</div>' +
@@ -14130,7 +14162,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var flagsHtml = fl.length ? fl.slice(0, 2).map(function (f) { return '<span class="v2-flag ' + f[0] + '">' + esc(f[1]) + '</span>'; }).join('') +
       (fl.length > 2 ? '<span class="v2-flag more">+' + (fl.length - 2) + '</span>' : '') : '';
     return '<div class="v2-ci-row" data-key="' + k + '" data-iso="' + esc(ci.timestamp) + '" tabindex="0">' +
-      '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + esc(_fmtWhen(ci.timestamp)) + (ci.week ? ' · wk ' + esc(ci.week) : '') + '</span></div>' +
+      '<div class="ci-who">' + clientLink(c) + '<span class="ci-when">' + esc(_fmtWhen(ci.timestamp)) + (ci.week ? ' · ' + esc(ciWeekLabel(c, _dashboardData[c.storageKey], ci)) : '') + '</span></div>' +
       '<div class="ci-status">' + chips + rdChip(c.storageKey, ci.timestamp) + '</div>' +
       '<div class="ci-metrics"><span class="ci-wt">' + wtLine + '</span>' +
         '<span class="ci-adh">Nutr ' + (ci.dietAdherence1to10 ? esc(ci.dietAdherence1to10) + '/10' : '—') + ' · Train ' + (ci.trainingAdherence1to10 ? esc(ci.trainingAdherence1to10) + '/10' : '—') + '</span></div>' +
@@ -14291,7 +14323,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return p;
   }
   // This check-in's photos: same week, closest upload day (within 3 days); else closest within 2 days.
-  function phPick(groups, week, iso) {
+  // A renewed client (blk) also gets "block": the end of the last block, where this block started from.
+  function phPick(groups, week, iso, blk) {
     var at = dayMs(iso), ci = groups.filter(function (g) { return g.kind === 'checkin'; });
     var near = function (list, maxDays) {
       var best = null, bd = Infinity;
@@ -14303,10 +14336,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var before = cur ? ci.filter(function (g) { return g !== cur && (dayMs(g.ts) || 0) < (dayMs(cur.ts) || 0); }) : [];
     var start = groups.filter(function (g) { return g.kind === 'start'; })[0] || ci.filter(function (g) { return g !== cur; })[0] || null;
     if (start && cur && (dayMs(start.ts) || 0) > (dayMs(cur.ts) || 0)) start = null;
-    return { cur: cur, last: before.length ? before[before.length - 1] : null, start: start };
+    var last = before.length ? before[before.length - 1] : null, block = null;
+    if (cur && blk && blk.renewed && blk.inBlock(cur.ts)) {
+      var prevBlock = before.filter(function (g) { return !blk.inBlock(g.ts); });
+      block = prevBlock.length ? prevBlock[prevBlock.length - 1] : before.filter(function (g) { return blk.inBlock(g.ts); })[0] || null;
+      if (block === last || block === start) block = null;
+    }
+    return { cur: cur, last: last, start: start, block: block };
   }
-  function phLabel(key, g) {
+  function phLabel(key, g, blk) {
     if (!g) return ['', ''];
+    var renewed = !!(blk && blk.renewed);
     var kg = g.weight;
     if (g.kind === 'checkin' && kg == null) {
       var list = (typeof _checkInsForClient === 'function' && _dashboardData && _dashboardData[key]) ? _checkInsForClient(_dashboardData[key]) : [];
@@ -14315,7 +14355,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (best && bd <= 4 * 86400000) kg = best.weightKg;
     }
     var when = g.ts ? new Date(g.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '';
-    return [g.kind === 'start' ? 'Start' : 'Week ' + (g.week == null ? '?' : g.week), [kg != null && kg !== '' ? Number(kg).toFixed(1) + ' kg' : '', when].filter(Boolean).join(' · ')];
+    return [g.kind === 'start' ? (renewed ? 'Day 1' : 'Start') : (renewed ? 'B' + blk.blockOf(g.ts) + ' · ' : '') + 'Week ' + (g.week == null ? '?' : g.week), [kg != null && kg !== '' ? Number(kg).toFixed(1) + ' kg' : '', when].filter(Boolean).join(' · ')];
   }
   var lb = null, lbItems = [], lbAt = 0;
   function lbShow(i) {
@@ -14355,6 +14395,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     sec.innerHTML = '<h3>Photos <span class="v2-ph-sub"></span></h3><div class="v2-ph-body"><div class="v2-ph-grid">' +
       PH_VIEWS.map(function () { return '<div class="v2-ph-tile is-loading" aria-hidden="true"></div>'; }).join('') + '</div></div>';
     var bodyEl = sec.querySelector('.v2-ph-body'), sub = sec.querySelector('.v2-ph-sub');
+    var pc = COACH.clients.find(function (x) { return x.storageKey === key; });
+    var blk = pc ? ciBlockInfo(pc, _dashboardData[key]) : null;
     var st = { mode: 'now', pose: 'front', set: null, items: [] };
     function tile(g, view, tag, cap) {
       if (!g || !g[view]) return '<div class="v2-ph-tile is-empty">' + esc(tag) + ' —</div>';
@@ -14363,16 +14405,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     function render() {
       var s = st.set, cur = s.cur; st.items = [];
-      var curL = phLabel(key, cur);
+      var curL = phLabel(key, cur, blk);
       var n = PH_VIEWS.filter(function (v) { return cur && cur[v]; }).length;
       sub.textContent = cur ? curL[0] + ' · ' + n + ' photo' + (n === 1 ? '' : 's') : '';
       if (!cur) {
         bodyEl.innerHTML = '<p class="v2-ph-note">No photos with this check-in.' + (s.last || s.start ? ' <button type="button" class="v2-link" data-ph-all="1">Open their photo history</button>' : '') + '</p>';
         return;
       }
-      var other = st.mode === 'last' ? s.last : st.mode === 'start' ? s.start : null;
+      var other = st.mode === 'now' ? null : s[st.mode];
       var seg = '<div class="v2-ph-seg" role="group" aria-label="Photo view">' +
-        [['now', 'This check-in', true], ['last', 'vs last' + (s.last ? ' (wk ' + (s.last.week == null ? '?' : s.last.week) + ')' : ''), !!s.last], ['start', 'vs start', !!s.start]].map(function (b) {
+        [['now', 'This check-in', true], ['last', 'vs last' + (s.last ? ' (' + phLabel(key, s.last, blk)[0].replace('Week ', 'wk ').replace(' · ', ' ') + ')' : ''), !!s.last]]
+          .concat(s.block ? [['block', 'vs block start', true]] : [], [['start', blk && blk.renewed ? 'vs day 1' : 'vs start', !!s.start]]).map(function (b) {
           return '<button type="button" data-ph-mode="' + b[0] + '" aria-pressed="' + (st.mode === b[0]) + '"' + (b[2] ? '' : ' disabled') + '>' + esc(b[1]) + '</button>';
         }).join('') + '</div>';
       var html = '<div class="v2-ph-bar">' + seg;
@@ -14383,7 +14426,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (!other) {
         html += '<div class="v2-ph-grid">' + PH_VIEWS.map(function (v) { return tile(cur, v, v, curL[0] + ' · ' + v); }).join('') + '</div>';
       } else {
-        var oL = phLabel(key, other), v = st.pose;
+        var oL = phLabel(key, other, blk), v = st.pose;
         html += '<div class="v2-ph-cmp">' +
           '<div>' + tile(other, v, oL[0], oL[0] + ' · ' + v) + '<div class="v2-ph-cap"><span>' + esc(oL[0]) + '</span><span>' + esc(oL[1]) + '</span></div></div>' +
           '<div>' + tile(cur, v, curL[0], curL[0] + ' · ' + v) + '<div class="v2-ph-cap"><span>' + esc(curL[0]) + '</span><span>' + esc(curL[1]) + '</span></div></div></div>';
@@ -14397,14 +14440,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (b.dataset.phMode) st.mode = b.dataset.phMode;
       if (b.dataset.phPose) st.pose = b.dataset.phPose;
       if (st.mode !== 'now') {
-        var o = st.mode === 'last' ? st.set.last : st.set.start, cur = st.set.cur;
+        var o = st.set[st.mode], cur = st.set.cur;
         if (!(cur[st.pose] || (o && o[st.pose]))) st.pose = PH_VIEWS.filter(function (v) { return cur[v] || (o && o[v]); })[0] || 'front';
       }
       render();
     });
     phLoad(key).then(function (groups) {
       if (!sec.isConnected) return;
-      st.set = phPick(groups, week, iso); render();
+      st.set = phPick(groups, week, iso, blk); render();
     }, function (err) {
       if (!sec.isConnected) return;
       bodyEl.innerHTML = '<p class="v2-ph-note">Couldn\'t load photos (' + esc(String((err && err.message) || err).slice(0, 80)) + '). <button type="button" class="v2-link" data-ph-retry="1">Try again</button></p>';
@@ -14429,7 +14472,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var kids = Array.prototype.slice.call(body.children);
     var pick = function (sel) { var el = body.querySelector(':scope > ' + sel); return el; };
     var title = pick('h3'), sub = pick('.cc-ci-sub');
-    var flags = pick('.cc-ci-flags'), cols = pick('.cc-ci-cols'), notes = pick('.cc-ci-notes'), brief = pick('.ap-brief'), health = pick('.cc-ci-health');
+    var blockNote = pick('.cc-ci-block'), flags = pick('.cc-ci-flags'), cols = pick('.cc-ci-cols'), notes = pick('.cc-ci-notes'), brief = pick('.ap-brief'), health = pick('.cc-ci-health');
     var contexts = kids.filter(function (el) { return el.classList.contains('cc-ci-context'); });
     var reviewed = contexts.length > 1 ? contexts[0] : (contexts[0] && /Reviewed/.test(contexts[0].textContent) && !/14-day weight trend/.test(contexts[0].textContent) ? contexts[0] : null);
     var context = contexts.filter(function (el) { return el !== reviewed; })[0] || null;
@@ -14452,11 +14495,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
       '<div class="v2-ci-grid"><div class="v2-ci-main"></div><div class="v2-ci-side"></div></div>';
     var main = shell.querySelector('.v2-ci-main'), side = shell.querySelector('.v2-ci-side');
     if (sub) shell.querySelector('.v2-ci-head-sub').textContent = sub.textContent;
-    var weekMatch = title && title.textContent.match(/wk\s*(\d+)/);
-    if (weekMatch) shell.querySelector('.v2-ci-head-meta').textContent += ' · week ' + weekMatch[1];
+    var weekMatch = title && title.textContent.match(/wk\s*(\d+)/), blockMatch = title && title.textContent.match(/Block (\d+) · wk/);
+    if (weekMatch) shell.querySelector('.v2-ci-head-meta').textContent += (blockMatch ? ' · Block ' + blockMatch[1] : '') + ' · week ' + weekMatch[1];
 
     // A. What changed
     var a = document.createElement('div');
+    if (blockNote) a.appendChild(blockNote);
     if (reviewed) a.appendChild(reviewed);
     if (flags) a.appendChild(flags);
     if (cols) a.appendChild(cols);
