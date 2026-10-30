@@ -2271,6 +2271,36 @@ body.v2-ci-open { overflow: hidden; }
 #v2-ci-panel .v2-ci-actions .cc-btn { height: 38px; padding: 0 16px; border-radius: 8px; font: 600 13px 'Inter', system-ui, sans-serif; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink); cursor: pointer; }
 #v2-ci-panel .v2-ci-actions .cc-btn.primary { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; flex: 1; }
 
+/* check-in photos inside the review (Omar 2026-10-30) */
+.v2-ci-sec.sec-photos > h3 { display: flex; align-items: baseline; gap: 8px; }
+.v2-ph-sub { font: 500 12px 'Inter', system-ui, sans-serif; color: var(--v2-muted); }
+.v2-ph-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+.v2-ph-seg { display: inline-flex; background: var(--v2-ws); border-radius: 9px; padding: 3px; gap: 2px; }
+.v2-ph-seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 7px; font: 600 12px 'Inter', system-ui, sans-serif; color: var(--v2-ink2); cursor: pointer; white-space: nowrap; }
+.v2-ph-seg button[aria-pressed="true"] { background: var(--v2-card); color: var(--v2-ink); box-shadow: 0 1px 3px rgba(20,22,30,.12); }
+.v2-ph-seg button:disabled { opacity: .4; cursor: default; }
+.v2-ph-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.v2-ph-tile { position: relative; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; background: #101116; border: 0; padding: 0; cursor: zoom-in; display: block; width: 100%; }
+.v2-ph-tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
+.v2-ph-tile:hover img { transform: scale(1.03); }
+.v2-ph-tile .v2-ph-tag { position: absolute; left: 6px; bottom: 6px; background: rgba(12,13,19,.72); color: #fff; font: 600 10.5px 'Inter', system-ui, sans-serif; letter-spacing: .03em; padding: 3px 7px; border-radius: 6px; text-transform: uppercase; }
+.v2-ph-tile.is-empty { cursor: default; background: var(--v2-ws); border: 1px dashed var(--v2-line); display: flex; align-items: center; justify-content: center; color: var(--v2-muted); font: 600 11px 'Inter', system-ui, sans-serif; text-transform: uppercase; }
+.v2-ph-tile.is-loading { cursor: default; background: linear-gradient(90deg, var(--v2-ws) 0%, var(--v2-line2) 50%, var(--v2-ws) 100%); background-size: 200% 100%; animation: v2-ph-shimmer 1.2s linear infinite; }
+@keyframes v2-ph-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.v2-ph-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 560px; }
+.v2-ph-cap { margin-top: 5px; font: 600 11.5px 'Inter', system-ui, sans-serif; color: var(--v2-ink2); display: flex; justify-content: space-between; gap: 6px; }
+.v2-ph-cap span:last-child { color: var(--v2-muted); font-weight: 500; }
+.v2-ph-note { margin: 0; font-size: 13px; color: var(--v2-muted); }
+.v2-ph-lb { position: fixed; inset: 0; z-index: 10050; background: rgba(8,9,13,.92); display: flex; align-items: center; justify-content: center; }
+.v2-ph-lb[hidden] { display: none; }
+.v2-ph-lb figure { margin: 0; max-width: min(92vw, 900px); max-height: 90vh; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.v2-ph-lb img { max-width: 100%; max-height: calc(90vh - 40px); object-fit: contain; border-radius: 10px; }
+.v2-ph-lb figcaption { color: #e6e7ee; font: 600 13px 'Inter', system-ui, sans-serif; }
+.v2-ph-lb button { position: absolute; border: 0; background: rgba(255,255,255,.1); color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+.v2-ph-lb button:hover { background: rgba(255,255,255,.2); }
+.v2-ph-lb .lb-x { top: 18px; right: 18px; } .v2-ph-lb .lb-prev { left: 18px; } .v2-ph-lb .lb-next { right: 18px; }
+@media (max-width: 720px) { .v2-ph-grid { gap: 5px; } .v2-ph-seg button { padding: 6px 9px; } }
+
 /* light theme for the engine's review content */
 #v2-ci-panel {
   --cc-green: #2f7d57; --cc-amber: #9a6408; --cc-red: #c43c3c; --cc-blue: #2f63d1; --cc-muted: #6b7080; --cc-text: #15161c;
@@ -14230,6 +14260,167 @@ window.addEventListener('beforeinstallprompt', (e) => {
       else { ta.select(); document.execCommand('copy'); done(); }
     });
   }
+  // ── check-in photos inside the review (Omar 2026-10-30) ──
+  // This check-in's front / side / back, one tap to compare with the previous
+  // check-in or the start, tap a photo for full screen. Same photosGet the
+  // client page uses (coach read, signed URLs live 15 min → refetch after 10).
+  var PH_TTL = 10 * 60 * 1000, PH_VIEWS = ['front', 'side', 'back'];
+  var phCache = {};
+  var dayMs = function (ts) { var t = Date.parse(ts || ''); return isNaN(t) ? null : t; };
+  function phGroups(photos) {
+    var by = {};
+    photos.forEach(function (p) {
+      if (!p || !p.url || PH_VIEWS.indexOf(p.view) < 0) return;
+      var intake = p.source === 'intake';
+      var k = intake ? 'intake_' + (p.intakeId || String(p.ts || '').slice(0, 10)) : 'wk' + (p.week == null ? '?' : p.week) + '_' + String(p.ts || '').slice(0, 10);
+      var g = by[k] || (by[k] = { kind: intake ? 'start' : 'checkin', week: intake ? null : p.week, ts: p.ts, weight: intake ? p.baselineWeight : null });
+      g[p.view] = p.url;
+      if (p.ts && (!g.ts || p.ts < g.ts)) g.ts = p.ts;
+    });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return (dayMs(a.ts) || 0) - (dayMs(b.ts) || 0); });
+  }
+  function phLoad(key) {
+    var c = phCache[key];
+    if (c && c.groups && Date.now() - c.at < PH_TTL) return Promise.resolve(c.groups);
+    if (c && c.p) return c.p;
+    var p = coachFetch('photosGet', { client: key, storageKey: key }).then(function (j) {
+      if (!j || j.ok === false) throw new Error((j && j.error) || 'no response');
+      var g = phGroups(j.photos || []); phCache[key] = { at: Date.now(), groups: g }; return g;
+    }, function (e) { delete phCache[key]; throw e; });
+    phCache[key] = { p: p };
+    return p;
+  }
+  // This check-in's photos: same week, closest upload day (within 3 days); else closest within 2 days.
+  function phPick(groups, week, iso) {
+    var at = dayMs(iso), ci = groups.filter(function (g) { return g.kind === 'checkin'; });
+    var near = function (list, maxDays) {
+      var best = null, bd = Infinity;
+      list.forEach(function (g) { var d = at == null ? 0 : Math.abs((dayMs(g.ts) || 0) - at); if (d < bd) { bd = d; best = g; } });
+      return best && bd <= maxDays * 86400000 ? best : null;
+    };
+    var cur = week != null ? near(ci.filter(function (g) { return String(g.week) === String(week); }), 3) : null;
+    if (!cur) cur = near(ci, 2);
+    var before = cur ? ci.filter(function (g) { return g !== cur && (dayMs(g.ts) || 0) < (dayMs(cur.ts) || 0); }) : [];
+    var start = groups.filter(function (g) { return g.kind === 'start'; })[0] || ci.filter(function (g) { return g !== cur; })[0] || null;
+    if (start && cur && (dayMs(start.ts) || 0) > (dayMs(cur.ts) || 0)) start = null;
+    return { cur: cur, last: before.length ? before[before.length - 1] : null, start: start };
+  }
+  function phLabel(key, g) {
+    if (!g) return ['', ''];
+    var kg = g.weight;
+    if (g.kind === 'checkin' && kg == null) {
+      var list = (typeof _checkInsForClient === 'function' && _dashboardData && _dashboardData[key]) ? _checkInsForClient(_dashboardData[key]) : [];
+      var best = null, bd = Infinity;
+      list.forEach(function (ci) { if (String(ci.week) !== String(g.week)) return; var d = Math.abs((dayMs(ci.timestamp) || 0) - (dayMs(g.ts) || 0)); if (d < bd) { bd = d; best = ci; } });
+      if (best && bd <= 4 * 86400000) kg = best.weightKg;
+    }
+    var when = g.ts ? new Date(g.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '';
+    return [g.kind === 'start' ? 'Start' : 'Week ' + (g.week == null ? '?' : g.week), [kg != null && kg !== '' ? Number(kg).toFixed(1) + ' kg' : '', when].filter(Boolean).join(' · ')];
+  }
+  var lb = null, lbItems = [], lbAt = 0;
+  function lbShow(i) {
+    lbAt = (i + lbItems.length) % lbItems.length;
+    var it = lbItems[lbAt];
+    lb.querySelector('img').src = it.url; lb.querySelector('img').alt = it.cap;
+    lb.querySelector('figcaption').textContent = it.cap + (lbItems.length > 1 ? '  ·  ' + (lbAt + 1) + ' / ' + lbItems.length : '');
+    lb.querySelector('.lb-prev').hidden = lb.querySelector('.lb-next').hidden = lbItems.length < 2;
+  }
+  function lbOpen(items, i) {
+    if (!lb) {
+      lb = document.createElement('div'); lb.className = 'v2-ph-lb'; lb.id = 'v2-ph-lb'; lb.hidden = true;
+      lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-modal', 'true'); lb.setAttribute('aria-label', 'Check-in photo');
+      lb.innerHTML = '<figure><img alt=""><figcaption></figcaption></figure>' +
+        '<button type="button" class="lb-prev" aria-label="Previous photo">‹</button><button type="button" class="lb-next" aria-label="Next photo">›</button><button type="button" class="lb-x" aria-label="Close photo">✕</button>';
+      lb.addEventListener('click', function (e) {
+        if (e.target.closest('.lb-prev')) return lbShow(lbAt - 1);
+        if (e.target.closest('.lb-next')) return lbShow(lbAt + 1);
+        if (e.target.closest('.lb-x') || e.target === lb) lb.hidden = true;
+      });
+      // Capture phase: Escape / arrows belong to the photo while it is open, never to the review behind it.
+      window.addEventListener('keydown', function (e) {
+        if (!lb || lb.hidden) return;
+        if (e.key === 'Escape') lb.hidden = true;
+        else if (e.key === 'ArrowLeft') lbShow(lbAt - 1);
+        else if (e.key === 'ArrowRight') lbShow(lbAt + 1);
+        else return;
+        e.preventDefault(); e.stopImmediatePropagation();
+      }, true);
+      document.body.appendChild(lb);
+    }
+    lbItems = items; lbShow(i); lb.hidden = false;
+    lb.querySelector('.lb-x').focus();
+  }
+  function phSection(key, iso, week) {
+    var sec = document.createElement('section'); sec.className = 'v2-ci-sec sec-photos';
+    sec.innerHTML = '<h3>Photos <span class="v2-ph-sub"></span></h3><div class="v2-ph-body"><div class="v2-ph-grid">' +
+      PH_VIEWS.map(function () { return '<div class="v2-ph-tile is-loading" aria-hidden="true"></div>'; }).join('') + '</div></div>';
+    var bodyEl = sec.querySelector('.v2-ph-body'), sub = sec.querySelector('.v2-ph-sub');
+    var st = { mode: 'now', pose: 'front', set: null, items: [] };
+    function tile(g, view, tag, cap) {
+      if (!g || !g[view]) return '<div class="v2-ph-tile is-empty">' + esc(tag) + ' —</div>';
+      st.items.push({ url: g[view], cap: cap });
+      return '<button type="button" class="v2-ph-tile" data-ph-i="' + (st.items.length - 1) + '" aria-label="Open ' + esc(cap) + '"><img src="' + esc(g[view]) + '" alt="' + esc(cap) + '" loading="lazy"><span class="v2-ph-tag">' + esc(tag) + '</span></button>';
+    }
+    function render() {
+      var s = st.set, cur = s.cur; st.items = [];
+      var curL = phLabel(key, cur);
+      var n = PH_VIEWS.filter(function (v) { return cur && cur[v]; }).length;
+      sub.textContent = cur ? curL[0] + ' · ' + n + ' photo' + (n === 1 ? '' : 's') : '';
+      if (!cur) {
+        bodyEl.innerHTML = '<p class="v2-ph-note">No photos with this check-in.' + (s.last || s.start ? ' <button type="button" class="v2-link" data-ph-all="1">Open their photo history</button>' : '') + '</p>';
+        return;
+      }
+      var other = st.mode === 'last' ? s.last : st.mode === 'start' ? s.start : null;
+      var seg = '<div class="v2-ph-seg" role="group" aria-label="Photo view">' +
+        [['now', 'This check-in', true], ['last', 'vs last' + (s.last ? ' (wk ' + (s.last.week == null ? '?' : s.last.week) + ')' : ''), !!s.last], ['start', 'vs start', !!s.start]].map(function (b) {
+          return '<button type="button" data-ph-mode="' + b[0] + '" aria-pressed="' + (st.mode === b[0]) + '"' + (b[2] ? '' : ' disabled') + '>' + esc(b[1]) + '</button>';
+        }).join('') + '</div>';
+      var html = '<div class="v2-ph-bar">' + seg;
+      if (other) html += '<div class="v2-ph-seg" role="group" aria-label="Pose">' + PH_VIEWS.map(function (v) {
+        return '<button type="button" data-ph-pose="' + v + '" aria-pressed="' + (st.pose === v) + '"' + (cur[v] || other[v] ? '' : ' disabled') + '>' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>';
+      }).join('') + '</div>';
+      html += '</div>';
+      if (!other) {
+        html += '<div class="v2-ph-grid">' + PH_VIEWS.map(function (v) { return tile(cur, v, v, curL[0] + ' · ' + v); }).join('') + '</div>';
+      } else {
+        var oL = phLabel(key, other), v = st.pose;
+        html += '<div class="v2-ph-cmp">' +
+          '<div>' + tile(other, v, oL[0], oL[0] + ' · ' + v) + '<div class="v2-ph-cap"><span>' + esc(oL[0]) + '</span><span>' + esc(oL[1]) + '</span></div></div>' +
+          '<div>' + tile(cur, v, curL[0], curL[0] + ' · ' + v) + '<div class="v2-ph-cap"><span>' + esc(curL[0]) + '</span><span>' + esc(curL[1]) + '</span></div></div></div>';
+      }
+      bodyEl.innerHTML = html;
+    }
+    sec.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-ph-mode],[data-ph-pose],[data-ph-i],[data-ph-all]'); if (!b || b.disabled) return;
+      if (b.dataset.phAll) { location.hash = '#/clients/' + enc(key); return; }
+      if (b.dataset.phI != null) return lbOpen(st.items, +b.dataset.phI);
+      if (b.dataset.phMode) st.mode = b.dataset.phMode;
+      if (b.dataset.phPose) st.pose = b.dataset.phPose;
+      if (st.mode !== 'now') {
+        var o = st.mode === 'last' ? st.set.last : st.set.start, cur = st.set.cur;
+        if (!(cur[st.pose] || (o && o[st.pose]))) st.pose = PH_VIEWS.filter(function (v) { return cur[v] || (o && o[v]); })[0] || 'front';
+      }
+      render();
+    });
+    phLoad(key).then(function (groups) {
+      if (!sec.isConnected) return;
+      st.set = phPick(groups, week, iso); render();
+    }, function (err) {
+      if (!sec.isConnected) return;
+      bodyEl.innerHTML = '<p class="v2-ph-note">Couldn\'t load photos (' + esc(String((err && err.message) || err).slice(0, 80)) + '). <button type="button" class="v2-link" data-ph-retry="1">Try again</button></p>';
+      var r = bodyEl.querySelector('[data-ph-retry]');
+      if (r) r.addEventListener('click', function () { var fresh = phSection(key, iso, week); sec.replaceWith(fresh); });
+    });
+    return sec;
+  }
+  // The client's own answers carry "[PHOTO_FRONT:wk10]" markers for the uploads; the photos are shown above.
+  function stripPhotoTokens(el) {
+    if (!el) return;
+    var re = /\[PHOTO_(FRONT|SIDE|BACK)[^\]]*\]\s*/g, walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), tn, found = false;
+    while ((tn = walker.nextNode())) { if (re.test(tn.nodeValue)) { found = true; tn.nodeValue = tn.nodeValue.replace(re, ''); } re.lastIndex = 0; }
+    if (found && !el.textContent.trim()) el.innerHTML = '<p class="v2-muted v2-ci-none">Photos only, shown above.</p>';
+  }
+
   function section(title, inner, cls) { return '<section class="v2-ci-sec' + (cls ? ' ' + cls : '') + '"><h3>' + title + '</h3>' + inner + '</section>'; }
   // Re-arrange the nodes openCheckInReview just built. Nothing is re-created:
   // every control keeps its id, value and inline handler.
@@ -14289,8 +14480,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     // C. Client responses
     main.insertAdjacentHTML('beforeend', section('Client responses', '', 'sec-notes'));
-    if (notes) { var lbl = notes.querySelector('strong'); if (lbl) lbl.remove(); var br = notes.querySelector('br'); if (br) br.remove(); main.lastChild.appendChild(notes); }
+    if (notes) { var lbl = notes.querySelector('strong'); if (lbl) lbl.remove(); var br = notes.querySelector('br'); if (br) br.remove(); stripPhotoTokens(notes); main.lastChild.appendChild(notes); }
     else main.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted v2-ci-none">No written notes in this check-in.</p>');
+
+    // C2. Photos: this check-in's, right where the decision is made (Omar 2026-10-30)
+    var phWeek = weekMatch ? weekMatch[1] : null;
+    if (phWeek == null) { try { var ciRow = _checkInsForClient(_dashboardData[key]).find(function (x) { return x.timestamp === iso; }); if (ciRow) phWeek = ciRow.week; } catch (e) {} }
+    main.insertAdjacentElement('afterbegin', phSection(key, iso, phWeek));
 
     // D. Coach response
     var rd = rdB;
