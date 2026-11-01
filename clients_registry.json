@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-01T04:02:04Z",
+  "generatedAt": "2026-11-01T04:22:49Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 65,
+  "clientCount": 66,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -63,6 +63,10 @@
     {
       "storageKey": "hamzah_dargham",
       "programUrl": "clients/hamzah_dargham/"
+    },
+    {
+      "storageKey": "hassan_abdulkader",
+      "programUrl": "clients/hassan_abdulkader/"
     },
     {
       "storageKey": "hassan_el_ache",
