@@ -310,8 +310,25 @@ const CHECKS = {
     if (b.nut !== first) throw new Error(`on day 1 of phase ${N} nutrition shows week ${b.nut}, expected ${first}`);
     if (b.week !== first || b.total !== W) throw new Error(`training shows week ${b.week} of ${b.total}, expected ${first} of ${W}`);
   },
+  // phase dates (2026-11-01, Mohamad Abboud on his Week 4 meals in week 6): a client who never typed a code still gets
+  // the next phase's meals and targets once its date comes, the same as Train
+  async dates(page, ctx, base) {
+    if (!ctx.cv2) return 'SKIP classic layout';
+    if (!ctx.start) return 'SKIP no canonical start date';
+    const k = await page.eval(`({ unlocked: LS_KEYS.unlocked, t: +TIMER_DAYS[2] || 0 })`);
+    if (!(k.t > 0)) return 'SKIP phase 2 has no date';
+    await fresh(page, base, ctx.key, { [k.unlocked]: '[1]', __fake_now: new Date(Date.parse(ctx.start + 'T12:00:00+10:00') + (k.t + 1) * 864e5).toISOString() });
+    const r = await page.eval(`(async function () {
+      showSection('nutrition'); await __t.wait(150);
+      var box = document.getElementById('cv2-nutri'), want = (getPhaseTargets(2) || {}).cal;
+      var shown = ((box && box.innerText) || '').match(/([\\d,]+)\\s*kcal target/);
+      return { note: !!(box && box.querySelector('.cv2-unlock')), shown: shown ? +shown[1].replace(/,/g, '') : null, want: want };
+    })()`);
+    if (r.note) throw new Error(`day ${k.t + 1}, no code: Nutrition still says phase 2 meals are locked`);
+    if (r.shown !== r.want) throw new Error(`day ${k.t + 1}, no code: Nutrition shows ${r.shown} kcal, phase 2 target is ${r.want}`);
+  },
 };
-const ORDER = ['load', 'start', 'tick', 'swap', 'offline', 'weeks', 'phases'];
+const ORDER = ['load', 'start', 'tick', 'swap', 'offline', 'weeks', 'phases', 'dates'];
 
 async function main() {
   const args = process.argv.slice(2);

@@ -11387,7 +11387,10 @@ window.CV2_DEFAULT = 'v2';
   D.nutrition = function () {
     var wk = D.week();
     var week = wk.week, phase = call(function () { return getPhaseForWeek(week); }) || 1;
-    var unlocked = call(function () { return getUnlocked(); }) || [1];
+    var unlocked = (call(function () { return getUnlocked(); }) || [1]).slice();
+    for (var n = 2; n <= 4; n++) {      // a phase whose date has come is open (as on Train), code or not
+      if (unlocked.indexOf(n) < 0 && call(function () { return TIMER_DAYS[n] > 0 && isTimerUnlocked(n); })) unlocked.push(n);
+    }
     if (phase > 1 && unlocked.indexOf(phase) < 0) {
       var allowed = unlocked.filter(function (p) { return p < phase; });
       var shown = allowed.length ? Math.max.apply(null, allowed) : 1;
@@ -12478,15 +12481,24 @@ window.CV2_DEFAULT = 'v2';
   /* -------------------------------------------------------- NUTRITION --- */
   var NV = null;   // { week, day } the view is showing
   function maxPlanWeek() { var m = 0; call(function () { for (var w = 1; w <= 60; w++) if (mealPlan[w]) m = w; }); return m || 12; }
+  /* Phases open for meals: a code entered OR the phase's date reached (a 0-day timer is no schedule), the same rule
+     Train and Cardio use. Codes alone kept clients on their last phase's meals for weeks (2026-11-01). */
+  function openPhases() {
+    var u = (call(function () { return getUnlocked(); }) || [1]).slice();
+    for (var n = 2; n <= 4; n++) {
+      if (u.indexOf(n) < 0 && call(function () { return TIMER_DAYS[n] > 0 && isTimerUnlocked(n); })) u.push(n);
+    }
+    return u;
+  }
   function weekAllowed(w) {
     var ph = call(function () { return getPhaseForWeek(w); }) || 1;
-    var u = call(function () { return getUnlocked(); }) || [1];
+    var u = openPhases();
     return ph === 1 || u.indexOf(ph) >= 0;
   }
   function totalWeeks() { return (CLIENT_CONFIG.client && CLIENT_CONFIG.client.durationWeeks) || 12; }
   function planWeekFor(cal) {
     var ph = call(function () { return getPhaseForWeek(cal); }) || 1;
-    var u = call(function () { return getUnlocked(); }) || [1];
+    var u = openPhases();
     if (ph === 1 || u.indexOf(ph) >= 0) return Math.min(cal, maxPlanWeek());
     var allowed = u.filter(function (p) { return p < ph; });
     return Math.min((allowed.length ? Math.max.apply(null, allowed) : 1) * 4, maxPlanWeek());
