@@ -2,6 +2,58 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<script>/* COACH VIEW (Omar 2026-11-02): ?coach=1 on a coach's browser (sbo_coach_token present) opens this plan read-only.
+   Storage lives in memory only (nothing is written to this device), every phase can be browsed (phaseLocked /
+   openPhases check window.__COACH_VIEW; today's phase still comes from the date), the start date comes from the
+   roster (&start=), and nothing reaches the client API: only this site's own files load; POSTs, beacons and push
+   sign-ups are dropped. It shows the plan as
+   built (the client's own ticks and swaps stay on their phone). Without both the flag and the coach token this does nothing. */
+(function () {
+  if (!/[?&]coach=1(&|$)/.test(location.search)) return;
+  var tok = null;
+  try { tok = window.localStorage.getItem('sbo_coach_token'); } catch (e) {}
+  if (!tok) return;
+  var key = (location.pathname.match(/\/clients\/([^\/]+)\//) || [])[1] || '';
+  var start = (location.search.match(/[?&]start=(\d{4}-\d{2}-\d{2})/) || [])[1];
+  var mem = Object.create(null);
+  if (start) mem[key + '_start'] = start;
+  mem[key + '_access_token'] = 'coach-view';   // skips the "Reconnect this device" lock; it is not a real token, so the
+                                               // server answers nothing for it (and writes are dropped below anyway)
+  var store = {
+    getItem: function (k) { return k in mem ? mem[k] : null; },
+    setItem: function (k, v) { mem[k] = String(v); },
+    removeItem: function (k) { delete mem[k]; },
+    clear: function () { mem = Object.create(null); },
+    key: function (i) { return Object.keys(mem)[i] || null; },
+    get length() { return Object.keys(mem).length; }
+  };
+  try { Object.defineProperty(window, 'localStorage', { configurable: true, get: function () { return store; } }); } catch (e) { return; }
+  window.__COACH_VIEW = true;
+  var ok = function () { return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })); };
+  var f0 = window.fetch;
+  var same = function (u) { try { return new URL(String((u && u.url) || u), location.href).origin === location.origin; } catch (e) { return false; } };
+  window.fetch = function (u, o) {   // only this site's own files load (eating-out data etc.); the client API is never called
+    var m = String((o && o.method) || (u && u.method) || 'GET').toUpperCase();
+    return ((m === 'GET' || m === 'HEAD') && same(u)) ? f0.apply(this, arguments) : ok();
+  };
+  if (navigator.sendBeacon) navigator.sendBeacon = function () { return true; };
+  var xo = XMLHttpRequest.prototype.open, xs = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (m, u) { this.__cvBlock = String(m).toUpperCase() !== 'GET' || !same(u); return xo.apply(this, arguments); };
+  XMLHttpRequest.prototype.send = function () { if (!this.__cvBlock) return xs.apply(this, arguments); };
+  try { if (navigator.serviceWorker) navigator.serviceWorker.register = function () { return Promise.reject(new Error('coach view')); }; } catch (e) {}
+  try { if (window.Notification) Notification.requestPermission = function () { return Promise.resolve('denied'); }; } catch (e) {}
+  window.alert = function () {}; window.confirm = function () { return false; }; window.prompt = function () { return null; };
+  document.addEventListener('DOMContentLoaded', function () {
+    var st = document.createElement('style');   // the connection chip reads "Link replaced" with no real token: hide it
+    st.textContent = '#cv2-conn,#sync-badge{display:none!important}';
+    document.head.appendChild(st);
+    var b = document.createElement('div');
+    b.textContent = 'COACH VIEW · read only · nothing here is saved or sent';
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#111;color:#fff;font:600 12px/1.2 -apple-system,system-ui,sans-serif;padding:8px 12px calc(8px + env(safe-area-inset-bottom));text-align:center;pointer-events:none;opacity:.92';
+    document.body.appendChild(b);
+  });
+})();
+</script>
 <!-- PWA support -->
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#FF6B35"/>
@@ -10105,6 +10157,7 @@ function sw3Use(i) {
   }
   function phaseLocked(n) {
     if (String(n) === '1') return false;
+    if (window.__COACH_VIEW) return false;   // coach view: every phase can be browsed; today's phase still comes from the date
     try {
       var u = (typeof getUnlocked === 'function') ? getUnlocked() : [1];
       if (u.indexOf(Number(n)) >= 0) return false;
@@ -12527,6 +12580,7 @@ window.CV2_DEFAULT = 'v2';
   /* Phases open for meals: a code entered OR the phase's date reached (a 0-day timer is no schedule), the same rule
      Train and Cardio use. Codes alone kept clients on their last phase's meals for weeks (2026-11-01). */
   function openPhases() {
+    if (window.__COACH_VIEW) return [1, 2, 3, 4];   // coach view: browse every week of the plan
     var u = (call(function () { return getUnlocked(); }) || [1]).slice();
     for (var n = 2; n <= 4; n++) {
       if (u.indexOf(n) < 0 && call(function () { return TIMER_DAYS[n] > 0 && isTimerUnlocked(n); })) u.push(n);

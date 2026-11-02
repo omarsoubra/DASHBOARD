@@ -10110,6 +10110,14 @@ function renderClientDetailV2(storageKey) {
   return renderClientDetailV3(storageKey);
 }
 
+// Coach view (Omar 2026-11-02): the client's own app, read only on this device - every phase open, the roster start
+// date, nothing saved or sent (the client page's COACH VIEW block; it needs this browser's coach token).
+function _coachViewUrl(c) {
+  var u = String(c.programUrl || ('clients/' + c.storageKey + '/'));
+  u += (u.indexOf('?') < 0 ? '?' : '&') + 'coach=1';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(c.startDate || ''))) u += '&start=' + c.startDate;
+  return u;
+}
 function _cd3ToggleMore(btn) {
   const wrap = btn.closest('.cd3-more-wrap');
   if (!wrap) return;
@@ -13832,7 +13840,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '<div class="v2-cd-name"><h1>' + esc(c.displayName || key) + '</h1><div class="cd3-chips">' + _cd3LifecycleChip(c) + _cd3WeekBadge(c) + _cd3AccessChip(c) + '</div></div>' +
         '<div class="v2-cd-meta">' + _cd3MetaRow(c, sum) + '</div></div>' +
         '<div class="v2-cd-actions">' +
-          (canOpen ? '<a class="v2-btn" href="' + esc(c.programUrl) + '" target="_blank" rel="noopener">Open program ↗</a>'
+          (canOpen ? '<a class="v2-btn" href="' + esc(_coachViewUrl(c)) + '" target="_blank" rel="noopener" title="Read only: every phase open, nothing is saved or sent to the client">View plan ↗</a>'
                    : '<button class="v2-btn" disabled title="Program pending">Open program</button>') +
           '<button class="v2-btn primary" type="button" onclick="_cd3OpenCompose(\'' + k + '\',\'\')">Draft response</button>' +
           '<div class="cd3-more-wrap"><button class="v2-btn cd3-more-btn" type="button" onclick="_cd3ToggleMore(this)" aria-label="More">⋮</button>' +
