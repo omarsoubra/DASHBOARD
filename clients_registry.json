@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-01T04:22:49Z",
+  "generatedAt": "2026-11-03T05:31:24Z",
   "generatedBy": "scripts/rebuild_registry.py",
-  "clientCount": 66,
+  "clientCount": 67,
   "clients": [
     {
       "storageKey": "abdullah",
@@ -47,6 +47,10 @@
     {
       "storageKey": "cruz_rehayem",
       "programUrl": "clients/cruz_rehayem/"
+    },
+    {
+      "storageKey": "danial_ahmed_khan",
+      "programUrl": "clients/danial_ahmed_khan/"
     },
     {
       "storageKey": "dib_kerdy",
