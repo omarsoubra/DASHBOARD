@@ -1959,6 +1959,75 @@ details.v2-fallback > .v2-fallback-body > p { margin: 0 0 12px; color: var(--v2-
   .v2-tq-touch { grid-template-columns: minmax(0, 1fr) auto; } .v2-tq-touch > span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .v2-tq-row, .v2-tq-touch .bar i, .v2-tq-card { transition: none; } }
+/* CHURN RADAR (Omar 2026-11-04) - the one loud block on Today: dark panel, red accent, a card per at-risk client */
+.v2-cr { background: #14151c; color: #f2f3f7; border-radius: 18px; padding: 20px 20px 18px; margin: 4px 0 22px; position: relative; overflow: hidden;
+  box-shadow: 0 18px 40px -26px rgba(208,66,59,.65); border: 1px solid #2a1d22; }
+.v2-cr::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(#ff5a4f, #d0423b); }
+.v2-cr.is-calm { box-shadow: none; border-color: #1f2a26; }
+.v2-cr.is-calm::before { background: var(--v2-accent); }
+.v2-cr-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; }
+.v2-cr-eyebrow { font: 600 11px/1 'DM Mono', ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: #ff7a70; display: flex; align-items: center; gap: 8px; }
+.v2-cr.is-calm .v2-cr-eyebrow { color: var(--v2-accent); }
+.v2-cr-pulse { width: 8px; height: 8px; border-radius: 50%; background: #ff5a4f; box-shadow: 0 0 0 0 rgba(255,90,79,.6); animation: v2crp 1.8s infinite; }
+@keyframes v2crp { 70% { box-shadow: 0 0 0 9px rgba(255,90,79,0); } 100% { box-shadow: 0 0 0 0 rgba(255,90,79,0); } }
+.v2-cr h2 { margin: 8px 0 4px; font-size: 22px; line-height: 1.2; letter-spacing: -.02em; color: #fff; }
+.v2-cr h2 .n { font-family: 'DM Mono', ui-monospace, monospace; color: #ff6b61; }
+.v2-cr-sub { margin: 0; font-size: 13px; color: #a6a9b8; max-width: 62ch; }
+.v2-cr-kpis { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.v2-cr-kpi { background: #1d1e28; border: 1px solid #2b2c3a; border-radius: 12px; padding: 9px 12px; min-width: 84px; }
+.v2-cr-kpi b { display: block; font: 600 22px/1.1 'DM Mono', ui-monospace, monospace; color: #fff; }
+.v2-cr-kpi span { font-size: 11.5px; color: #9a9db0; }
+.v2-cr-kpi.red b { color: #ff6b61; } .v2-cr-kpi.amber b { color: #f2b44b; }
+.v2-cr-dist { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: #262734; margin: 16px 0 6px; }
+.v2-cr-dist i { display: block; height: 100%; }
+.v2-cr-legend { display: flex; gap: 14px; font-size: 11.5px; color: #9a9db0; flex-wrap: wrap; }
+.v2-cr-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.v2-cr-tabs { display: flex; gap: 6px; margin: 14px 0 12px; flex-wrap: wrap; align-items: center; }
+.v2-cr-tab { font: inherit; font-size: 12.5px; color: #c9cbd6; background: transparent; border: 1px solid #2f3040; border-radius: 99px; padding: 6px 12px; cursor: pointer; }
+.v2-cr-tab[aria-pressed="true"] { background: #fff; color: #14151c; border-color: #fff; }
+.v2-cr-tab.link { margin-left: auto; border-color: transparent; color: #9a9db0; text-decoration: underline; text-underline-offset: 3px; }
+.v2-cr-rules { background: #1b1c25; border: 1px solid #2b2c3a; border-radius: 12px; padding: 12px 14px; font-size: 12.5px; color: #c9cbd6; margin-bottom: 12px; }
+.v2-cr-rules table { width: 100%; border-collapse: collapse; } .v2-cr-rules td { padding: 4px 6px; border-top: 1px solid #262734; vertical-align: top; }
+.v2-cr-rules td:last-child { text-align: right; font-family: 'DM Mono', ui-monospace, monospace; color: #fff; white-space: nowrap; }
+.v2-cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.v2-cr-card { background: #fff; color: var(--v2-ink); border-radius: 14px; padding: 14px; display: grid; gap: 10px; border-top: 3px solid var(--v2-amber); align-content: start; }
+.v2-cr-card.lvl-high { border-top-color: var(--v2-red); }
+.v2-cr-card.is-done { opacity: .62; border-top-color: var(--v2-accent-ink); }
+.v2-cr-top { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 11px; align-items: center; }
+.v2-cr-ring { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--c) calc(var(--p) * 1%), #eceef2 0); }
+.v2-cr-ring span { width: 36px; height: 36px; border-radius: 50%; background: #fff; display: grid; place-items: center; font: 600 13px 'DM Mono', ui-monospace, monospace; }
+.v2-cr-who b { display: block; font-size: 15px; } .v2-cr-who a { color: inherit; text-decoration: none; } .v2-cr-who a:hover { text-decoration: underline; }
+.v2-cr-who small { font-size: 12px; color: var(--v2-muted); }
+.v2-cr-lvl { font: 600 10.5px/1 'DM Mono', ui-monospace, monospace; letter-spacing: .08em; padding: 5px 7px; border-radius: 6px; background: var(--v2-amber-soft); color: var(--v2-amber); }
+.v2-cr-card.lvl-high .v2-cr-lvl { background: var(--v2-red-soft); color: var(--v2-red); }
+.v2-cr-card.is-done .v2-cr-lvl { background: var(--v2-accent-soft); color: var(--v2-accent-ink); }
+.v2-cr-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.v2-cr-chip { font-size: 11.5px; padding: 3px 8px; border-radius: 99px; background: var(--v2-amber-soft); color: #7a520b; }
+.v2-cr-chip.red { background: var(--v2-red-soft); color: #9b2a24; }
+.v2-cr-why { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--v2-ink2); display: grid; gap: 2px; }
+.v2-cr-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.v2-cr-acts .v2-btn { font-size: 12.5px; padding: 6px 10px; }
+.v2-cr-msg { display: grid; gap: 8px; } .v2-cr-msg textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; border: 1px solid var(--v2-line); border-radius: 10px; padding: 9px; resize: vertical; }
+.v2-cr-msg small { color: var(--v2-muted); font-size: 11.5px; }
+.v2-cr-more { margin-top: 12px; text-align: center; }
+.v2-cr-more button { font: inherit; font-size: 12.5px; color: #c9cbd6; background: #1d1e28; border: 1px solid #2b2c3a; border-radius: 99px; padding: 7px 14px; cursor: pointer; }
+.v2-cr-empty { background: #1b1c25; border-radius: 12px; padding: 16px; color: #c9cbd6; font-size: 13.5px; }
+.v2-cr-min { font: inherit; font-size: 12px; color: #9a9db0; background: transparent; border: 1px solid #2f3040; border-radius: 10px; padding: 0 12px; cursor: pointer; align-self: stretch; }
+.v2-cr-min:hover, .v2-cr-tab:hover { border-color: #55576a; }
+.v2-cr.is-folded { padding: 0; }
+.v2-cr-fold { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 18px 13px 22px; cursor: pointer; color: #f2f3f7; font-size: 14px; }
+.v2-cr-fold b { color: #ff6b61; font-size: 15px; } .v2-cr-fold-m { color: #c9cbd6; } .v2-cr-fold-n { color: #8d90a3; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2-cr-fold-x { color: #c9cbd6; font-size: 12.5px; white-space: nowrap; }
+.v2-cr-tag { font: 600 10px/1 'DM Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; padding: 4px 6px; border-radius: 5px; background: var(--v2-red-soft); color: var(--v2-red); margin-left: 8px; vertical-align: 2px; white-space: nowrap; }
+.v2-cr-tag.watch { background: var(--v2-amber-soft); color: var(--v2-amber); }
+@media (max-width: 700px) {
+  .v2-cr-head { grid-template-columns: 1fr; } .v2-cr-kpis { justify-content: flex-start; } .v2-cr { padding: 16px 14px; } .v2-cr-tab.link { margin-left: 0; }
+  .v2-cr-sub { display: none; } .v2-cr-kpi { min-width: 0; flex: 1; padding: 8px 10px; } .v2-cr-kpi b { font-size: 19px; } .v2-cr-min { flex-basis: 100%; padding: 8px; }
+  .v2-cr-grid { grid-auto-flow: column; grid-auto-columns: 86%; grid-template-columns: none; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; margin: 0 -14px; padding-left: 14px; padding-right: 14px; scroll-padding: 0 14px; }
+  .v2-cr-card { scroll-snap-align: start; }
+  .v2-cr-fold-n { display: none; } .v2-cr-fold { padding: 13px 14px 13px 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .v2-cr-pulse { animation: none; } }
 </style>
 <style id="ui-v2-p2-css">
 /* ─── UI_V2 PHASE 2 CSS: Clients + client detail ─────────────────────────────
@@ -2619,6 +2688,8 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
         </header>
         <h1 class="v2-tq-h" id="v2-greet">Today</h1>
         <a class="v2-tq-pulse" id="v2-tq-pulse" href="#/activity"></a>
+        <!-- CHURN RADAR (Omar 2026-11-04: "something on the dash that stands out... not just a tally"): renderChurn() -->
+        <section class="v2-cr" id="v2-churn" aria-labelledby="v2-cr-title" hidden></section>
         <div class="v2-tq-cards" id="v2-tq-cards" role="group" aria-label="Filters"></div>
         <div class="v2-tq-touch" id="v2-tq-touch"></div>
         <section class="v2-tq-sec" aria-labelledby="v2-tq-title">
@@ -12741,6 +12812,202 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return { items: items, waiting: waiting, wins: wins, inactive: inactive, active: active };
   }
 
+  // ── CHURN RADAR (Omar 2026-11-04: "we need something on the dash that stands out... UI needs to be extensive") ──
+  // The warning signs clients showed before they cancelled (every canceller went quiet in the app first), scored per
+  // client. Same points as client_template churn_risk.py, which also drafts a card into the journey list at 6am.
+  // "Contacted" / "Snooze" sync across devices on the roster (churnState) like the queue's done/snooze (todayState).
+  var CR = { filter: 'high', open: null, rules: false, all: false, keys: {} };
+  var CR_FOLD = 'lockedin.churnFold.v1';                                          // collapsed until the next day (per device)
+  function crFolded() { try { return localStorage.getItem(CR_FOLD) === new Date().toDateString(); } catch (e) { return false; } }
+  function crFold(on) { try { if (on) localStorage.setItem(CR_FOLD, new Date().toDateString()); else localStorage.removeItem(CR_FOLD); } catch (e) {} }
+  var CR_SKIP = { omar: 1, isaac_alameddine: 1 };                                   // coach account / legacy page without the app
+  var CR_DECLINED = { ali_alfatlawi: 1, hamzah_dargham: 1, malak_hanani: 1, adam_ahmad: 1, mayank: 1 };   // no next block / on Block 3 (Omar 2026-11-04)
+  var CR_QUIT = /\b(cancel|quit|stop(ping)?|pause|break from|afford|money|expensive|cost|refund|not worth|done with)\b/i;
+  var CR_STRUGGLE = /\b(busy|stress(ed)?|struggl\w*|hard|tough|motivat\w*|bored|travel\w*|holiday|sick|injur\w*|not working|plateau\w*|frustrat\w*|overwhelm\w*|tired|exhausted|fell off|off track)\b/i;
+  var CR_STORE = 'lockedin.churnState.v1', CR_HIGH = 40, CR_WATCH = 20, CR_WEEKLY = 100;   // $/week a client is worth (current offer)
+  var CR_RULES = [['App silence 7–9 / 10–13 / 14–20 / 21+ days', '10 / 20 / 30 / 40'], ['Nothing logged since starting (week 2+)', '30'],
+                  ['No check-in for 10+ days', '15'], ['Last check-in diet or training ≤ 5/10', '15'], ['Adherence dropped 3+ points', '10'],
+                  ['Energy ≤ 4 or stress ≥ 8', '5'], ['Note mentions quitting / money', '20'], ['Note mentions busy, stress, travel, sick…', '10'],
+                  ['Weight moving away from goal 2+ weeks', '10'], ['Final 2 weeks of block, nothing next', '10'], ['HIGH / WATCH', CR_HIGH + '+ / ' + CR_WATCH + '–' + (CR_HIGH - 1)]];
+  function crInScope(c) {
+    var k = String(c.storageKey || ''); if (!k || k.charAt(0) === '_' || CR_SKIP[k]) return false;
+    var w = weekOf(c);
+    if (CR_DECLINED[k] && w > blockWeeks(c)) return false;                          // finished and said no: gone, not a risk
+    if (_isActiveClient(c)) return true;
+    var acc = String(c.accessStatus || 'active').toLowerCase();                     // still 'onboarding' a week after starting
+    return String(c.programStatus || '').toLowerCase() === 'onboarding' && acc !== 'revoked' && acc !== 'suspended' && !c.isPaused && w >= 2;
+  }
+  function crScore(c, sum) {
+    sum = sum || {};
+    var pts = 0, why = [], now = Date.now();
+    var add = function (p, tag, text, tone) { pts += p; why.push({ p: p, tag: tag, text: text, tone: tone || 'amber' }); };
+    var num = function (v) { return typeof v === 'number' && isFinite(v); };
+    var w = weekOf(c), L = blockWeeks(c);
+    var start = c.startDate ? Date.parse(String(c.startDate).slice(0, 10) + 'T00:00:00') : NaN;
+    var la = lastActivity(sum), qd = la === null ? null : Math.floor((now - la) / 86400000);
+    if (w >= 2 && (la === null || la < start)) add(30, 'Never started', 'Nothing logged in the app since starting', 'red');
+    else if (qd !== null && qd >= 7) add(qd >= 21 ? 40 : qd >= 14 ? 30 : qd >= 10 ? 20 : 10, 'Silent ' + qd + 'd', 'Nothing logged in the app for ' + qd + ' days', qd >= 14 ? 'red' : 'amber');
+    var cis = (sum.recentCheckIns || []).filter(function (x) { return !isNaN(Date.parse(x.timestamp)); })
+      .sort(function (a, b) { return Date.parse(b.timestamp) - Date.parse(a.timestamp); });
+    if (w >= 2) {
+      var lc = cis.length ? Date.parse(cis[0].timestamp) : null;
+      if (lc === null || now - lc >= 10 * 86400000) add(15, lc ? 'No check-in ' + Math.floor((now - lc) / 86400000) + 'd' : 'Never checked in',
+                                                         lc ? 'Last check-in ' + Math.floor((now - lc) / 86400000) + ' days ago' : 'Has never checked in');
+    }
+    if (cis.length) {
+      var ci = cis[0];
+      var adh = [ci.dietAdherence1to10, ci.trainingAdherence1to10].filter(num);
+      if (adh.length && Math.min.apply(null, adh) <= 5) add(15, 'Adherence ' + adh.join('/'), 'Last check-in adherence ' + adh.join(' / ') + ' out of 10', 'red');
+      if (cis[1]) {
+        var drop = [['dietAdherence1to10', 'Diet'], ['trainingAdherence1to10', 'Training']].filter(function (p) {
+          return num(ci[p[0]]) && num(cis[1][p[0]]) && cis[1][p[0]] - ci[p[0]] >= 3; })[0];
+        if (drop) add(10, drop[1] + ' ' + cis[1][drop[0]] + '→' + ci[drop[0]], drop[1] + ' adherence dropped ' + cis[1][drop[0]] + ' → ' + ci[drop[0]]);
+      }
+      if ((num(ci.energy1to10) && ci.energy1to10 <= 4) || (num(ci.stress1to10) && ci.stress1to10 >= 8)) add(5, 'Low energy / stress', 'Low energy or high stress on the last check-in');
+      var notes = cis.slice(0, 2).map(function (x) { return x.notes || ''; }).join(' '), m = notes.match(CR_QUIT);
+      if (m) add(20, '“' + m[0].toLowerCase() + '”', 'Check-in note mentions “' + m[0].toLowerCase() + '”', 'red');
+      else if ((m = notes.match(CR_STRUGGLE))) add(10, '“' + m[0].toLowerCase() + '”', 'Check-in note mentions “' + m[0].toLowerCase() + '”');
+    }
+    var sw = parseFloat(c.startWeight), gw = parseFloat(c.goalWeight);
+    var wh = (sum.weightHistory || []).map(function (x) { return [Date.parse(x.ts), Number(x.kg)]; })
+      .filter(function (x) { return !isNaN(x[0]) && x[1] > 0 && now - x[0] <= 21 * 86400000; }).sort(function (a, b) { return a[0] - b[0]; });
+    if (sw && gw && sw !== gw && wh.length >= 2 && wh[wh.length - 1][0] - wh[0][0] >= 14 * 86400000) {
+      var mv = wh[wh.length - 1][1] - wh[0][1], mvs = (mv > 0 ? '+' : '') + mv.toFixed(1) + ' kg';
+      if ((gw < sw && mv > 0.3) || (gw > sw && mv < -0.3)) add(10, mvs, 'Weight moving away from goal (' + mvs + ' over 2–3 weeks)');
+    }
+    if (w !== null && w >= L - 1 && !CR_DECLINED[c.storageKey])
+      add(10, w > L ? 'Block over' : 'Block ends wk ' + L, w > L ? 'Finished ' + L + ' weeks, no next block arranged' : 'Week ' + w + ' of ' + L + ', no next block arranged', w > L ? 'red' : 'amber');
+    why.sort(function (a, b) { return b.p - a.p; });
+    return { pts: Math.min(100, pts), why: why, week: w, weeks: L, quiet: qd, sig: why.map(function (r) { return r.text.split(' ')[0]; }).join('|') };
+  }
+  function crOpener(first, why) {                                                    // Omar's voice; he edits before sending
+    var top = (why[0] || {}).text || '';
+    if (/since starting/.test(top)) return 'Yo ' + first + '! Just making sure you\'re all set up in the app? Log your weigh-in tomorrow morning and send me a screenshot, let\'s get a win on the board 💪';
+    if (/Nothing logged|check-in|checked in/.test(top)) return 'Yo ' + first + ', haven\'t seen much come through lately bro, all good? No stress if life\'s been hectic. What\'s been getting in the way? I\'ll adjust things around it.';
+    if (/note mentions|adherence|energy/.test(top)) return 'Yo ' + first + ', saw your last check-in. Sounds like it\'s been a tough stretch. What\'s the main thing making it hard right now? Let\'s make the plan easier, not harder.';
+    if (/Weight moving/.test(top)) return 'Yo ' + first + ', scale\'s been a bit stubborn the last couple of weeks. Totally normal, but let\'s get on top of it. How have the meals been feeling?';
+    if (/block/i.test(top)) return 'Yo ' + first + ', we\'re coming up to the end of your block and I\'ve already mapped out what\'s next for you. Keen to keep the momentum, when\'s a good time for a quick chat this week?';
+    return 'Yo ' + first + ', how are you feeling about everything so far? Keen to hear what\'s working and what isn\'t.';
+  }
+  function crStateAll() { try { return JSON.parse(localStorage.getItem(CR_STORE) || '{}') || {}; } catch (e) { return {}; } }
+  function crState(c) { return c.churnState || crStateAll()[c.storageKey] || null; }    // synced copy (roster) wins
+  function crStatus(c, r) {                                                          // 'open' | 'done' (contacted, 7 days) | 'snoozed'
+    var e = crState(c); if (!e) return 'open';
+    if (e.until && Date.now() < e.until) return 'snoozed';
+    if (e.done && Date.now() - e.at < 7 * 86400000 && r.pts <= (e.pts || 0) + 9) return 'done';   // risk rose 10+: show it again
+    return 'open';
+  }
+  function crSet(key, entry) {
+    var all = crStateAll(); all[key] = entry; try { localStorage.setItem(CR_STORE, JSON.stringify(all)); } catch (e) {}
+    try {
+      var list = loadClients(), cl = list.find(function (x) { return x.storageKey === key; });
+      if (cl) { cl.churnState = entry; saveClients(list); COACH.clients = list; pushRoster(); }
+    } catch (e) { console.warn('[churn] sync', e); }
+  }
+  function crDraft(key) {                                                            // an unsent journey/churn draft already written for them
+    var best = null;
+    try { Object.keys(CI_DRAFTS || {}).forEach(function (k) { var d = CI_DRAFTS[k];
+      if (d.client_key === key && !d.sent_at && String(d.checkin_ts).indexOf('journey:') === 0 && d.action !== 'omar_decision' && d.draft) best = { k: k, d: d }; }); } catch (e) {}
+    return best;
+  }
+  function renderChurn(clients, data) {
+    var box = $('v2-churn'); if (!box) return;
+    var scope = clients.filter(crInScope);
+    if (!scope.length) { box.hidden = true; return; }
+    var rows = scope.map(function (c) { var r = crScore(c, data[c.storageKey]); r.c = c; r.key = c.storageKey; r.status = crStatus(c, r); return r; })
+      .filter(function (r) { return r.pts >= CR_WATCH; }).sort(function (a, b) { return b.pts - a.pts; });
+    var open = rows.filter(function (r) { return r.status === 'open'; });
+    var hi = open.filter(function (r) { return r.pts >= CR_HIGH; }), wa = open.filter(function (r) { return r.pts < CR_HIGH; });
+    var handled = rows.filter(function (r) { return r.status !== 'open'; });
+    var safe = scope.length - rows.length;
+    if (!{ high: 1, watch: 1, handled: 1 }[CR.filter] || (CR.filter === 'high' && !hi.length && wa.length)) CR.filter = hi.length ? 'high' : wa.length ? 'watch' : 'high';
+    var list = CR.filter === 'high' ? hi : CR.filter === 'watch' ? wa : handled;
+    CR.keys = {}; hi.concat(wa).forEach(function (r) { CR.keys[r.key] = r.pts >= CR_HIGH ? 'high' : 'watch'; });
+    var phone = window.matchMedia && matchMedia('(max-width: 700px)').matches;      // phone: every card in a swipe row
+    var LIMIT = phone ? 99 : 3, shown = CR.all ? list : list.slice(0, LIMIT);
+    var pct = function (n) { return (100 * n / scope.length).toFixed(1) + '%'; };
+    var first = function (c) { return String(c.displayName || c.storageKey).split(' ')[0]; };
+    var calm = !hi.length && !wa.length;
+    box.hidden = false;
+    if (!calm && crFolded()) {                                                     // one line until tomorrow; still red
+      box.className = 'v2-cr is-folded';
+      box.innerHTML = '<button type="button" class="v2-cr-fold" data-cr-unfold="1" aria-expanded="false"><span class="v2-cr-pulse"></span>' +
+        '<b>' + (hi.length + wa.length) + ' at risk</b><span class="v2-cr-fold-m">' + hi.length + ' high · $' + ((hi.length + wa.length) * CR_WEEKLY).toLocaleString('en-AU') + '/wk</span>' +
+        '<span class="v2-cr-fold-n">' + hi.concat(wa).slice(0, 4).map(function (r) { return esc(first(r.c)); }).join(', ') + (hi.length + wa.length > 4 ? '…' : '') + '</span><span class="v2-cr-fold-x">Show ▾</span></button>';
+      box.onclick = function (e) { if (e.target.closest('[data-cr-unfold]')) { crFold(false); renderChurn(clients, data); } };
+      return;
+    }
+    box.className = 'v2-cr' + (calm ? ' is-calm' : '');
+    box.innerHTML =
+      '<div class="v2-cr-head"><div><div class="v2-cr-eyebrow">' + (calm ? '' : '<span class="v2-cr-pulse"></span>') + 'Churn radar</div>' +
+        '<h2 id="v2-cr-title">' + (calm ? 'No client is showing churn signs' : '<span class="n">' + (hi.length + wa.length) + '</span> client' + (hi.length + wa.length === 1 ? ' is' : 's are') + ' showing churn signs') + '</h2>' +
+        '<p class="v2-cr-sub">' + (calm ? 'Everyone is logging, checking in and on track. Nice.' :
+          'The signs people show before they cancel: app silence, missed check-ins, falling adherence, stress, a block ending with nothing next. Reach out this week, before they decide.') + '</p></div>' +
+        '<div class="v2-cr-kpis"><div class="v2-cr-kpi red"><b>' + hi.length + '</b><span>High risk</span></div>' +
+          '<div class="v2-cr-kpi amber"><b>' + wa.length + '</b><span>Watch</span></div>' +
+          '<div class="v2-cr-kpi"><b>$' + ((hi.length + wa.length) * CR_WEEKLY).toLocaleString('en-AU') + '</b><span>a week at risk</span></div>' +
+          (calm ? '' : '<button type="button" class="v2-cr-min" data-cr-fold="1" title="Collapse to one line until tomorrow">Collapse ▴</button>') + '</div></div>' +
+      '<div class="v2-cr-dist" role="img" aria-label="' + hi.length + ' high, ' + wa.length + ' watch, ' + handled.length + ' contacted, ' + safe + ' on track">' +
+        '<i style="width:' + pct(hi.length) + ';background:#ff5a4f"></i><i style="width:' + pct(wa.length) + ';background:#f2b44b"></i>' +
+        '<i style="width:' + pct(handled.length) + ';background:#6b6d85"></i><i style="width:' + pct(safe) + ';background:var(--v2-accent)"></i></div>' +
+      '<div class="v2-cr-legend"><span><i style="background:#ff5a4f"></i>' + hi.length + ' high</span><span><i style="background:#f2b44b"></i>' + wa.length + ' watch</span>' +
+        '<span><i style="background:#6b6d85"></i>' + handled.length + ' contacted / snoozed</span><span><i style="background:var(--v2-accent)"></i>' + safe + ' on track</span></div>' +
+      '<div class="v2-cr-tabs" role="group" aria-label="Churn filter">' +
+        [['high', 'High risk', hi.length], ['watch', 'Watch', wa.length], ['handled', 'Contacted', handled.length]].map(function (t) {
+          return '<button type="button" class="v2-cr-tab" data-crf="' + t[0] + '" aria-pressed="' + (CR.filter === t[0]) + '">' + t[1] + ' · ' + t[2] + '</button>'; }).join('') +
+        '<button type="button" class="v2-cr-tab link" data-cr-rules="1" aria-expanded="' + CR.rules + '">How it\'s scored</button></div>' +
+      (CR.rules ? '<div class="v2-cr-rules"><table>' + CR_RULES.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>' : '') +
+      (shown.length ? '<div class="v2-cr-grid">' + shown.map(function (r) {
+        var c = r.c, lvl = r.pts >= CR_HIGH ? 'high' : 'watch', col = lvl === 'high' ? '#d0423b' : '#b7790f';
+        var seen = r.quiet === null ? 'nothing logged yet' : r.quiet === 0 ? 'active today' : 'last active ' + r.quiet + 'd ago';
+        var draft = crDraft(r.key), msgOpen = CR.open === r.key;
+        return '<article class="v2-cr-card lvl-' + lvl + (r.status !== 'open' ? ' is-done' : '') + '" data-crk="' + esc(r.key) + '">' +
+          '<div class="v2-cr-top"><div class="v2-cr-ring" style="--p:' + r.pts + ';--c:' + col + '" title="Risk score ' + r.pts + ' / 100"><span>' + r.pts + '</span></div>' +
+            '<div class="v2-cr-who"><b><a href="#/clients/' + encodeURIComponent(r.key) + '">' + esc(c.displayName || r.key) + '</a></b>' +
+            '<small>' + (r.week ? 'Week ' + r.week + ' of ' + r.weeks + ' · ' : '') + esc(seen) + '</small></div>' +
+            '<span class="v2-cr-lvl">' + (r.status === 'done' ? 'CONTACTED' : r.status === 'snoozed' ? 'SNOOZED' : lvl.toUpperCase()) + '</span></div>' +
+          '<div class="v2-cr-chips">' + r.why.map(function (x) { return '<span class="v2-cr-chip' + (x.tone === 'red' ? ' red' : '') + '">' + esc(x.tag) + '</span>'; }).join('') + '</div>' +
+          '<ul class="v2-cr-why">' + r.why.slice(0, 3).map(function (x) { return '<li>' + esc(x.text) + '</li>'; }).join('') + '</ul>' +
+          (msgOpen ? '<div class="v2-cr-msg"><textarea rows="4" aria-label="Message to ' + esc(first(c)) + '">' + esc(draft ? draft.d.draft : crOpener(first(c), r.why)) + '</textarea>' +
+            '<small>' + (draft ? 'Drafted this morning (' + esc(JM_LABEL[draft.d.action] || draft.d.action) + '). ' : 'Suggested opener. ') + 'Edit it, then send. Check WhatsApp first: you may already be talking.</small>' +
+            '<div class="v2-cr-acts">' + (jmWa(c.phone) ? '<button type="button" class="v2-btn primary" data-cr-wa="1">Open in WhatsApp</button>' : '') +
+            '<button type="button" class="v2-btn' + (jmWa(c.phone) ? '' : ' primary') + '" data-cr-copy="1">Copy</button>' +
+            (jmWa(c.phone) ? '' : '<small>No phone on file: copy it into WhatsApp.</small>') + '</div></div>' : '') +
+          '<div class="v2-cr-acts">' + (msgOpen ? '' : '<button type="button" class="v2-btn primary" data-cr-msg="1">Message</button>') +
+            '<a class="v2-btn" href="#/clients/' + encodeURIComponent(r.key) + '">Open</a>' +
+            (r.status === 'open' ? '<button type="button" class="v2-btn" data-cr-done="1">Contacted ✓</button><button type="button" class="v2-btn ghost" data-cr-snooze="1">Snooze 3d</button>'
+                                 : '<button type="button" class="v2-btn ghost" data-cr-undo="1">Undo</button>') + '</div>' +
+        '</article>';
+      }).join('') + '</div>' : '<div class="v2-cr-empty">' + (CR.filter === 'handled' ? 'Nobody marked contacted in the last 7 days.' : 'Nobody in this group right now.') + '</div>') +
+      (list.length > LIMIT ? '<div class="v2-cr-more"><button type="button" data-cr-all="1">' + (CR.all ? 'Show top ' + LIMIT : 'Show all ' + list.length + ' →') + '</button></div>' : '');
+    box.onclick = function (e) {
+      var t = e.target, f = t.closest('[data-crf]');
+      if (f) { CR.filter = f.getAttribute('data-crf'); CR.all = false; CR.open = null; return renderChurn(clients, data); }
+      if (t.closest('[data-cr-rules]')) { CR.rules = !CR.rules; return renderChurn(clients, data); }
+      if (t.closest('[data-cr-fold]')) { crFold(true); CR.open = null; return renderChurn(clients, data); }
+      if (t.closest('[data-cr-all]')) { CR.all = !CR.all; return renderChurn(clients, data); }
+      var card = t.closest('[data-crk]'); if (!card) return;
+      var key = card.getAttribute('data-crk'), r = rows.filter(function (x) { return x.key === key; })[0]; if (!r) return;
+      if (t.closest('[data-cr-msg]')) { CR.open = key; renderChurn(clients, data); var ta = box.querySelector('[data-crk="' + key + '"] textarea'); if (ta) ta.focus(); return; }
+      var done = function (how) {
+        crSet(key, how === 'snooze' ? { until: Date.now() + 3 * 86400000, at: Date.now(), pts: r.pts } : how === 'undo' ? null : { done: 1, at: Date.now(), pts: r.pts });
+        if (how !== 'undo') tqToast(first(r.c) + (how === 'snooze' ? ' snoozed for 3 days' : ' marked contacted ✓'));
+        CR.open = null; renderChurn(clients, data);
+      };
+      if (t.closest('[data-cr-done]')) return done('done');
+      if (t.closest('[data-cr-snooze]')) return done('snooze');
+      if (t.closest('[data-cr-undo]')) return done('undo');
+      var ta2 = card.querySelector('textarea'); if (!ta2) return;
+      var dr = crDraft(key), markDraft = function () { if (dr) { var p = dr.k.split('|'); ciDraftMark(p[0], p.slice(1).join('|'), true); } };
+      if (t.closest('[data-cr-wa]')) { window.open('https://wa.me/' + jmWa(r.c.phone) + '?text=' + encodeURIComponent(ta2.value), '_blank', 'noopener'); markDraft(); return done('done'); }
+      if (t.closest('[data-cr-copy]')) {
+        var fin = function () { markDraft(); done('done'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta2.value).then(fin, function () { ta2.select(); document.execCommand('copy'); fin(); });
+        else { ta2.select(); document.execCommand('copy'); fin(); }
+      }
+    };
+  }
+
   function renderToday() {
     var clients = (typeof COACH !== 'undefined' && COACH.clients) || [];
     var data = (typeof _dashboardData !== 'undefined' && _dashboardData) || {};
@@ -12770,6 +13037,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var cnt = { workout: 0, meal: 0, weight: 0, pr: 0 }; ev.forEach(function (e) { if (cnt[e.type] !== undefined) cnt[e.type]++; });
     $('v2-tq-pulse').innerHTML = 'Last 24 h <span>·</span> <b>' + cnt.workout + '</b> lifts logged <span>·</span> <b>' + cnt.meal + '</b> meals <span>·</span> <b>' +
       cnt.weight + '</b> weigh-ins' + (cnt.pr ? ' <span>·</span> <b>' + cnt.pr + '</b> PR' + plural(cnt.pr, '', 's') : '') + ' <span>→</span>';
+    try { renderChurn(clients, data); } catch (e) { console.warn('[churn radar]', e); }
 
     // 4 filter cards
     var cards = [['today', today.length, 'Need you today', hot > 0], ['checkin', ci.length, 'Check-ins & replies', false],
@@ -12805,7 +13073,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
         var plan = (c.programType || '') + (weekOf(c) ? (c.programType ? ' · ' : '') + 'wk ' + weekOf(c) + '/' + blockWeeks(c) : '');
         return '<div class="v2-tq-row' + (it.hot ? ' is-act' : '') + (i === TQ.sel ? ' sel' : '') + '" role="listitem" data-tqk="' + esc(it.key) + '" data-i="' + i + '">' +
           '<span class="v2-tq-dot' + (it.hot ? ' act' : '') + '"></span>' +
-          '<div class="v2-tq-who"><div class="v2-tq-nm"><a href="#/clients/' + encodeURIComponent(it.key) + '">' + esc(c.displayName || it.key) + '</a>' + (plan ? '<small>' + esc(plan) + '</small>' : '') + '</div>' +
+          '<div class="v2-tq-who"><div class="v2-tq-nm"><a href="#/clients/' + encodeURIComponent(it.key) + '">' + esc(c.displayName || it.key) + '</a>' + (plan ? '<small>' + esc(plan) + '</small>' : '') +
+            (CR.keys[it.key] ? '<span class="v2-cr-tag' + (CR.keys[it.key] === 'high' ? '' : ' watch') + '" title="On the churn radar">churn risk</span>' : '') + '</div>' +
             '<div class="v2-tq-why" title="' + esc(it.reasons.map(function (r) { return r.text; }).join('\n')) + '">' +
             (a.ai ? '<span class="v2-tq-ai' + (a.ai === 'NEEDS_ATTENTION' ? ' hot' : a.ai === 'GREEN' ? ' ok' : '') + '" title="AI review: ' + esc(AIV[a.ai] || a.ai) + '">AI · ' +
               ({ NEEDS_ATTENTION: 'FLAG', REVIEW: 'REVIEW', GREEN: 'OK' }[a.ai] || esc(a.ai)) + '</span>' : '') + esc(it.view.text) +
