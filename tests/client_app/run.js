@@ -55,7 +55,7 @@ const INIT = String.raw`
     return new Promise(function (res, rej) { setTimeout(function () {
       if (mode === 'offline') return rej(new TypeError('Failed to fetch'));
       if (o && o.method === 'POST') {
-        window.__posts++;
+        window.__posts++; (window.__bodies = window.__bodies || []).push(body);
         if (body.type === 'meal') window.__mealPosts++;
         return res(new Response(JSON.stringify({ ok: true, id: window.__posts }), { status: 200 }));
       }
@@ -182,6 +182,28 @@ const CHECKS = {
     await page.eval(`(async function () { await __t.wait(900); return 1; })()`);
     const after = await page.eval(`(async function () { showSection('nutrition'); await __t.wait(150); return __t.cards()[0].innerText.replace(/\\s+/g, ' '); })()`);
     if (!/Apptest wrap/.test(after)) throw new Error('swap lost after reload');
+  },
+  // check-in (form v2, 2026-11-04): Meals on plan + Training are asked and REQUIRED, and each answer lands in its own
+  // field - the old form saved "Overall vibe" as both diet and training adherence and sleep quality as sleepHours
+  async checkin(page, ctx) {
+    const has = await page.eval(`/Meals on plan/.test((document.getElementById('section-tracker') || document.body).innerText) && !!document.getElementById('input-training')`);
+    if (!has) return 'WARN old check-in form (vibe saved as adherence) - run agent_workspace/checkin_form_v2/patch_form_v2.py';
+    const r = await page.eval(`(async function () {
+      var set = function (id, v) { document.getElementById(id).value = v; };
+      set('input-weight', '80.4'); set('input-week', '3'); set('input-energy', '6'); set('input-sleep', '7.5'); set('input-stress', '4');
+      set('input-feeling', '6'); set('input-training', '');
+      window.__bodies = [];
+      await saveCheckin(); var blocked = (window.__bodies || []).filter(function (b) { return b.type === 'checkin'; }).length;
+      set('input-training', '9'); window.__bodies = [];
+      await saveCheckin(); await __t.wait(300);
+      var c = (window.__bodies || []).filter(function (b) { return b.type === 'checkin'; });
+      return { blocked: blocked, n: c.length, c: c[0] || null };
+    })()`);
+    if (r.blocked) throw new Error('check-in sent without the Training answer');
+    if (r.n !== 1) throw new Error(`expected 1 check-in save, got ${r.n}`);
+    const c = r.c;
+    if (c.dietAdherence1to10 !== 6 || c.trainingAdherence1to10 !== 9 || c.sleepHours !== 7.5 || c.energy1to10 !== 6 || c.stress1to10 !== 4)
+      throw new Error('check-in fields wrong: ' + JSON.stringify({ diet: c.dietAdherence1to10, training: c.trainingAdherence1to10, sleep: c.sleepHours, energy: c.energy1to10, stress: c.stress1to10 }));
   },
   // offline: change kept locally and labelled not synced; retry (several triggers at once) sends exactly once
   async offline(page, ctx) {
@@ -328,7 +350,7 @@ const CHECKS = {
     if (r.shown !== r.want) throw new Error(`day ${k.t + 1}, no code: Nutrition shows ${r.shown} kcal, phase 2 target is ${r.want}`);
   },
 };
-const ORDER = ['load', 'start', 'tick', 'swap', 'offline', 'weeks', 'phases', 'dates'];
+const ORDER = ['load', 'start', 'tick', 'swap', 'offline', 'checkin', 'weeks', 'phases', 'dates'];
 
 async function main() {
   const args = process.argv.slice(2);

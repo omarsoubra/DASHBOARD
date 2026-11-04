@@ -626,14 +626,30 @@
     } catch (e) {}
   }
 
+  // SET UP YOUR APP (2026-11-04): setup-client.js, next to this file - the Home card that walks login -> Home Screen ->
+  // reminders -> first weigh-in. It reads this instance's diagnostics and calls its own Turn on (_onEnable).
+  function bootSetup(opts) {
+    try {
+      var start = function () { try { window.LockedInSetup.boot({ storageKey: opts.storageKey }); } catch (e) {} };
+      if (window.LockedInSetup) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'setup-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   window.LockedInPush = {
+    current: null,
     mount: function (opts) {
       var p = new Push(opts);
       p.render();
       p.init();
+      window.LockedInPush.current = p;
       bootHealth(opts || {});
       bootWeek(opts || {});
       bootPlus(opts || {});
+      bootSetup(opts || {});
       return p;
     },
   };

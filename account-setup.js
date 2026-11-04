@@ -156,6 +156,20 @@
       })();
     });
   }
+  // For the Home "Set up your app" card (setup-client.js, 2026-11-04): read the login state and open this sheet on tap.
+  window.LockedInAccount = {
+    status: function () {
+      var c = ctx(); if (!c) return Promise.resolve(null);
+      var s = getState(c); if (s.done) return Promise.resolve('active'); if (s.needsInvite) return Promise.resolve('needs_invite');
+      return api(c, 'accountSelfStatus', {}).then(function (j) {
+        if (!j || !j.ok) return null;
+        if (j.account === 'active') { setState(c, { done: true }); return 'active'; }
+        if (!j.canSetup) { setState(c, { needsInvite: true }); return 'needs_invite'; }
+        return 'can_setup';
+      });
+    },
+    open: function () { var c = ctx(); if (!c || getState(c).done) return false; show(c); return true; },
+  };
   var start = function () { setTimeout(boot, 2500); };   // after the shell's own boot + the notifications check
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

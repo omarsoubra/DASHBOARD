@@ -3762,9 +3762,9 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
 
   <div class="tracker-grid" style="margin-top:1rem;">
     <div class="tracker-card">
-      <div class="tracker-label">Sleep (1–10)</div>
-      <input class="tracker-input" type="number" id="input-sleep" placeholder="7" min="1" max="10"/>
-      <div class="tracker-unit">sleep quality</div>
+      <div class="tracker-label">Sleep (hours)</div>
+      <input class="tracker-input" type="number" id="input-sleep" placeholder="7.5" min="3" max="14" step="0.5" inputmode="decimal"/>
+      <div class="tracker-unit">average a night</div>
     </div>
     <div class="tracker-card">
       <div class="tracker-label">Stress (1–10)</div>
@@ -3772,9 +3772,14 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
       <div class="tracker-unit">stress level</div>
     </div>
     <div class="tracker-card">
-      <div class="tracker-label">Overall Vibe (1–10)</div>
+      <!-- CHECKIN-FORM-V2 --><div class="tracker-label">Meals on plan (1–10)</div>
       <input class="tracker-input" type="number" id="input-feeling" placeholder="7" min="1" max="10"/>
-      <div class="tracker-unit">overall feeling</div>
+      <div class="tracker-unit">how closely you ate your plan</div>
+    </div>
+    <div class="tracker-card">
+      <div class="tracker-label">Training (1–10)</div>
+      <input class="tracker-input" type="number" id="input-training" placeholder="8" min="1" max="10"/>
+      <div class="tracker-unit">sessions done as planned</div>
     </div>
   </div>
 
@@ -6478,11 +6483,13 @@ async function saveCheckin(){
   const weight=parseFloat(document.getElementById('input-weight').value);
   const week=parseInt(document.getElementById('input-week').value);
   const energy=parseInt(document.getElementById('input-energy').value)||null;
-  const sleep=parseInt(document.getElementById('input-sleep').value)||null;
+  const sleep=parseFloat(document.getElementById('input-sleep').value)||null;
   const stress=parseInt(document.getElementById('input-stress').value)||null;
   const feeling=parseInt(document.getElementById('input-feeling').value)||null;
+  const training=parseInt((document.getElementById('input-training')||{}).value)||null;
   let notes=document.getElementById('input-notes').value.trim()||'—';
   if(!weight||!week){showStatus('⚠ Please enter at least weight and week number.','#ff4466');return;}
+  if(!feeling||!training){showStatus('⚠ Please fill in Meals on plan and Training (1–10) so Omar can see how your week really went.','#ff4466');return;}
   // Upload any picked photos to the Apps Script (Drive). Fire-and-forget: dashboard
   // reads them back via ?type=photosGet. Filename convention:
   //   {client}_wk{week}_{view}_{timestamp}.jpg
@@ -6540,7 +6547,7 @@ async function saveCheckin(){
   try { localStorage.setItem((CLIENT_CONFIG.client.storageKey||'client')+'_last_checkin_ts', String(Date.now())); } catch(e) {}
   const lost=Math.max(0,CLIENT_CONFIG.client.startWeight-weight).toFixed(1);   // kg lost since start (was reversed: always 0 for anyone losing)
   const date=new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  checkins.unshift({weight,week,energy,sleep,stress,feeling,notes,date,lost});
+  checkins.unshift({weight,week,energy,sleep,stress,feeling,training,notes,date,lost});
   localStorage.setItem(LS_KEYS.checkins,JSON.stringify(checkins));
   const btn=document.getElementById('log-btn');
   btn.textContent='⏳ Sending...';btn.disabled=true;
@@ -6609,7 +6616,7 @@ async function saveCheckin(){
           sleepHours: sleep,
           stress1to10: stress,
           dietAdherence1to10: feeling,
-          trainingAdherence1to10: feeling,
+          trainingAdherence1to10: training,
           notes: notes,
           timestamp: new Date().toISOString(),
         })
@@ -6623,7 +6630,7 @@ async function saveCheckin(){
   }
   showStatus(sheetsOk?'✅ Sent to Omar':'⚠ Saved on your phone - it sends when you are back online',sheetsOk?'var(--accent3)':'var(--accent2)');
   btn.textContent='📊 Log Check-In + Send to Trainer';btn.disabled=false;
-  ['input-weight','input-week','input-energy','input-sleep','input-stress','input-feeling'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  ['input-weight','input-week','input-energy','input-sleep','input-stress','input-feeling','input-training'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
   document.getElementById('input-notes').value='';
   // Reset photo state + previews
   _photoBase64 = { front: null, side: null, back: null };
@@ -6667,7 +6674,7 @@ function renderCheckins(){
       <div style="flex:1;">
         <div style="font-weight:500;">Week ${c.week} · ${c.weight}kg <span style="color:var(--accent3);font-size:0.85rem;">↓${c.lost}kg total</span></div>
         <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;">${c.date}</div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;">${c.energy?'⚡'+c.energy+'/10 ':''}${c.sleep?'😴'+c.sleep+'/10 ':''}${c.stress?'🧠'+c.stress+'/10 ':''}${c.feeling?'✨'+c.feeling+'/10':''}</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;">${c.energy?'⚡'+c.energy+'/10 ':''}${c.sleep?'😴'+c.sleep+'/10 ':''}${c.stress?'🧠'+c.stress+'/10 ':''}${c.feeling?'🍽'+c.feeling+'/10 ':''}${c.training?'🏋'+c.training+'/10':''}</div>
         ${c.notes&&c.notes!=='—'?'<div style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem;font-style:italic;">"'+c.notes+'"</div>':''}
       </div>
       <div style="display:flex;align-items:center;gap:1rem;">
@@ -8165,6 +8172,7 @@ window.__ELITE_MUSCLE_HTML = "  <!-- MUSCLE VOLUME HEATMAP (weekly) -->\n  <div 
             sleep:  r.sleepHours,
             stress: r.stress1to10,
             feeling: r.dietAdherence1to10,
+            training: r.trainingAdherence1to10,
             notes:  r.notes || '',
             date:   r.timestamp,
             ts:     r.timestamp,
@@ -12254,7 +12262,7 @@ window.CV2_DEFAULT = 'v2';
         .sort(function (a, b) { return (b.t - a.t) || ((+b.c.week || 0) - (+a.c.week || 0)); });
       el.innerHTML = list.map(function (x) {
         var c = x.c, m = [];
-        if (c.energy) m.push('Energy ' + c.energy); if (c.sleep) m.push('Sleep ' + c.sleep); if (c.stress) m.push('Stress ' + c.stress); if (c.feeling) m.push('Overall ' + c.feeling);
+        if (c.energy) m.push('Energy ' + c.energy); if (c.sleep) m.push('Sleep ' + c.sleep); if (c.stress) m.push('Stress ' + c.stress); if (c.feeling) m.push('Meals ' + c.feeling); if (c.training) m.push('Training ' + c.training);
         var note = String(c.notes || '').replace(/\[PHOTO_[A-Z]+:wk\d+\]/g, '').trim();
         return '<div class="cv2-hist"><div class="tx"><b>Week ' + esc(c.week) + '</b><small>' + (x.t ? esc(fmtWD(new Date(x.t))) : esc(c.date || '')) + (m.length ? ' · ' + esc(m.join(' · ')) + ' /10' : '') + '</small>' +
           (note && note !== '—' ? '<p>' + esc(note) + '</p>' : '') + '</div><div class="kg cv2-num">' + esc(c.weight) + ' kg</div></div>';
@@ -12297,7 +12305,7 @@ window.CV2_DEFAULT = 'v2';
   window.cv2ScrollToForm = scrollToForm;
 
   /* ---- check-in draft + failed-send protection ------------------------- */
-  var FIELDS = ['input-weight', 'input-week', 'input-energy', 'input-sleep', 'input-stress', 'input-feeling', 'input-notes'];
+  var FIELDS = ['input-weight', 'input-week', 'input-energy', 'input-sleep', 'input-stress', 'input-feeling', 'input-training', 'input-notes'];
   var DRAFT = SK + '_cv2_checkin_draft';
   function readForm() { var o = {}; FIELDS.forEach(function (id) { var e = $(id); if (e && e.value !== '') o[id] = e.value; }); return o; }
   function writeForm(o) { FIELDS.forEach(function (id) { var e = $(id); if (e && o[id] != null) e.value = o[id]; }); }
