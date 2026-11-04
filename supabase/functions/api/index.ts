@@ -1134,6 +1134,19 @@ async function accountLegacyAudit(body: any) {
 }
 // ═══════════════════════════════════════ END CLIENT-ACCOUNTS-V1
 
+// Reads every row of a query in 1,000-row pages (PostgREST returns at most 1,000 per request). `build` must return a
+// fresh, ORDERED query each call. Stops at 50 pages so a runaway table can't hang the request.
+async function pagedRows(build: () => any, page = 1000): Promise<{ data: any[] | null; error: any }> {
+  const out: any[] = [];
+  for (let from = 0; from < 50 * page; from += page) {
+    const { data, error } = await build().range(from, from + page - 1);
+    if (error) return { data: out.length ? out : null, error };
+    out.push(...(data ?? []));
+    if (!data || data.length < page) break;
+  }
+  return { data: out, error: null };
+}
+
 async function dashboard(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
   const ninetyAgo = new Date(Date.now() - 90 * 86400_000).toISOString();
@@ -1142,12 +1155,15 @@ async function dashboard(body: any) {
   // Internal/test accounts (sg_canary) are excluded from the numbers Omar
   // reads as his business. Pass includeInternal:true to see them deliberately.
   const showInternal = body?.includeInternal === true;
+  // Every 90-day read is paged oldest-first (Omar 2026-11-04): one unpaged select stops at PostgREST's 1,000-row cap,
+  // so once the fleet passed 1,000 meal / workout rows the NEWEST logs were silently dropped and active clients looked
+  // quiet (latestWorkoutTs weeks stale for 24 clients). Oldest-first keeps the slice(-N) "most recent" lists below.
   const [{ data: clientsAll }, { data: weights }, { data: checkins }, { data: meals }, { data: workouts }] = await Promise.all([
     admin.from('clients').select('id, storage_key, is_internal'),
-    admin.from('weight_logs').select('client_key, logged_at, weight_kg').gte('logged_at', ninetyAgo),
-    admin.from('check_ins').select('client_key, submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10, notes').gte('submitted_at', ninetyAgo),
-    admin.from('meal_logs').select('client_id, logged_at, meal_name, kcal, protein_g, carbs_g, fat_g').gte('logged_at', ninetyAgo),
-    admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, prescribed_exercise_name, weight, sets_done, reps_done, rpe, phase_key, day_index').gte('logged_at', ninetyAgo),
+    pagedRows(() => admin.from('weight_logs').select('client_key, logged_at, weight_kg').gte('logged_at', ninetyAgo).order('logged_at', { ascending: true })),
+    pagedRows(() => admin.from('check_ins').select('client_key, submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10, notes').gte('submitted_at', ninetyAgo).order('submitted_at', { ascending: true })),
+    pagedRows(() => admin.from('meal_logs').select('client_id, logged_at, meal_name, kcal, protein_g, carbs_g, fat_g').gte('logged_at', ninetyAgo).order('logged_at', { ascending: true }).order('id', { ascending: true })),
+    pagedRows(() => admin.from('workout_log_entries').select('client_key, logged_at, exercise_name, prescribed_exercise_name, weight, sets_done, reps_done, rpe, phase_key, day_index').gte('logged_at', ninetyAgo).order('logged_at', { ascending: true }).order('id', { ascending: true })),
   ]);
   const allRows = clientsAll ?? [];
   const hidden = new Set(allRows.filter((c: any) => c.is_internal === true).map((c: any) => c.storage_key));

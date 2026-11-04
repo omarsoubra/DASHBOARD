@@ -185,9 +185,9 @@ test('CV13 database outage → db_error, nothing fabricated', async () => {
 
 test('CV14 existing coach `dashboard` op byte-identical; new op dispatched; coach-only', async () => {
   const fnOf = (src) => { const i = src.indexOf('async function dashboard(body: any) {'); return src.slice(i, src.indexOf('\n}\n', i)); };
-  let head = null;
-  try { head = execSync('git show 70c0541:supabase/functions/api/index.ts', { maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).toString(); } catch { /* shallow CI clone */ }
-  if (head) eq(fnOf(SRC), fnOf(head), 'dashboard() unchanged');
+  // dashboard() changed on purpose 2026-11-04 (paged reads, tests/dashboard_paging.test.js); what matters here is that
+  // this feature never reached into it.
+  assert(!/workout_completions|coachWorkoutCompletions|cwv/.test(fnOf(SRC)), 'dashboard() does not use the coach view');
   assert(/case 'coachWorkoutCompletions': return coachWorkoutCompletions\(body\);/.test(SRC), 'dispatched');
   const fn = SRC.slice(SRC.indexOf('async function coachWorkoutCompletions('));
   assert(fn.indexOf('verifyCoachToken(') < fn.indexOf('admin.from('), 'coach auth before any read');

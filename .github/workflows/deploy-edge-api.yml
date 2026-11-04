@@ -80,6 +80,7 @@ jobs:
                    tests/write_enforcement.test.js \
                    tests/workout_completion.test.js \
                    tests/coach_workout_view.test.js \
+                   tests/dashboard_paging.test.js \
                    tests/health.test.js; do
             echo "───── $t"
             node "$t"
