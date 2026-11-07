@@ -12821,7 +12821,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function crFolded() { try { return localStorage.getItem(CR_FOLD) === new Date().toDateString(); } catch (e) { return false; } }
   function crFold(on) { try { if (on) localStorage.setItem(CR_FOLD, new Date().toDateString()); else localStorage.removeItem(CR_FOLD); } catch (e) {} }
   var CR_SKIP = { omar: 1, isaac_alameddine: 1 };                                   // coach account / legacy page without the app
-  var CR_DECLINED = { ali_alfatlawi: 1, hamzah_dargham: 1, malak_hanani: 1, adam_ahmad: 1, mayank: 1, dib_kerdy: 1, lana: 1 };   // no next block / on Block 3 (Omar 2026-11-04)
+  var CR_DECLINED = { ali_alfatlawi: 1, hamzah_dargham: 1, malak_hanani: 1, mayank: 1, dib_kerdy: 1, lana: 1 };   // no next block / on Block 3 (Omar 2026-11-04; adam_ahmad renewed 2026-11-07)
   var CR_QUIT = /\b(cancel|quit|stop(ping)?|pause|break from|afford|money|expensive|cost|refund|not worth|done with)\b/i;
   var CR_STRUGGLE = /\b(busy|stress(ed)?|struggl\w*|hard|tough|motivat\w*|bored|travel\w*|holiday|sick|injur\w*|not working|plateau\w*|frustrat\w*|overwhelm\w*|tired|exhausted|fell off|off track)\b/i;
   var CR_STORE = 'lockedin.churnState.v1', CR_HIGH = 40, CR_WATCH = 20, CR_WEEKLY = 100;   // $/week a client is worth (current offer)
