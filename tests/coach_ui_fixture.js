@@ -7,7 +7,7 @@
 //   marcus  red attention (quiet 10 d, +2 kg on a cut)        -> attn      -> Review  (review modal)
 //   priya   new check-in + unsent reply draft + PR today       -> checkin   -> Review  (check-in review)
 //   tomasz  reviewed check-in + unsent reply draft             -> reply     -> Send reply (check-in review)
-//   isla    new check-in, poor sleep / high stress, no draft   -> checkin
+//   isla    new check-in, poor sleep / high stress, no draft   -> checkin   (renewed: Block 2 wk 1, last check-in was Block 1 wk 12)
 //   nadia   reply sent 30 h ago, nothing from her since        -> noreply   -> Nudge   (client page)
 //   ravi    reply sent 5 h ago, nothing since                  -> "Waiting on client" row; Apple Health sync stopped
 //   jonah   16-wk block, week 15, unsent journey draft         -> journey   -> Message (journey side panel)
@@ -50,7 +50,7 @@ function build(now = Date.now()) {
   client({ storageKey: 'marcus_vell', displayName: 'Marcus Vell', programType: 'Fat Loss', programGoal: 'fat_loss', startWeight: 92, goalWeight: 84, startDate: startForWeek(7), phone: '+61400000101' });
   client({ storageKey: 'priya_n', displayName: 'Priya Nandakumar', programType: 'Glute Recomp', startWeight: 64, goalWeight: 61, startDate: startForWeek(6), phone: '+61400000102' });
   client({ storageKey: 'tomasz_b', displayName: 'Tomasz Bielak', programType: 'Lean Bulk', startWeight: 70, goalWeight: 75, startDate: startForWeek(3), phone: '' });
-  client({ storageKey: 'isla_b', displayName: 'Isla Brennan', programType: 'Strength Cut', startWeight: 71, goalWeight: 66, startDate: startForWeek(7), phone: '+61400000104' });
+  client({ storageKey: 'isla_b', displayName: 'Isla Brennan', programType: 'Strength Cut', startWeight: 71, goalWeight: 66, startDate: sydDay(5), phone: '+61400000104' });
   client({ storageKey: 'nadia_k', displayName: 'Nadia Karimi', programType: 'Recomp', startWeight: 60, goalWeight: 58, startDate: startForWeek(3), phone: '+61400000105' });
   client({ storageKey: 'ravi_m', displayName: 'Ravi Menon', programType: 'Cut', startWeight: 88, goalWeight: 80, startDate: startForWeek(6), phone: '+61400000106' });
   client({ storageKey: 'jonah_r', displayName: 'Jonah Reyes', programType: 'Block 2 Hypertrophy', startWeight: 80, goalWeight: 84, startDate: startForWeek(15), durationWeeks: 16, phaseCount: 4, phone: '+61400000107' });
@@ -98,7 +98,7 @@ function build(now = Date.now()) {
   checkin('tomasz_b', dAgo(2, 9), 3, 70.9, { notes: 'Appetite is hard.' });
   // isla: new check-in, bad sleep / stress
   dailyWeights('isla_b', 12, 0, 70.4, -0.08); meals('isla_b', [0, 1, 2, 4]); lift('isla_b', dAgo(1, 8), 'Bench Press', 47.5, 6);
-  checkin('isla_b', dAgo(9, 9), 6, 69.8); checkin('isla_b', dAgo(2, 9), 7, 69.5, { sleepHours: 5, stress1to10: 9, dietAdherence1to10: 4, notes: 'Exams. Sleeping badly.' });
+  checkin('isla_b', dAgo(9, 9), 12, 69.8); checkin('isla_b', dAgo(2, 9), 1, 69.5, { sleepHours: 5, stress1to10: 9, dietAdherence1to10: 4, notes: 'Exams. Sleeping badly.' });
   // nadia: reply sent 30 h ago, nothing since (last log 34 h ago)
   dailyWeights('nadia_k', 10, 2, 60.1, -0.04); meals('nadia_k', [2, 3, 4]); lift('nadia_k', iso(now - 34 * HOUR), 'Leg Press', 120, 10);
   sum('nadia_k').weightHistory.push({ ts: iso(now - 34 * HOUR), kg: 59.7 });
@@ -231,6 +231,10 @@ function build(now = Date.now()) {
     { url: '/__fixture/photo.svg?v=front-w5', urlKind: 'signed', view: 'front', week: 5, ts: dAgo(8), source: 'checkin', intakeId: null, label: 'Week 5', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=front-w6', urlKind: 'signed', view: 'front', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=side-w6', urlKind: 'signed', view: 'side', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
+  ], isla_b: [   // renewed: Block 1 intake + week 12, Block 2 week 1
+    { url: '/__fixture/photo.svg?v=isla-base', urlKind: 'signed', view: 'front', week: null, ts: dAgo(90), source: 'intake', intakeId: '00000000-0000-4000-8000-0000000000cc', label: 'Baseline', baselineWeight: 71.4 },
+    { url: '/__fixture/photo.svg?v=isla-b1w12', urlKind: 'signed', view: 'front', week: 12, ts: dAgo(9), source: 'checkin', intakeId: null, label: 'Week 12', baselineWeight: null },
+    { url: '/__fixture/photo.svg?v=isla-b2w1', urlKind: 'signed', view: 'front', week: 1, ts: dAgo(2), source: 'checkin', intakeId: null, label: 'Week 1', baselineWeight: null },
   ] };
   // ── testimonials (testimonialsGet) ──
   const testimonials = [
