@@ -3369,7 +3369,86 @@ body.cv2 .cv2-notecard{background:var(--c-surface)!important;border:1px solid rg
   box-shadow:var(--c-shadow)!important;padding:16px!important;}
 body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:var(--c-text)!important;letter-spacing:0!important;margin-bottom:6px!important;}
 
+
+/* ---- what changed: plan-update card on Home ----------------------------- */
+.cv2-wc{position:relative;overflow:hidden;border-radius:22px;padding:18px 18px 16px;
+  background:linear-gradient(180deg,#fff 0%,#fff 55%,var(--c-tint) 140%);
+  border:1px solid var(--c-edge);
+  box-shadow:0 1px 2px rgba(22,24,28,.04),0 18px 40px -26px rgba(232,84,46,.55);
+  transform-origin:50% 0;}
+.cv2-wc.pre{opacity:0;}
+.cv2-wc::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--c-accent),#ffb38f 45%,var(--c-accent));background-size:200% 100%;}
+.cv2-wc .orb{position:absolute;right:-70px;top:-90px;width:230px;height:230px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(255,92,51,.20),rgba(255,92,51,0));}
+.cv2-wc .sheen{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.85) 48%,rgba(255,214,196,.55) 52%,transparent 65%);
+  transform:translateX(-120%);}
+.cv2-wc > *{position:relative;}
+.cv2-wc .top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cv2-wc .pill{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px 0 10px;border-radius:999px;
+  background:var(--c-tint);border:1px solid var(--c-edge);color:var(--c-ink);font-size:12.5px;font-weight:800;letter-spacing:.01em;}
+.cv2-wc .pill i{position:relative;width:8px;height:8px;border-radius:50%;background:var(--c-accent);}
+.cv2-wc .pill i::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--c-accent);opacity:0;}
+.cv2-wc .top small{font-size:12.5px;font-weight:700;color:var(--c-muted);}
+.cv2-wc .big{display:flex;align-items:flex-end;flex-wrap:wrap;gap:2px 10px;margin:14px 0 0;}
+.cv2-wc .was{position:relative;font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--c-dim);
+  padding-bottom:9px;font-variant-numeric:tabular-nums;}
+.cv2-wc .was::after{content:"";position:absolute;left:-3px;right:-3px;top:32%;height:2px;border-radius:2px;background:var(--c-accent);
+  transform-origin:0 50%;}
+.cv2-wc .arr{display:inline-flex;color:var(--c-accent);padding-bottom:8px;margin:0 -2px;}
+.cv2-wc .arr svg{width:20px;height:20px;}
+.cv2-wc .now{display:inline-flex;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:60px;line-height:1;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+  color:var(--c-text);}
+.cv2-wc .now .dg{display:inline-block;height:1em;overflow:hidden;}
+.cv2-wc .now .sep{margin:0 .02em 0 -.02em;}
+.cv2-wc .now .col{display:block;will-change:transform;}
+.cv2-wc .now .col b{display:block;height:1em;font-weight:800;}
+.cv2-wc .unit{font-size:14px;font-weight:700;color:var(--c-muted);padding-bottom:9px;}
+body.cv2 .cv2-wc h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;font-size:19px!important;font-weight:800!important;
+  letter-spacing:-.015em!important;line-height:1.3!important;margin:10px 0 0!important;color:var(--c-text)!important;-webkit-text-fill-color:currentColor!important;}
+.cv2-wc .rows{list-style:none;margin:12px 0 0;padding:0;border-top:1px solid var(--c-line);}
+.cv2-wc .rows li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--c-line);
+  font-size:14.5px;}
+.cv2-wc .rows .k{display:inline-flex;align-items:center;gap:9px;font-weight:700;color:var(--c-text);}
+.cv2-wc .rows .k svg{width:17px;height:17px;color:var(--c-dim);}
+.cv2-wc .rows .v{display:inline-flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cv2-wc .rows s{color:var(--c-dim);font-weight:600;text-decoration-thickness:1.5px;}
+.cv2-wc .rows .v b{font-weight:800;color:var(--c-ink);background:var(--c-tint);border:1px solid var(--c-edge);border-radius:8px;padding:3px 8px;}
+.cv2-wc .rows .same b{color:var(--c-ok);background:var(--c-ok-tint);border-color:var(--c-ok-edge);}
+.cv2-wc .why{display:flex;gap:11px;align-items:flex-start;margin:14px 0 0;}
+.cv2-wc .why .cv2-av{flex:0 0 auto;width:34px;height:34px;font-size:12.5px;}
+.cv2-wc .why p{margin:0;font-size:14px;line-height:1.55;color:var(--c-muted);}
+.cv2-wc .why p b{display:block;color:var(--c-text);font-size:12.5px;font-weight:800;margin-bottom:1px;}
+.cv2-wc .act{display:flex;gap:10px;margin-top:16px;}
+.cv2-wc .act .cv2-btn{flex:1 1 0;min-height:48px;transition:transform .16s ease,background .2s ease;}
+.cv2-wc .act .cv2-btn:active{transform:scale(.97);}
+.cv2-wc .act .ok svg{width:20px;height:20px;}
+.cv2-wc.bye{transition:height .46s cubic-bezier(.4,0,.1,1),opacity .3s ease,transform .46s cubic-bezier(.4,0,.1,1),margin .46s cubic-bezier(.4,0,.1,1),padding .46s cubic-bezier(.4,0,.1,1),border-width .46s;
+  opacity:0;transform:scale(.96);}
+
+/* motion: the resting state above is the final state; .play only adds the way in */
+.cv2-wc.play{animation:wcIn .72s cubic-bezier(.2,.9,.25,1.06) both;}
+.cv2-wc.play::before{animation:wcBar 2.4s ease-in-out .3s 2;}
+.cv2-wc.play .orb{animation:wcOrb 9s ease-in-out infinite alternate;}
+.cv2-wc.play .sheen{animation:wcSheen 1.25s cubic-bezier(.3,.1,.2,1) .55s both;}
+.cv2-wc.play .pill i::after{animation:wcPing 1.8s cubic-bezier(.2,.7,.3,1) .9s 3;}
+.cv2-wc.play .rise{animation:wcRise .62s cubic-bezier(.2,.85,.25,1) both;animation-delay:calc(.16s + var(--i,0) * .075s);}
+.cv2-wc.play .was::after{animation:wcStrike .45s cubic-bezier(.6,0,.2,1) .62s both;}
+.cv2-wc.play .arr{animation:wcArr .5s cubic-bezier(.2,.9,.3,1.4) .8s both;}
+.cv2-wc.play .rows .v b{animation:wcPop .5s cubic-bezier(.2,.9,.3,1.5) both;animation-delay:calc(.75s + var(--i,0) * .075s);}
+@keyframes wcIn{from{opacity:0;transform:translateY(22px) scale(.965);}to{opacity:1;transform:none;}}
+@keyframes wcRise{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+@keyframes wcBar{0%{background-position:0 0;}100%{background-position:-200% 0;}}
+@keyframes wcOrb{from{transform:translate(0,0) scale(1);}to{transform:translate(-26px,22px) scale(1.12);}}
+@keyframes wcSheen{0%{opacity:1;transform:translateX(-120%);}99%{opacity:1;}100%{opacity:0;transform:translateX(120%);}}
+@keyframes wcPing{0%{opacity:.55;transform:scale(1);}100%{opacity:0;transform:scale(3.4);}}
+@keyframes wcStrike{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+@keyframes wcArr{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:none;}}
+@keyframes wcPop{0%{opacity:0;transform:scale(.8);}100%{opacity:1;transform:none;}}
 </style>
+<script id="cv2-planupdate">window.CV2_PLAN_UPDATE={"id": "2026-11-07-1800", "date": "2026-11-07", "title": "Your calories came down to speed up the cut", "headline": {"from": 2450, "to": 1800, "unit": "kcal a day"}, "rows": [{"icon": "target", "label": "Protein", "from": "195 g", "to": "153 g"}, {"icon": "up", "label": "Daily steps", "to": "10–12k"}, {"icon": "play", "label": "Training", "to": "No change", "keep": true}], "why": "Your weight has held steady for a few weeks, so we are opening the gap. Same foods, smaller portions. Hit your steps and this moves.", "cta": {"label": "See my meals", "go": "nutrition"}};</script>
 <!-- CV2:CSS:END -->
 </head>
 
@@ -12103,15 +12182,92 @@ window.CV2_DEFAULT = 'v2';
       '<div class="cv2-divider"></div>' + ck + '</div>';
   }
 
+
+  /* ---- what changed: one card at the top of Home for 7 days after a plan update ----
+     Data: window.CV2_PLAN_UPDATE = { id, date:'YYYY-MM-DD', title, headline:{from,to,unit}, rows:[{icon,label,from,to}], why, cta:{label,go} }
+     The node is kept across Home re-renders so the way in plays once. */
+  var _wcEl = null, WC_DAYS = 7, WC_KEY = SK + '_wc_seen';
+  function wcData() {
+    var u = window.CV2_PLAN_UPDATE; if (!u || !u.id || !u.title) return null;
+    var d = parseYmd(u.date); if (!d) return null;
+    var age = (new Date() - d) / 864e5; if (age < 0 || age > WC_DAYS) return null;
+    if (lsGet(WC_KEY, '') === u.id) return null;
+    return u;
+  }
+  function wcFmt(n) { return typeof n === 'number' ? n.toLocaleString('en-AU') : String(n == null ? '' : n); }
+  function wcOdo(to) {
+    return wcFmt(to).split('').map(function (ch) {
+      if (!/\d/.test(ch)) return '<span class="sep">' + esc(ch) + '</span>';
+      return '<span class="dg"><span class="col" data-d="' + ch + '" style="transform:translateY(-' + (+ch * 10) + '%)"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span>';
+    }).join('');
+  }
+  function wcBuild(u) {
+    var el = document.createElement('section'); el.className = 'cv2-wc pre'; el.id = 'cv2-wc'; el.setAttribute('aria-label', 'Plan update');
+    var d = parseYmd(u.date), hl = u.headline, i = 0, r = function () { return ' class="rise" style="--i:' + (i++) + '"'; };
+    var rc = function (c) { return ' class="' + c + ' rise" style="--i:' + (i++) + '"'; };
+    el.innerHTML = '<span class="orb"></span><span class="sheen"></span>' +
+      '<div' + rc('top') + '><span class="pill"><i></i>Plan updated</span><small>' + esc(fmtWD(d)) + '</small></div>' +
+      (hl ? '<div' + rc('big') + ' aria-label="' + esc(wcFmt(hl.from) + ' to ' + wcFmt(hl.to) + ' ' + (hl.unit || '')) + '">' +
+        (hl.from != null ? '<span class="was">' + esc(wcFmt(hl.from)) + '</span><span class="arr">' + I('flat') + '</span>' : '') +
+        '<span class="now" aria-hidden="true">' + wcOdo(hl.to) + '</span><span class="unit">' + esc(hl.unit || '') + '</span></div>' : '') +
+      '<h2' + r() + '>' + esc(u.title) + '</h2>' +
+      ((u.rows || []).length ? '<ul class="rows">' + u.rows.map(function (x) {
+        var same = x.from == null || x.from === x.to;
+        return '<li' + rc(x.keep ? 'same' : '') + '><span class="k">' + I(x.icon || 'target') + esc(x.label) + '</span><span class="v">' +
+          (x.from != null && !x.keep ? '<s>' + esc(wcFmt(x.from)) + '</s>' : '') + '<b>' + esc(wcFmt(x.to)) + '</b></span></li>';
+      }).join('') + '</ul>' : '') +
+      (u.why ? '<div' + rc('why') + '><span class="cv2-av">' + esc(initials(COACH)) + '</span><p><b>Why, from ' + esc(COACH) + '</b>' + esc(u.why) + '</p></div>' : '') +
+      '<div' + rc('act') + '>' + (u.cta ? '<button type="button" class="cv2-btn primary go">' + esc(u.cta.label) + '</button>' : '') +
+      '<button type="button" class="cv2-btn secondary ok">Got it</button></div>';
+    var go = el.querySelector('.go'); if (go) go.onclick = function () { window.cv2Go(u.cta.go); };
+    el.querySelector('.ok').onclick = function () { wcDismiss(el, u); };
+    return el;
+  }
+  function wcPlay(el, u) {
+    var hl = u.headline || {}, from = wcFmt(hl.from != null ? hl.from : hl.to).replace(/\D/g, ''), cols = el.querySelectorAll('.now .col');
+    var pad = cols.length - from.length;
+    [].forEach.call(cols, function (c, i) {      // each digit rolls from the old number to the new one, left to right
+      var f = +(from.charAt(i - pad) || 0), t = +c.getAttribute('data-d');
+      c.style.transition = 'none'; c.style.transform = 'translateY(-' + (f * 10) + '%)';
+      void c.offsetHeight;
+      c.style.transition = 'transform ' + (1.15 + i * .12) + 's cubic-bezier(.16,.9,.2,1) ' + (.7 + i * .07) + 's';
+      c.style.transform = 'translateY(-' + (t * 10) + '%)';
+    });
+    el.classList.remove('pre'); el.classList.add('play');
+  }
+  function wcDismiss(el, u) {
+    try { localStorage.setItem(WC_KEY, JSON.stringify(u.id)); } catch (e) {}
+    var b = el.querySelector('.ok'); if (b) b.innerHTML = I('check');
+    setTimeout(function () {
+      el.style.height = el.offsetHeight + 'px'; void el.offsetHeight; el.classList.remove('play'); el.classList.add('bye');
+      el.style.height = '0px'; el.style.paddingTop = el.style.paddingBottom = '0px'; el.style.marginBottom = '-12px'; el.style.borderWidth = '0px';
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); _wcEl = null; }, 500);
+    }, 260);
+  }
+  function wcMount() {
+    var slot = $('cv2-wc-slot'); if (!slot) return;
+    var u = call(wcData); if (!u) { if (slot.parentNode) slot.parentNode.removeChild(slot); _wcEl = null; return; }
+    var isNew = !_wcEl; if (isNew) _wcEl = call(function () { return wcBuild(u); });
+    if (!_wcEl) { slot.parentNode.removeChild(slot); return; }
+    slot.parentNode.replaceChild(_wcEl, slot);
+    if (!isNew) return;
+    var el = _wcEl, start = function () { call(function () { wcPlay(el, u); }); };
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) { if (es.some(function (e) { return e.isIntersecting; })) { io.disconnect(); start(); } }, { threshold: .35 });
+      io.observe(el);
+    } else start();
+  }
+
   function renderHome() {
     var el = $('cv2-cv2home-page'); if (!el) return;
     var wk = D.week();
     var sub = (wk.canonical ? (wk.started ? (wk.over ? 'Program complete · ' : 'Week ' + wk.week + ' of ' + wk.total + ' · ') : 'Starts soon · ') : '') + 'Coached by ' + COACH;
     el.innerHTML =
       '<div class="cv2-hello"><div class="tx"><h1>' + esc(greeting()) + ', ' + esc(firstName()) + '</h1><div class="sub">' + esc(sub) + '</div></div></div>' +
-      todayCard() + nutritionCard() +
+      '<div id="cv2-wc-slot"></div>' + todayCard() + nutritionCard() +
       secLabel('This week', '<small>from ' + esc(fmtD(mondayOf(new Date()))) + '</small>') + weekCard() +
       secLabel('Your coach') + coachTeaser();
+    wcMount();
     if (_serverWeights === null) D.fetchWeights().then(function (w) { if (w && w.length && current === 'cv2home') renderHome(); });
   }
 
