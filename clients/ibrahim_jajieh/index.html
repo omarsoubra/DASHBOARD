@@ -2598,7 +2598,7 @@ body.tv2-sub-open .fab{display:none!important;}
 .tv2-cta-top{margin-top:.9rem;margin-bottom:.4rem;}
 .tv2-phases-top{margin-top:.9rem;padding-right:0;}
 </style>
-<script id="cv2-planupdate">window.CV2_PLAN_UPDATE={"id": "ibrahim-20261116-phase2-2400", "date": "2026-11-16", "title": "Calories stay at 2400", "headline": {"from": 2500, "to": 2400, "unit": "kcal"}, "rows": [{"label": "Weeks 5 to 8", "from": "2500", "to": "2400 kcal"}, {"label": "What moved", "to": "a bit less rice, oats and bread"}, {"label": "Protein", "to": "same"}, {"label": "Meals", "to": "same dishes"}], "why": "The new phase bumped your calories up and we don't want that yet. Back to 2400 until the scale starts moving. Same meals, just slightly smaller carb portions.", "cta": {"label": "See your meals", "go": "nutrition"}};</script>
+<script id="cv2-planupdate">window.CV2_PLAN_UPDATE={"id": "ibrahim-20261116-training-volume", "date": "2026-11-16", "title": "Your training just stepped up", "rows": [{"label": "Sets", "from": "3 per exercise", "to": "4 on your main lifts"}, {"label": "Effort", "from": "2 reps left", "to": "1 rep left, last set of isolation to failure"}, {"label": "Arms, delts, glutes", "to": "more weekly sets"}, {"label": "Exercises", "to": "same machines and cables"}], "why": "You're past the beginner stage so the plan now matches it. More work on the muscles that had room, and harder sets. Starts with your next session. If sleep or strength drops tell me and we pull it back.", "cta": {"label": "See your sessions", "go": "training"}};</script>
 
 <!-- CV2:CSS:BEGIN -->
 <style id="cv2-css">
@@ -3608,7 +3608,7 @@ body.cv2 .cv2-wc h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif!importa
 <div id="tv2-workout" hidden></div>
 <div id="tv2-guide" hidden></div>
 <div id="tv2-carry">
-<div data-copy="CLIENT_BRIEF_HTML"><div class="cardio-card p1" style="margin-bottom:2rem;"><div class="cardio-card-phase">READ BEFORE WEEK 1.</div><div class="cardio-card-title">How This Program Runs</div><div class="cardio-card-detail"><ul style="margin:0;padding-left:1.1rem;line-height:1.7;"><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR GOAL</strong> You told us: Lose fat.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR NUMBERS</strong> Your calories and macros are set per phase - see each phase card. This is a starting estimate: it changes only when your 7-day average weight and how consistently you are eating say it should, agreed with Omar.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">5 FEEDS A DAY</strong> Breakfast, Snack, Lunch, Pre-workout, Dinner - any time that suits your day. All meat is halal.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">5 SESSIONS A WEEK</strong> Upper A, Lower A, Upper B, Lower B, Upper C.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">WEEK 1 IS LEARNING WEEK</strong> No weights are printed. Find a weight you can lift for the reps shown with the reps in reserve shown and good technique, and write it down. Never train to failure.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">IF SOMETHING IS NOT AVAILABLE</strong> Swaps for missing equipment are listed under each phase. If anything hurts (not normal training effort), stop that exercise and tell Omar.</li></ul></div></div></div>
+<div data-copy="CLIENT_BRIEF_HTML"><div class="cardio-card p1" style="margin-bottom:2rem;"><div class="cardio-card-phase">READ BEFORE WEEK 1.</div><div class="cardio-card-title">How This Program Runs</div><div class="cardio-card-detail"><ul style="margin:0;padding-left:1.1rem;line-height:1.7;"><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR GOAL</strong> You told us: Lose fat.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR NUMBERS</strong> Your calories and macros are set per phase - see each phase card. This is a starting estimate: it changes only when your 7-day average weight and how consistently you are eating say it should, agreed with Omar.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">5 FEEDS A DAY</strong> Breakfast, Snack, Lunch, Pre-workout, Dinner - any time that suits your day. All meat is halal.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">5 SESSIONS A WEEK</strong> Upper A, Lower A, Upper B, Lower B, Upper C.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">WEEK 1 IS LEARNING WEEK</strong> No weights are printed. Find a weight you can lift for the reps shown with the reps in reserve shown and good technique, and write it down. In week 1, never train to failure. After that, follow the effort rule on your phase card.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">IF SOMETHING IS NOT AVAILABLE</strong> Swaps for missing equipment are listed under each phase. If anything hurts (not normal training effort), stop that exercise and tell Omar.</li></ul></div></div></div>
 </div>
 <div id="tv2-prog" hidden></div>
 <div id="tv2-done" hidden></div>
@@ -4521,24 +4521,24 @@ const phases = {
     progression: [
       ["Exercise", "How it moves"],
       ["Week 1, every exercise", "FIND LOAD. Work up to a weight you can finish the prescribed reps with at the prescribed RIR and clean technique. Write it down - that is your starting point."],
-      ["Every exercise after that", "Load axis: when all sets hit the top of the rep range at target RIR, add the smallest plate increment (2.5-5 kg machine/cable) next session."],
-      ["Deload week (week 4)", "Weeks 4, 8, 12 and 16: drop sets by about 40% (2 sets per exercise) at RIR 3-4; week 16 ends with the review."],
+      ["Every exercise after that", "Within a phase: load/reps only (add 2.5-5 kg when all sets reach the top of the rep range at target RIR). Volume progresses across phases: phase 2 start counts, phase 3 middle, phase 4 peak; sets never change inside a phase."],
+      ["Deload week (week 4)", "Weeks 4, 8, 12 and 16: 2 sets per exercise at RIR 3-4, no failure sets; week 16 ends with the review."],
       ["If this is not available", "Use this instead"],
       ["Machine Chest Press (neutral grip)", "Smith Machine Chest Press (neutral-wrist, controlled) - otherwise Cable Chest Press"],
       ["Chest-Supported Machine Row (neutral grip)", "Seated Cable Row (neutral grip handle) - otherwise Single-arm Cable Row"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press (feet low)"],
-      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Glute Bridge (plate on hips)"],
+      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Smith Machine Glute Bridge (supine, pad on hips)"],
       ["Machine Preacher Curl", "Cable Rope Hammer Curl - otherwise Cable Curl (neutral handle)"],
       ["Reverse Pec Deck", "Cable Face Pull (rope) - otherwise Cable Reverse Fly"],
     ],
   },
   2: {
     label: "Build", weeks: "5–8",
-    desc: "5 sessions a week - Upper A, Lower A, Upper B, Lower B, Upper C. Every set stops at the reps-in-reserve shown. Week 8 is a deload.",
+    desc: "5 sessions a week - Upper A, Lower A, Upper B, Lower B, Upper C. Work every set to 1 rep in reserve (RIR 1); only the last set of laterals, rear delts, triceps, biceps, pec deck, fly, leg extension and leg curl goes to failure. Presses, rows, leg press, hack squat, hip thrust, back extension, calves and crunch never go to failure, and deload weeks have no failure sets. Week 8 is a deload.",
     info: [
       { label: "Weeks", val: "5–8", desc: "Build" },
       { label: "Sessions", val: "5/wk", desc: "Upper A · Lower A · Upper B · Lower B · Upper C" },
-      { label: "Effort", val: "1–2 RIR", desc: "Reps in reserve - never train to failure" },
+      { label: "Effort", val: "1 RIR", desc: "RIR 1; last isolation set to failure" },
       { label: "Deload", val: "Week 8", desc: "Fewer sets, easier effort" },
     ],
     days: [
@@ -4546,46 +4546,48 @@ const phases = {
         label: "Day 1 — Upper A",
         badge: "MANDATORY",
         exercises: [
-          { name: "Machine Chest Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Chest-Supported Machine Row (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Seated Machine Shoulder Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Machine Preacher Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Machine Chest Press (neutral grip)", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Chest-Supported Machine Row (neutral grip)", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Seated Machine Shoulder Press (neutral grip)", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Machine Preacher Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 2 — Lower A",
         badge: "MANDATORY",
         exercises: [
-          { name: "Leg Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
-          { name: "Seated Leg Curl", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Hip Thrust", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Standing Calf Raise (machine)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Leg Press", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
+          { name: "Seated Leg Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Standing Calf Raise (machine)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 3 — Upper B",
         badge: "MANDATORY",
         exercises: [
-          { name: "Incline Machine Chest Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Seated Cable Row (neutral grip handle)", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Incline Machine Chest Press (neutral grip)", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Seated Cable Row (neutral grip handle)", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Overhead Cable Rope Triceps Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Cable Rope Hammer Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Reverse Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Overhead Cable Rope Triceps Extension", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Hammer Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 4 — Lower B",
         badge: "MANDATORY",
         exercises: [
-          { name: "Hack Squat", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
-          { name: "Lying Leg Curl", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "45-Degree Back Extension (bodyweight)", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Hip Thrust", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Hack Squat", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
+          { name: "Lying Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "45-Degree Back Extension (bodyweight)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust", sets: "5", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Seated Calf Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
@@ -4593,36 +4595,36 @@ const phases = {
         label: "Day 5 — Upper C",
         badge: "MANDATORY",
         exercises: [
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Chest Fly (low to high)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Chest Fly (low to high)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Reverse Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Rope Triceps Pushdown", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Rope Hammer Curl", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Crunch", sets: "3", reps: "12–15", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Hammer Curl", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Crunch", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       }
     ],
     progression: [
       ["Exercise", "How it moves"],
-      ["Every exercise", "Load axis: when all sets hit the top of the rep range at target RIR, add the smallest plate increment (2.5-5 kg machine/cable) next session."],
-      ["Deload week (week 8)", "Weeks 4, 8, 12 and 16: drop sets by about 40% (2 sets per exercise) at RIR 3-4; week 16 ends with the review."],
+      ["Every exercise", "Within a phase: load/reps only (add 2.5-5 kg when all sets reach the top of the rep range at target RIR). Volume progresses across phases: phase 2 start counts, phase 3 middle, phase 4 peak; sets never change inside a phase."],
+      ["Deload week (week 8)", "Weeks 4, 8, 12 and 16: 2 sets per exercise at RIR 3-4, no failure sets; week 16 ends with the review."],
       ["If this is not available", "Use this instead"],
       ["Machine Chest Press (neutral grip)", "Smith Machine Chest Press (neutral-wrist, controlled) - otherwise Cable Chest Press"],
       ["Chest-Supported Machine Row (neutral grip)", "Seated Cable Row (neutral grip handle) - otherwise Single-arm Cable Row"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press (feet low)"],
-      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Glute Bridge (plate on hips)"],
+      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Smith Machine Glute Bridge (supine, pad on hips)"],
       ["Machine Preacher Curl", "Cable Rope Hammer Curl - otherwise Cable Curl (neutral handle)"],
       ["Reverse Pec Deck", "Cable Face Pull (rope) - otherwise Cable Reverse Fly"],
     ],
   },
   3: {
     label: "Consolidate", weeks: "9–12",
-    desc: "5 sessions a week - Upper A, Lower A, Upper B, Lower B, Upper C. Every set stops at the reps-in-reserve shown. Week 12 is a deload.",
+    desc: "5 sessions a week - Upper A, Lower A, Upper B, Lower B, Upper C. Work every set to 1 rep in reserve (RIR 1); only the last set of laterals, rear delts, triceps, biceps, pec deck, fly, leg extension and leg curl goes to failure. Presses, rows, leg press, hack squat, hip thrust, back extension, calves and crunch never go to failure, and deload weeks have no failure sets. Week 12 is a deload.",
     info: [
       { label: "Weeks", val: "9–12", desc: "Consolidate" },
       { label: "Sessions", val: "5/wk", desc: "Upper A · Lower A · Upper B · Lower B · Upper C" },
-      { label: "Effort", val: "1–2 RIR", desc: "Reps in reserve - never train to failure" },
+      { label: "Effort", val: "1 RIR", desc: "RIR 1; last isolation set to failure" },
       { label: "Deload", val: "Week 12", desc: "Fewer sets, easier effort" },
     ],
     days: [
@@ -4630,83 +4632,85 @@ const phases = {
         label: "Day 1 — Upper A",
         badge: "MANDATORY",
         exercises: [
-          { name: "Machine Chest Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Chest-Supported Machine Row (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Seated Machine Shoulder Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Machine Preacher Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Incline Machine Chest Press (neutral grip)", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Seated Cable Row (neutral grip handle)", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Seated Machine Shoulder Press (neutral grip)", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Machine Preacher Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 2 — Lower A",
         badge: "MANDATORY",
         exercises: [
-          { name: "Leg Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
-          { name: "Seated Leg Curl", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Hip Thrust", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Standing Calf Raise (machine)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Hack Squat", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
+          { name: "Lying Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Standing Calf Raise (machine)", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 3 — Upper B",
         badge: "MANDATORY",
         exercises: [
-          { name: "Incline Machine Chest Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Seated Cable Row (neutral grip handle)", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Machine Chest Press (neutral grip)", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Chest-Supported Machine Row (neutral grip)", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Overhead Cable Rope Triceps Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Cable Rope Hammer Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Reverse Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Overhead Cable Rope Triceps Extension", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Hammer Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 4 — Lower B",
         badge: "MANDATORY",
         exercises: [
-          { name: "Hack Squat", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
-          { name: "Lying Leg Curl", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "45-Degree Back Extension (bodyweight)", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Hip Thrust", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Seated Calf Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Leg Press", sets: "5", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
+          { name: "Seated Leg Curl", sets: "5", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "45-Degree Back Extension (bodyweight)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust", sets: "5", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Seated Calf Raise", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 5 — Upper C",
         badge: "MANDATORY",
         exercises: [
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Chest Fly (low to high)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Chest Fly (low to high)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Reverse Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Rope Triceps Pushdown", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Rope Hammer Curl", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Crunch", sets: "3", reps: "12–15", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Triceps Pushdown", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Hammer Curl", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Crunch", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       }
     ],
     progression: [
       ["Exercise", "How it moves"],
-      ["Every exercise", "Load axis: when all sets hit the top of the rep range at target RIR, add the smallest plate increment (2.5-5 kg machine/cable) next session."],
-      ["Deload week (week 12)", "Weeks 4, 8, 12 and 16: drop sets by about 40% (2 sets per exercise) at RIR 3-4; week 16 ends with the review."],
+      ["Every exercise", "Within a phase: load/reps only (add 2.5-5 kg when all sets reach the top of the rep range at target RIR). Volume progresses across phases: phase 2 start counts, phase 3 middle, phase 4 peak; sets never change inside a phase."],
+      ["Deload week (week 12)", "Weeks 4, 8, 12 and 16: 2 sets per exercise at RIR 3-4, no failure sets; week 16 ends with the review."],
       ["If this is not available", "Use this instead"],
       ["Machine Chest Press (neutral grip)", "Smith Machine Chest Press (neutral-wrist, controlled) - otherwise Cable Chest Press"],
       ["Chest-Supported Machine Row (neutral grip)", "Seated Cable Row (neutral grip handle) - otherwise Single-arm Cable Row"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press (feet low)"],
-      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Glute Bridge (plate on hips)"],
+      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Smith Machine Glute Bridge (supine, pad on hips)"],
       ["Machine Preacher Curl", "Cable Rope Hammer Curl - otherwise Cable Curl (neutral handle)"],
       ["Reverse Pec Deck", "Cable Face Pull (rope) - otherwise Cable Reverse Fly"],
     ],
   },
   4: {
     label: "Lock-in", weeks: "13–16",
-    desc: "5 sessions a week - Upper A, Lower A, Upper B, Lower B, Upper C. Every set stops at the reps-in-reserve shown. Week 16 is a deload. Week 16 is also your review with Omar.",
+    desc: "5 sessions a week - Upper A, Lower A, Upper B, Lower B, Upper C. Work every set to 1 rep in reserve (RIR 1); only the last set of laterals, rear delts, triceps, biceps, pec deck, fly, leg extension and leg curl goes to failure. Presses, rows, leg press, hack squat, hip thrust, back extension, calves and crunch never go to failure, and deload weeks have no failure sets. Week 16 is a deload. Week 16 is also your review with Omar.",
     info: [
       { label: "Weeks", val: "13–16", desc: "Lock-in" },
       { label: "Sessions", val: "5/wk", desc: "Upper A · Lower A · Upper B · Lower B · Upper C" },
-      { label: "Effort", val: "1–2 RIR", desc: "Reps in reserve - never train to failure" },
+      { label: "Effort", val: "1 RIR", desc: "RIR 1; last isolation set to failure" },
       { label: "Deload", val: "Week 16", desc: "Fewer sets, easier effort" },
     ],
     days: [
@@ -4714,72 +4718,74 @@ const phases = {
         label: "Day 1 — Upper A",
         badge: "MANDATORY",
         exercises: [
-          { name: "Machine Chest Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Chest-Supported Machine Row (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Seated Machine Shoulder Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Machine Preacher Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Machine Chest Press (neutral grip)", sets: "5", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Chest-Supported Machine Row (neutral grip)", sets: "5", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Seated Machine Shoulder Press (neutral grip)", sets: "3", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Triceps Pushdown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Machine Preacher Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 2 — Lower A",
         badge: "MANDATORY",
         exercises: [
-          { name: "Leg Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
-          { name: "Seated Leg Curl", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Hip Thrust", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Standing Calf Raise (machine)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Leg Press", sets: "5", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
+          { name: "Seated Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust", sets: "5", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Standing Calf Raise (machine)", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 3 — Upper B",
         badge: "MANDATORY",
         exercises: [
-          { name: "Incline Machine Chest Press (neutral grip)", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Seated Cable Row (neutral grip handle)", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Incline Machine Chest Press (neutral grip)", sets: "5", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Seated Cable Row (neutral grip handle)", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Overhead Cable Rope Triceps Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Cable Rope Hammer Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Reverse Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Overhead Cable Rope Triceps Extension", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Hammer Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 4 — Lower B",
         badge: "MANDATORY",
         exercises: [
-          { name: "Hack Squat", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
-          { name: "Lying Leg Curl", sets: "4", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "45-Degree Back Extension (bodyweight)", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Machine Hip Thrust", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Seated Calf Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Hack Squat", sets: "5", reps: "6–8", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "3 min", rpe: "" },
+          { name: "Lying Leg Curl", sets: "5", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "45-Degree Back Extension (bodyweight)", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Machine Hip Thrust", sets: "5", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Leg Extension", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Seated Calf Raise", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 5 — Upper C",
         badge: "MANDATORY",
         exercises: [
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Chest Fly (low to high)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Chest Fly (low to high)", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Reverse Pec Deck", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Lateral Raise", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Rope Triceps Pushdown", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Rope Hammer Curl", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Crunch", sets: "3", reps: "12–15", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Triceps Pushdown", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Rope Hammer Curl", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Crunch", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       }
     ],
     progression: [
       ["Exercise", "How it moves"],
-      ["Every exercise", "Load axis: when all sets hit the top of the rep range at target RIR, add the smallest plate increment (2.5-5 kg machine/cable) next session."],
-      ["Deload week (week 16)", "Weeks 4, 8, 12 and 16: drop sets by about 40% (2 sets per exercise) at RIR 3-4; week 16 ends with the review."],
+      ["Every exercise", "Within a phase: load/reps only (add 2.5-5 kg when all sets reach the top of the rep range at target RIR). Volume progresses across phases: phase 2 start counts, phase 3 middle, phase 4 peak; sets never change inside a phase."],
+      ["Deload week (week 16)", "Weeks 4, 8, 12 and 16: 2 sets per exercise at RIR 3-4, no failure sets; week 16 ends with the review."],
       ["If this is not available", "Use this instead"],
       ["Machine Chest Press (neutral grip)", "Smith Machine Chest Press (neutral-wrist, controlled) - otherwise Cable Chest Press"],
       ["Chest-Supported Machine Row (neutral grip)", "Seated Cable Row (neutral grip handle) - otherwise Single-arm Cable Row"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press (feet low)"],
-      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Glute Bridge (plate on hips)"],
+      ["Machine Hip Thrust", "Smith Machine Hip Thrust - otherwise Smith Machine Glute Bridge (supine, pad on hips)"],
       ["Machine Preacher Curl", "Cable Rope Hammer Curl - otherwise Cable Curl (neutral handle)"],
       ["Reverse Pec Deck", "Cable Face Pull (rope) - otherwise Cable Reverse Fly"],
     ],
@@ -13304,7 +13310,7 @@ window.CV2_DEFAULT = 'v2';
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-11-16T03:17:05.444404Z
+  generatedAt: 2026-11-16T05:32:26.047922Z
   clientStorageKey: ibrahim_jajieh
   configPath: ibrahim_jajieh.json
   safetyBlockers: 0
