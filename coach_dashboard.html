@@ -2692,11 +2692,6 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
         <section class="v2-cr" id="v2-churn" aria-labelledby="v2-cr-title" hidden></section>
         <div class="v2-tq-cards" id="v2-tq-cards" role="group" aria-label="Filters"></div>
         <div class="v2-tq-touch" id="v2-tq-touch"></div>
-        <!-- VIDEOS TO RECORD (Omar 2026-11-18): record-a-video cards get their own section, never buried in a client's row -->
-        <section class="v2-tq-sec" id="v2-tq-vidsec" hidden aria-labelledby="v2-tq-vidtitle">
-          <div class="v2-tq-qhead"><h2 id="v2-tq-vidtitle">Videos to record</h2><span id="v2-tq-vidmeta"></span></div>
-          <div class="v2-tq-wins" id="v2-tq-vids"></div>
-        </section>
         <section class="v2-tq-sec" aria-labelledby="v2-tq-title">
           <div class="v2-tq-qhead"><h2 id="v2-tq-title">Needs you today</h2><span id="v2-tq-meta"></span></div>
           <div class="v2-tq-queue" id="v2-tq-list" role="list"></div>
@@ -12701,7 +12696,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
                   sleep: 18, steps: 19, health: 20, watch: 21, quiet: 22, ending: 23, unlocknext: 24 };
   var TQ_TODAY = { broken: 1, attn: 1, aicheckin: 1, recovery: 1, noreply: 1, finished: 1, journey: 1, task: 1, unlock: 1, checkin: 1, reply: 1, review: 1 };
   function tqCollect(clients, data) {
-    var by = {}, waiting = [], videos = [], inactive = 0;
+    var by = {}, waiting = [], inactive = 0;
     var active = clients.filter(function (c) { return _isActiveClient(c) && c.storageKey !== 'omar'; });
     var add = function (c, src, text, act) {
       if (!c) return;
@@ -12744,8 +12739,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var d = CI_DRAFTS[k], c = byKey[d.client_key]; if (!c || !_isActiveClient(c)) return;
       var journey = String(d.checkin_ts).indexOf('journey:') === 0;
       if (!d.sent_at) {
-        if (journey && d.action === 'record_video') videos.push({ c: c, k: k, d: d });      // own section, not a queue row
-        else if (journey) add(c, 'journey', (JM_LABEL[d.action] || 'Journey') + ' message ready', { kind: 'journey', label: 'Message', jm: k });
+        if (journey) add(c, 'journey', d.action === 'record_video' ? 'Record a video: talking points ready' : (JM_LABEL[d.action] || 'Journey') + ' message ready', { kind: 'journey', label: d.action === 'record_video' ? 'Video' : 'Message', jm: k });
         else if (!QROWS.some(function (r) { return r.state === 'new' && r.client.storageKey === d.client_key && r.ci && r.ci.timestamp === d.checkin_ts; }))
           add(c, 'reply', 'AI reply drafted, ready to send', { kind: 'ci', label: 'Send reply', iso: d.checkin_ts });
         return;
@@ -12815,7 +12809,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     });
     wins.sort(function (a, b) { return b.ts - a.ts; });
     waiting.sort(function (a, b) { return b.hrs - a.hrs; });
-    return { items: items, waiting: waiting, videos: videos, wins: wins, inactive: inactive, active: active };
+    return { items: items, waiting: waiting, wins: wins, inactive: inactive, active: active };
   }
 
   // ── CHURN RADAR (Omar 2026-11-04: "we need something on the dash that stands out... UI needs to be extensive") ──
@@ -13091,15 +13085,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     $('v2-tq-foot').innerHTML = R.inactive ? R.inactive + ' inactive ' + CC.INACTIVE_DAYS + '+ days · <a href="#/clients">archive or check in →</a>' : '';
 
-    // videos to record: "RECORD A VIDEO (60 sec) - Week 4 review - week 4 of 12" -> label + length
-    var vids = R.videos || [];
-    $('v2-tq-vidsec').hidden = !vids.length;
-    $('v2-tq-vidmeta').textContent = vids.length + ' to record · you send them yourself';
-    $('v2-tq-vids').innerHTML = vids.map(function (v) {
-      var h = String((v.d.for_coach || [])[0] || ''), m = h.match(/^RECORD A VIDEO \(([^)]*)\) - (.*)$/);
-      return '<div class="v2-tq-win"><div class="wt"><b>' + esc(v.c.displayName || v.c.storageKey) + '</b>' + esc(m ? m[2] : 'Record a video') + (m ? ' <span class="v">' + esc(m[1]) + '</span>' : '') + '</div>' +
-        '<button type="button" data-tqvid="' + esc(v.k) + '">Talking points</button></div>';
-    }).join('');
     // waiting on client
     $('v2-tq-waitsec').hidden = !R.waiting.length;
     $('v2-tq-wait').innerHTML = R.waiting.map(function (w) {
@@ -13361,7 +13346,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if ((el = t.closest('[data-tqf]'))) { TQ.filter = el.getAttribute('data-tqf'); TQ.sel = 0; tqCloseMenu(); return safeRenderToday(); }
     if ((el = t.closest('[data-tqgo]'))) { tqCloseMenu(); ev.stopPropagation(); return tqOpen(el.getAttribute('data-tqgo')); }
     if ((el = t.closest('[data-tqwin]'))) { return tqWin(el.getAttribute('data-tqwin')); }
-    if ((el = t.closest('[data-tqvid]'))) { return tqJourney(el.getAttribute('data-tqvid')); }
     if (t.closest('[data-tqrules]')) { return tqRules(); }
     if (t.closest('[data-tqclose]') || t.id === 'v2-tq-scrim') { return tqClosePanel(); }
     if ((el = t.closest('[data-tqmore]'))) {

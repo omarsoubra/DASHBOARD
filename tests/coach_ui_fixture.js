@@ -169,10 +169,6 @@ function build(now = Date.now()) {
       'Jonah, two weeks left in this block. Let\'s lock in the next one so you keep the momentum.'),
     draft('sofia_m', 'journey:next_block:' + R.find((c) => c.storageKey === 'sofia_m').startDate, 'next_block', ['Finished week 16, no next block yet.'],
       'Sofia, you finished the block. Want to book a quick call about Block 2?'),
-    // record-a-video card: its own "Videos to record" section, never a queue row (ben stays out of the queue)
-    draft('ben_t', 'journey:video:welcome:' + R.find((c) => c.storageKey === 'ben_t').startDate, 'record_video',
-      ['RECORD A VIDEO (60 sec) - Week 1 welcome - week 2 of 12', '1. Say hi and that you built this plan for them yourself', 'Send it on WhatsApp yourself with the caption below, then mark this sent.'],
-      'welcome in Ben, quick video for u, have a watch'),
   ];
 
   // ── Apple Health (healthGet) ──

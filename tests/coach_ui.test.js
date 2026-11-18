@@ -396,15 +396,6 @@ const knownBug = (name, holds, detail) => {
           && (await ev(`!!document.querySelector('#v2-tq-panel [data-tqo="client"], #v2-tq-panel [data-tqsend]')`)),
         journey: async (k) => (await visible('#v2-tq-panel')) && /Jonah Reyes/.test(await txt('#v2-tq-panel')) && /two weeks left/.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`)),
       };
-      await step('Today: videos to record section', async () => {
-        await backToToday();
-        const sec = await txt('#v2-tq-vidsec');
-        t('video card sits in its own "Videos to record" section', (await visible('#v2-tq-vidsec')) && /Videos to record/i.test(sec) && /Ben/.test(sec) && /Week 1 welcome/.test(sec), sec);
-        t('video card adds no queue row', !(await tqRows()).some((r) => r.key === 'ben_t' || /video/i.test(r.all || '')), await tqRows());
-        await click('#v2-tq-vids [data-tqvid]'); await idle(400);
-        const p = await txt('#v2-tq-panel');
-        t('Talking points opens the panel with points + caption', (await visible('#v2-tq-panel')) && /Say hi/.test(p) && /quick video for u/.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`)), p);
-      });
       for (const [k, e] of Object.entries(EXPECT).filter(([, e]) => e.list === 'today')) {
         await step(`Today main button: ${e.src} (${k})`, async () => {
           await backToToday();
