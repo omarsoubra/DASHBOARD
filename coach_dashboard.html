@@ -12891,7 +12891,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
     return 'Yo ' + first + ', how are you feeling about everything so far? Keen to hear what\'s working and what isn\'t.';
   }
   function crStateAll() { try { return JSON.parse(localStorage.getItem(CR_STORE) || '{}') || {}; } catch (e) { return {}; } }
-  function crState(c) { return c.churnState || crStateAll()[c.storageKey] || null; }    // synced copy (roster) wins
+  function crState(c) {                                                              // newest of the synced copy (roster) and this device's copy
+    var a = c.churnState || null, b = crStateAll()[c.storageKey] || null;             // (an old expired mark on the roster must not beat a fresh click)
+    return a && b ? ((b.at || 0) > (a.at || 0) ? b : a) : (a || b);
+  }
   function crStatus(c, r) {                                                          // 'open' | 'done' (contacted, 7 days) | 'snoozed'
     var e = crState(c); if (!e) return 'open';
     if (e.until && Date.now() < e.until) return 'snoozed';
@@ -12991,7 +12994,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var key = card.getAttribute('data-crk'), r = rows.filter(function (x) { return x.key === key; })[0]; if (!r) return;
       if (t.closest('[data-cr-msg]')) { CR.open = key; renderChurn(clients, data); var ta = box.querySelector('[data-crk="' + key + '"] textarea'); if (ta) ta.focus(); return; }
       var done = function (how) {
-        crSet(key, how === 'snooze' ? { until: Date.now() + 3 * 86400000, at: Date.now(), pts: r.pts } : how === 'undo' ? null : { done: 1, at: Date.now(), pts: r.pts });
+        crSet(key, how === 'snooze' ? { until: Date.now() + 3 * 86400000, at: Date.now(), pts: r.pts } : how === 'undo' ? { at: Date.now() } : { done: 1, at: Date.now(), pts: r.pts });
         if (how !== 'undo') tqToast(first(r.c) + (how === 'snooze' ? ' snoozed for 3 days' : ' marked contacted ✓'));
         CR.open = null; renderChurn(clients, data);
       };

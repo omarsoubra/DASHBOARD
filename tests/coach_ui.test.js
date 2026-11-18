@@ -396,6 +396,26 @@ const knownBug = (name, holds, detail) => {
           && (await ev(`!!document.querySelector('#v2-tq-panel [data-tqo="client"], #v2-tq-panel [data-tqsend]')`)),
         journey: async (k) => (await visible('#v2-tq-panel')) && /Jonah Reyes/.test(await txt('#v2-tq-panel')) && /two weeks left/.test(await ev(`document.querySelector('#v2-tq-panel textarea').value`)),
       };
+      // Omar 2026-11-18: "when I mark a client as contacted it still shows on the churn radar" - a client contacted
+      // once before (expired mark on the roster) must still move to Contacted the second time
+      await step('Churn radar: Contacted sticks the second time', async () => {
+        await backToToday();
+        const key = await ev(`(function(){ var f = document.querySelector('#v2-churn [data-cr-unfold]'); if (f) f.click();
+          var c = document.querySelector('#v2-churn [data-crk]'); return c ? c.getAttribute('data-crk') : null; })()`);
+        t('churn radar shows an at-risk card to test with', !!key, key);
+        if (!key) return;
+        await ev(`(function(){ var l = loadClients(), c = l.find(function (x) { return x.storageKey === '${key}'; });
+          c.churnState = { done: 1, at: Date.now() - 12 * 86400000, pts: 0 }; saveClients(l); COACH.clients = l; UIV2.renderToday(); return 1; })()`);
+        await idle(300);
+        t('an expired contacted mark shows the card as open again', await exists(`#v2-churn [data-crk="${key}"] [data-cr-done]`));
+        await click(`#v2-churn [data-crk="${key}"] [data-cr-done]`); await idle(400);
+        t('after Contacted the card leaves High / Watch', !(await exists(`#v2-churn [data-crk="${key}"] [data-cr-done]`)), await txt('#v2-churn'));
+        await ev(`(function(){ var b = document.querySelector('#v2-churn [data-crf="handled"]'); if (b) b.click(); return 1; })()`); await idle(200);
+        t('and sits under Contacted with Undo', await exists(`#v2-churn [data-crk="${key}"] [data-cr-undo]`));
+        await click(`#v2-churn [data-crk="${key}"] [data-cr-undo]`); await idle(300);
+        await ev(`(function(){ var b = document.querySelector('#v2-churn [data-crf="handled"]'); if (b) b.click(); return 1; })()`); await idle(200);
+        t('Undo puts it back as open', !(await exists(`#v2-churn [data-crk="${key}"] [data-cr-undo]`)));
+      }, { writes: ['rosterPut'] });
       for (const [k, e] of Object.entries(EXPECT).filter(([, e]) => e.list === 'today')) {
         await step(`Today main button: ${e.src} (${k})`, async () => {
           await backToToday();
