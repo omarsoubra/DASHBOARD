@@ -12585,7 +12585,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // hand the text to the coach and record that he used it (same checkinDraftMark as check-in replies).
   var _jmOpen = null;
   var JM_LABEL = { momentum: 'wk 6 momentum', seed: 'next goal', call_invite: 'book call', offer: 'final-week offer', next_block: 'book Block 2 call',
-                   preview: 'wk 10 preview', review: 'wk 12 review', record_video: 'record a video' };
+                   preview: 'wk 10 preview', review: 'wk 12 review' };
   var jmWa = function (ph) { var n = String(ph || '').replace(/[^\d]/g, ''); if (/^04\d{8}$/.test(n)) n = '61' + n.slice(1); return n.length >= 9 ? n : ''; };
   function wireJourney(box, active) {
     var host = box.querySelector('#v2-m-jm'); if (!host) return;
@@ -12739,7 +12739,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var d = CI_DRAFTS[k], c = byKey[d.client_key]; if (!c || !_isActiveClient(c)) return;
       var journey = String(d.checkin_ts).indexOf('journey:') === 0;
       if (!d.sent_at) {
-        if (journey) add(c, 'journey', d.action === 'record_video' ? 'Record a video: talking points ready' : (JM_LABEL[d.action] || 'Journey') + ' message ready', { kind: 'journey', label: d.action === 'record_video' ? 'Video' : 'Message', jm: k });
+        if (journey) add(c, 'journey', (JM_LABEL[d.action] || 'Journey') + ' message ready', { kind: 'journey', label: 'Message', jm: k });
         else if (!QROWS.some(function (r) { return r.state === 'new' && r.client.storageKey === d.client_key && r.ci && r.ci.timestamp === d.checkin_ts; }))
           add(c, 'reply', 'AI reply drafted, ready to send', { kind: 'ci', label: 'Send reply', iso: d.checkin_ts });
         return;
@@ -12907,7 +12907,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function crDraft(key) {                                                            // an unsent journey/churn draft already written for them
     var best = null;
     try { Object.keys(CI_DRAFTS || {}).forEach(function (k) { var d = CI_DRAFTS[k];
-      if (d.client_key === key && !d.sent_at && String(d.checkin_ts).indexOf('journey:') === 0 && d.action !== 'omar_decision' && d.action !== 'record_video' && d.draft) best = { k: k, d: d }; }); } catch (e) {}
+      if (d.client_key === key && !d.sent_at && String(d.checkin_ts).indexOf('journey:') === 0 && d.action !== 'omar_decision' && d.draft) best = { k: k, d: d }; }); } catch (e) {}
     return best;
   }
   function renderChurn(clients, data) {
@@ -13150,7 +13150,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var phone = jmWa(c.phone), notes = (d.for_coach || []).filter(Boolean), parts = k.split('|');
     tqPanel('<div><h3>' + esc(c.displayName || c.storageKey) + '</h3><div class="sub">' + esc(JM_LABEL[d.action] || d.action || 'message') + '</div></div>' +
       (notes.length ? '<ul class="v2-rd-notes">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' : '') +
-      '<textarea class="v2-rd-text" rows="' + (d.action === 'record_video' ? 2 : 9) + '" aria-label="' + (d.action === 'record_video' ? 'Caption to send with the video' : 'Message') + '">' + esc(d.draft || '') + '</textarea>' +
+      '<textarea class="v2-rd-text" rows="9" aria-label="Message">' + esc(d.draft || '') + '</textarea>' +
       '<div class="v2-rd-actions">' + (phone ? '<button type="button" class="v2-btn primary" data-tqsend="wa">Open in WhatsApp</button>' : '') +
       '<button type="button" class="v2-btn' + (phone ? '' : ' primary') + '" data-tqsend="copy">Copy</button>' +
       '<span class="v2-rd-state">' + (d.sent_at ? 'Already marked sent' : 'Marks it sent when you use it') + '</span></div>');
