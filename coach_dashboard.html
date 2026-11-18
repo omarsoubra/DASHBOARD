@@ -6390,7 +6390,8 @@ async function loadCheckinDrafts() {
     const r = await coachFetch('checkinDraftsGet', { days: 21 });
     if (!r || r.ok === false || !Array.isArray(r.drafts)) return;
     const m = {};
-    r.drafts.forEach(function (d) { m[d.client_key + '|' + d.checkin_ts] = d; });
+    r.drafts.forEach(function (d) { if (d.action === 'record_video') return;   // retired 2026-11-18: six leftover video cards stay hidden
+      m[d.client_key + '|' + d.checkin_ts] = d; });
     CI_DRAFTS = m;
     try { if (window.UIV2 && UIV2.p3 && UIV2.p3.renderQueue) UIV2.p3.renderQueue(); } catch (e) {}
     try { if (window.UIV2 && UIV2.route === 'today' && UIV2.renderToday) UIV2.renderToday(); } catch (e) {}   // reply / journey / waiting rows
