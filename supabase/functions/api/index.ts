@@ -291,6 +291,7 @@ const CLIENT_WRITE_CAPABILITY: Record<string, Capability> = {
   weight:      'log_weight',
   checkin:     'submit_self_checkin',
   meal:        'log_meal',
+  mealRemove:  'log_meal',   // FOOD-LOG: take back a food the client logged themselves (never a plan meal)
   workout:     'log_workout',
   // SET-CORRECTION-V1. Correcting a set the client already logged is the same
   // act as logging it, on the same data they own, so it carries the same
@@ -654,6 +655,8 @@ Deno.serve(async (req) => {
       case 'weight':             return clientWrite('weight', body);
       case 'checkin':            return clientWrite('checkin', body);
       case 'meal':               return clientWrite('meal', body);
+      case 'mealRemove':         return clientWrite('mealRemove', body);
+      case 'foodLogGet':         return foodLogGet(body);
       case 'workout':            return clientWrite('workout', body);
       case 'workoutCorrect':     return clientWrite('workoutCorrect', body);
       case 'workoutComplete':       return workoutComplete(body);
@@ -1207,6 +1210,13 @@ async function dashboard(body: any) {
     const key = keyById[r.client_id] ?? '';
     if (!key) return;
     const p = ensure(key);
+    // FOOD-LOG (Omar 2026-11-19): food a client logs on top of the plan ("Extra: ...") is activity, but it is not a plan
+    // meal, so it stays out of the meal lists and counts. The coach reads it through foodLogGet.
+    if (String(r.meal_name ?? '').startsWith('Extra: ')) {
+      if (!p.latestMealTs || r.logged_at > p.latestMealTs) p.latestMealTs = r.logged_at;
+      p.extraFoods7d = (p.extraFoods7d ?? 0) + (r.logged_at >= weekAgo ? 1 : 0);
+      return;
+    }
     p.recentMeals.push({ timestamp: r.logged_at, name: r.meal_name, cal: r.kcal, p: r.protein_g, c: r.carbs_g, f: r.fat_g });
     if (!p.latestMealTs || r.logged_at > p.latestMealTs) p.latestMealTs = r.logged_at;
     if (r.logged_at.slice(0, 10) === todayStr) p.mealsToday++;
@@ -1233,6 +1243,47 @@ async function dashboard(body: any) {
     p.recentWorkouts  = p.recentWorkouts.slice(-10);
   });
   return ok({ dashboard: per });
+}
+
+// ── FOOD LOG, COACH VIEW (Omar 2026-11-19) ────────────────────────────────────────────────────────────────────────────
+// What a client actually ate: the plan meals they ticked and the food they logged on top ("Extra: ..."), grouped by
+// Sydney day. Coach-only, read-only. meal_logs is append-only for plan meals: an undo is an empty 0-kcal marker that
+// does not say which meal it takes back, so it cancels the plan meal ticked just before it that day (the usual
+// mis-tap), and a meal ticked twice in a day counts once (the later tick).
+const EXTRA_FOOD_PREFIX = 'Extra: ';
+function isExtraFood(name: unknown): boolean { return String(name ?? '').startsWith(EXTRA_FOOD_PREFIX); }
+function foodLogDays(rows: any[]): any[] {
+  const n1 = (v: unknown) => Math.round((Number(v) || 0) * 10) / 10;
+  const by: Record<string, { plan: any[]; extra: any[] }> = {};
+  for (const r of rows) {
+    const d = sydneyDate(Date.parse(r.logged_at)), day = (by[d] ??= { plan: [], extra: [] });
+    const name = String(r.meal_name ?? '');
+    const item = { ts: r.logged_at, name, note: String(r.notes ?? ''), kcal: Math.round(Number(r.kcal) || 0), p: n1(r.protein_g), c: n1(r.carbs_g), f: n1(r.fat_g) };
+    if (isExtraFood(name)) { day.extra.push({ ...item, name: name.slice(EXTRA_FOOD_PREFIX.length) }); continue; }
+    if (!name.trim()) { day.plan.pop(); continue; }                          // undo marker
+    const at = day.plan.findIndex((x) => x.name === name);
+    if (at >= 0) day.plan.splice(at, 1);                                     // ticked again: the later tick stands
+    day.plan.push(item);
+  }
+  return Object.keys(by).sort().map((d) => {
+    const { plan, extra } = by[d], all = [...plan, ...extra];
+    const sum = (k: string) => n1(all.reduce((a, x) => a + (Number(x[k]) || 0), 0));
+    return { day: d, plan, extra, kcal: Math.round(sum('kcal')), p: sum('p'), c: sum('c'), f: sum('f'),
+             planKcal: Math.round(plan.reduce((a, x) => a + x.kcal, 0)), extraKcal: Math.round(extra.reduce((a, x) => a + x.kcal, 0)) };
+  }).filter((d) => d.plan.length || d.extra.length);
+}
+async function foodLogGet(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const key = String(body?.client ?? body?.storageKey ?? '').toLowerCase();
+  if (!CI_KEY_RE.test(key)) return err('bad_storageKey');
+  const days = Math.min(120, Math.max(1, Math.floor(Number(body?.days) || 35)));
+  const { data: client } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+  if (!client?.id) return err('unknown_client');
+  const since = new Date(Date.now() - days * 86400_000).toISOString();
+  const { data, error } = await pagedRows(() => admin.from('meal_logs').select('logged_at, meal_name, notes, kcal, protein_g, carbs_g, fat_g')
+    .eq('client_id', client.id).gte('logged_at', since).order('logged_at', { ascending: true }).order('id', { ascending: true }));
+  if (error && !data) { logEfError('foodLogGet', key, 'read_failed', String(error?.message ?? error)); return err('read_failed'); }
+  return ok({ storageKey: key, since, days: foodLogDays(data ?? []) });
 }
 
 async function rosterGet(body: any) {
@@ -2587,6 +2638,20 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
       return err('write_failed', { table: 'meal_logs' });
     }
     return ok({ tab: 'meal_logs', id: data?.id });
+  }
+  if (kind === 'mealRemove') {
+    // FOOD-LOG (Omar 2026-11-19): the client took back a food they logged themselves. Only an "Extra: ..." row of this
+    // client at exactly that time and name can go; a plan meal can never be deleted from here. Removing something
+    // that is already gone is still a success, so a retry settles.
+    const name = String(body.mealName ?? ''), at = String(body.timestamp ?? '');
+    if (!name.startsWith('Extra: ') || name.length > 200 || isNaN(Date.parse(at))) return err('bad_request');
+    const { data, error: dErr } = await admin.from('meal_logs').delete()
+      .eq('client_id', clientId).eq('logged_at', at).eq('meal_name', name).select('id');
+    if (dErr) {
+      logEfError(kind, key, 'meal_log_delete_failed', dErr.message);
+      return err('write_failed', { table: 'meal_logs' });
+    }
+    return ok({ tab: 'meal_logs', removed: (data ?? []).length });
   }
   if (kind === 'workout') {
     // SET-CORRECTION-V1 — idempotency. The shell mints one reference per

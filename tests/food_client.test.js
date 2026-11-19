@@ -24,6 +24,7 @@ const INIT = String.raw`
       var b = {}; try { b = JSON.parse((o && o.body) || '{}'); } catch (e) {}
       __p.calls.push(b.type);
       if (b.type === 'meal') { if (__p.failMeal) status = 503; else __p.meals.push(b); }
+      else if (b.type === 'mealRemove') { if (__p.failRemove) status = 503; else (__p.removed = __p.removed || []).push(b); }
       else if (b.type === 'weightLog') r = [];
       else if (b.type === 'photosGet') r = { ok: true, photos: [] };
       else if (b.type === 'healthSelfStatus') r = { ok: true, connected: false, days: [] };
@@ -148,6 +149,25 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     const withEgg = await big();
     await page.eval(`document.querySelectorAll('#lif-box .lif-rm')[1].click(); 1`); await wait(300);
     t('remove takes it off the day and the totals', !/Egg/.test(await q('#lif-box') || '') && (await big()) === big1 && withEgg !== big1, [withEgg, await big()]);
+    await wait(300);
+    t('removed food is taken back on the server: same name and time as it was saved with', await page.eval(`(function () { var r = __p.removed || [], m = __p.meals[1]; return r.length === 1 && r[0].mealName === m.mealName && r[0].timestamp === m.timestamp; })()`), await page.eval(`JSON.stringify(__p.removed || [])`));
+    await page.eval(`window.dispatchEvent(new Event('online')); 1`); await wait(300);
+    t('server removal sent once', (await page.eval(`(__p.removed || []).length`)) === 1);
+    // never-synced food: removing it needs no server call; server down on a synced one: retried later
+    await page.eval(`__p.failMeal = true; 1`);
+    await click('#lif-add'); await wait(400); await type('#lif-q', 'egg hard boiled'); await wait(400); await pickRes('/^Egg, chicken, whole, hard-boiled\\n/'); await wait(200);
+    await click('#lif-go'); await wait(600);
+    await page.eval(`document.querySelectorAll('#lif-box .lif-rm')[1].click(); 1`); await wait(400);
+    t('food that never reached the server: removed with no server call', !/Egg/.test(await q('#lif-box') || '') && (await page.eval(`(__p.removed || []).length`)) === 1);
+    await page.eval(`__p.failMeal = false; __p.failRemove = true; 1`);
+    await click('#lif-add'); await wait(400); await type('#lif-q', 'egg hard boiled'); await wait(400); await pickRes('/^Egg, chicken, whole, hard-boiled\\n/'); await wait(200);
+    await click('#lif-go'); await wait(700);
+    await page.eval(`document.querySelectorAll('#lif-box .lif-rm')[1].click(); 1`); await wait(400);
+    t('server down: removal waits', (await page.eval(`(__p.removed || []).length`)) === 1 && (await big()) === big1);
+    await page.eval(`__p.failRemove = false; window.dispatchEvent(new Event('online')); 1`); await wait(500);
+    t('back online: removal goes through once', (await page.eval(`(__p.removed || []).length`)) === 2);
+    await page.eval(`window.dispatchEvent(new Event('online')); 1`); await wait(300);
+    t('and is not sent again', (await page.eval(`(__p.removed || []).length`)) === 2);
 
     // ── type a label (kJ) ──
     await click('#lif-add'); await wait(300); await click('#lif-new'); await wait(200);

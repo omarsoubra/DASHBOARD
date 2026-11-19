@@ -242,11 +242,26 @@ function build(now = Date.now()) {
   ];
   const progressionHistory = { priya_n: { hip_thrust: [{ ts: dAgo(3), exerciseName: 'Hip Thrust', decision: 'PROGRESS_LOAD', applied: true, prevLoad: '100', nextLoad: '105', reason: 'Top of the rep range on all sets at RPE 8.' }] } };
 
+  // Food (foodLogGet shape): Priya's 7 days up to her newest check-in. Day 0 = the check-in day.
+  const syd = (ms) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date(ms));
+  const ciDay = syd(Date.parse(ciTs('priya_n'))), dayBack = (n) => new Date(Date.parse(ciDay + 'T00:00:00Z') - n * DAY).toISOString().slice(0, 10);
+  const meal = (name, kcal, p) => ({ ts: dAgo(1), name, note: '', kcal, p, c: 0, f: 0 });
+  const fday = (n, plan, extra) => { const all = plan.concat(extra); return { day: dayBack(n), plan, extra, kcal: all.reduce((a, x) => a + x.kcal, 0), p: all.reduce((a, x) => a + x.p, 0), c: 0, f: 0,
+    planKcal: plan.reduce((a, x) => a + x.kcal, 0), extraKcal: extra.reduce((a, x) => a + x.kcal, 0) }; };
+  const food = { priya_n: [
+    fday(9, [meal('Breakfast', 500, 30)], []),                                                             // outside the 7 days: never shown
+    fday(4, [meal('Breakfast', 500, 30), meal('Lunch', 600, 45), meal('Dinner', 600, 45)], []),            // 1700
+    fday(2, [meal('Breakfast', 500, 30), meal('Lunch', 600, 45), meal('Dinner', 600, 45)], []),            // 1700
+    fday(0, [meal('Breakfast', 500, 30), meal('Lunch', 600, 45), meal('Dinner', 600, 45)],
+      [{ ts: dAgo(0), name: 'Tim Tam', note: '2 biscuits', kcal: 190, p: 2, c: 24, f: 10 }, { ts: dAgo(0), name: 'Big Mac', note: '1 burger', kcal: 410, p: 20, c: 40, f: 20 }]),   // 2300
+  ] };
+  const expected = { priya_n: { v: 1, key: 'priya_n', start_date: dayBack(60), start_weight: 64.2, weeks: 12, tdee0: 2100, slope: 16, water_kg: 0, daily_kcal: Array.from({ length: 84 }, () => 1800), curve: Array.from({ length: 85 }, (_, i) => Math.round((64.2 - i * 0.03) * 100) / 100) } };
+
   const rosterTs = now - 3 * DAY;
   const registry = { schemaVersion: 1, generatedAt: dAgo(1), generatedBy: 'coach_ui_fixture', clientCount: R.length, clients: R.map((c) => ({ storageKey: c.storageKey, programUrl: c.programUrl })) };
 
   return {
-    now, roster: R, rosterTs, dashboard: D, drafts, testimonials, health, accounts, intakes, cwv, programs, weightLogs, photos, progressionHistory, registry,
+    now, roster: R, rosterTs, dashboard: D, drafts, testimonials, health, accounts, intakes, cwv, programs, weightLogs, photos, food, expected, progressionHistory, registry,
     pageStatus: { elena_p: 404 },                   // clients/<key>/index.html HEAD -> 404 for Elena only ("client page not loading")
     ciTs: { priya: ciTs('priya_n'), isla: ciTs('isla_b'), tomasz: ciTs('tomasz_b'), ravi: ciTs('ravi_m') },
   };

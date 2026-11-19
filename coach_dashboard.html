@@ -2360,6 +2360,29 @@ body.v2-ci-open { overflow: hidden; }
 .v2-ph-cap { margin-top: 5px; font: 600 11.5px 'Inter', system-ui, sans-serif; color: var(--v2-ink2); display: flex; justify-content: space-between; gap: 6px; }
 .v2-ph-cap span:last-child { color: var(--v2-muted); font-weight: 500; }
 .v2-ph-note { margin: 0; font-size: 13px; color: var(--v2-muted); }
+/* Food in the check-in review (Omar 2026-11-19) */
+.v2-fd-sum { margin: 0 0 10px; font-size: 13px; color: var(--v2-ink2); }
+.v2-fd-sum b { color: var(--v2-ink); font-weight: 600; }
+.v2-fd-days { border: 1px solid var(--v2-line); border-radius: 10px; overflow: hidden; }
+.v2-fd-day { border-top: 1px solid var(--v2-line); }
+.v2-fd-day:first-child { border-top: 0; }
+.v2-fd-day > summary, .v2-fd-day.is-none { display: grid; grid-template-columns: 76px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; font-size: 13px; list-style: none; }
+.v2-fd-day > summary { cursor: pointer; }
+.v2-fd-day > summary::-webkit-details-marker { display: none; }
+.v2-fd-day > summary:focus-visible { outline: 2px solid var(--v2-accent); outline-offset: -2px; }
+.v2-fd-date { font-weight: 600; color: var(--v2-ink); }
+.v2-fd-what { color: var(--v2-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2-fd-kcal { font-variant-numeric: tabular-nums; color: var(--v2-ink); text-align: right; white-space: nowrap; }
+.v2-fd-kcal small { color: var(--v2-muted); font-size: 12px; }
+.v2-fd-kcal .is-over { color: var(--cc-red); font-weight: 600; }
+.v2-fd-day.is-none { color: var(--v2-muted); }
+.v2-fd-day.is-none .v2-fd-date { color: var(--v2-muted); font-weight: 500; }
+.v2-fd-items { margin: 0; padding: 2px 12px 10px 98px; list-style: none; font-size: 12.5px; color: var(--v2-ink2); }
+.v2-fd-items li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+.v2-fd-items li span:last-child { font-variant-numeric: tabular-nums; color: var(--v2-muted); white-space: nowrap; }
+.v2-fd-items .is-extra b { font-weight: 600; color: var(--v2-ink); }
+.v2-fd-tag { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--v2-muted); margin-right: 6px; }
+@media (max-width: 560px) { .v2-fd-items { padding-left: 12px; } .v2-fd-day > summary, .v2-fd-day.is-none { grid-template-columns: 64px 1fr auto; } }
 .v2-ph-lb { position: fixed; inset: 0; z-index: 10050; background: rgba(8,9,13,.92); display: flex; align-items: center; justify-content: center; }
 .v2-ph-lb[hidden] { display: none; }
 .v2-ph-lb figure { margin: 0; max-width: min(92vw, 900px); max-height: 90vh; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -14694,6 +14717,74 @@ window.addEventListener('beforeinstallprompt', (e) => {
     });
     return sec;
   }
+  // ── FOOD (Omar 2026-11-19): what the client ate in the 7 days up to this check-in ──
+  // Plan meals they ticked + foods they logged themselves ("Log food" in the client app), day total against the
+  // plan's calories for that day (clients/<key>/expected.json). Read only; one foodLogGet per client per 5 min.
+  var FD = {};
+  function fdLoad(key, days) {
+    var c = FD[key];
+    if (c && c.days >= days && Date.now() - c.at < 5 * 60e3) return c.p;
+    var p = coachFetch('foodLogGet', { client: key, days: days }).then(function (r) {
+      if (!r || r.ok === false || !Array.isArray(r.days)) throw new Error((r && r.error) || 'no answer');
+      return r.days;
+    });
+    FD[key] = { at: Date.now(), days: days, p: p };
+    p.catch(function () { if (FD[key] && FD[key].p === p) delete FD[key]; });
+    return p;
+  }
+  var FDX = {};
+  function fdExpected(key) {            // the plan's calories per day (same file the expected-weight line reads)
+    if (!FDX[key]) FDX[key] = fetch('clients/' + encodeURIComponent(key) + '/expected.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    return FDX[key];
+  }
+  function fdSyd(ts) { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date(ts)); } catch (e) { return String(ts).slice(0, 10); } }
+  function fdDiff(a, b) { return Math.round((Date.parse(a + 'T00:00:00Z') - Date.parse(b + 'T00:00:00Z')) / 864e5); }
+  function fdAddDays(day, n) { return new Date(Date.parse(day + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10); }
+  function fdNum(n) { return Math.round(n).toLocaleString('en-AU'); }
+  function foodSection(key, iso) {
+    var sec = document.createElement('section'); sec.className = 'v2-ci-sec sec-food';
+    sec.innerHTML = '<h3>Food <span class="v2-ph-sub">7 days to this check-in</span></h3><div class="v2-fd-body"><p class="v2-ph-note">Loading…</p></div>';
+    var bodyEl = sec.querySelector('.v2-fd-body');
+    var end = fdSyd(iso), today = fdSyd(Date.now());
+    var back = Math.min(120, Math.max(10, fdDiff(today, end) + 9));
+    Promise.all([fdLoad(key, back), fdExpected(key)]).then(function (res) {
+      if (!sec.isConnected) return;
+      var by = {}; res[0].forEach(function (d) { by[d.day] = d; });
+      var exp = res[1], week = [], i;
+      for (i = 6; i >= 0; i--) week.push(fdAddDays(end, -i));
+      var target = function (day) {
+        if (!exp || !exp.start_date || !Array.isArray(exp.daily_kcal)) return null;
+        var n = fdDiff(day, exp.start_date); return n >= 0 && n < exp.daily_kcal.length ? Math.round(exp.daily_kcal[n]) : null;
+      };
+      var logged = week.filter(function (d) { return by[d]; });
+      if (!logged.length) { bodyEl.innerHTML = '<p class="v2-ph-note">Nothing ticked or logged in these 7 days.</p>'; return; }
+      var kcal = 0, prot = 0, extras = 0, tSum = 0, tN = 0;
+      logged.forEach(function (d) { kcal += by[d].kcal; prot += by[d].p; extras += by[d].extra.length; var t = target(d); if (t) { tSum += t; tN++; } });
+      var avg = kcal / logged.length, avgT = tN === logged.length ? tSum / tN : null;
+      var sum = '<b>' + logged.length + ' of 7 days</b> logged · average <b>' + fdNum(avg) + ' kcal</b>' +
+        (avgT ? ' against a plan of ' + fdNum(avgT) : '') + ' · ' + fdNum(prot / logged.length) + ' g protein' +
+        ' · ' + (extras ? extras + ' food' + (extras === 1 ? '' : 's') + ' added on top of the plan' : 'nothing added on top of the plan');
+      var rows = week.map(function (d) {
+        var lab = new Date(d + 'T00:00:00Z').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+        var x = by[d], t = target(d);
+        if (!x) return '<div class="v2-fd-day is-none"><span class="v2-fd-date">' + esc(lab) + '</span><span class="v2-fd-what">nothing logged</span><span></span></div>';
+        var what = x.plan.length + ' plan meal' + (x.plan.length === 1 ? '' : 's') + (x.extra.length ? ' + ' + x.extra.length + ' extra' : '');
+        var over = t && x.kcal > t * 1.1;
+        var items = x.plan.map(function (m) { return '<li><span>' + esc(m.name) + '</span><span>' + fdNum(m.kcal) + ' kcal · ' + fdNum(m.p) + ' g P</span></li>'; })
+          .concat(x.extra.map(function (m) { return '<li class="is-extra"><span><span class="v2-fd-tag">Extra</span><b>' + esc(m.name) + '</b>' + (m.note ? ' · ' + esc(m.note) : '') + '</span><span>' + fdNum(m.kcal) + ' kcal · ' + fdNum(m.p) + ' g P</span></li>'; })).join('');
+        return '<details class="v2-fd-day"' + (x.extra.length ? ' open' : '') + '><summary><span class="v2-fd-date">' + esc(lab) + '</span><span class="v2-fd-what">' + esc(what) + '</span>' +
+          '<span class="v2-fd-kcal"><span' + (over ? ' class="is-over"' : '') + '>' + fdNum(x.kcal) + '</span>' + (t ? ' <small>/ ' + fdNum(t) + '</small>' : ' <small>kcal</small>') + ' <small>· ' + fdNum(x.p) + ' g P</small></span></summary>' +
+          '<ul class="v2-fd-items">' + items + '</ul></details>';
+      }).join('');
+      bodyEl.innerHTML = '<p class="v2-fd-sum">' + sum + '</p><div class="v2-fd-days">' + rows + '</div>';
+    }, function (err) {
+      if (!sec.isConnected) return;
+      bodyEl.innerHTML = '<p class="v2-ph-note">Couldn\'t load their food (' + esc(String((err && err.message) || err).slice(0, 80)) + '). <button type="button" class="v2-link" data-fd-retry="1">Try again</button></p>';
+      bodyEl.querySelector('[data-fd-retry]').addEventListener('click', function () { sec.replaceWith(foodSection(key, iso)); });
+    });
+    return sec;
+  }
   // The client's own answers carry "[PHOTO_FRONT:wk10]" markers for the uploads; the photos are shown above.
   function stripPhotoTokens(el) {
     if (!el) return;
@@ -14763,6 +14854,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     main.insertAdjacentHTML('beforeend', section('Client responses', '', 'sec-notes'));
     if (notes) { var lbl = notes.querySelector('strong'); if (lbl) lbl.remove(); var br = notes.querySelector('br'); if (br) br.remove(); stripPhotoTokens(notes); main.lastChild.appendChild(notes); }
     else main.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted v2-ci-none">No written notes in this check-in.</p>');
+    // C1. Food: plan meals ticked + foods they logged themselves, against the plan's calories (Omar 2026-11-19)
+    main.appendChild(foodSection(key, iso));
 
     // C2. Photos: this check-in's, right where the decision is made (Omar 2026-10-30)
     var phWeek = weekMatch ? weekMatch[1] : null;

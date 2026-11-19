@@ -34,7 +34,7 @@ const FX = build(Date.now());
 
 // Reads the page may make while merely viewing. Anything else is treated as a write.
 const READ_TYPES = ['dashboard', 'rosterGet', 'checkinDraftsGet', 'healthGet', 'coachSettingsGet', 'accountList', 'intakeList', 'coachWorkoutCompletions',
-  'clientProgram', 'progressionHistory', 'progressionCompute', 'weightLog', 'photosGet', 'testimonialsGet', 'overrideGet', 'coachPushStatus', 'registryGetPrivate',
+  'clientProgram', 'progressionHistory', 'progressionCompute', 'weightLog', 'photosGet', 'foodLogGet', 'testimonialsGet', 'overrideGet', 'coachPushStatus', 'registryGetPrivate',
   'coachClientHistory', 'entitlementsGet', 'intakeGet', 'legacyQueueGet'];
 
 // Static third-party assets coach_dashboard.html links in <head>; served from local stubs, never fetched.
@@ -99,6 +99,7 @@ const INIT = String.raw`
       case 'progressionHistory': return { ok: true, history: per(FX.progressionHistory, b, {}), storageKey: b.storageKey };
       case 'progressionCompute': return { ok: true, decisions: [] };
       case 'weightLog': return per(FX.weightLogs, b, []);
+      case 'foodLogGet': { if (window.__foodFail) return { ok: false, error: 'read_failed' }; return { ok: true, storageKey: b.client, days: per(FX.food, b, []) }; }
       case 'photosGet': return { ok: true, photos: per(FX.photos, b, []), signedUrlTtlSec: 3600, baselineIntakeIds: [], multipleBaselines: false };
       case 'overrideGet': return { ok: true };
       case 'checkinDraftMark': {
@@ -171,6 +172,8 @@ function serve() {
   const srv = http.createServer((req, res) => {
     const u = decodeURIComponent(req.url.split('?')[0]);
     if (u === '/clients_registry.json') { res.writeHead(200, { 'Content-Type': MIME['.json'] }); return res.end(JSON.stringify(FX.registry)); }
+    const ex = u.match(/^\/clients\/([^/]+)\/expected\.json$/);
+    if (ex && FX.expected && FX.expected[ex[1]]) { res.writeHead(200, { 'Content-Type': MIME['.json'] }); return res.end(JSON.stringify(FX.expected[ex[1]])); }
     if (u === '/__fixture/photo.svg') { res.writeHead(200, { 'Content-Type': MIME['.svg'] }); return res.end(PHOTO); }
     const m = u.match(/^\/clients\/([^/]+)\/(index\.html)?$/);
     if (m && keys.has(m[1]) && FX.pageStatus[m[1]] !== 404) {
@@ -788,6 +791,15 @@ const knownBug = (name, holds, detail) => {
         t('"1 more" reveals the extra coach note', (await count('#v2-ci-panel .v2-rd-extra:not([hidden])')) === 1);
         // Photos inside the review (Omar 2026-10-30): no trip to the client page to see them.
         await idle(400);
+        // Food inside the review (Omar 2026-11-19): plan meals ticked + foods the client logged, against the plan.
+        t('Food section shows under the client responses', await ev(`(function(){ var s = [].slice.call(document.querySelectorAll('#v2-ci-panel .v2-ci-main > .v2-ci-sec')); var i = s.findIndex(function (x) { return x.classList.contains('sec-food'); }), n = s.findIndex(function (x) { return x.classList.contains('sec-notes'); }); return i > n && n >= 0; })()`));
+        t('food: 7 day rows, 3 with something logged', (await count('#v2-ci-panel .sec-food .v2-fd-day')) === 7 && (await count('#v2-ci-panel .sec-food details.v2-fd-day')) === 3 && (await count('#v2-ci-panel .sec-food .v2-fd-day.is-none')) === 4, await txt('#v2-ci-panel .sec-food'));
+        t('food summary: days logged, average against the plan, extras counted', /3 of 7 days logged/.test(await txt('#v2-ci-panel .v2-fd-sum')) && /average 1,900 kcal against a plan of 1,800/.test(await txt('#v2-ci-panel .v2-fd-sum')) && /2 foods added on top of the plan/.test(await txt('#v2-ci-panel .v2-fd-sum')), await txt('#v2-ci-panel .v2-fd-sum'));
+        t('a day with extras is open and names the food, amount and calories', /Extra\s*Tim Tam[\s\S]*2 biscuits[\s\S]*190 kcal/i.test(await txt('#v2-ci-panel .sec-food details[open]')), await txt('#v2-ci-panel .sec-food details[open]'));
+        t('a day well over the plan is marked', (await count('#v2-ci-panel .sec-food .v2-fd-kcal .is-over')) === 1 && /2,300/.test(await txt('#v2-ci-panel .sec-food .v2-fd-kcal .is-over')));
+        t('one foodLogGet for the review', await ev(`__ui.calls.filter(function (c) { return c.type === 'foodLogGet'; }).length`) === 1);
+        await ev(`document.querySelector('#v2-ci-panel .sec-food').scrollIntoView({ block: 'center' }); 1`); await idle(100); await shot('checkin_review_food');
+        await ev(`document.querySelector('#v2-ci-panel .v2-ci-main').scrollIntoView(); var sc = document.querySelector('#v2-ci-panel'); if (sc) sc.scrollTop = 0; 1`);
         t('Photos section sits right under the suggested reply', await ev(`(function(){ var s = document.querySelectorAll('#v2-ci-panel .v2-ci-main > .v2-ci-sec'); return s[0].classList.contains('sec-reply') && s[1].classList.contains('sec-photos'); })()`));
         t('this check-in\'s photos: front + side shown, back marked missing', (await count('#v2-ci-panel .sec-photos .v2-ph-grid img')) === 2 && (await count('#v2-ci-panel .sec-photos .v2-ph-tile.is-empty')) === 1, await txt('#v2-ci-panel .sec-photos'));
         t('header says Week 6 · 2 photos', /Week 6 · 2 photos/.test(await txt('#v2-ci-panel .sec-photos h3')), await txt('#v2-ci-panel .sec-photos h3'));

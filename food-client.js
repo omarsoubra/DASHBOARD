@@ -349,14 +349,36 @@
     patchAll(); sync();
     return v;
   }
+  // A removed food that already reached the coach (or is on its way there) is taken back on the server too.
+  // The removal waits in its own queue until the server confirms it.
   function removeEntry(day, id) {
-    var all = logAll(); all[day] = (all[day] || []).filter(function (e) { return e.id !== id; });
-    logSave(all); patchAll(); toast('Removed');
+    var all = logAll(), gone = (all[day] || []).filter(function (e) { return e.id === id; })[0];
+    all[day] = (all[day] || []).filter(function (e) { return e.id !== id; });
+    logSave(all);
+    if (gone && (gone.s || inflight[gone.id])) {
+      var q = lsGet('del', []) || [];
+      q.push({ id: gone.id, n: gone.n, ts: gone.ts });
+      lsPut('del', q.slice(-100));
+    }
+    patchAll(); toast('Removed'); sync();
   }
-  var inflight = {};
+  var inflight = {}, delflight = {};
+  function syncRemovals() {
+    (lsGet('del', []) || []).forEach(function (d) {
+      if (!d || !d.id || delflight[d.id] || inflight[d.id]) return;      // never ahead of its own save
+      delflight[d.id] = 1;
+      Promise.resolve(window.cloudWrite('mealRemove', { mealName: 'Extra: ' + d.n, timestamp: d.ts }))
+        .then(function (r) {
+          delete delflight[d.id];
+          if (!r || !r.ok) return;
+          lsPut('del', (lsGet('del', []) || []).filter(function (x) { return x.id !== d.id; }));
+        }, function () { delete delflight[d.id]; });
+    });
+  }
   function sync() {
     try {
       if (typeof window.cloudWrite !== 'function') return;
+      syncRemovals();
       var all = logAll();
       Object.keys(all).forEach(function (day) { all[day].forEach(function (e) {
         if (e.s || inflight[e.id]) return;
@@ -364,11 +386,12 @@
         Promise.resolve(window.cloudWrite('meal', { mealName: 'Extra: ' + e.n, swapDesc: e.a, calActual: e.k, pActual: e.p, cActual: e.c, fActual: e.f, timestamp: e.ts, status: 'ate', mealIdx: -1 }))
           .then(function (r) {
             delete inflight[e.id];
-            if (!r || !r.ok) return;
+            if (!r || !r.ok) { syncRemovals(); return; }
             var cur = logAll(), hit = false;
             (cur[day] || []).forEach(function (x) { if (x.id === e.id) { x.s = true; hit = true; } });
             if (hit) { logSave(cur); patchAll(); }
-          }, function () { delete inflight[e.id]; });
+            syncRemovals();                                              // removed while it was being saved
+          }, function () { delete inflight[e.id]; syncRemovals(); });
       }); });
     } catch (e) {}
   }
