@@ -626,6 +626,20 @@
     } catch (e) {}
   }
 
+  // LOG FOOD (2026-11-19): food-client.js, next to this file - search / barcode / label food logging on the Nutrition
+  // screen. Pilot-gated inside the file (PILOT), so it does nothing on other clients' pages until Omar rolls it out.
+  function bootFood(opts) {
+    try {
+      var base = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, '');
+      var start = function () { try { window.LockedInFood.boot({ storageKey: opts.storageKey, base: base }); } catch (e) {} };
+      if (window.LockedInFood) return start();
+      var s = document.createElement('script');
+      s.src = base + 'food-client.js';
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   // SET UP YOUR APP (2026-11-04): setup-client.js, next to this file - the Home card that walks login -> Home Screen ->
   // reminders -> first weigh-in. It reads this instance's diagnostics and calls its own Turn on (_onEnable).
   function bootSetup(opts) {
@@ -650,6 +664,7 @@
       bootWeek(opts || {});
       bootPlus(opts || {});
       bootSetup(opts || {});
+      if ((opts || {}).storageKey === 'omar') bootFood(opts || {});   // pilot: Omar's own page only
       return p;
     },
   };
