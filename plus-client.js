@@ -709,7 +709,7 @@
       var first = box.querySelector('.cv2-meal'); if (!first || !first.parentNode) return;
       var b = el('button', { type: 'button', class: 'lip-eo', id: 'lip-eo', on: { click: openEatOut } }, [
         el('span', { class: 'ic', text: '🍽️' }),
-        el('span', {}, [el('b', { text: 'Eating out?' }), el('small', { text: 'GYG, KFC, Nando\'s, Oporto, Subway: picks that fit this meal' })]),
+        el('span', {}, [el('b', { text: 'Eating out?' }), el('small', { text: 'Maccas, GYG, KFC, Nando\'s and 16 more: picks that fit this meal' })]),
         el('i', { text: '›' }),
       ]);
       first.parentNode.insertBefore(b, first);
