@@ -227,7 +227,7 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     t('no script errors', errs.length === 0, errs);
     await page.goto(`${base}/clients/zain_hussein/index.html?t=apptest-dummy-token`); await wait(2500);
     await page.eval(`document.querySelector('#cv2-nav [data-id="nutrition"]').click(); 1`); await wait(800);
-    t('pilot: another client\'s page has no Log food and never loads the file', !(await q('#lif-box')) && (await page.eval(`typeof window.LockedInFood`)) === 'undefined' && !!(await q('#lip-eo')));
+    t('rolled out: another client\'s page has Log food too, next to eating out', !!(await q('#lif-box')) && !!(await q('#lip-eo')));
   } finally { close(); srv.close(); }
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

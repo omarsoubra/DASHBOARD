@@ -10,14 +10,14 @@
    - No page (shell) edits. Totals are added to the page's own figures after
      each page render; every patch is idempotent.
    - Saves on the phone first, then through the page's own cloudWrite('meal').
-   - Pilot: runs only for the storage keys in PILOT until Omar says roll out.
+   - On for every V2 page since 2026-11-19 (pilot on Omar's page first). OFF lists the keys that stay without it.
    - The barcode lookup sends the barcode number only. Nothing about the client.
    - Every entry point is try/catch guarded so the page never breaks.
    ========================================================================== */
 (function () {
   'use strict';
   if (window.LockedInFood) return;
-  var PILOT = { omar: 1 };
+  var OFF = { isaac_alameddine: 1 };   // rolled out to every V2 page 2026-11-19 (Omar: "Build 2 first then 1"); keys here stay without it
   var o = null, BASE = '';
   var DATA = null, dataP = null, CHAINS = null, chainsP = null, INDEX = null;
   var KJ = 4.184, KEEP_DAYS = 90;
@@ -725,7 +725,7 @@
   // ── boot ─────────────────────────────────────────────────────────────────────────────────
   function boot(opts) {
     try {
-      if (o || !opts || !opts.storageKey || !PILOT[opts.storageKey]) return;
+      if (o || !opts || !opts.storageKey || OFF[opts.storageKey]) return;
       if (!document.body.classList.contains('cv2')) return;   // V2 screens only
       o = opts; BASE = String(opts.base || '../../'); css();
       var watch = function (id, fn, deep) { var n = document.getElementById(id); if (n && window.MutationObserver) new MutationObserver(fn).observe(n, { childList: true, subtree: !!deep }); };

@@ -627,7 +627,7 @@
   }
 
   // LOG FOOD (2026-11-19): food-client.js, next to this file - search / barcode / label food logging on the Nutrition
-  // screen. Pilot-gated inside the file (PILOT), so it does nothing on other clients' pages until Omar rolls it out.
+  // screen. It only draws on V2 pages and skips the keys in its own OFF list.
   function bootFood(opts) {
     try {
       var base = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, '');
@@ -664,7 +664,7 @@
       bootWeek(opts || {});
       bootPlus(opts || {});
       bootSetup(opts || {});
-      if ((opts || {}).storageKey === 'omar') bootFood(opts || {});   // pilot: Omar's own page only
+      bootFood(opts || {});   // every V2 page since 2026-11-19 (food-client.js keeps its own OFF list)
       return p;
     },
   };
