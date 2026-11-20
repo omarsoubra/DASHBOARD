@@ -13850,11 +13850,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
     ['v2-ts-quote', 'v2-ts-credit', 'v2-ts-result', 'v2-ts-footer'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('input', tsDraw); });
     tsDraw();
   }
-  function tsBrand(ctx, T, y) {
+  function tsBrand(ctx, T, y, x) {
+    x = x == null ? 96 : x;
     var draw = function () {
-      if (tsLogo) ctx.drawImage(tsLogo, 96, y - 52, 72, 72);
+      if (tsLogo) ctx.drawImage(tsLogo, x, y - 52, 72, 72);
       ctx.fillStyle = T.ink; ctx.font = '800 40px Inter, system-ui, sans-serif'; ctx.textBaseline = 'alphabetic';
-      ctx.fillText('LOCKED IN', tsLogo ? 188 : 96, y);
+      ctx.fillText('LOCKED IN', tsLogo ? x + 92 : x, y);
     };
     draw();
   }
@@ -14011,12 +14012,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function tsAdj(m, i) { return m.adj[i] || (m.adj[i] = { z: 1, x: 0, y: 0 }); }
   // ── Auto line-up: find the body in each photo (shoulders + hips) and frame both the same way ──
   // The body finder runs in this browser only; the photos are never sent anywhere.
-  var TS_POSE = { lib: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14', model: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task', p: null };
+  var TS_POSE = { lib: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14', model: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+    seg: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite', p: null };
   function tsPoseLoad() {
     if (TS_POSE.p) return TS_POSE.p;
     var p = TS_POSE.p = new Function('u', 'return import(u)')(TS_POSE.lib + '/vision_bundle.mjs').then(function (v) {
       return v.FilesetResolver.forVisionTasks(TS_POSE.lib + '/wasm').then(function (fs) {
-        return v.PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: TS_POSE.model }, runningMode: 'IMAGE', numPoses: 1 });
+        return v.PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: TS_POSE.model }, runningMode: 'IMAGE', numPoses: 1 }).then(function (det) {
+          // the outline finder (skin / clothes / face) measures the body itself, so photos with the head cut off still line up
+          var mk; try { mk = v.ImageSegmenter.createFromOptions(fs, { baseOptions: { modelAssetPath: TS_POSE.seg }, runningMode: 'IMAGE', outputCategoryMask: true, outputConfidenceMasks: false }); } catch (e) { mk = null; }
+          return Promise.resolve(mk).then(function (seg) { det.seg = seg || null; return det; }, function () { det.seg = null; return det; });
+        });
       });
     });
     p.catch(function () { if (TS_POSE.p === p) TS_POSE.p = null; });
@@ -14032,29 +14038,104 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (H && torso < img.height * 0.04) { H = null; torso = 0; }
     return { x: H ? (S.x + H.x) / 2 : S.x, y: S.y, torso: torso, sw: sw, chin: nose ? nose.y + (torso ? torso * 0.16 : sw * 0.24) : null };
   }
+  // body outline -> { top, sh (shoulder row), waist (first shorts row, or null), wid (body width incl. arms), cx, clipX, clipTop } in mask pixels
+  function tsShape(a, mw, mh) {
+    var n = mw * mh, body = new Uint8Array(n), i, x, y;
+    for (i = 0; i < n; i++) body[i] = a[i] === 2 || a[i] === 4 ? 1 : 0;
+    // keep the biggest connected blob (drops phones, mirrors, clutter)
+    var lab = new Int32Array(n), best = 0, bestN = 0, cur = 0, st = new Int32Array(n);
+    for (i = 0; i < n; i++) {
+      if (!body[i] || lab[i]) continue;
+      var sp = 0, cnt = 0; cur++; st[sp++] = i; lab[i] = cur;
+      while (sp) {
+        var p = st[--sp], px = p % mw; cnt++;
+        if (px > 0 && body[p - 1] && !lab[p - 1]) { lab[p - 1] = cur; st[sp++] = p - 1; }
+        if (px < mw - 1 && body[p + 1] && !lab[p + 1]) { lab[p + 1] = cur; st[sp++] = p + 1; }
+        if (p >= mw && body[p - mw] && !lab[p - mw]) { lab[p - mw] = cur; st[sp++] = p - mw; }
+        if (p < n - mw && body[p + mw] && !lab[p + mw]) { lab[p + mw] = cur; st[sp++] = p + mw; }
+      }
+      if (cnt > bestN) { bestN = cnt; best = cur; }
+    }
+    if (bestN < n * 0.04) return null;
+    var L = new Int32Array(mh).fill(-1), R = new Int32Array(mh).fill(-1), skin = new Int32Array(mh), cloth = new Int32Array(mh), top = -1, bot = -1;
+    for (y = 0; y < mh; y++) for (x = 0; x < mw; x++) {
+      i = y * mw + x; if (lab[i] !== best) continue;
+      if (L[y] < 0) L[y] = x; R[y] = x; if (a[i] === 2) skin[y]++; else cloth[y]++;
+      if (top < 0) top = y; bot = y;
+    }
+    // waist: first row, after a run of skin, where the middle of the body is mostly clothes
+    var waist = null, seen = 0;
+    for (y = top; y <= bot; y++) {
+      if (L[y] < 0) continue;
+      var c0 = Math.round(L[y] + (R[y] - L[y]) * 0.35), c1 = Math.round(L[y] + (R[y] - L[y]) * 0.65), s = 0, c = 0;
+      for (x = c0; x <= c1; x++) { var v = a[y * mw + x]; if (v === 2) s++; else if (v === 4) c++; }
+      if (s > c) seen++; else if (c > s * 2 && seen > mh * 0.08) { waist = y; break; }
+    }
+    var end = waist != null ? waist : bot, ws = [];
+    for (y = top; y <= end; y++) if (L[y] >= 0) ws.push(R[y] - L[y] + 1);
+    if (ws.length < 8) return null;
+    ws.sort(function (p, q) { return p - q; });
+    var wid = ws[Math.floor(ws.length * 0.9)], sh = top, edge = 0, rows = 0, mids = [];
+    for (y = top; y <= end; y++) if (L[y] >= 0 && R[y] - L[y] + 1 >= wid * 0.72) { sh = y; break; }
+    for (y = sh; y <= end; y++) { if (L[y] < 0) continue; rows++; if (L[y] <= 1 || R[y] >= mw - 2) edge++; mids.push((L[y] + R[y]) / 2); }
+    mids.sort(function (p, q) { return p - q; });
+    // lowest row of face or hair above the chest: where a face blur has to reach (null = no head in the photo)
+    var face = null, lim = Math.min(mh - 1, Math.round(sh + wid * 0.15)), need = Math.max(2, mw * 0.01), skin = 0;
+    for (y = 0; y <= lim; y++) { c = 0; for (x = 0; x < mw; x++) { v = a[y * mw + x]; if (v === 3) c++; } skin += c; if (c >= need) face = y; }
+    // a sliver of chin or the back of a neck is not a face: it has to be a real patch of face next to the size of the body
+    if (face != null && (face < mh * 0.04 || skin < wid * wid * 0.035)) face = null;
+    return { sh: sh, waist: waist, wid: wid, cx: mids[Math.floor(mids.length / 2)], clipX: edge > rows * 0.15, face: face };
+  }
+  function tsMeasure(det, img) {
+    var r = det.detect(img), b = tsBody(r && r.landmarks && r.landmarks[0], img), sh = null, k = 1;
+    if (det.seg) try {
+      var src = img, big = Math.max(img.width, img.height);
+      if (big > 1024) { src = document.createElement('canvas'); src.width = Math.round(img.width * 640 / big); src.height = Math.round(img.height * 640 / big); src.getContext('2d').drawImage(img, 0, 0, src.width, src.height); }
+      var s = det.seg.segment(src), mk = s && s.categoryMask;
+      if (mk) { sh = tsShape(mk.getAsUint8Array(), mk.width, mk.height); k = img.width / mk.width; }
+      if (s && s.close) s.close();
+    } catch (e) { sh = null; }
+    if (!sh) return b;
+    return { seg: true, x: sh.cx * k, y: sh.sh * k, len: sh.waist != null ? (sh.waist - sh.sh) * k : 0, wid: sh.clipX ? 0 : sh.wid * k, sw: b ? b.sw : 0, torso: b ? b.torso : 0, yp: b ? b.y : null, chin: sh.face != null ? sh.face * k : null };
+  }
   // two bodies -> zoom + position for each photo so the bodies are the same size, shoulders level, centred
   function tsAlign(imgs, bodies, w, ph, side) {
-    var use = bodies[0].torso && bodies[1].torso ? 'torso' : (side ? null : 'sw'); if (!use) return null;
-    var it = [0, 1].map(function (k) { var s0 = Math.max(w / imgs[k].width, ph / imgs[k].height); return { img: imgs[k], b: bodies[k], s0: s0, t: bodies[k][use] * s0 }; });
-    if (!(it[0].t > 1) || !(it[1].t > 1)) return null;
-    var want = Math.max(use === 'torso' ? ph * 0.34 : w * 0.44, it[0].t, it[1].t); want = Math.min(want, 3 * Math.min(it[0].t, it[1].t));
-    var cl = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }, lo = -1e9, hi = 1e9;
-    it.forEach(function (o) {
-      o.z = cl(want / o.t, 1, 3); o.s = o.s0 * o.z; o.vw = w / o.s; o.vh = ph / o.s;
-      lo = Math.max(lo, (o.b.y - (o.img.height - o.vh)) * o.s); hi = Math.min(hi, o.b.y * o.s);
-    });
-    var yT = lo <= hi ? cl(ph * 0.27, lo, hi) : ph * 0.27, blur = 0;
+    var A = bodies[0], B = bodies[1], both = A.seg && B.seg, rs = [], cl = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+    var add = function (k) { if (A[k] > 1 && B[k] > 1) rs.push(B[k] / A[k]); };
+    // how much bigger body B is in its picture than body A. Shoulder-to-waistband, shoulder width and body width each get a vote; the middle one wins.
+    if (both) { add('len'); if (!side) { add('sw'); add('wid'); } }
+    if (!rs.length) add('torso');
+    if (!rs.length && !side) add('sw');
+    if (!rs.length) return null;
+    rs.sort(function (p, q) { return p - q; });
+    var r = rs.length === 3 ? rs[1] : rs.length === 2 ? Math.sqrt(rs[0] * rs[1]) : rs[0]; if (!(r > 0.2 && r < 5)) return null;
+    var yk = both ? 'y' : (A.yp != null || !A.seg) && (B.yp != null || !B.seg) ? 'yp' : 'y';
+    var it = [0, 1].map(function (k) { var b = bodies[k]; return { img: imgs[k], b: b, y: yk === 'yp' && b.seg ? b.yp : b.y, s0: Math.max(w / imgs[k].width, ph / imgs[k].height) }; });
+    // least zoom that makes the bodies the same size: the closer photo just fills its frame, the further one is zoomed in to match
+    it[0].z = it[1].s0 * r / it[0].s0; it[1].z = 1; if (it[0].z < 1) { it[1].z = 1 / it[0].z; it[0].z = 1; }
+    // two far-away bodies: zoom both until the body carries the frame
+    var size = both && A.len > 1 ? [A.len * it[0].s0 * it[0].z, ph * 0.3] : A.torso > 1 && B.torso > 1 ? [A.torso * it[0].s0 * it[0].z, ph * 0.34] : A.sw > 1 ? [A.sw * it[0].s0 * it[0].z, w * 0.4] : null;
+    var up = size && size[0] > 1 ? Math.max(1, size[1] / size[0]) : 1, lo, hi, n = 0;
+    up = Math.min(up, 3 / Math.max(it[0].z, it[1].z)); if (up > 1) { it[0].z *= up; it[1].z *= up; }
+    it[0].z = cl(it[0].z, 1, 3); it[1].z = cl(it[1].z, 1, 3);
+    var fit = function () {
+      lo = -1e9; hi = 1e9;
+      it.forEach(function (o) { o.s = o.s0 * o.z; o.vw = w / o.s; o.vh = ph / o.s; lo = Math.max(lo, (o.y - (o.img.height - o.vh)) * o.s); hi = Math.min(hi, o.y * o.s); });
+    };
+    // shoulders can't sit level yet (one photo has no room to move): zoom both a touch more until they can
+    for (fit(); lo > hi + 0.5 && n < 14 && Math.max(it[0].z, it[1].z) * 1.03 <= 3; n++) { it[0].z *= 1.03; it[1].z *= 1.03; fit(); }
+    var yT = lo <= hi + 0.5 ? cl(Math.min(ph * 0.4, hi), lo, hi) : (lo + hi) / 2, blur = 0, face = false;
     var adj = it.map(function (o) {
       var spX = (o.img.width - o.vw) / 2, spY = (o.img.height - o.vh) / 2;
-      var sx = cl(o.b.x - o.vw / 2, 0, spX * 2), sy = cl(o.b.y - yT / o.s, 0, spY * 2);
-      if (o.b.chin != null) blur = Math.max(blur, (o.b.chin - sy) * o.s / ph * 100);
-      return { z: o.z, x: spX > 0.5 ? sx / spX - 1 : 0, y: spY > 0.5 ? sy / spY - 1 : 0 };
+      var sx = cl(o.b.x - o.vw / 2, 0, spX * 2), sy = cl(o.y - yT / o.s, 0, spY * 2);
+      if (o.b.chin != null) { face = true; blur = Math.max(blur, (o.b.chin - sy) * o.s / ph * 100); }
+      return { z: Math.round(o.z * 1000) / 1000, x: spX > 0.5 ? sx / spX - 1 : 0, y: spY > 0.5 ? sy / spY - 1 : 0 };
     });
-    return { adj: adj, blur: Math.ceil(blur) + 1 };
+    return { adj: adj, blur: face ? Math.ceil(blur) + 2 : 0, noFace: both && !face };
   }
   function tsPose(m, i) {
     if (m.pose[i]) return m.pose[i];
-    return m.pose[i] = tsPoseLoad().then(function (det) { var r = det.detect(m.imgs[i]); return tsBody(r && r.landmarks && r.landmarks[0], m.imgs[i]); }).catch(function () { return null; });
+    return m.pose[i] = tsPoseLoad().then(function (det) { return tsMeasure(det, m.imgs[i]); }).catch(function () { return null; });
   }
   function tsAutoAlign() {
     var m = TS.made; if (!m || m.kind !== 'photos' || !m.box || m.touched) return;
@@ -14069,9 +14150,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (!r) { say(TS_POSE.p ? 'Couldn\'t line these two up automatically. Drag each photo and use the zoom to match them.' : 'Auto line-up isn\'t available right now. Drag each photo and use the zoom to match them.'); return; }
       m.adj[m.a] = r.adj[0]; if (m.b !== m.a) m.adj[m.b] = r.adj[1];
       var bl = $('v2-ts-blur');
-      if (bl && m.blur > 0 && !m.blurEdited && r.blur > 1) { m.blur = Math.max(+bl.min, Math.min(50, r.blur)); bl.value = m.blur; $('v2-ts-blurv').textContent = m.blur; }
+      if (m.blurWant == null) m.blurWant = m.blur > 0;
+      var off = false;
+      if (bl && m.blurWant && !m.blurEdited && (r.blur > 1 || r.noFace)) { m.blur = Math.max(+bl.min, Math.min(50, r.blur)); bl.value = m.blur; $('v2-ts-blurv').textContent = m.blur; off = r.noFace && m.blur === 0; }
       if (m.zoomSync) m.zoomSync();
-      say('Lined up automatically: same body size, shoulders level. Drag a photo or use the zoom to fine-tune.');
+      say('Lined up automatically: same body size, shoulders level.' + (off ? ' No face in these photos, so the blur is off.' : '') + ' Drag a photo or use the zoom to fine-tune.');
       tsDraw();
     });
   }
@@ -14115,15 +14198,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   function tsDrawPhotos(ctx, T, H) {
     var m = TS.made, W = 1080, post = H < 1900, val = function (id) { var el = $(id); return el && !el.disabled ? String(el.value || '').trim() : ''; };
-    tsBrand(ctx, T, post ? 118 : 150);
+    var M = 56;
+    tsBrand(ctx, T, post ? 118 : 290, M);
     var foot = val('v2-ts-footer');
-    if (post && foot) { ctx.fillStyle = T.muted; ctx.textAlign = 'right'; tsFit(ctx, foot, 600, 30, 'Inter, system-ui, sans-serif', 560); ctx.fillText(foot, W - 96, 112); ctx.textAlign = 'left'; }
+    if (post && foot) { ctx.fillStyle = T.muted; ctx.textAlign = 'right'; tsFit(ctx, foot, 600, 30, 'Inter, system-ui, sans-serif', 560); ctx.fillText(foot, W - M, 112); ctx.textAlign = 'left'; }
     if (!m.photos) return;
     var res = val('v2-ts-result'), caps = [val('v2-ts-la'), val('v2-ts-lb')];
-    var top = post ? 170 : 220, ph = post ? (res ? 900 : 1020) : (res ? 1290 : 1400), gap = 16, w = (W - 96 * 2 - gap) / 2;
-    m.box = { top: top, ph: ph, w: w, xs: [96, 96 + w + gap] };
+    // wide frames (close to a phone photo's own shape) so a torso fits with its arms; Story keeps clear of Instagram's top and bottom bars
+    var top = post ? 170 : 350, ph = post ? (res ? 900 : 1020) : (res ? 1040 : 1160), gap = 16, w = (W - M * 2 - gap) / 2;
+    m.box = { top: top, ph: ph, w: w, xs: [M, M + w + gap] };
     [[m.a, 'BEFORE'], [m.b, 'AFTER']].forEach(function (pair, k) {
-      var x = 96 + k * (w + gap), img = tsPhotoImg(pair[0]);
+      var x = M + k * (w + gap), img = tsPhotoImg(pair[0]);
       ctx.fillStyle = '#22252b'; ctx.fillRect(x, top, w, ph);
       if (img && img !== 'loading' && img !== 'error') tsCover(ctx, img, x, top, w, ph, m.blur, tsAdj(m, pair[0]));
       else { ctx.fillStyle = T.muted; ctx.font = '600 32px Inter, system-ui, sans-serif'; ctx.fillText(img === 'error' ? 'Photo couldn’t load' : 'Loading…', x + 30, top + 80); }
@@ -14131,8 +14216,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
       ctx.fillStyle = k ? (m.theme === 'orange' ? '#ffffff' : '#15171b') : '#ffffff'; ctx.font = '400 56px "Bebas Neue", Impact, sans-serif'; ctx.fillText(pair[1], x + 40, top + ph - 40);
       if (caps[k]) { ctx.fillStyle = T.ink; tsFit(ctx, caps[k].toUpperCase(), 600, 36, '"DM Mono", ui-monospace, monospace', w); ctx.fillText(caps[k].toUpperCase(), x, top + ph + 56); }
     });
-    if (res) { ctx.fillStyle = T.ink; tsFit(ctx, res.toUpperCase(), 400, post ? 100 : 116, '"Bebas Neue", Impact, sans-serif', W - 192); ctx.fillText(res.toUpperCase(), 96, top + ph + (post ? 176 : 190)); }
-    if (!post) { ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText(foot, 96, H - 120); }
+    if (res) { ctx.fillStyle = T.ink; tsFit(ctx, res.toUpperCase(), 400, post ? 100 : 116, '"Bebas Neue", Impact, sans-serif', W - M * 2); ctx.fillText(res.toUpperCase(), M, top + ph + (post ? 176 : 190)); }
+    if (!post) { ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText(foot, M, top + ph + (res ? 270 : 130)); }
     tsAutoAlign();
   }
   function tsSave(share) {
