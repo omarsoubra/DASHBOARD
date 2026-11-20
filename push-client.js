@@ -666,6 +666,19 @@
     } catch (e) {}
   }
 
+  // TIDY-UPS (2026-11-20): tidy-client.js, next to this file - ingredients as a list, workout first on Home, empty
+  // Progress cards hidden, Notifications opened from the profile menu. Display only; it saves and sends nothing.
+  function bootTidy(opts) {
+    try {
+      var start = function () { try { window.LockedInTidy.boot({ storageKey: opts.storageKey }); } catch (e) {} };
+      if (window.LockedInTidy) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'tidy-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   // SET UP YOUR APP (2026-11-04): setup-client.js, next to this file - the Home card that walks login -> Home Screen ->
   // reminders -> first weigh-in. It reads this instance's diagnostics and calls its own Turn on (_onEnable).
   function bootSetup(opts) {
@@ -692,6 +705,7 @@
       bootSetup(opts || {});
       bootSwap(opts || {});
       bootCheckin(opts || {});
+      bootTidy(opts || {});
       bootFood(opts || {});   // every V2 page since 2026-11-19 (food-client.js keeps its own OFF list)
       return p;
     },
