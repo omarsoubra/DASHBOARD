@@ -636,7 +636,10 @@ const knownBug = (name, holds, detail) => {
         t('Paid asks first (it is the go for the next block)', (await exists('#v2-renewals [data-rnk="jonah_r"] [data-rn-paid]')) && (await st('jonah_r')) === 'yes|true');
         await click('#v2-renewals [data-rnk="jonah_r"] [data-rn-paid]'); await idle(300);
         t('confirming saves Paid', (await st('jonah_r')) === 'paid|true');
-        await click('#v2-renewals [data-rnk="owen_c"] [data-rns="declined"]'); await idle(300);
+        await click('#v2-renewals [data-rnk="owen_c"] [data-rns="declined"]'); await idle(200);
+        t('No asks first and says when they come off the list', (await st('owen_c')) === null && /stay active until their block ends/.test(await txt('#v2-renewals [data-rnk="owen_c"] .v2-rn-confirm')), await txt('#v2-renewals [data-rnk="owen_c"]'));
+        await click('#v2-renewals [data-rnk="owen_c"] [data-rn-no]'); await idle(300);
+        t('a No mid-block keeps them active until the block ends', await ev(`_isActiveClient(loadClients().find(function (x) { return x.storageKey === 'owen_c'; }))`));
         t('No moves the client to Not renewing, folded away', (await st('owen_c')) === 'declined|true' && !(await exists('#v2-renewals [data-rnk="owen_c"]')) && (await exists('#v2-renewals [data-rng="lost"]')));
         await click('#v2-renewals [data-rn-lost]'); await idle(200);
         t('Show opens the Not renewing list', (await grp('owen_c')) === 'lost');
@@ -653,6 +656,22 @@ const knownBug = (name, holds, detail) => {
         await click('#v2-renewals [data-rnk="sofia_m"] [data-rn-copy]'); await idle(400);
         t('Copy marks the client as Asked', (await st('sofia_m')) === 'asked|true');
         t('answers were pushed with the roster (rosterPut)', (await ev(`__ui.calls.filter(function (c) { return c.type === 'rosterPut'; }).length`)) >= 5);
+        // No on a finished block archives them now; Bring back undoes it
+        const prog = (k) => ev(`(function(){ var c = loadClients().find(function (x) { return x.storageKey === '${k}'; }); return c.programStatus + '|' + (c.archiveReason || '') + '|' + (c.accessStatus || ''); })()`);
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rns="declined"]'); await idle(200);
+        t('No on a finished block offers to archive now', /come off your active list now/.test(await txt('#v2-renewals [data-rnk="sofia_m"] .v2-rn-confirm')));
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rn-no]'); await idle(400);
+        t('confirming archives them as not renewing, access untouched', /^archived\|not_renewing\|(active)?$/.test(await prog('sofia_m')), await prog('sofia_m'));
+        t('they are off the active list', !(await ev(`_isActiveClient(loadClients().find(function (x) { return x.storageKey === 'sofia_m'; }))`)));
+        t('they stay under Not renewing with a Bring back button', (await grp('sofia_m')) === 'lost' && (await exists('#v2-renewals [data-rnk="sofia_m"] [data-rn-back]')) && !(await exists('#v2-renewals [data-rnk="sofia_m"] [data-rns]')));
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rn-back]'); await idle(400);
+        t('Bring back restores them to active with the answer cleared', /^active\|\|/.test(await prog('sofia_m')) && (await st('sofia_m')) === null && (await grp('sofia_m')) === 'over', await prog('sofia_m'));
+        // a No given mid-block lands by itself once the block is over
+        await ev(`(function(){ var l = loadClients(), c = l.find(function (x) { return x.storageKey === 'owen_c'; }); window.__owenStart = c.startDate; c.startDate = new Date(Date.now() - 100 * 86400000).toISOString().slice(0, 10); c.renewState = { status: 'declined', at: Date.now() + 9000, start: c.startDate }; saveClients(l); COACH.clients = l; UIV2.renderRenewals(); return 1; })()`);
+        await idle(400);
+        t('a mid-block No archives them once their block is over', /^archived\|not_renewing\|(active)?$/.test(await prog('owen_c')), await prog('owen_c'));
+        await ev(`(function(){ var l = loadClients(), c = l.find(function (x) { return x.storageKey === 'owen_c'; }); c.startDate = window.__owenStart; c.programStatus = 'active'; delete c.archivedAt; delete c.archiveReason; delete c.renewState; saveClients(l); COACH.clients = l; localStorage.removeItem('lockedin.renewState.v1'); UIV2.renderRenewals(); pushRoster(); return 1; })()`);
+        await idle(400);
       }, { shot: 'renewals', writes: ['rosterPut', 'checkinDraftMark'] });
 
       // ── TESTIMONIALS (Omar 2026-10-16) ──

@@ -13155,25 +13155,52 @@ window.addEventListener('beforeinstallprompt', (e) => {
     var all = rnAll(); all[key] = entry; try { localStorage.setItem(RN_STORE, JSON.stringify(all)); } catch (e) {}
     try { cl.renewState = entry; saveClients(list); COACH.clients = list; pushRoster(); } catch (e) { console.warn('[renewals] sync', e); }
   }
+  // "No" has substance (Omar 2026-11-20): a client who is not renewing comes off the active list when their block
+  // ends - straight away if it already has. Archived only: nothing is deleted and their app access is left alone.
+  function rnGone(c) {
+    return c.programStatus === 'archived' && c.archiveReason === 'not_renewing' && c.accessStatus !== 'revoked' &&
+      Date.now() - Date.parse(c.archivedAt || 0) < 30 * 86400000;
+  }
+  function rnLeft(c) { return blockWeeks(c) * 7 - Math.round((new Date().setHours(0, 0, 0, 0) - new Date(rnStart(c) + 'T00:00:00').getTime()) / 86400000); }
+  function rnArchive(key) {
+    return _lifecycleAccessPatch(key, { programStatus: 'archived', archivedAt: new Date().toISOString(), archiveReason: 'not_renewing',
+      isPaused: false, pausedAt: undefined, resumeDate: undefined }, 'client_archived', { reason: 'not_renewing', accessRevoked: false });
+  }
+  function rnRestore(key) {
+    var list = loadClients(), cl = list.find(function (x) { return x.storageKey === key; });
+    if (cl) { delete cl.renewState; saveClients(list); COACH.clients = list; }
+    var all = rnAll(); delete all[key]; try { localStorage.setItem(RN_STORE, JSON.stringify(all)); } catch (e) {}
+    return _lifecycleAccessPatch(key, { programStatus: 'active', archivedAt: undefined, archiveReason: undefined }, 'client_reactivated', { from: 'renewals' });
+  }
+  var RN_SWEPT = {};
+  function rnSweep(clients) {                                                          // a "No" given mid-block lands on the day the block is over
+    if (_syncStatus !== 'ok' || !_lastSyncMs) return;                                   // only after this page load has synced the roster, never from a stale local copy
+    (clients || []).forEach(function (c) {
+      var k = c.storageKey, e = rnEntry(c);
+      if (!k || RN_SWEPT[k] || !e || e.status !== 'declined' || !_isActiveClient(c) || weekOf(c) === null || rnLeft(c) > 0) return;
+      RN_SWEPT[k] = 1; setTimeout(function () { try { rnArchive(k); } catch (err) { console.warn('[renewals] archive', err); } }, 0);
+    });
+  }
   function rnRows(clients, data) {
     var today0 = new Date().setHours(0, 0, 0, 0);
     return clients.filter(function (c) {
-      var k = String(c.storageKey || ''); return k && k.charAt(0) !== '_' && !CR_SKIP[k] && _isActiveClient(c) && weekOf(c) !== null;
+      var k = String(c.storageKey || ''); return k && k.charAt(0) !== '_' && !CR_SKIP[k] && (_isActiveClient(c) || rnGone(c)) && weekOf(c) !== null;
     }).map(function (c) {
       var L = blockWeeks(c), s = new Date(rnStart(c) + 'T00:00:00').getTime();
       var left = L * 7 - Math.round((today0 - s) / 86400000);                         // days of the block still to run, today included
       var st = rnStatus(c), sum = data[c.storageKey] || {};
-      var bucket = st === 'declined' ? 'lost' : (st === 'yes' || st === 'paid') ? 'won' : left <= 0 ? 'over' : left <= 14 ? 'soon' : left <= 30 ? 'month' : 'later';
+      var bucket = (st === 'declined' || rnGone(c)) ? 'lost' : (st === 'yes' || st === 'paid') ? 'won' : left <= 0 ? 'over' : left <= 14 ? 'soon' : left <= 30 ? 'month' : 'later';
       var wh = (sum.weightHistory || sum.weightLog || []).map(function (x) { return { t: Date.parse(x.ts || x.timestamp), kg: Number(x.kg != null ? x.kg : x.weight) }; })
         .filter(function (x) { return !isNaN(x.t) && isFinite(x.kg) && x.kg > 0; }).sort(function (a, b) { return a.t - b.t; });
       var la = lastActivity(sum);
-      return { c: c, key: c.storageKey, L: L, week: weekOf(c), left: left, end: s + (L * 7 - 1) * 86400000, st: st, bucket: bucket,
+      return { c: c, key: c.storageKey, gone: rnGone(c), L: L, week: weekOf(c), left: left, end: s + (L * 7 - 1) * 86400000, st: st, bucket: bucket,
                w: wh.length ? wh[wh.length - 1] : null, quiet: la === null ? null : Math.floor((Date.now() - la) / 86400000) };
     }).sort(function (a, b) { return a.left - b.left; });
   }
   function rnToAsk(rows) { return rows.filter(function (r) { return r.st === 'none' && (r.bucket === 'over' || r.bucket === 'soon'); }); }
   function rnBadge(clients) {
     var el = $('v2-badge-renewals'); if (!el) return;
+    try { rnSweep(clients); } catch (e) {}
     var n = rnToAsk(rnRows(clients, (typeof _dashboardData !== 'undefined' && _dashboardData) || {})).length;
     el.textContent = n ? String(n) : '';
   }
@@ -13212,6 +13239,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
       var c = r.c, ini = String(c.displayName || r.key).split(/\s+/).map(function (p) { return p.charAt(0); }).slice(0, 2).join('').toUpperCase();
       var when = r.left <= 0 ? 'Finished ' + L12(r) + ' · <em>ended ' + ago(1 - r.left) + '</em>'
         : 'Week ' + Math.min(r.week, r.L) + ' of ' + r.L + ' · <em>' + (r.left === 1 ? 'last day today' : r.left + ' days left') + '</em> · ends ' + esc(day(r.end));
+      if (r.gone) when = 'Finished ' + L12(r) + ' · archived ' + esc(day(Date.parse(c.archivedAt)));
+      else if (r.st === 'declined' && r.left > 0 && rnEntry(c)) when += ' · comes off your list after that';
       var sw = Number(c.startWeight), dlt = r.w && isFinite(sw) && sw > 0 ? r.w.kg - sw : null;
       var wd = r.w ? Math.floor((Date.now() - r.w.t) / 86400000) : null;
       var weight = r.w ? '<b>' + r.w.kg.toFixed(1) + ' kg</b><small class="' + (wd > 14 ? 'stale' : '') + '">' +
@@ -13219,7 +13248,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
         : '<b>—</b><small class="stale">no weigh-in</small>';
       var active = r.quiet === null ? '<b>—</b><small class="stale">nothing logged</small>' : '<b>' + (r.quiet === 0 ? 'Today' : r.quiet + 'd ago') + '</b><small' + (r.quiet >= 7 ? ' class="stale"' : '') + '>last logged</small>';
       var draft = crDraft(r.key), panel = '';
-      if (RN.confirm === r.key) panel = '<div class="v2-rn-panel"><div class="v2-rn-confirm"><span><b>Mark ' + esc(first(c)) + ' as paid?</b> Paid is your go: their next block goes live the day before it starts.</span>' +
+      if (RN.confirm === r.key && RN.kind === 'no') panel = '<div class="v2-rn-panel"><div class="v2-rn-confirm"><span><b>' + esc(first(c)) + ' is not renewing?</b> ' +
+        (r.left <= 0 ? 'They come off your active list now.' : 'They stay active until their block ends on ' + esc(day(r.end)) + ', then come off your active list.') + ' Nothing is deleted.</span>' +
+        '<span class="acts"><button type="button" class="v2-btn primary" data-rn-no="1">' + (r.left <= 0 ? 'Yes, archive' : 'Yes, not renewing') + '</button><button type="button" class="v2-btn ghost" data-rn-cancel="1">Cancel</button></span></div></div>';
+      else if (RN.confirm === r.key) panel = '<div class="v2-rn-panel"><div class="v2-rn-confirm"><span><b>Mark ' + esc(first(c)) + ' as paid?</b> Paid is your go: their next block goes live the day before it starts.</span>' +
         '<span class="acts"><button type="button" class="v2-btn primary" data-rn-paid="1">Yes, paid</button><button type="button" class="v2-btn ghost" data-rn-cancel="1">Cancel</button></span></div></div>';
       else if (RN.open === r.key) panel = '<div class="v2-rn-panel"><textarea rows="4" aria-label="Message to ' + esc(first(c)) + '">' + esc(draft ? draft.d.draft : rnOpener(r)) + '</textarea>' +
         '<small>' + (draft ? 'Drafted for you this morning. ' : 'Suggested opener. ') + 'Edit it, then send. Sending marks them as Asked.</small>' +
@@ -13230,7 +13262,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '<div class="v2-rn-who"><span class="v2-rn-av">' + esc(ini) + '</span><div><b><a href="#/clients/' + encodeURIComponent(r.key) + '">' + esc(c.displayName || r.key) + '</a></b>' +
           '<small>' + when + '</small><span class="v2-rn-bar"><i style="width:' + pct + '%"></i></span></div></div>' +
         '<div class="v2-rn-facts"><div class="v2-rn-cell"><span class="lab">Weight</span>' + weight + '</div><div class="v2-rn-cell"><span class="lab">App</span>' + active + '</div></div>' +
-        seg(r) + '<button type="button" class="v2-btn" data-rn-msg="1">Message</button></div>' + panel + '</div>';
+        (r.gone ? '<span></span><button type="button" class="v2-btn" data-rn-back="1">Bring back</button>' : seg(r) + '<button type="button" class="v2-btn" data-rn-msg="1">Message</button>') + '</div>' + panel + '</div>';
     };
     function L12(r) { return 'their ' + r.L + ' weeks'; }
     var any = false;
@@ -13259,10 +13291,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (b) {
         var s = b.getAttribute('data-rns');
         if (r.st === s) return set('none');                                            // tap the lit one again to clear it
-        if (s === 'paid') { RN.confirm = key; RN.open = null; return renderRenewals(); }
+        if (s === 'paid' || s === 'declined') { RN.confirm = key; RN.kind = s === 'paid' ? 'paid' : 'no'; RN.open = null; return renderRenewals(); }
         return set(s);
       }
       if (t.closest('[data-rn-paid]')) return set('paid');
+      if (t.closest('[data-rn-no]')) {
+        rnSet(key, 'declined'); RN.open = null; RN.confirm = null;
+        if (r.left <= 0) { RN_SWEPT[key] = 1; rnArchive(key); tqToast(first(r.c) + ': archived ✓'); }
+        else tqToast(first(r.c) + ': not renewing, off your list after ' + day(r.end));
+        return renderRenewals();
+      }
+      if (t.closest('[data-rn-back]')) { rnRestore(key); tqToast(first(r.c) + ': back on your active list'); return renderRenewals(); }
       if (t.closest('[data-rn-cancel]')) { RN.open = null; RN.confirm = null; return renderRenewals(); }
       if (t.closest('[data-rn-msg]')) { RN.open = RN.open === key ? null : key; RN.confirm = null; renderRenewals(); var ta = box.querySelector('[data-rnk="' + key + '"] textarea'); if (ta) ta.focus(); return; }
       var ta2 = it.querySelector('textarea'); if (!ta2) return;
