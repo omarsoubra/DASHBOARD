@@ -31,6 +31,7 @@ const STRICT = argv.includes('--strict');
 
 const TOKEN = 'coach-ui-harness-FAKE-token-0000';
 const FX = build(Date.now());
+if ((process.env.LI_REAL_PHOTOS || '').split(',').filter(Boolean).length === 2) FX.photos.priya_n.forEach((p) => { if (/front-base/.test(p.url)) p.url = '/__real/0'; if (/front-w6/.test(p.url)) p.url = '/__real/1'; });
 
 // Reads the page may make while merely viewing. Anything else is treated as a write.
 const READ_TYPES = ['dashboard', 'rosterGet', 'checkinDraftsGet', 'healthGet', 'coachSettingsGet', 'accountList', 'intakeList', 'coachWorkoutCompletions',
@@ -41,10 +42,25 @@ const READ_TYPES = ['dashboard', 'rosterGet', 'checkinDraftsGet', 'healthGet', '
 const CHART_STUB = `(function(){function C(ctx,cfg){this.ctx=ctx;this.config=cfg||{};this.data=(cfg&&cfg.data)||{};this.options=(cfg&&cfg.options)||{};C.__instances.push(this);}
 C.__instances=[];C.__stub=true;C.prototype.destroy=function(){this.destroyed=true;};C.prototype.update=function(){};C.prototype.resize=function(){};
 C.register=function(){};C.defaults={font:{},color:'',plugins:{legend:{labels:{}},tooltip:{}},scales:{}};window.Chart=C;})();`;
+const POSE_STUB = String.raw`
+export const FilesetResolver = { forVisionTasks: async () => ({}) };
+export const PoseLandmarker = { createFromOptions: async () => ({ detect: (img) => {
+  if (/v=g-/.test(img.src)) return { landmarks: [] };
+  const far = /front-base/.test(img.src), sy = far ? 0.30 : 0.35, hy = far ? 0.50 : 0.75, P = (x, y) => ({ x, y, visibility: 0.99 }), lm = [];
+  for (let i = 0; i < 33; i++) lm.push(P(0.5, 0.5));
+  lm[0] = P(0.5, sy - 0.1); lm[11] = P(0.6, sy); lm[12] = P(0.4, sy); lm[23] = P(0.56, hy); lm[24] = P(0.44, hy);
+  return { landmarks: [lm] };
+} }) };
+`;
+// LI_REAL_PHOTOS=<before.jpg>,<after.jpg> (dev only, by hand): priya's Start and Week 6 front photos become these two files and the real
+// body finder is let through, so --shots shows the auto line-up on real pictures. Assertions about the fake finder will fail in this mode.
+const REAL = (process.env.LI_REAL_PHOTOS || '').split(',').filter(Boolean);
 const STATIC_STUBS = [
   { re: /^https:\/\/cdn\.jsdelivr\.net\/npm\/chart\.js@[^/]+\/dist\/chart\.umd\.min\.js$/, type: 'text/javascript', body: CHART_STUB },
   { re: /^https:\/\/cdn\.jsdelivr\.net\/npm\/chartjs-adapter-date-fns@[^/]+\/dist\/chartjs-adapter-date-fns\.bundle\.min\.js$/, type: 'text/javascript', body: '/* stub */' },
   { re: /^https:\/\/fonts\.googleapis\.com\/css2\?/, type: 'text/css', body: '/* stub */' },
+  // post maker auto line-up: a fake body finder. The Start photo has a small body (far away), every other photo a big one.
+  { re: /^https:\/\/cdn\.jsdelivr\.net\/npm\/@mediapipe\/tasks-vision@[^/]+\/vision_bundle\.mjs$/, type: 'text/javascript', body: POSE_STUB },
 ];
 
 // ─────────────────────────────── page-side fake backend + network lock ───────────────────────────────
@@ -115,7 +131,7 @@ const INIT = String.raw`
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
     var u = String((input && input.url) || input), k = kind(u);
-    if (k === 'local') return realFetch(input, init);
+    if (k === 'local' || (__REAL__ && /tasks-vision|mediapipe-models/.test(u))) return realFetch(input, init);
     if (k !== 'supabase') { block('fetch', u); return Promise.reject(new TypeError('coach_ui harness: network blocked ' + u)); }
     var b = {}; try { b = JSON.parse((init && init.body) || '{}'); } catch (e) {}
     var fn = /\/functions\/v1\/push(\b|$)/.test(u) ? 'push' : /\/functions\/v1\/api(\b|$)/.test(u) ? 'api' : 'other';
@@ -162,7 +178,7 @@ const INIT = String.raw`
   window.print = function () { U.dialogs.push('print'); };
   try { Object.defineProperty(navigator, 'clipboard', { value: { writeText: function (t) { U.copied.push(String(t)); return Promise.resolve(); } }, configurable: true }); } catch (e) {}
 })();`
-  .replace('__FX__', () => JSON.stringify(FX)).replace('__TOKEN__', JSON.stringify(TOKEN)).replace('__READ__', JSON.stringify(READ_TYPES));
+  .replace('__FX__', () => JSON.stringify(FX)).replace('__TOKEN__', JSON.stringify(TOKEN)).replace('__READ__', JSON.stringify(READ_TYPES)).replace('__REAL__', String(REAL.length === 2));
 
 // ─────────────────────────────── local server ───────────────────────────────
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
@@ -174,6 +190,7 @@ function serve() {
     if (u === '/clients_registry.json') { res.writeHead(200, { 'Content-Type': MIME['.json'] }); return res.end(JSON.stringify(FX.registry)); }
     const ex = u.match(/^\/clients\/([^/]+)\/expected\.json$/);
     if (ex && FX.expected && FX.expected[ex[1]]) { res.writeHead(200, { 'Content-Type': MIME['.json'] }); return res.end(JSON.stringify(FX.expected[ex[1]])); }
+    if (REAL.length === 2 && /^\/__real\/[01]$/.test(u)) { res.writeHead(200, { 'Content-Type': 'image/jpeg' }); return res.end(fs.readFileSync(REAL[+u.slice(-1)])); }
     if (u === '/__fixture/photo.svg') { res.writeHead(200, { 'Content-Type': MIME['.svg'] }); return res.end(PHOTO); }
     const m = u.match(/^\/clients\/([^/]+)\/(index\.html)?$/);
     if (m && keys.has(m[1]) && FX.pageStatus[m[1]] !== 404) {
@@ -217,6 +234,7 @@ const knownBug = (name, holds, detail) => {
     if (m === 'Fetch.requestPaused') {
       const url = p.request.url;
       if (url.startsWith(base + '/') || url === base) { c.send('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {}); return; }
+      if (REAL.length === 2 && /tasks-vision|mediapipe-models/.test(url)) { c.send('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {}); return; }
       const stub = STATIC_STUBS.find((s) => s.re.test(url));
       if (stub) {
         netStubbed.push(url);
@@ -790,6 +808,22 @@ const knownBug = (name, holds, detail) => {
                 t('before label = Start + intake weight, after label = week + weigh-in', la === 'Start · 64.2 kg' && /^Week 6 · \d+\.\d kg$/.test(lb), [la, lb]);
                 t('result line worked out from the two weights and the weeks between', /^[−+]\d+\.\d kg in 6 weeks$/.test(res), res);
                 t('consent on file: no tick box, face blur locked at 12%+', (await count('#v2-ts-ok')) === 0 && (await ev(`+document.getElementById('v2-ts-blur').min`)) === 12);
+                // auto line-up (fake body finder): the far-away Start photo is zoomed to match Week 6; then drag + zoom by hand
+                const pxSum = () => ev(`(function () { var c = document.getElementById('v2-ts-canvas'); return Array.from(c.getContext('2d').getImageData(96, 220, 436, 1200).data).reduce(function (a, b) { return a + b; }, 0); })()`);
+                await idle(400);
+                const za0 = await val('v2-ts-za'), zb0 = await val('v2-ts-zb'), auto = await txt('#v2-ts-auto');
+                t('auto line-up: Start photo zoomed 2x to match the Week 6 body, Week 6 left alone', za0 === '200' && zb0 === '100' && /Lined up automatically/.test(auto), [za0, zb0, auto]);
+                t('auto line-up: face blur moved down to cover the chin', (await ev(`+document.getElementById('v2-ts-blur').value`)) >= 12, await val('v2-ts-blur'));
+                const px0 = await pxSum();
+                await ev(`(function () { var z = document.getElementById('v2-ts-za'); z.value = 260; z.dispatchEvent(new Event('input')); var c = document.getElementById('v2-ts-canvas'), r = c.getBoundingClientRect(), k = r.width / 1080;
+                  var pe = function (t, x, y) { c.dispatchEvent(new PointerEvent(t, { clientX: r.left + x * k, clientY: r.top + y * k, pointerId: 1, bubbles: true })); };
+                  pe('pointerdown', 300, 800); pe('pointermove', 420, 950); pe('pointerup', 420, 950); return 1; })()`); await idle(200);
+                const px1 = await pxSum();
+                t('zoom + drag moves the before photo inside its frame', px0 !== px1 && (await val('v2-ts-za')) === '260', [px0, px1]);
+                await ev(`document.querySelector('[data-ts="unzoom"]').click(); 1`); await idle(300);
+                const px2 = await pxSum();
+                // the browser re-samples a picture slightly differently once it has been drawn bigger, so 'back' = within a hair of the first draw
+                t('Line up again puts the auto line-up back', (await val('v2-ts-za')) === '200' && Math.abs(px2 - px0) < Math.abs(px1 - px0) / 4, [await val('v2-ts-za'), px0, px1, px2]);
                 await ev(`document.querySelector('[data-ts="fmt"][data-v="post"]').click(); 1`); await idle(300);
                 const cv = await ev(`(function () { var c = document.getElementById('v2-ts-canvas'), d = c.getContext('2d').getImageData(0, 0, 1080, c.height).data, n = 0; for (var i = 0; i < d.length; i += 4 * 97) if (d[i] > 200) n++; return { h: c.height, light: n }; })()`);
                 t('Post 4:5 = 1080 x 1350 with text drawn', cv.h === 1350 && cv.light > 100, cv);

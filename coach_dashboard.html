@@ -13816,6 +13816,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (a === 'theme') { m.theme = v; return tsDraw(); }
     if (a === 'fmt') { var cv = $('v2-ts-canvas'); m.fmt = v; cv.height = v === 'post' ? 1350 : 1920; cv.style.aspectRatio = v === 'post' ? '4 / 5' : ''; return tsDraw(); }
     if (a === 'view' && m.pick) return m.pick(v);
+    if (a === 'unzoom') { delete m.adj[m.a]; delete m.adj[m.b]; m.touched = false; m.autoKey = null; if (m.zoomSync) m.zoomSync(); return tsDraw(); }
   }
   // ── story cards (1080 x 1920) ──
   var TS_THEMES = { dark: { bg: '#0f1013', ink: '#f4f2ee', muted: '#9a9ea8', accent: '#ff6a43' }, orange: { bg: '#e8542e', ink: '#ffffff', muted: '#ffe1d6', accent: '#15171b' }, light: { bg: '#f4f2ee', ink: '#15171b', muted: '#5f646c', accent: '#e8542e' } };
@@ -13929,7 +13930,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       return;
     }
     var face = !none && cs.photos === 'face_hidden', nums = none || cs.numbers === 'yes';
-    TS.made = { kind: 'photos', r: r, theme: 'dark', fmt: 'story', photos: null, a: 0, b: 0, blur: face || none ? 26 : 0, imgs: {}, nums: nums, needOk: none, resEdited: false };
+    TS.made = { kind: 'photos', r: r, theme: 'dark', fmt: 'story', photos: null, a: 0, b: 0, blur: face || none ? 26 : 0, imgs: {}, adj: {}, pose: {}, nums: nums, needOk: none, resEdited: false };
     tsModal('<h3>Before / after: ' + esc(first) + '</h3><div class="v2-ts-story"><div class="v2-ts-prev"><canvas id="v2-ts-canvas" width="1080" height="1920" aria-label="Post preview"></canvas></div><div class="v2-ts-form" id="v2-ts-pform"><p class="v2-ts-note">Loading photos…</p></div></div>');
     coachFetch('photosGet', { client: r.client_key, storageKey: r.client_key }).then(function (j) {
       var m = TS.made; if (!m || m.r !== r || !$('v2-ts-pform')) return;
@@ -13954,6 +13955,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '<div><label class="v2-ts-lab" for="v2-ts-pb">After</label><select class="v2-ts-in" id="v2-ts-pb">' + opt() + '</select></div></div>' +
         '<div class="v2-ts-two"><div><label class="v2-ts-lab" for="v2-ts-la">Under the before photo</label><input class="v2-ts-in" id="v2-ts-la"></div>' +
         '<div><label class="v2-ts-lab" for="v2-ts-lb">Under the after photo</label><input class="v2-ts-in" id="v2-ts-lb"></div></div>' +
+        '<div class="v2-ts-lab">Line them up</div><p class="v2-ts-note" id="v2-ts-auto">Lining them up…</p>' +
+        '<div class="v2-ts-two"><div><label class="v2-ts-lab" for="v2-ts-za">Zoom before</label><input type="range" id="v2-ts-za" min="100" max="300" value="100"></div>' +
+        '<div><label class="v2-ts-lab" for="v2-ts-zb">Zoom after</label><input type="range" id="v2-ts-zb" min="100" max="300" value="100"></div></div>' +
+        '<div class="v2-ts-actions" style="margin-top:0"><button type="button" class="v2-btn sm ghost" data-ts="unzoom">Line up again</button></div>' +
         '<label class="v2-ts-lab" for="v2-ts-blur">Hide face: blur the top ' + '<b id="v2-ts-blurv">' + m.blur + '</b>%</label><input type="range" id="v2-ts-blur" min="' + (face ? 12 : 0) + '" max="50" value="' + m.blur + '">' +
         (face ? '<p class="v2-ts-note">' + esc(first) + ' asked for their face to be hidden, so the blur can\'t go below 12%. Check the preview before posting.</p>' : '') +
         '<label class="v2-ts-lab" for="v2-ts-result">Result line' + (nums ? ' (optional)' : '') + '</label><input class="v2-ts-in" id="v2-ts-result"' + (nums ? ' placeholder="e.g. −4.7 kg in 12 weeks"' : ' disabled placeholder="Not allowed: they said no to sharing numbers"') + '>' +
@@ -13962,16 +13967,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '<div class="v2-ts-lab">Colour</div>' + seg('theme', Object.keys(TS_THEMES).map(function (k) { return [k, k.charAt(0).toUpperCase() + k.slice(1)]; }), m.theme) +
         (none ? '<label class="v2-ts-ok"><input type="checkbox" id="v2-ts-ok"> <span>' + esc(first) + ' has told me I can post this photo. (Nothing on file yet: they haven\'t filled in the testimonial form.)</span></label>' : '') +
         '<div class="v2-ts-actions"><button type="button" class="v2-btn primary" data-ts="save">Save image</button>' + (navigator.canShare ? '<button type="button" class="v2-btn" data-ts="share">Share…</button>' : '') + '<button type="button" class="v2-btn ghost" data-ts="close">Close</button></div><p class="v2-ts-state" id="v2-ts-state"></p>';
+      m.zoomSync = function () { $('v2-ts-za').value = Math.round(tsAdj(m, m.a).z * 100); $('v2-ts-zb').value = Math.round(tsAdj(m, m.b).z * 100); };
+      $('v2-ts-za').addEventListener('input', function () { tsAdj(m, m.a).z = this.value / 100; m.touched = true; tsDraw(); });
+      $('v2-ts-zb').addEventListener('input', function () { tsAdj(m, m.b).z = this.value / 100; m.touched = true; tsDraw(); });
+      tsDragWire($('v2-ts-canvas'));
       m.fill = function () {
-        $('v2-ts-pa').value = m.a; $('v2-ts-pb').value = m.b;
+        $('v2-ts-pa').value = m.a; $('v2-ts-pb').value = m.b; m.zoomSync();
         $('v2-ts-la').value = tsPhotoLabel(m, m.a); $('v2-ts-lb').value = tsPhotoLabel(m, m.b);
         if (!m.resEdited && nums) $('v2-ts-result').value = tsPhotoResult(m);
         tsDraw();
       };
-      m.pick = function (v) { pick(v); m.fill(); };
-      $('v2-ts-pa').addEventListener('change', function () { m.a = +this.value; m.fill(); });
-      $('v2-ts-pb').addEventListener('change', function () { m.b = +this.value; m.fill(); });
-      $('v2-ts-blur').addEventListener('input', function () { m.blur = +this.value; $('v2-ts-blurv').textContent = m.blur; tsDraw(); });
+      m.pick = function (v) { pick(v); m.touched = false; m.adj = {}; m.fill(); };
+      $('v2-ts-pa').addEventListener('change', function () { m.a = +this.value; m.touched = false; m.adj = {}; m.fill(); });
+      $('v2-ts-pb').addEventListener('change', function () { m.b = +this.value; m.touched = false; m.adj = {}; m.fill(); });
+      $('v2-ts-blur').addEventListener('input', function () { m.blur = +this.value; m.blurEdited = true; $('v2-ts-blurv').textContent = m.blur; tsDraw(); });
       $('v2-ts-result').addEventListener('input', function () { m.resEdited = true; tsDraw(); });
       ['v2-ts-la', 'v2-ts-lb', 'v2-ts-footer'].forEach(function (id) { $(id).addEventListener('input', tsDraw); });
       m.fill();
@@ -13983,8 +13992,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
     tsLoadImg(p.url, true).then(function (img) { m.imgs[i] = img; tsDraw(); }, function () { m.imgs[i] = 'error'; tsDraw(); });
     return 'loading';
   }
-  function tsCover(ctx, img, x, y, w, h, blurPct) {
-    var s = Math.max(w / img.width, h / img.height), sw = w / s, sh = h / s, sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
+  // adj = { z: zoom (1 = just fills the frame), x / y: -1..1 = where the frame sits inside the spare picture }
+  function tsCover(ctx, img, x, y, w, h, blurPct, adj) {
+    adj = adj || { z: 1, x: 0, y: 0 };
+    var s = Math.max(w / img.width, h / img.height) * (adj.z || 1), sw = w / s, sh = h / s;
+    var sx = (img.width - sw) / 2 * (1 + (adj.x || 0)), sy = (img.height - sh) / 2 * (1 + (adj.y || 0));
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
     ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
     if (blurPct > 0) {
@@ -13995,6 +14007,108 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (!('filter' in ctx)) { ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, bh); }
     }
     ctx.restore();
+  }
+  function tsAdj(m, i) { return m.adj[i] || (m.adj[i] = { z: 1, x: 0, y: 0 }); }
+  // ── Auto line-up: find the body in each photo (shoulders + hips) and frame both the same way ──
+  // The body finder runs in this browser only; the photos are never sent anywhere.
+  var TS_POSE = { lib: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14', model: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task', p: null };
+  function tsPoseLoad() {
+    if (TS_POSE.p) return TS_POSE.p;
+    var p = TS_POSE.p = new Function('u', 'return import(u)')(TS_POSE.lib + '/vision_bundle.mjs').then(function (v) {
+      return v.FilesetResolver.forVisionTasks(TS_POSE.lib + '/wasm').then(function (fs) {
+        return v.PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: TS_POSE.model }, runningMode: 'IMAGE', numPoses: 1 });
+      });
+    });
+    p.catch(function () { if (TS_POSE.p === p) TS_POSE.p = null; });
+    return p;
+  }
+  // landmarks (0..1 of the picture) -> where the body is, in picture pixels
+  function tsBody(lm, img) {
+    if (!lm || !lm.length) return null;
+    var P = function (i) { var q = lm[i]; return q && (q.visibility == null || q.visibility > 0.5) && q.x >= 0 && q.x <= 1 && q.y >= 0 && q.y <= 1 ? { x: q.x * img.width, y: q.y * img.height } : null; };
+    var mid = function (a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }, dist = function (a, b) { return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)); };
+    var ls = P(11), rs = P(12), lh = P(23), rh = P(24), nose = P(0); if (!ls || !rs) return null;
+    var S = mid(ls, rs), H = lh && rh ? mid(lh, rh) : null, sw = dist(ls, rs), torso = H ? dist(S, H) : 0;
+    if (H && torso < img.height * 0.04) { H = null; torso = 0; }
+    return { x: H ? (S.x + H.x) / 2 : S.x, y: S.y, torso: torso, sw: sw, chin: nose ? nose.y + (torso ? torso * 0.16 : sw * 0.24) : null };
+  }
+  // two bodies -> zoom + position for each photo so the bodies are the same size, shoulders level, centred
+  function tsAlign(imgs, bodies, w, ph, side) {
+    var use = bodies[0].torso && bodies[1].torso ? 'torso' : (side ? null : 'sw'); if (!use) return null;
+    var it = [0, 1].map(function (k) { var s0 = Math.max(w / imgs[k].width, ph / imgs[k].height); return { img: imgs[k], b: bodies[k], s0: s0, t: bodies[k][use] * s0 }; });
+    if (!(it[0].t > 1) || !(it[1].t > 1)) return null;
+    var want = Math.max(use === 'torso' ? ph * 0.34 : w * 0.44, it[0].t, it[1].t); want = Math.min(want, 3 * Math.min(it[0].t, it[1].t));
+    var cl = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }, lo = -1e9, hi = 1e9;
+    it.forEach(function (o) {
+      o.z = cl(want / o.t, 1, 3); o.s = o.s0 * o.z; o.vw = w / o.s; o.vh = ph / o.s;
+      lo = Math.max(lo, (o.b.y - (o.img.height - o.vh)) * o.s); hi = Math.min(hi, o.b.y * o.s);
+    });
+    var yT = lo <= hi ? cl(ph * 0.27, lo, hi) : ph * 0.27, blur = 0;
+    var adj = it.map(function (o) {
+      var spX = (o.img.width - o.vw) / 2, spY = (o.img.height - o.vh) / 2;
+      var sx = cl(o.b.x - o.vw / 2, 0, spX * 2), sy = cl(o.b.y - yT / o.s, 0, spY * 2);
+      if (o.b.chin != null) blur = Math.max(blur, (o.b.chin - sy) * o.s / ph * 100);
+      return { z: o.z, x: spX > 0.5 ? sx / spX - 1 : 0, y: spY > 0.5 ? sy / spY - 1 : 0 };
+    });
+    return { adj: adj, blur: Math.ceil(blur) + 1 };
+  }
+  function tsPose(m, i) {
+    if (m.pose[i]) return m.pose[i];
+    return m.pose[i] = tsPoseLoad().then(function (det) { var r = det.detect(m.imgs[i]); return tsBody(r && r.landmarks && r.landmarks[0], m.imgs[i]); }).catch(function () { return null; });
+  }
+  function tsAutoAlign() {
+    var m = TS.made; if (!m || m.kind !== 'photos' || !m.box || m.touched) return;
+    var ia = m.imgs[m.a], ib = m.imgs[m.b]; if (!ia || !ib || typeof ia === 'string' || typeof ib === 'string') return;
+    var key = [m.a, m.b, m.box.w, m.box.ph].join('|'); if (m.autoKey === key) return;
+    m.autoKey = key;
+    var say = function (t) { var el = $('v2-ts-auto'); if (el) el.textContent = t; };
+    say('Lining them up…');
+    Promise.all([tsPose(m, m.a), tsPose(m, m.b)]).then(function (bs) {
+      if (TS.made !== m || m.autoKey !== key || m.touched) return;
+      var r = bs[0] && bs[1] ? tsAlign([ia, ib], bs, m.box.w, m.box.ph, m.view === 'side') : null;
+      if (!r) { say(TS_POSE.p ? 'Couldn\'t line these two up automatically. Drag each photo and use the zoom to match them.' : 'Auto line-up isn\'t available right now. Drag each photo and use the zoom to match them.'); return; }
+      m.adj[m.a] = r.adj[0]; if (m.b !== m.a) m.adj[m.b] = r.adj[1];
+      var bl = $('v2-ts-blur');
+      if (bl && m.blur > 0 && !m.blurEdited && r.blur > 1) { m.blur = Math.max(+bl.min, Math.min(50, r.blur)); bl.value = m.blur; $('v2-ts-blurv').textContent = m.blur; }
+      if (m.zoomSync) m.zoomSync();
+      say('Lined up automatically: same body size, shoulders level. Drag a photo or use the zoom to fine-tune.');
+      tsDraw();
+    });
+  }
+  // Line the two photos up: drag a photo in the preview to move it, zoom with the sliders (or the mouse wheel).
+  function tsDragWire(cv) {
+    var m = TS.made, drag = null;
+    var slot = function (e) {
+      var r = cv.getBoundingClientRect(), k = 1080 / r.width, px = (e.clientX - r.left) * k, py = (e.clientY - r.top) * k, b = m.box;
+      if (!b || py < b.top || py > b.top + b.ph) return null;
+      var s = px >= b.xs[0] && px <= b.xs[0] + b.w ? 0 : px >= b.xs[1] && px <= b.xs[1] + b.w ? 1 : -1;
+      return s < 0 ? null : { s: s, k: k };
+    };
+    cv.style.touchAction = 'none'; cv.style.cursor = 'grab';
+    cv.addEventListener('pointerdown', function (e) {
+      var h = slot(e); if (!h) return;
+      var i = h.s ? m.b : m.a, a = tsAdj(m, i);
+      drag = { i: i, k: h.k, x0: e.clientX, y0: e.clientY, ax: a.x, ay: a.y };
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      cv.style.cursor = 'grabbing'; e.preventDefault();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var img = m.imgs[drag.i], b = m.box, a = tsAdj(m, drag.i); if (!img || !img.width || !b) return;
+      var s = Math.max(b.w / img.width, b.ph / img.height) * a.z, spareX = (img.width - b.w / s) / 2, spareY = (img.height - b.ph / s) / 2;
+      var cl = function (v) { return Math.max(-1, Math.min(1, v)); };
+      if (spareX > 0.5) a.x = cl(drag.ax - (e.clientX - drag.x0) * drag.k / s / spareX);
+      if (spareY > 0.5) a.y = cl(drag.ay - (e.clientY - drag.y0) * drag.k / s / spareY);
+      m.touched = true; tsDraw();
+    });
+    var end = function () { drag = null; cv.style.cursor = 'grab'; };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    cv.addEventListener('wheel', function (e) {
+      var h = slot(e); if (!h) return; e.preventDefault();
+      var i = h.s ? m.b : m.a, a = tsAdj(m, i);
+      a.z = Math.max(1, Math.min(3, a.z * (e.deltaY < 0 ? 1.05 : 1 / 1.05)));
+      m.touched = true; if (m.fill) m.zoomSync(); tsDraw();
+    }, { passive: false });
   }
   function tsFit(ctx, text, weight, size, family, maxW) {
     do { ctx.font = weight + ' ' + size + 'px ' + family; size -= 2; } while (ctx.measureText(text).width > maxW && size > 18);
@@ -14007,10 +14121,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (!m.photos) return;
     var res = val('v2-ts-result'), caps = [val('v2-ts-la'), val('v2-ts-lb')];
     var top = post ? 170 : 220, ph = post ? (res ? 900 : 1020) : (res ? 1290 : 1400), gap = 16, w = (W - 96 * 2 - gap) / 2;
+    m.box = { top: top, ph: ph, w: w, xs: [96, 96 + w + gap] };
     [[m.a, 'BEFORE'], [m.b, 'AFTER']].forEach(function (pair, k) {
       var x = 96 + k * (w + gap), img = tsPhotoImg(pair[0]);
       ctx.fillStyle = '#22252b'; ctx.fillRect(x, top, w, ph);
-      if (img && img !== 'loading' && img !== 'error') tsCover(ctx, img, x, top, w, ph, m.blur);
+      if (img && img !== 'loading' && img !== 'error') tsCover(ctx, img, x, top, w, ph, m.blur, tsAdj(m, pair[0]));
       else { ctx.fillStyle = T.muted; ctx.font = '600 32px Inter, system-ui, sans-serif'; ctx.fillText(img === 'error' ? 'Photo couldn’t load' : 'Loading…', x + 30, top + 80); }
       ctx.fillStyle = k ? T.accent : 'rgba(0,0,0,.65)'; ctx.fillRect(x + 20, top + ph - 92, k ? 190 : 230, 66);
       ctx.fillStyle = k ? (m.theme === 'orange' ? '#ffffff' : '#15171b') : '#ffffff'; ctx.font = '400 56px "Bebas Neue", Impact, sans-serif'; ctx.fillText(pair[1], x + 40, top + ph - 40);
@@ -14018,6 +14133,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     });
     if (res) { ctx.fillStyle = T.ink; tsFit(ctx, res.toUpperCase(), 400, post ? 100 : 116, '"Bebas Neue", Impact, sans-serif', W - 192); ctx.fillText(res.toUpperCase(), 96, top + ph + (post ? 176 : 190)); }
     if (!post) { ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText(foot, 96, H - 120); }
+    tsAutoAlign();
   }
   function tsSave(share) {
     var cv = $('v2-ts-canvas'), st = $('v2-ts-state'), m = TS.made; if (!cv || !m) return;
