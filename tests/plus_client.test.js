@@ -2,7 +2,7 @@
 // against a fake backend. Nothing leaves the machine.
 //   Home weigh-in: trend + pace + goal date · log today · outlier check · "✓ today"
 //   Train: reps pre-filled from last time (in range) · a heavier set -> PR moment · a first-ever exercise -> no PR
-//   Progress: photo compare (slider + side by side, view chips) · Nutrition: eating out (21 chains, lighter orders) -> swap form pre-filled
+//   Progress: photo compare (slider + side by side, view chips) · Nutrition: eating out (21 chains, lighter orders) -> swap sheet (swap-client.js) pre-filled
 //   no script errors
 // usage: node tests/plus_client.test.js [client_key] [--shots dir]
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -150,10 +150,10 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     await page.eval(`(function () { [].slice.call(document.querySelectorAll('.lip-sh .lip-groups .lip-chip')).filter(function (b) { return b.textContent === 'Burgers'; })[0].click(); })()`); await wait(150);
     const pickName = await page.eval(`document.querySelector('.lip-sh .lip-list .lip-opt b').firstChild.textContent`);
     await page.eval(`document.querySelector('.lip-sh .lip-list .lip-opt').click(); 1`); await wait(900);
-    const sw = await page.eval(`({ desc: (document.getElementById('sw-desc') || {}).value, cal: (document.getElementById('sw-cal') || {}).value, p: (document.getElementById('sw-p') || {}).value, vis: !!(document.getElementById('sw-desc') && document.getElementById('sw-desc').offsetParent) })`);
-    t('tapping one opens the page\'s Swap form pre-filled "KFC: <item>" (client still taps Log swap)', sw.vis && sw.desc === 'KFC: ' + pickName && +sw.cal > 0 && +sw.p > 0, sw);
+    const sw = await page.eval(`({ desc: (document.getElementById('lsw-name') || {}).value, cal: (document.getElementById('lsw-k') || {}).value, p: (document.getElementById('lsw-p') || {}).value, vis: !!(document.getElementById('lsw-name') && document.getElementById('lsw-name').offsetParent), old: document.getElementById('swap-modal-overlay').classList.contains('open'), verdict: (document.querySelector('.lsw-sh .lsw-v') || {}).textContent })`);
+    t('tapping one opens the swap sheet on "My own", filled "KFC: <item>" with its verdict (client still taps Log swap; old pop-up stays shut)', sw.vis && !sw.old && sw.desc === 'KFC: ' + pickName && +sw.cal > 0 && +sw.p > 0 && /kcal/.test(sw.verdict || ''), sw);
     await shot('10_eo_swapform.png');
-    await page.eval(`(function () { if (typeof closeSwapModal === 'function') closeSwapModal(); })()`);
+    await page.eval(`LockedInSwap.close()`);
     // lighter orders: Nando's PERinaise Classic -> detail with "Lighter order" + "As it comes"
     await page.eval(`(function () { cv2Go('cv2home'); document.querySelector('#cv2-nav [data-id="nutrition"]').click(); })()`); await wait(600);
     await page.eval(`(function () { document.getElementById('lip-eo').click(); })()`); await wait(200);
@@ -167,9 +167,9 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     t('tapping it shows both: "Lighter order" (what to ask for, each change with its kcal) and "As it comes"', /Lighter order/.test(det) && /As it comes/.test(det) && /Ask for: .*no mayo/i.test(det) && /−35 kcal/.test(det), det && det.slice(0, 500));
     await shot('11_eo_lighter_detail.png');
     const lt = await page.eval(`(function () { var b = [].slice.call(document.querySelectorAll('.lip-sh .lip-choice')).filter(function (x) { return /Lighter order/.test(x.textContent); })[0]; var k = +b.querySelector('.k').firstChild.textContent; b.click(); return k; })()`); await wait(900);
-    const sw2 = await page.eval(`({ desc: (document.getElementById('sw-desc') || {}).value, cal: (document.getElementById('sw-cal') || {}).value })`);
+    const sw2 = await page.eval(`({ desc: (document.getElementById('lsw-name') || {}).value, cal: (document.getElementById('lsw-k') || {}).value })`);
     t('logging the lighter order pre-fills its own (lower) numbers', +sw2.cal === lt && /no mayo/i.test(sw2.desc) && lt < 457, { lt: lt, sw2: sw2 });
-    await page.eval(`(function () { if (typeof closeSwapModal === 'function') closeSwapModal(); })()`);
+    await page.eval(`LockedInSwap.close()`);
     t('best picks use the lighter order when the meal is tight', await page.eval(`(function () { var ch = LockedInEatOutData.chains.filter(function (c) { return c.id === 'nandos'; })[0]; var p = LockedInPlus._t.bestPicks(ch, { cal: 420, p: 35 }); return p.some(function (x) { return x.lite; }) && p.every(function (x) { var k = x.lite ? x.it[5][1] : x.it[1]; return k <= 420 * 1.2; }); })()`));
 
     const errs = page.errors.filter((x) => !/Failed to load resource|favicon|service ?worker|disabled in test|net::ERR/i.test(x));

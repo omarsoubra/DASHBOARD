@@ -640,6 +640,19 @@
     } catch (e) {}
   }
 
+  // SWAP MEAL SHEET (2026-11-20): swap-client.js, next to this file - the V2 bottom sheet over the page's own swap
+  // engine. It does nothing on pages without that engine, so they keep their pop-up.
+  function bootSwap(opts) {
+    try {
+      var start = function () { try { window.LockedInSwap.boot({ storageKey: opts.storageKey }); } catch (e) {} };
+      if (window.LockedInSwap) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'swap-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   // SET UP YOUR APP (2026-11-04): setup-client.js, next to this file - the Home card that walks login -> Home Screen ->
   // reminders -> first weigh-in. It reads this instance's diagnostics and calls its own Turn on (_onEnable).
   function bootSetup(opts) {
@@ -664,6 +677,7 @@
       bootWeek(opts || {});
       bootPlus(opts || {});
       bootSetup(opts || {});
+      bootSwap(opts || {});
       bootFood(opts || {});   // every V2 page since 2026-11-19 (food-client.js keeps its own OFF list)
       return p;
     },

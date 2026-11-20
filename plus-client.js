@@ -701,6 +701,9 @@
   /* Hands over to the page's own Swap form for that meal, pre-filled. The client still taps "Log swap" there. */
   function logOut(m, ch, v) {
     closeSheet();
+    /* New swap sheet (swap-client.js): it opens on "My own" with this order filled in, verdict showing. */
+    var LS = window.LockedInSwap;
+    if (LS && LS.active && LS.active()) { LS.preset({ name: ch.name + ': ' + v.name, k: v.k, p: v.p, c: v.c, f: v.f }); try { window.cv2Meal('swap', m.i); } catch (e) {} return; }
     try { window.cv2Meal('swap', m.i); } catch (e) { return; }
     var tries = 0;
     (function fill() {
@@ -711,7 +714,8 @@
       set('sw-desc', ch.name + ': ' + v.name); set('sw-cal', v.k); set('sw-p', v.p); set('sw-c', v.c); set('sw-f', v.f);
     })();
   }
-  function openEatOut() { S = { meal: null, chain: null, group: null, q: '', more: false, detail: null }; var o1 = openMeals(); if (o1.length === 1) S.meal = o1[0]; loadMenus().catch(function () {}); sheet(renderSheet); }
+  function openEatOut(forIdx) { S = { meal: null, chain: null, group: null, q: '', more: false, detail: null }; var o1 = openMeals(); if (o1.length === 1) S.meal = o1[0];
+    if (typeof forIdx === 'number') o1.forEach(function (m) { if (m.i === forIdx) S.meal = m; }); loadMenus().catch(function () {}); sheet(renderSheet); }
   function renderEatOut() {
     try {
       var box = document.getElementById('cv2-nutri'); if (!box || document.getElementById('lip-eo')) return;
@@ -745,5 +749,5 @@
       loadWeights(true);
     } catch (e) {}
   }
-  window.LockedInPlus = { boot: boot, weighCount: function () { try { return dailySeries().length; } catch (e) { return 0; } }, _t: { trendOf: trendOf, paceOf: paceOf, lastReps: lastReps, priorBest: priorBest, fitTag: fitTag, bestPicks: bestPicks, eatOut: function () { EAT_OUT_ON = true; renderEatOut(); } } };
+  window.LockedInPlus = { boot: boot, eatOut: function (i) { openEatOut(i); }, weighCount: function () { try { return dailySeries().length; } catch (e) { return 0; } }, _t: { trendOf: trendOf, paceOf: paceOf, lastReps: lastReps, priorBest: priorBest, fitTag: fitTag, bestPicks: bestPicks, eatOut: function () { EAT_OUT_ON = true; renderEatOut(); } } };
 })();
