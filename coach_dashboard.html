@@ -1615,6 +1615,88 @@ body.v2-collapsed .v2-collapse svg { transform: rotate(180deg); }
 .v2-pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .v2-pagehead h1 { font: 600 24px/1.2 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); letter-spacing: -0.01em; }
 .v2-pagehead p { margin: 4px 0 0; color: var(--v2-muted); font-size: 13px; }
+/* ── RENEWALS PIPELINE (Omar 2026-11-20) ── */
+.v2-rn-sum { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 16px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; box-shadow: 0 1px 2px rgba(20,22,30,.03); }
+.v2-rn-sum h2 { font: 600 20px/1.25 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); letter-spacing: -0.01em; }
+.v2-rn-sum h2 .n { color: var(--v2-red); font-variant-numeric: tabular-nums; }
+.v2-rn-sum h2.calm .n { color: var(--v2-accent-ink); }
+.v2-rn-sum p { margin: 4px 0 0; color: var(--v2-muted); font-size: 13px; max-width: 46ch; }
+.v2-rn-steps { display: flex; align-items: stretch; gap: 0; }
+.v2-rn-step { min-width: 84px; padding: 2px 16px; border-left: 1px solid var(--v2-line2); }
+.v2-rn-step:first-child { border-left: 0; padding-left: 0; }
+.v2-rn-step b { display: block; font: 600 24px/1.1 'Inter', system-ui, sans-serif; color: var(--v2-ink); font-variant-numeric: tabular-nums; }
+.v2-rn-step span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--v2-muted); white-space: nowrap; }
+.v2-rn-step span i, .v2-rn-ghead i.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--v2-line); }
+.v2-rn-group { margin-top: 24px; }
+.v2-rn-ghead { display: flex; align-items: center; gap: 8px; margin: 0 4px 8px; }
+.v2-rn-ghead h3 { font: 600 14px/1.3 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); }
+.v2-rn-ghead .cnt { font: 600 12px/1 'Inter', system-ui, sans-serif; color: var(--v2-ink2); background: var(--v2-grey-soft); border-radius: 999px; padding: 4px 8px; font-variant-numeric: tabular-nums; }
+.v2-rn-ghead small { color: var(--v2-muted); font-size: 12px; margin-left: 4px; }
+.v2-rn-ghead button { margin-left: auto; background: none; border: 0; color: var(--v2-ink2); font: 500 12px 'Inter', system-ui, sans-serif; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.v2-rn-ghead button:hover { background: var(--v2-line2); }
+.v2-rn-list { background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(20,22,30,.03); }
+.v2-rn-item + .v2-rn-item { border-top: 1px solid var(--v2-line2); }
+.v2-rn-row { display: grid; grid-template-columns: minmax(200px, 1.5fr) minmax(120px, .8fr) minmax(88px, .5fr) auto auto; align-items: center; gap: 16px; padding: 12px 16px; }
+.v2-rn-who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.v2-rn-av { width: 36px; height: 36px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--v2-grey-soft); color: var(--v2-ink2); font: 600 12px 'Inter', system-ui, sans-serif; }
+.v2-rn-who > div { min-width: 0; flex: 1; }
+.v2-rn-who b a { color: var(--v2-ink); text-decoration: none; font: 600 14px/1.3 'Inter', system-ui, sans-serif; }
+.v2-rn-who b a:hover { text-decoration: underline; }
+.v2-rn-who small { display: block; color: var(--v2-muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v2-rn-who small em { font-style: normal; font-weight: 600; color: var(--v2-ink2); }
+.v2-rn-item.b-over .v2-rn-who small em { color: var(--v2-red); }
+.v2-rn-item.b-soon .v2-rn-who small em { color: var(--v2-amber); }
+.v2-rn-bar { display: block; height: 3px; border-radius: 3px; background: var(--v2-line2); margin-top: 8px; max-width: 220px; overflow: hidden; }
+.v2-rn-bar i { display: block; height: 100%; border-radius: 3px; background: var(--v2-blue); }
+.v2-rn-item.b-over .v2-rn-bar i { background: var(--v2-red); }
+.v2-rn-item.b-soon .v2-rn-bar i { background: #f2b44b; }
+.v2-rn-item.b-won .v2-rn-bar i { background: var(--v2-accent); }
+.v2-rn-item.b-lost .v2-rn-bar i { background: #b9bcc6; }
+.v2-rn-cell .lab { display: none; }
+.v2-rn-cell b { display: block; font: 600 13px/1.3 'Inter', system-ui, sans-serif; color: var(--v2-ink); font-variant-numeric: tabular-nums; }
+.v2-rn-cell small { display: block; color: var(--v2-muted); font-size: 12px; margin-top: 2px; white-space: nowrap; }
+.v2-rn-cell small.stale { color: var(--v2-amber); }
+.v2-rn-seg { display: inline-flex; background: var(--v2-grey-soft); border-radius: 10px; padding: 3px; gap: 2px; }
+.v2-rn-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-ink2); font: 500 12.5px 'Inter', system-ui, sans-serif; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+.v2-rn-seg button:hover { background: rgba(255,255,255,.7); color: var(--v2-ink); }
+.v2-rn-seg button:focus-visible, .v2-rn-ghead button:focus-visible { outline: 2px solid var(--v2-blue); outline-offset: 1px; }
+.v2-rn-seg button[aria-pressed="true"] { background: #fff; color: var(--v2-ink); font-weight: 600; box-shadow: 0 1px 2px rgba(20,22,30,.12); }
+.v2-rn-seg button[data-rns="asked"][aria-pressed="true"] { background: var(--v2-blue); color: #fff; }
+.v2-rn-seg button[data-rns="yes"][aria-pressed="true"] { background: var(--v2-accent-ink); color: #fff; }
+.v2-rn-seg button[data-rns="paid"][aria-pressed="true"] { background: var(--v2-ink); color: var(--v2-accent); }
+.v2-rn-seg button[data-rns="declined"][aria-pressed="true"] { background: #6b6d85; color: #fff; }
+.v2-rn-panel { padding: 4px 16px 16px 64px; }
+.v2-rn-panel textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--v2-line); border-radius: 10px; padding: 10px 12px; font: 14px/1.45 'Inter', system-ui, sans-serif; color: var(--v2-ink); resize: vertical; background: #fff; }
+.v2-rn-panel small { display: block; color: var(--v2-muted); font-size: 12px; margin: 6px 0 10px; }
+.v2-rn-panel .acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.v2-rn-confirm { background: var(--v2-accent-soft); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--v2-ink); }
+.v2-rn-later { margin: 24px 4px 0; color: var(--v2-muted); font-size: 13px; }
+.v2-rn-empty { background: var(--v2-card); border: 1px dashed var(--v2-line); border-radius: 12px; padding: 32px 16px; text-align: center; color: var(--v2-muted); font-size: 14px; margin-top: 24px; }
+@media (max-width: 1100px) {
+  .v2-rn-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 12px; }
+  .v2-rn-who { grid-column: 1 / -1; }
+  .v2-rn-facts { grid-column: 1 / -1; }
+  .v2-rn-panel { padding-left: 16px; }
+}
+.v2-rn-facts { display: contents; }
+@media (max-width: 1100px) {
+  .v2-rn-facts { display: flex; gap: 24px; }
+  .v2-rn-cell .lab { display: block; font-size: 11px; color: var(--v2-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+}
+@media (max-width: 700px) {
+  .v2-rn-sum { padding: 16px; border-radius: 12px; gap: 16px; }
+  .v2-rn-sum h2 { font-size: 18px; }
+  .v2-rn-steps { width: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .v2-rn-step { min-width: 0; padding: 2px 4px 2px 10px; }
+  .v2-rn-step b { font-size: 20px; }
+  .v2-rn-step span { white-space: normal; font-size: 11px; line-height: 1.25; align-items: flex-start; gap: 5px; }
+  .v2-rn-step span i { margin-top: 3px; width: 6px; height: 6px; }
+  .v2-rn-row { grid-template-columns: minmax(0, 1fr); padding: 14px 12px; }
+  .v2-rn-seg { display: flex; }
+  .v2-rn-seg button { flex: 1; height: 40px; padding: 0 4px; font-size: 13px; }
+  .v2-rn-row > .v2-btn { height: 40px; justify-content: center; }
+  .v2-rn-ghead small { display: none; }
+}
 .v2-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .v2-btn {
   height: 36px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--v2-line); background: var(--v2-card); color: var(--v2-ink);
@@ -2680,6 +2762,7 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
       <a class="v2-nav" href="#/today" data-route="today" title="Today"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span class="v2-label">Today</span><span class="v2-badge" id="v2-badge-today"></span></a>
       <a class="v2-nav" href="#/clients" data-route="clients" title="Clients"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 010 6.4"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg><span class="v2-label">Clients</span></a>
       <a class="v2-nav" href="#/check-ins" data-route="check-ins" title="Check-ins"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/></svg><span class="v2-label">Check-ins</span><span class="v2-badge" id="v2-badge-checkins"></span></a>
+      <a class="v2-nav" href="#/renewals" data-route="renewals" title="Renewals"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 01-14.3 4.9"/><path d="M4 12a8 8 0 0114.3-4.9"/><path d="M18.5 3v4.2h-4.2"/><path d="M5.5 21v-4.2h4.2"/></svg><span class="v2-label">Renewals</span><span class="v2-badge" id="v2-badge-renewals"></span></a>
       <a class="v2-nav" href="#/activity" data-route="activity" title="Activity"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span class="v2-label">Activity</span></a>
       <a class="v2-nav" href="#/testimonials" data-route="testimonials" title="Testimonials"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 9.5h7M8.5 12.5h4"/></svg><span class="v2-label">Testimonials</span></a>
       <div class="v2-nav-group"><span class="v2-label">SYSTEM</span></div>
@@ -2737,6 +2820,12 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
       <section class="v2-page v2-act-page" id="v2-page-activity" data-page="activity">
         <header class="v2-pagehead"><div><h1>Activity</h1><p>Everything clients logged in the last 24 hours, newest first.</p></div></header>
         <section class="v2-card"><div class="v2-card-head"><h2>Recent activity</h2><span class="v2-meta" id="v2-act-sub"></span></div><div class="v2-card-body" id="v2-activity"></div></section>
+      </section>
+
+      <!-- RENEWALS (Omar 2026-11-20): every client by block end, one tap to record where the renewal is at -->
+      <section class="v2-page" id="v2-page-renewals" data-page="renewals">
+        <header class="v2-pagehead"><div><h1>Renewals</h1><p>Who is coming up to the end of their block, and where each renewal is at.</p></div></header>
+        <div id="v2-renewals"></div>
       </section>
 
       <!-- TESTIMONIALS (Omar 2026-10-16): private link per client, answers + consent, story images -->
@@ -12411,7 +12500,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   var UIV2 = window.UIV2 = { enabled: enabled, route: null };
   if (!enabled) return;                       // classic layout: nothing below runs
 
-  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'activity': 'Activity', 'testimonials': 'Testimonials', 'onboarding': 'Onboarding', 'admin': 'Admin' };   // Onboarding page rendered by the Phase 4 block
+  var ROUTES = { 'today': 'Today', 'clients': 'Clients', 'check-ins': 'Check-ins', 'activity': 'Activity', 'renewals': 'Renewals', 'testimonials': 'Testimonials', 'onboarding': 'Onboarding', 'admin': 'Admin' };   // Onboarding page rendered by the Phase 4 block
   var BASE_TITLE = document.title;
   var state = { attnAll: false, actAll: false };
   var esc = function (s) {
@@ -12480,6 +12569,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (changed) window.scrollTo(0, 0);
     if (r === 'today') safeRenderToday();
     if (r === 'activity' && UIV2.renderActivity) UIV2.renderActivity();
+    if (r === 'renewals' && UIV2.renderRenewals) UIV2.renderRenewals();
     if (r === 'testimonials' && UIV2.renderTestimonials) UIV2.renderTestimonials();
     if (r === 'admin') renderAdminBits();
   }
@@ -12856,7 +12946,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   function crInScope(c) {
     var k = String(c.storageKey || ''); if (!k || k.charAt(0) === '_' || CR_SKIP[k]) return false;
     var w = weekOf(c);
-    if (CR_DECLINED[k] && w > blockWeeks(c)) return false;                          // finished and said no: gone, not a risk
+    if ((CR_DECLINED[k] || rnStatus(c) === 'declined') && w > blockWeeks(c)) return false;                          // finished and said no: gone, not a risk
     if (_isActiveClient(c)) return true;
     var acc = String(c.accessStatus || 'active').toLowerCase();                     // still 'onboarding' a week after starting
     return String(c.programStatus || '').toLowerCase() === 'onboarding' && acc !== 'revoked' && acc !== 'suspended' && !c.isPaused && w >= 2;
@@ -13035,6 +13125,162 @@ window.addEventListener('beforeinstallprompt', (e) => {
     };
   }
 
+  // ── RENEWALS PIPELINE (Omar 2026-11-20: "seamless, modern, easy to follow, what I need to operate") ──
+  // Every active client by the day their block ends. One tap records where the renewal is at: asked / said yes / paid /
+  // not renewing. The answer lives on the roster row (renewState, tied to the block's start date, so a renewed client
+  // starts clean) and syncs across devices like churnState. The Mac reads it: "yes" builds the next block, "paid" is
+  // the approval that lets it go live the day before it starts (client_template onboard_worker.renewal_sweep).
+  var RN = { open: null, confirm: null, lost: false };
+  var RN_STORE = 'lockedin.renewState.v1';
+  var RN_LABEL = { none: 'Not asked', asked: 'Asked', yes: 'Said yes', paid: 'Paid', declined: 'Not renewing' };
+  var RN_GROUPS = [['over', 'Finished, nothing arranged', 'Their block is over. Ask today.', '#d0423b'],
+                   ['soon', 'Ending in the next 2 weeks', 'The window to ask.', '#f2b44b'],
+                   ['month', 'Ending in 15 to 30 days', 'Coming up. Plant the seed.', '#2f63d1'],
+                   ['won', 'Renewing', 'Said yes or paid.', '#00b37d'],
+                   ['lost', 'Not renewing', '', '#b9bcc6']];
+  function rnAll() { try { return JSON.parse(localStorage.getItem(RN_STORE) || '{}') || {}; } catch (e) { return {}; } }
+  function rnStart(c) { return String(c.startDate || '').slice(0, 10); }
+  function rnEntry(c) {                                                              // newest of roster + this device, for THIS block only
+    var a = c.renewState || null, b = rnAll()[c.storageKey] || null, s = rnStart(c);
+    if (a && a.start !== s) a = null; if (b && b.start !== s) b = null;
+    return a && b ? ((b.at || 0) > (a.at || 0) ? b : a) : (a || b);
+  }
+  function rnStatus(c) {
+    var e = rnEntry(c); if (e && RN_LABEL[e.status]) return e.status;
+    return CR_DECLINED[c.storageKey] ? 'declined' : 'none';
+  }
+  function rnSet(key, status) {
+    var list = loadClients(), cl = list.find(function (x) { return x.storageKey === key; }); if (!cl) return;
+    var entry = { status: status, at: Date.now(), start: rnStart(cl) };
+    var all = rnAll(); all[key] = entry; try { localStorage.setItem(RN_STORE, JSON.stringify(all)); } catch (e) {}
+    try { cl.renewState = entry; saveClients(list); COACH.clients = list; pushRoster(); } catch (e) { console.warn('[renewals] sync', e); }
+  }
+  function rnRows(clients, data) {
+    var today0 = new Date().setHours(0, 0, 0, 0);
+    return clients.filter(function (c) {
+      var k = String(c.storageKey || ''); return k && k.charAt(0) !== '_' && !CR_SKIP[k] && _isActiveClient(c) && weekOf(c) !== null;
+    }).map(function (c) {
+      var L = blockWeeks(c), s = new Date(rnStart(c) + 'T00:00:00').getTime();
+      var left = L * 7 - Math.round((today0 - s) / 86400000);                         // days of the block still to run, today included
+      var st = rnStatus(c), sum = data[c.storageKey] || {};
+      var bucket = st === 'declined' ? 'lost' : (st === 'yes' || st === 'paid') ? 'won' : left <= 0 ? 'over' : left <= 14 ? 'soon' : left <= 30 ? 'month' : 'later';
+      var wh = (sum.weightHistory || sum.weightLog || []).map(function (x) { return { t: Date.parse(x.ts || x.timestamp), kg: Number(x.kg != null ? x.kg : x.weight) }; })
+        .filter(function (x) { return !isNaN(x.t) && isFinite(x.kg) && x.kg > 0; }).sort(function (a, b) { return a.t - b.t; });
+      var la = lastActivity(sum);
+      return { c: c, key: c.storageKey, L: L, week: weekOf(c), left: left, end: s + (L * 7 - 1) * 86400000, st: st, bucket: bucket,
+               w: wh.length ? wh[wh.length - 1] : null, quiet: la === null ? null : Math.floor((Date.now() - la) / 86400000) };
+    }).sort(function (a, b) { return a.left - b.left; });
+  }
+  function rnToAsk(rows) { return rows.filter(function (r) { return r.st === 'none' && (r.bucket === 'over' || r.bucket === 'soon'); }); }
+  function rnBadge(clients) {
+    var el = $('v2-badge-renewals'); if (!el) return;
+    var n = rnToAsk(rnRows(clients, (typeof _dashboardData !== 'undefined' && _dashboardData) || {})).length;
+    el.textContent = n ? String(n) : '';
+  }
+  function rnOpener(r) {                                                             // Omar's voice, never a price; he edits before sending
+    var first = String(r.c.displayName || r.key).split(' ')[0];
+    if (r.left <= 0) return 'Yo ' + first + ', that\'s your block wrapped up, proud of the work you put in bro 💪 I\'ve already mapped out what\'s next for you. Keen to keep it going?';
+    var wk = Math.ceil(r.left / 7);
+    return 'Yo ' + first + ', ' + (wk <= 1 ? 'last week' : wk + ' weeks left') + ' of your block. I\'ve already mapped out what\'s next for you. Keen to keep the momentum going?';
+  }
+  function renderRenewals() {
+    var box = $('v2-renewals'); if (!box) return;
+    var clients = (typeof COACH !== 'undefined' && COACH.clients) || [];
+    var data = (typeof _dashboardData !== 'undefined' && _dashboardData) || {};
+    var rows = rnRows(clients, data), by = {};
+    rows.forEach(function (r) { (by[r.bucket] = by[r.bucket] || []).push(r); });
+    var n = function (b) { return (by[b] || []).length; };
+    var live = rows.filter(function (r) { return r.bucket !== 'later' && r.bucket !== 'lost'; });
+    var cnt = function (s) { return live.filter(function (r) { return r.st === s; }).length; };
+    var ask = rnToAsk(rows).length;
+    var first = function (c) { return String(c.displayName || c.storageKey).split(' ')[0]; };
+    var day = function (ms) { return new Date(ms).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }); };
+    var ago = function (d) { return d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
+    rnBadge(clients);
+    var head = ask ? '<h2><span class="n">' + ask + '</span> client' + (ask === 1 ? '' : 's') + ' to ask this week</h2><p>Their block is over or ends inside 2 weeks and nobody has asked them yet.</p>'
+      : live.length ? '<h2 class="calm"><span class="n">' + live.length + '</span> renewal' + (live.length === 1 ? '' : 's') + ' in play, all asked</h2><p>Everyone ending inside 2 weeks has been asked. Chase the ones still on "Asked".</p>'
+      : '<h2 class="calm">No blocks ending in the next 30 days</h2><p>Nothing to chase. Clients show up here a month before their block ends.</p>';
+    var steps = [['Due in 30 days', live.length, '#15161c'], ['Not asked', cnt('none'), '#d0423b'], ['Asked', cnt('asked'), '#2f63d1'], ['Said yes', cnt('yes'), '#00b37d'], ['Paid', cnt('paid'), '#00e5a0']];
+    var html = '<section class="v2-rn-sum"><div>' + head + '</div><div class="v2-rn-steps">' + steps.map(function (s) {
+      return '<div class="v2-rn-step"><b>' + s[1] + '</b><span><i style="background:' + s[2] + '"></i>' + s[0] + '</span></div>'; }).join('') + '</div></section>';
+    var seg = function (r) {
+      return '<div class="v2-rn-seg" role="group" aria-label="Renewal status for ' + esc(first(r.c)) + '">' +
+        [['asked', 'Asked'], ['yes', 'Yes'], ['paid', 'Paid'], ['declined', 'No']].map(function (o) {
+          return '<button type="button" data-rns="' + o[0] + '" aria-pressed="' + (r.st === o[0]) + '" title="' + (r.st === o[0] ? 'Tap again to clear' : RN_LABEL[o[0]]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    };
+    var item = function (r) {
+      var c = r.c, ini = String(c.displayName || r.key).split(/\s+/).map(function (p) { return p.charAt(0); }).slice(0, 2).join('').toUpperCase();
+      var when = r.left <= 0 ? 'Finished ' + L12(r) + ' · <em>ended ' + ago(1 - r.left) + '</em>'
+        : 'Week ' + Math.min(r.week, r.L) + ' of ' + r.L + ' · <em>' + (r.left === 1 ? 'last day today' : r.left + ' days left') + '</em> · ends ' + esc(day(r.end));
+      var sw = Number(c.startWeight), dlt = r.w && isFinite(sw) && sw > 0 ? r.w.kg - sw : null;
+      var wd = r.w ? Math.floor((Date.now() - r.w.t) / 86400000) : null;
+      var weight = r.w ? '<b>' + r.w.kg.toFixed(1) + ' kg</b><small class="' + (wd > 14 ? 'stale' : '') + '">' +
+          (dlt !== null && Math.abs(dlt) >= 0.05 ? (dlt > 0 ? '+' : '−') + Math.abs(dlt).toFixed(1) + ' kg · ' : '') + 'weighed ' + ago(wd) + '</small>'
+        : '<b>—</b><small class="stale">no weigh-in</small>';
+      var active = r.quiet === null ? '<b>—</b><small class="stale">nothing logged</small>' : '<b>' + (r.quiet === 0 ? 'Today' : r.quiet + 'd ago') + '</b><small' + (r.quiet >= 7 ? ' class="stale"' : '') + '>last logged</small>';
+      var draft = crDraft(r.key), panel = '';
+      if (RN.confirm === r.key) panel = '<div class="v2-rn-panel"><div class="v2-rn-confirm"><span><b>Mark ' + esc(first(c)) + ' as paid?</b> Paid is your go: their next block goes live the day before it starts.</span>' +
+        '<span class="acts"><button type="button" class="v2-btn primary" data-rn-paid="1">Yes, paid</button><button type="button" class="v2-btn ghost" data-rn-cancel="1">Cancel</button></span></div></div>';
+      else if (RN.open === r.key) panel = '<div class="v2-rn-panel"><textarea rows="4" aria-label="Message to ' + esc(first(c)) + '">' + esc(draft ? draft.d.draft : rnOpener(r)) + '</textarea>' +
+        '<small>' + (draft ? 'Drafted for you this morning. ' : 'Suggested opener. ') + 'Edit it, then send. Sending marks them as Asked.</small>' +
+        '<div class="acts">' + (jmWa(c.phone) ? '<button type="button" class="v2-btn primary" data-rn-wa="1">Open in WhatsApp</button>' : '') +
+        '<button type="button" class="v2-btn' + (jmWa(c.phone) ? '' : ' primary') + '" data-rn-copy="1">Copy</button><button type="button" class="v2-btn ghost" data-rn-cancel="1">Close</button></div></div>';
+      var pct = Math.max(4, Math.min(100, Math.round(100 * (r.L * 7 - r.left) / (r.L * 7))));
+      return '<div class="v2-rn-item b-' + r.bucket + '" data-rnk="' + esc(r.key) + '"><div class="v2-rn-row">' +
+        '<div class="v2-rn-who"><span class="v2-rn-av">' + esc(ini) + '</span><div><b><a href="#/clients/' + encodeURIComponent(r.key) + '">' + esc(c.displayName || r.key) + '</a></b>' +
+          '<small>' + when + '</small><span class="v2-rn-bar"><i style="width:' + pct + '%"></i></span></div></div>' +
+        '<div class="v2-rn-facts"><div class="v2-rn-cell"><span class="lab">Weight</span>' + weight + '</div><div class="v2-rn-cell"><span class="lab">App</span>' + active + '</div></div>' +
+        seg(r) + '<button type="button" class="v2-btn" data-rn-msg="1">Message</button></div>' + panel + '</div>';
+    };
+    function L12(r) { return 'their ' + r.L + ' weeks'; }
+    var any = false;
+    RN_GROUPS.forEach(function (g) {
+      var list = by[g[0]] || []; if (!list.length) return;
+      any = true;
+      var lost = g[0] === 'lost', show = !lost || RN.lost;
+      html += '<section class="v2-rn-group" data-rng="' + g[0] + '"><div class="v2-rn-ghead"><i class="dot" style="background:' + g[3] + '"></i><h3>' + g[1] + '</h3><span class="cnt">' + list.length + '</span>' +
+        (g[2] ? '<small>' + g[2] + '</small>' : '') + (lost ? '<button type="button" data-rn-lost="1" aria-expanded="' + show + '">' + (show ? 'Hide' : 'Show') + '</button>' : '') + '</div>' +
+        (show ? '<div class="v2-rn-list">' + list.map(item).join('') + '</div>' : '') + '</section>';
+    });
+    if (!any) html += '<div class="v2-rn-empty">Nobody is inside their last 30 days. Enjoy it.</div>';
+    if (n('later')) html += '<p class="v2-rn-later">' + n('later') + ' more client' + (n('later') === 1 ? ' is' : 's are') + ' over 30 days from the end of their block.</p>';
+    box.innerHTML = html;
+    box.onclick = function (e) {
+      var t = e.target;
+      if (t.closest('[data-rn-lost]')) { RN.lost = !RN.lost; return renderRenewals(); }
+      var it = t.closest('[data-rnk]'); if (!it) return;
+      var key = it.getAttribute('data-rnk'), r = rows.filter(function (x) { return x.key === key; })[0]; if (!r) return;
+      var set = function (s) {
+        rnSet(key, s); RN.open = null; RN.confirm = null;
+        tqToast(first(r.c) + ': ' + (s === 'none' ? 'cleared' : RN_LABEL[s].toLowerCase() + ' ✓'));
+        renderRenewals();
+      };
+      var b = t.closest('[data-rns]');
+      if (b) {
+        var s = b.getAttribute('data-rns');
+        if (r.st === s) return set('none');                                            // tap the lit one again to clear it
+        if (s === 'paid') { RN.confirm = key; RN.open = null; return renderRenewals(); }
+        return set(s);
+      }
+      if (t.closest('[data-rn-paid]')) return set('paid');
+      if (t.closest('[data-rn-cancel]')) { RN.open = null; RN.confirm = null; return renderRenewals(); }
+      if (t.closest('[data-rn-msg]')) { RN.open = RN.open === key ? null : key; RN.confirm = null; renderRenewals(); var ta = box.querySelector('[data-rnk="' + key + '"] textarea'); if (ta) ta.focus(); return; }
+      var ta2 = it.querySelector('textarea'); if (!ta2) return;
+      var dr = crDraft(key), sent = function () {
+        if (dr) { var p = dr.k.split('|'); try { ciDraftMark(p[0], p.slice(1).join('|'), true); } catch (e2) {} }
+        if (r.st === 'none') set('asked'); else { RN.open = null; renderRenewals(); }
+      };
+      if (t.closest('[data-rn-wa]')) { window.open('https://wa.me/' + jmWa(r.c.phone) + '?text=' + encodeURIComponent(ta2.value), '_blank', 'noopener'); return sent(); }
+      if (t.closest('[data-rn-copy]')) {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta2.value).then(sent, function () { ta2.select(); document.execCommand('copy'); sent(); });
+        else { ta2.select(); document.execCommand('copy'); sent(); }
+      }
+    };
+  }
+  UIV2.renderRenewals = function () {
+    try { var a = document.activeElement; if (a && a.tagName === 'TEXTAREA' && a.closest('#v2-renewals')) return; renderRenewals(); } catch (e) { console.warn('[ui-v2] Renewals render failed', e); }
+  };
+
   function renderToday() {
     var clients = (typeof COACH !== 'undefined' && COACH.clients) || [];
     var data = (typeof _dashboardData !== 'undefined' && _dashboardData) || {};
@@ -13132,6 +13378,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     $('v2-badge-today').textContent = today.length ? String(today.length) : '';
     var qNew = 0; try { qNew = _queueAllRows().filter(function (r) { return r.state === 'new'; }).length; } catch (e) {}
     $('v2-badge-checkins').textContent = qNew ? String(qNew) : '';
+    try { rnBadge(clients); } catch (e) {}
     try { coachBell(); } catch (e) {}
   }
 
@@ -13716,6 +13963,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     window.renderCommandCentre = function () {
       var out = _origRenderCommandCentre.apply(this, arguments);
       if (UIV2.route === 'today') safeRenderToday();
+      if (UIV2.route === 'renewals') UIV2.renderRenewals(); else { try { rnBadge((typeof COACH !== 'undefined' && COACH.clients) || []); } catch (e) {} }
       return out;
     };
   }

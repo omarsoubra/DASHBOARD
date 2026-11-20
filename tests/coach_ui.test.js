@@ -609,6 +609,52 @@ const knownBug = (name, holds, detail) => {
         t('tapping a feed row opens that client', /^#\/clients\/[a-z_]+$/.test(await ev('location.hash')));
       }, { shot: 'activity' });
 
+      // ── RENEWALS PIPELINE (Omar 2026-11-20) ──
+      await step('Renewals', async () => {
+        await go('#/renewals', 500);
+        const st = (k) => ev(`(function(){ var c = loadClients().find(function (x) { return x.storageKey === ${J('__K__')}; }); return c && c.renewState ? c.renewState.status + '|' + (c.renewState.start === String(c.startDate).slice(0, 10)) : null; })()`.replace('__K__', k));
+        const grp = (k) => ev(`(function(){ var e = document.querySelector('#v2-renewals [data-rnk="${k}"]'); var g = e && e.closest('[data-rng]'); return g ? g.getAttribute('data-rng') : null; })()`);
+        t('Renewals page is the active page', await ev(`document.getElementById('v2-page-renewals').classList.contains('active')`));
+        t('sidebar Renewals link is current', await ev(`document.querySelector('.v2-nav[data-route="renewals"]').classList.contains('active')`));
+        t('a finished client with nothing arranged sits in the first group', (await grp('sofia_m')) === 'over');
+        t('a client in their last 2 weeks sits in "ending in the next 2 weeks"', (await grp('jonah_r')) === 'soon');
+        t('a client 15 to 30 days out sits in the third group', (await grp('owen_c')) === 'month');
+        t('clients over 30 days out are not listed, only counted', !(await exists('#v2-renewals [data-rnk="tomasz_b"]')) && /over 30 days/.test(await txt('#v2-renewals')));
+        t('paused, archived and onboarding clients are not listed', !(await exists('#v2-renewals [data-rnk="diego_f"]')) && !(await exists('#v2-renewals [data-rnk="grace_o"]')) && !(await exists('#v2-renewals [data-rnk="hana_s"]')));
+        const head = await txt('#v2-renewals .v2-rn-sum');
+        t('headline counts who to ask this week', /2\s*clients to ask this week/.test(head), head);
+        t('sidebar badge shows the same number', (await txt('#v2-badge-renewals')) === '2');
+        t('row shows week, days left and end date', /Week 15 of 16 · \d+ days left · ends /.test(await txt('#v2-renewals [data-rnk="jonah_r"] .v2-rn-who small')), await txt('#v2-renewals [data-rnk="jonah_r"] .v2-rn-who small'));
+        t('no money anywhere on the page', !/\$/.test(await txt('#v2-renewals')));
+        // one tap records the answer on the roster, tied to this block
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rns="asked"]'); await idle(300);
+        t('Asked is saved on the roster for this block', (await st('sofia_m')) === 'asked|true', await st('sofia_m'));
+        t('Asked lights up and the count drops', (await ev(`document.querySelector('#v2-renewals [data-rnk="sofia_m"] [data-rns="asked"]').getAttribute('aria-pressed')`)) === 'true' && (await txt('#v2-badge-renewals')) === '1');
+        await click('#v2-renewals [data-rnk="jonah_r"] [data-rns="yes"]'); await idle(300);
+        t('Yes moves the client to Renewing', (await grp('jonah_r')) === 'won' && (await st('jonah_r')) === 'yes|true');
+        await click('#v2-renewals [data-rnk="jonah_r"] [data-rns="paid"]'); await idle(200);
+        t('Paid asks first (it is the go for the next block)', (await exists('#v2-renewals [data-rnk="jonah_r"] [data-rn-paid]')) && (await st('jonah_r')) === 'yes|true');
+        await click('#v2-renewals [data-rnk="jonah_r"] [data-rn-paid]'); await idle(300);
+        t('confirming saves Paid', (await st('jonah_r')) === 'paid|true');
+        await click('#v2-renewals [data-rnk="owen_c"] [data-rns="declined"]'); await idle(300);
+        t('No moves the client to Not renewing, folded away', (await st('owen_c')) === 'declined|true' && !(await exists('#v2-renewals [data-rnk="owen_c"]')) && (await exists('#v2-renewals [data-rng="lost"]')));
+        await click('#v2-renewals [data-rn-lost]'); await idle(200);
+        t('Show opens the Not renewing list', (await grp('owen_c')) === 'lost');
+        await click('#v2-renewals [data-rnk="owen_c"] [data-rns="declined"]'); await idle(300);
+        t('tapping the lit answer again clears it', (await st('owen_c')) === 'none|true' && (await grp('owen_c')) === 'month');
+        // an answer recorded for an older block does not carry into the new one
+        await ev(`(function(){ var l = loadClients(), c = l.find(function (x) { return x.storageKey === 'owen_c'; }); c.renewState = { status: 'paid', at: Date.now() + 5000, start: '2026-01-05' }; saveClients(l); COACH.clients = l; localStorage.removeItem('lockedin.renewState.v1'); UIV2.renderRenewals(); return 1; })()`);
+        t('an answer from an earlier block is ignored', (await grp('owen_c')) === 'month');
+        // message: the journey draft, sending marks Asked
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rns="asked"]'); await idle(300);
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rn-msg]'); await idle(200);
+        const msg = await ev(`(function(){ var e = document.querySelector('#v2-renewals [data-rnk="sofia_m"] textarea'); return e ? e.value : null; })()`);
+        t('Message opens a draft with no price in it', !!msg && msg.length > 20 && !/\$|\bper week\b|\bprice\b/i.test(msg), msg);
+        await click('#v2-renewals [data-rnk="sofia_m"] [data-rn-copy]'); await idle(400);
+        t('Copy marks the client as Asked', (await st('sofia_m')) === 'asked|true');
+        t('answers were pushed with the roster (rosterPut)', (await ev(`__ui.calls.filter(function (c) { return c.type === 'rosterPut'; }).length`)) >= 5);
+      }, { shot: 'renewals', writes: ['rosterPut', 'checkinDraftMark'] });
+
       // ── TESTIMONIALS (Omar 2026-10-16) ──
       await step('Testimonials: answers, consent, story cards', async () => {
         await go('#/testimonials', 600);
@@ -876,7 +922,7 @@ const knownBug = (name, holds, detail) => {
         await ev(`toggleNotifications && 1`);
       }, { shot: 'admin' });
       await step('Sidebar navigation', async () => {
-        for (const r of ['today', 'activity', 'clients', 'check-ins', 'onboarding', 'admin']) {
+        for (const r of ['today', 'activity', 'renewals', 'clients', 'check-ins', 'onboarding', 'admin']) {
           await click(`.v2-nav[data-route="${r}"]`); await idle(300);
           t(`nav "${r}" -> page + topbar title`, (await ev('location.hash')) === '#/' + r && (await ev(`document.getElementById('v2-page-${r}').classList.contains('active')`)));
         }
@@ -899,7 +945,7 @@ const knownBug = (name, holds, detail) => {
         t('tapping a nav item closes the drawer', !(await ev(`document.body.classList.contains('v2-drawer-open')`)));
         await go('#/today');
       }, { shot: 'today' });
-      for (const [name, hash] of [['activity', '#/activity'], ['clients', '#/clients'], ['client_overview', '#/clients/priya_n'], ['client_progress', '#/clients/kwame_a/progress'],
+      for (const [name, hash] of [['activity', '#/activity'], ['renewals', '#/renewals'], ['clients', '#/clients'], ['client_overview', '#/clients/priya_n'], ['client_progress', '#/clients/kwame_a/progress'],
         ['client_training', '#/clients/priya_n/training'], ['checkins', '#/check-ins'], ['checkin_review', '#/check-ins/priya_n/' + encodeURIComponent(FX.ciTs.priya)],
         ['onboarding', '#/onboarding'], ['admin', '#/admin']]) {
         await step('Phone: ' + name, async () => {
