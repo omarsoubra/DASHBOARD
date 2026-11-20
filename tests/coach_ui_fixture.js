@@ -231,6 +231,14 @@ function build(now = Date.now()) {
     { url: '/__fixture/photo.svg?v=front-w5', urlKind: 'signed', view: 'front', week: 5, ts: dAgo(8), source: 'checkin', intakeId: null, label: 'Week 5', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=front-w6', urlKind: 'signed', view: 'front', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
     { url: '/__fixture/photo.svg?v=side-w6', urlKind: 'signed', view: 'side', week: 6, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 6', baselineWeight: null },
+  ],
+  // post maker: Kwame has photos but no testimonial answer (no consent on file); Grace said no to photos.
+  kwame_a: [
+    { url: '/__fixture/photo.svg?v=k-front-w1', urlKind: 'signed', view: 'front', week: 1, ts: dAgo(29), source: 'checkin', intakeId: null, label: 'Week 1', baselineWeight: null },
+    { url: '/__fixture/photo.svg?v=k-front-w5', urlKind: 'signed', view: 'front', week: 5, ts: dAgo(1), source: 'checkin', intakeId: null, label: 'Week 5', baselineWeight: null },
+  ],
+  grace_o: [
+    { url: '/__fixture/photo.svg?v=g-front-w1', urlKind: 'signed', view: 'front', week: 1, ts: dAgo(90), source: 'checkin', intakeId: null, label: 'Week 1', baselineWeight: null },
   ] };
   // ── testimonials (testimonialsGet) ──
   const testimonials = [
@@ -239,6 +247,8 @@ function build(now = Date.now()) {
       answers: { name: 'Priya', q1: 'Kept starting over every Monday.', q2: 'Down 6 kg and my squat went from 40 to 70 kg. I actually like training now.', q3: 'Protein first, every meal.',
         q4: 'The weekly check-ins kept me honest.', q5: 'Just start, the plan does the thinking.', q6: 'More recipe variety.' },
       consent: { name: 'yes', photos: 'face_hidden', numbers: 'yes' } },
+    { id: 3, client_key: 'grace_o', first_name: 'Grace', created_at: dAgo(40), expires_at: dAgo(10), submitted_at: dAgo(38), updated_at: dAgo(38),
+      answers: { name: 'Grace', q2: 'Lost the weight I wanted.' }, consent: { name: 'initials', photos: 'no', numbers: 'no' } },
   ];
   const progressionHistory = { priya_n: { hip_thrust: [{ ts: dAgo(3), exerciseName: 'Hip Thrust', decision: 'PROGRESS_LOAD', applied: true, prevLoad: '100', nextLoad: '105', reason: 'Top of the rep range on all sets at RPE 8.' }] } };
 

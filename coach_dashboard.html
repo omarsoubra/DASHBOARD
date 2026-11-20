@@ -1795,6 +1795,13 @@ a.v2-kpi:hover, button.v2-kpi:hover { border-color: #c9ccd4; }
 .v2-ts-prev canvas { width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: 12px; display: block; background: #0f1013; box-shadow: 0 8px 30px -12px rgba(0,0,0,.4); }
 .v2-ts-form { display: grid; gap: 4px; min-width: 0; }
 .v2-ts-form input[type=range] { width: 100%; }
+.v2-ts-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.v2-ts-two > div { min-width: 0; display: grid; gap: 4px; }
+.v2-ts-form .v2-ph-seg { justify-self: start; }
+.v2-ts-ok { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--v2-amber-soft, #fff4e0); font-size: 13px; color: var(--v2-ink); cursor: pointer; }
+.v2-ts-ok input { margin-top: 2px; }
+.v2-pm-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; font-size: 13px; color: var(--v2-muted); }
+.v2-ph-post { margin-left: auto; }
 @media (max-width: 720px) { .v2-ts-story { grid-template-columns: 1fr; } .v2-ts-prev { max-width: 260px; margin: 0 auto; width: 100%; } }
 .v2-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 16px 8px; }
 .v2-card-head h2 { font: 600 15px/1.3 'Inter', system-ui, sans-serif; margin: 0; color: var(--v2-ink); }
@@ -13804,7 +13811,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (a === 'render') return tsDraw();
     if (a === 'save') return tsSave(false);
     if (a === 'share') return tsSave(true);
-    if (a === 'theme') { TS.made.theme = b.getAttribute('data-v'); return tsDraw(); }
+    var m = TS.made, v = b.getAttribute('data-v'); if (!m) return;
+    if (b.parentNode.classList.contains('v2-ph-seg')) [].forEach.call(b.parentNode.children, function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (a === 'theme') { m.theme = v; return tsDraw(); }
+    if (a === 'fmt') { var cv = $('v2-ts-canvas'); m.fmt = v; cv.height = v === 'post' ? 1350 : 1920; cv.style.aspectRatio = v === 'post' ? '4 / 5' : ''; return tsDraw(); }
+    if (a === 'view' && m.pick) return m.pick(v);
   }
   // ── story cards (1080 x 1920) ──
   var TS_THEMES = { dark: { bg: '#0f1013', ink: '#f4f2ee', muted: '#9a9ea8', accent: '#ff6a43' }, orange: { bg: '#e8542e', ink: '#ffffff', muted: '#ffe1d6', accent: '#15171b' }, light: { bg: '#f4f2ee', ink: '#15171b', muted: '#5f646c', accent: '#e8542e' } };
@@ -13848,10 +13859,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   function tsDraw() {
     var m = TS.made, cv = $('v2-ts-canvas'); if (!m || !cv) return;
-    var ctx = cv.getContext('2d'), T = TS_THEMES[m.theme] || TS_THEMES.dark, W = 1080, H = 1920;
+    var ctx = cv.getContext('2d'), T = TS_THEMES[m.theme] || TS_THEMES.dark, W = 1080, H = cv.height;
     if (!tsLogo) { tsLoadImg('brand/lockedin-icon-v1-180.png').then(function (i) { tsLogo = i; tsDraw(); }, function () {}); }
     ctx.fillStyle = T.bg; ctx.fillRect(0, 0, W, H);
-    if (m.kind === 'photos') return tsDrawPhotos(ctx, T);
+    if (m.kind === 'photos') return tsDrawPhotos(ctx, T, H);
     tsBrand(ctx, T, 190);
     var q = ($('v2-ts-quote').value || '').trim(), credit = ($('v2-ts-credit').value || '').trim(), res = ($('v2-ts-result') && !$('v2-ts-result').disabled ? $('v2-ts-result').value : '').trim();
     var size = 92, lines, lh;
@@ -13868,33 +13879,103 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (res) { ctx.fillStyle = T.ink; ctx.font = '400 120px "Bebas Neue", Impact, sans-serif'; tsWrap(ctx, res.toUpperCase(), W - 192).slice(0, 2).forEach(function (l) { y += 120; ctx.fillText(l, 96, y); }); }
     ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText(($('v2-ts-footer').value || '').trim(), 96, H - 150);
   }
-  // before / after
+  // before / after. Post maker (Omar 2026-11-20): opens from a testimonial, a client's Progress tab or a check-in
+  // review. Week + weight under each photo, result line worked out from the two weigh-ins, Story (9:16) or Post (4:5).
+  // Sharing follows the client's testimonial consent. With none on file the coach must tick that the client said yes
+  // before the image can be saved; a recorded "no" to photos blocks it.
   function tsStoryPhotos(rid) {
     var r = (TS.list || []).filter(function (x) { return String(x.id) === String(rid); })[0]; if (!r) return;
-    TS.made = { kind: 'photos', r: r, theme: 'dark', photos: null, a: 0, b: 0, blur: (r.consent || {}).photos === 'face_hidden' ? 26 : 0, imgs: {} };
-    tsModal('<h3>Before / after: ' + esc(tsName(r)) + '</h3><div class="v2-ts-story"><div class="v2-ts-prev"><canvas id="v2-ts-canvas" width="1080" height="1920" aria-label="Story preview"></canvas></div><div class="v2-ts-form" id="v2-ts-pform"><p class="v2-ts-note">Loading photos…</p></div></div>');
-    coachFetch('photosGet', { client: r.client_key }).then(function (j) {
+    tsPhotoMaker(r);
+  }
+  function tsPostMaker(key, want) {
+    var c = tsClient(key); if (!c) return;
+    var go = function () {
+      var r = (TS.list || []).filter(function (x) { return x.client_key === key && x.submitted_at; })
+        .sort(function (x, y) { return Date.parse(y.submitted_at) - Date.parse(x.submitted_at); })[0];
+      tsPhotoMaker(r || { id: null, client_key: key, first_name: String(c.displayName || key).split(' ')[0], answers: {}, consent: null }, want);
+    };
+    if (TS.list) return go();
+    TS.made = null;
+    tsModal('<h3>Before / after</h3><p class="v2-ts-note" id="v2-ts-wait">Checking what they agreed to share…</p><div class="v2-ts-actions"><button type="button" class="v2-btn ghost" data-ts="close">Close</button></div>');
+    var fail = function () { var w = $('v2-ts-wait'); if (w) w.textContent = 'Couldn\'t check what this client agreed to share. Close this and try again.'; };
+    coachFetch('testimonialsGet', {}).then(function (j) { if (!$('v2-ts-wait')) return; if (j && j.ok) { TS.list = j.testimonials || []; go(); } else fail(); }, fail);
+  }
+  function tsKgAt(key, p) {
+    if (p.source === 'intake' && Number(p.baselineWeight) > 0) return Number(p.baselineWeight);
+    var t = Date.parse(p.ts), sum = (typeof _dashboardData !== 'undefined' && _dashboardData && _dashboardData[key]) || {}, best = null, bd = 4 * 86400000 + 1;
+    var see = function (ts, kg) { var d = Math.abs(Date.parse(ts) - t); kg = Number(kg); if (isFinite(d) && isFinite(kg) && kg > 0 && d < bd) { bd = d; best = kg; } };
+    (sum.weightHistory || sum.weightLog || []).forEach(function (x) { see(x.ts || x.timestamp, x.kg != null ? x.kg : x.weight); });
+    (sum.recentCheckIns || []).forEach(function (x) { see(x.timestamp, x.weightKg); });
+    return best;
+  }
+  function tsPhotoLabel(m, i) {
+    var p = m.photos[i], kg = m.nums ? tsKgAt(m.r.client_key, p) : null;
+    var wk = p.source === 'intake' ? 'Start' : p.week != null ? 'Week ' + p.week : new Date(p.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    return wk + (kg != null ? ' · ' + kg.toFixed(1) + ' kg' : '');
+  }
+  function tsPhotoResult(m) {
+    if (!m.nums) return '';
+    var pa = m.photos[m.a], pb = m.photos[m.b], ka = tsKgAt(m.r.client_key, pa), kb = tsKgAt(m.r.client_key, pb);
+    if (ka == null || kb == null || Math.abs(kb - ka) < 0.05) return '';
+    var wks = Math.round((Date.parse(pb.ts) - Date.parse(pa.ts)) / 604800000);
+    return (kb < ka ? '−' : '+') + Math.abs(kb - ka).toFixed(1) + ' kg' + (wks >= 1 ? ' in ' + wks + ' week' + (wks === 1 ? '' : 's') : '');
+  }
+  function tsPhotoMaker(r, want) {
+    var cs = r.consent, none = !cs, first = tsName(r);
+    if (!none && cs.photos !== 'yes' && cs.photos !== 'face_hidden') {
+      TS.made = null;
+      tsModal('<h3>Before / after: ' + esc(first) + '</h3><p class="v2-ts-note" id="v2-ts-blocked">' + esc(first) + ' said no to sharing photos in their testimonial, so don\'t post these. If they\'ve changed their mind, send them a new testimonial link so it\'s on record.</p>' +
+        '<div class="v2-ts-actions"><button type="button" class="v2-btn ghost" data-ts="close">Close</button></div>');
+      return;
+    }
+    var face = !none && cs.photos === 'face_hidden', nums = none || cs.numbers === 'yes';
+    TS.made = { kind: 'photos', r: r, theme: 'dark', fmt: 'story', photos: null, a: 0, b: 0, blur: face || none ? 26 : 0, imgs: {}, nums: nums, needOk: none, resEdited: false };
+    tsModal('<h3>Before / after: ' + esc(first) + '</h3><div class="v2-ts-story"><div class="v2-ts-prev"><canvas id="v2-ts-canvas" width="1080" height="1920" aria-label="Post preview"></canvas></div><div class="v2-ts-form" id="v2-ts-pform"><p class="v2-ts-note">Loading photos…</p></div></div>');
+    coachFetch('photosGet', { client: r.client_key, storageKey: r.client_key }).then(function (j) {
+      var m = TS.made; if (!m || m.r !== r || !$('v2-ts-pform')) return;
       var ps = ((j && j.photos) || []).filter(function (p) { return p.urlKind === 'signed' && p.url; });
       if (!ps.length) { $('v2-ts-pform').innerHTML = '<p class="v2-ts-note">No photos on file for this client.</p><div class="v2-ts-actions"><button type="button" class="v2-btn ghost" data-ts="close">Close</button></div>'; return; }
       ps.sort(function (x, y) { return Date.parse(x.ts) - Date.parse(y.ts); });
-      var m = TS.made; m.photos = ps;
-      var front = ps.filter(function (p) { return /front/i.test(p.view); });
-      m.a = ps.indexOf(front[0] || ps[0]); m.b = ps.indexOf(front[front.length - 1] || ps[ps.length - 1]);
-      var opt = function (cur) { return ps.map(function (p, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc((p.label || ('Week ' + p.week)) + ' · ' + (p.view || '') + ' · ' + new Date(p.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) + '</option>'; }).join(''); };
-      var face = (r.consent || {}).photos === 'face_hidden';
-      $('v2-ts-pform').innerHTML = '<label class="v2-ts-lab" for="v2-ts-pa">Before</label><select class="v2-ts-in" id="v2-ts-pa">' + opt(m.a) + '</select>' +
-        '<label class="v2-ts-lab" for="v2-ts-pb">After</label><select class="v2-ts-in" id="v2-ts-pb">' + opt(m.b) + '</select>' +
+      m.photos = ps;
+      var views = ['front', 'side', 'back'].filter(function (v) { return ps.some(function (p) { return p.view === v; }); });
+      var pick = function (v) {
+        var of = ps.filter(function (p) { return p.view === v; }); if (!of.length) of = ps;
+        var last = of[of.length - 1];
+        if (want && want.ts) { var wt = Date.parse(want.ts), bd = Infinity; of.forEach(function (p) { var d = Math.abs(Date.parse(p.ts) - wt); if (d < bd) { bd = d; last = p; } }); }
+        m.a = ps.indexOf(of[0]); m.b = ps.indexOf(last); m.view = v;
+      };
+      pick(views[0] || 'front');
+      var opt = function () { return ps.map(function (p, i) { return '<option value="' + i + '">' + esc((p.label || (p.week != null ? 'Week ' + p.week : 'Photo')) + ' · ' + (p.view || '') + ' · ' + new Date(p.ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) + '</option>'; }).join(''); };
+      var seg = function (act, list, cur) { return '<div class="v2-ph-seg" role="group">' + list.map(function (x) { return '<button type="button" data-ts="' + act + '" data-v="' + x[0] + '" aria-pressed="' + (x[0] === cur) + '">' + x[1] + '</button>'; }).join('') + '</div>'; };
+      $('v2-ts-pform').innerHTML =
+        '<div class="v2-ts-lab">Size</div>' + seg('fmt', [['story', 'Story 9:16'], ['post', 'Post 4:5']], m.fmt) +
+        (views.length > 1 ? '<div class="v2-ts-lab">Pose</div>' + seg('view', views.map(function (v) { return [v, v.charAt(0).toUpperCase() + v.slice(1)]; }), m.view) : '') +
+        '<div class="v2-ts-two"><div><label class="v2-ts-lab" for="v2-ts-pa">Before</label><select class="v2-ts-in" id="v2-ts-pa">' + opt() + '</select></div>' +
+        '<div><label class="v2-ts-lab" for="v2-ts-pb">After</label><select class="v2-ts-in" id="v2-ts-pb">' + opt() + '</select></div></div>' +
+        '<div class="v2-ts-two"><div><label class="v2-ts-lab" for="v2-ts-la">Under the before photo</label><input class="v2-ts-in" id="v2-ts-la"></div>' +
+        '<div><label class="v2-ts-lab" for="v2-ts-lb">Under the after photo</label><input class="v2-ts-in" id="v2-ts-lb"></div></div>' +
         '<label class="v2-ts-lab" for="v2-ts-blur">Hide face: blur the top ' + '<b id="v2-ts-blurv">' + m.blur + '</b>%</label><input type="range" id="v2-ts-blur" min="' + (face ? 12 : 0) + '" max="50" value="' + m.blur + '">' +
-        (face ? '<p class="v2-ts-note">' + esc(tsName(r)) + ' asked for their face to be hidden, so the blur can\'t go below 12%. Check the preview before posting.</p>' : '') +
-        '<label class="v2-ts-lab" for="v2-ts-result">Result line' + ((r.consent || {}).numbers === 'yes' ? ' (optional)' : '') + '</label><input class="v2-ts-in" id="v2-ts-result"' + ((r.consent || {}).numbers === 'yes' ? ' placeholder="e.g. −4.7 kg in 12 weeks"' : ' disabled placeholder="Not allowed: they said no to sharing numbers"') + '>' +
+        (face ? '<p class="v2-ts-note">' + esc(first) + ' asked for their face to be hidden, so the blur can\'t go below 12%. Check the preview before posting.</p>' : '') +
+        '<label class="v2-ts-lab" for="v2-ts-result">Result line' + (nums ? ' (optional)' : '') + '</label><input class="v2-ts-in" id="v2-ts-result"' + (nums ? ' placeholder="e.g. −4.7 kg in 12 weeks"' : ' disabled placeholder="Not allowed: they said no to sharing numbers"') + '>' +
+        (nums ? '' : '<p class="v2-ts-note">' + esc(first) + ' said no to sharing numbers, so weights are left off.</p>') +
         '<label class="v2-ts-lab" for="v2-ts-footer">Footer</label><input class="v2-ts-in" id="v2-ts-footer" value="1:1 online coaching">' +
+        '<div class="v2-ts-lab">Colour</div>' + seg('theme', Object.keys(TS_THEMES).map(function (k) { return [k, k.charAt(0).toUpperCase() + k.slice(1)]; }), m.theme) +
+        (none ? '<label class="v2-ts-ok"><input type="checkbox" id="v2-ts-ok"> <span>' + esc(first) + ' has told me I can post this photo. (Nothing on file yet: they haven\'t filled in the testimonial form.)</span></label>' : '') +
         '<div class="v2-ts-actions"><button type="button" class="v2-btn primary" data-ts="save">Save image</button>' + (navigator.canShare ? '<button type="button" class="v2-btn" data-ts="share">Share…</button>' : '') + '<button type="button" class="v2-btn ghost" data-ts="close">Close</button></div><p class="v2-ts-state" id="v2-ts-state"></p>';
-      $('v2-ts-pa').addEventListener('change', function () { m.a = +this.value; tsDraw(); });
-      $('v2-ts-pb').addEventListener('change', function () { m.b = +this.value; tsDraw(); });
+      m.fill = function () {
+        $('v2-ts-pa').value = m.a; $('v2-ts-pb').value = m.b;
+        $('v2-ts-la').value = tsPhotoLabel(m, m.a); $('v2-ts-lb').value = tsPhotoLabel(m, m.b);
+        if (!m.resEdited && nums) $('v2-ts-result').value = tsPhotoResult(m);
+        tsDraw();
+      };
+      m.pick = function (v) { pick(v); m.fill(); };
+      $('v2-ts-pa').addEventListener('change', function () { m.a = +this.value; m.fill(); });
+      $('v2-ts-pb').addEventListener('change', function () { m.b = +this.value; m.fill(); });
       $('v2-ts-blur').addEventListener('input', function () { m.blur = +this.value; $('v2-ts-blurv').textContent = m.blur; tsDraw(); });
-      ['v2-ts-result', 'v2-ts-footer'].forEach(function (id) { $(id).addEventListener('input', tsDraw); });
-      tsDraw();
-    }, function () { $('v2-ts-pform').innerHTML = '<p class="v2-ts-note">Couldn\'t load photos. Try again.</p>'; });
+      $('v2-ts-result').addEventListener('input', function () { m.resEdited = true; tsDraw(); });
+      ['v2-ts-la', 'v2-ts-lb', 'v2-ts-footer'].forEach(function (id) { $(id).addEventListener('input', tsDraw); });
+      m.fill();
+    }, function () { if ($('v2-ts-pform')) $('v2-ts-pform').innerHTML = '<p class="v2-ts-note">Couldn\'t load photos. Try again.</p>'; });
   }
   function tsPhotoImg(i) {
     var m = TS.made, p = m.photos[i]; if (m.imgs[i]) return m.imgs[i];
@@ -13915,11 +13996,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     ctx.restore();
   }
-  function tsDrawPhotos(ctx, T) {
-    var m = TS.made, W = 1080, H = 1920;
-    tsBrand(ctx, T, 150);
+  function tsFit(ctx, text, weight, size, family, maxW) {
+    do { ctx.font = weight + ' ' + size + 'px ' + family; size -= 2; } while (ctx.measureText(text).width > maxW && size > 18);
+  }
+  function tsDrawPhotos(ctx, T, H) {
+    var m = TS.made, W = 1080, post = H < 1900, val = function (id) { var el = $(id); return el && !el.disabled ? String(el.value || '').trim() : ''; };
+    tsBrand(ctx, T, post ? 118 : 150);
+    var foot = val('v2-ts-footer');
+    if (post && foot) { ctx.fillStyle = T.muted; ctx.textAlign = 'right'; tsFit(ctx, foot, 600, 30, 'Inter, system-ui, sans-serif', 560); ctx.fillText(foot, W - 96, 112); ctx.textAlign = 'left'; }
     if (!m.photos) return;
-    var top = 220, ph = 1340, gap = 16, w = (W - 96 * 2 - gap) / 2;
+    var res = val('v2-ts-result'), caps = [val('v2-ts-la'), val('v2-ts-lb')];
+    var top = post ? 170 : 220, ph = post ? (res ? 900 : 1020) : (res ? 1290 : 1400), gap = 16, w = (W - 96 * 2 - gap) / 2;
     [[m.a, 'BEFORE'], [m.b, 'AFTER']].forEach(function (pair, k) {
       var x = 96 + k * (w + gap), img = tsPhotoImg(pair[0]);
       ctx.fillStyle = '#22252b'; ctx.fillRect(x, top, w, ph);
@@ -13927,14 +14014,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
       else { ctx.fillStyle = T.muted; ctx.font = '600 32px Inter, system-ui, sans-serif'; ctx.fillText(img === 'error' ? 'Photo couldn’t load' : 'Loading…', x + 30, top + 80); }
       ctx.fillStyle = k ? T.accent : 'rgba(0,0,0,.65)'; ctx.fillRect(x + 20, top + ph - 92, k ? 190 : 230, 66);
       ctx.fillStyle = k ? (m.theme === 'orange' ? '#ffffff' : '#15171b') : '#ffffff'; ctx.font = '400 56px "Bebas Neue", Impact, sans-serif'; ctx.fillText(pair[1], x + 40, top + ph - 40);
+      if (caps[k]) { ctx.fillStyle = T.ink; tsFit(ctx, caps[k].toUpperCase(), 600, 36, '"DM Mono", ui-monospace, monospace', w); ctx.fillText(caps[k].toUpperCase(), x, top + ph + 56); }
     });
-    var res = ($('v2-ts-result') && !$('v2-ts-result').disabled ? $('v2-ts-result').value : '').trim();
-    if (res) { ctx.fillStyle = T.ink; ctx.font = '400 116px "Bebas Neue", Impact, sans-serif'; ctx.fillText(res.toUpperCase().slice(0, 28), 96, top + ph + 150); }
-    ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText((($('v2-ts-footer') || {}).value || '').trim(), 96, H - 120);
+    if (res) { ctx.fillStyle = T.ink; tsFit(ctx, res.toUpperCase(), 400, post ? 100 : 116, '"Bebas Neue", Impact, sans-serif', W - 192); ctx.fillText(res.toUpperCase(), 96, top + ph + (post ? 176 : 190)); }
+    if (!post) { ctx.fillStyle = T.muted; ctx.font = '600 36px Inter, system-ui, sans-serif'; ctx.fillText(foot, 96, H - 120); }
   }
   function tsSave(share) {
     var cv = $('v2-ts-canvas'), st = $('v2-ts-state'), m = TS.made; if (!cv || !m) return;
-    var name = 'lockedin-' + String(m.r.client_key) + '-' + m.kind + '.png';
+    if (m.needOk && !($('v2-ts-ok') && $('v2-ts-ok').checked)) { st.textContent = 'Tick the box first: only post a client\'s photo once they\'ve said yes.'; return; }
+    var name = 'lockedin-' + String(m.r.client_key) + '-' + m.kind + (m.fmt === 'post' ? '-post' : '') + '.png';
     try {
       cv.toBlob(function (blob) {
         if (!blob) { st.textContent = 'Couldn\'t make the image.'; return; }
@@ -13961,6 +14049,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('v2-ts-modal') && !$('v2-ts-modal').hidden) tsClose(); });
   UIV2.renderTestimonials = function () { try { renderTestimonials(); } catch (e) { console.warn('[ui-v2] Testimonials render failed', e); } };
   UIV2._ts = { credit: tsCredit, wrap: tsWrap, ago: tsAgo };
+  UIV2.postMaker = function (key, want) { try { tsPostMaker(key, want); } catch (e) { console.warn('[ui-v2] post maker failed', e); } };
 
   // ── Global client search (Today) — read-only filter over COACH.clients ──
   var sInput = $('v2-search'), sBox = $('v2-search-results'), sHl = 0, sHits = [];
@@ -14367,7 +14456,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
           card('Weight trend', hasHistory ? '<div class="cd-chart-wrap"><canvas id="detail-chart"></canvas></div>' : _cd3Empty('No weight history yet.')) +
           card('Adherence — last 30 days', renderAdherenceSection(m30)) +
           card('Activity — Apple Health', '<div data-health-key="' + esc(key) + '"></div>') +
-          card('Progress photos', renderPhotoTimelineSection(c, sum)) + '</div>';
+          card('Progress photos', '<div class="v2-pm-bar"><button type="button" class="v2-btn" data-key="' + esc(key) + '" onclick="UIV2.postMaker(this.dataset.key)">Make before / after post</button><span>Branded story or feed post from their photos, with week and weight.</span></div>' + renderPhotoTimelineSection(c, sum)) + '</div>';
       }
       case 'nutrition':
         return '<div class="cd3-panel-body">' +
@@ -14943,7 +15032,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   function phSection(key, iso, week) {
     var sec = document.createElement('section'); sec.className = 'v2-ci-sec sec-photos';
-    sec.innerHTML = '<h3>Photos <span class="v2-ph-sub"></span></h3><div class="v2-ph-body"><div class="v2-ph-grid">' +
+    sec.innerHTML = '<h3>Photos <span class="v2-ph-sub"></span><button type="button" class="v2-link v2-ph-post" data-ph-post="1" hidden>Make before / after post</button></h3><div class="v2-ph-body"><div class="v2-ph-grid">' +
       PH_VIEWS.map(function () { return '<div class="v2-ph-tile is-loading" aria-hidden="true"></div>'; }).join('') + '</div></div>';
     var bodyEl = sec.querySelector('.v2-ph-body'), sub = sec.querySelector('.v2-ph-sub');
     var st = { mode: 'now', pose: 'front', set: null, items: [] };
@@ -14954,6 +15043,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
     function render() {
       var s = st.set, cur = s.cur; st.items = [];
+      sec.querySelector('[data-ph-post]').hidden = !(cur || s.last || s.start);
       var curL = phLabel(key, cur);
       var n = PH_VIEWS.filter(function (v) { return cur && cur[v]; }).length;
       sub.textContent = cur ? curL[0] + ' · ' + n + ' photo' + (n === 1 ? '' : 's') : '';
@@ -14982,7 +15072,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
       bodyEl.innerHTML = html;
     }
     sec.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-ph-mode],[data-ph-pose],[data-ph-i],[data-ph-all]'); if (!b || b.disabled) return;
+      var b = e.target.closest('[data-ph-mode],[data-ph-pose],[data-ph-i],[data-ph-all],[data-ph-post]'); if (!b || b.disabled) return;
+      if (b.dataset.phPost) return UIV2.postMaker(key, { ts: (st.set && st.set.cur && st.set.cur.ts) || iso });
       if (b.dataset.phAll) { location.hash = '#/clients/' + enc(key); return; }
       if (b.dataset.phI != null) return lbOpen(st.items, +b.dataset.phI);
       if (b.dataset.phMode) st.mode = b.dataset.phMode;

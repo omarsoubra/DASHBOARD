@@ -779,6 +779,40 @@ const knownBug = (name, holds, detail) => {
               if (k === 'hana_s') t('Apple Health card: pending link', /waiting for the client/.test(hc), hc);
               if (k === 'grace_o') t('Apple Health card: not connected + create link button', /Not connected/.test(hc) && /Create Apple Health link/.test(hc), hc);
               if (k === 'priya_n') t('progress photos loaded from photosGet', (await count(`#v2-cl-detail img[src*="__fixture/photo.svg"]`)) >= 1, await txt('#v2-cl-detail .v2-cd-body'));
+              // ── before / after post maker from check-in photos (Omar 2026-11-20) ──
+              const pmOpen = async () => { await click('#v2-cl-detail .v2-pm-bar button'); await idle(800); };
+              const pmClose = async () => { await ev(`document.querySelector('#v2-ts-modal [data-ts="close"]').click(); 1`); await idle(100); };
+              const val = (id) => ev(`(document.getElementById('${id}') || {}).value`);
+              if (k === 'priya_n') {
+                await pmOpen();
+                t('post maker opens from the Progress tab with her photos', (await count('#v2-ts-pa option')) === 4 && (await count('#v2-ts-canvas')) === 1);
+                const la = await val('v2-ts-la'), lb = await val('v2-ts-lb'), res = await val('v2-ts-result');
+                t('before label = Start + intake weight, after label = week + weigh-in', la === 'Start · 64.2 kg' && /^Week 6 · \d+\.\d kg$/.test(lb), [la, lb]);
+                t('result line worked out from the two weights and the weeks between', /^[−+]\d+\.\d kg in 6 weeks$/.test(res), res);
+                t('consent on file: no tick box, face blur locked at 12%+', (await count('#v2-ts-ok')) === 0 && (await ev(`+document.getElementById('v2-ts-blur').min`)) === 12);
+                await ev(`document.querySelector('[data-ts="fmt"][data-v="post"]').click(); 1`); await idle(300);
+                const cv = await ev(`(function () { var c = document.getElementById('v2-ts-canvas'), d = c.getContext('2d').getImageData(0, 0, 1080, c.height).data, n = 0; for (var i = 0; i < d.length; i += 4 * 97) if (d[i] > 200) n++; return { h: c.height, light: n }; })()`);
+                t('Post 4:5 = 1080 x 1350 with text drawn', cv.h === 1350 && cv.light > 100, cv);
+                await shot('post_maker_post');
+                await ev(`document.querySelector('[data-ts="view"][data-v="side"]').click(); 1`); await idle(200);
+                t('Pose: Side picks the side photo', (await ev(`document.getElementById('v2-ts-pb').selectedOptions[0].textContent`)).indexOf('side') > 0);
+                await pmClose();
+              }
+              if (k === 'kwame_a') {
+                await pmOpen();
+                t('no consent on file: tick box shown, face blur on by default', (await count('#v2-ts-ok')) === 1 && (await ev(`+document.getElementById('v2-ts-blur').value`)) > 0);
+                await ev(`document.querySelector('#v2-ts-modal [data-ts="save"]').click(); 1`); await idle(300);
+                t('Save is refused until the box is ticked', /Tick the box first/.test(await txt('#v2-ts-state')), await txt('#v2-ts-state'));
+                await ev(`document.getElementById('v2-ts-ok').click(); document.querySelector('#v2-ts-modal [data-ts="save"]').click(); 1`); await idle(500);
+                t('ticked: image saved', /Saved lockedin-kwame_a-photos\.png/.test(await txt('#v2-ts-state')), await txt('#v2-ts-state'));
+                await shot('post_maker_story');
+                await pmClose();
+              }
+              if (k === 'grace_o') {
+                await pmOpen();
+                t('client said no to photos: maker is blocked', (await count('#v2-ts-blocked')) === 1 && (await count('#v2-ts-canvas')) === 0, await txt('#v2-ts-modal'));
+                await pmClose();
+              }
             }
             if (tab === 'training' && k === 'priya_n') {
               t('workout completions card (coachWorkoutCompletions)', /Latest:/.test(await txt('#cwv-card')) && /undone by the client/.test(await txt('#cwv-card')), await txt('#cwv-card'));
@@ -868,6 +902,9 @@ const knownBug = (name, holds, detail) => {
         t('Photos section sits right under the suggested reply', await ev(`(function(){ var s = document.querySelectorAll('#v2-ci-panel .v2-ci-main > .v2-ci-sec'); return s[0].classList.contains('sec-reply') && s[1].classList.contains('sec-photos'); })()`));
         t('this check-in\'s photos: front + side shown, back marked missing', (await count('#v2-ci-panel .sec-photos .v2-ph-grid img')) === 2 && (await count('#v2-ci-panel .sec-photos .v2-ph-tile.is-empty')) === 1, await txt('#v2-ci-panel .sec-photos'));
         t('header says Week 6 · 2 photos', /Week 6 · 2 photos/.test(await txt('#v2-ci-panel .sec-photos h3')), await txt('#v2-ci-panel .sec-photos h3'));
+        await click('#v2-ci-panel [data-ph-post]'); await idle(800);
+        t('Make before / after post opens the maker on this check-in (Start vs Week 6)', /^Start/.test(await ev(`(document.getElementById('v2-ts-la') || {}).value || ''`)) && /^Week 6/.test(await ev(`(document.getElementById('v2-ts-lb') || {}).value || ''`)), await txt('#v2-ts-modal'));
+        await ev(`document.querySelector('#v2-ts-modal [data-ts="close"]').click(); 1`); await idle(100);
         t('the [PHOTO_…] markers are gone from Client responses, her words stay', !/PHOTO_/.test(await txt('#v2-ci-panel .sec-notes')) && /Hip thrust felt strong/.test(await txt('#v2-ci-panel .sec-notes')), await txt('#v2-ci-panel .sec-notes'));
         await click('#v2-ci-panel [data-ph-mode="last"]'); await idle(150);
         t('vs last: week 5 next to week 6, same pose, with weights', (await count('#v2-ci-panel .v2-ph-cmp img')) === 2 && /Week 5[\s\S]*Week 6/.test(await txt('#v2-ci-panel .v2-ph-cmp')) && /62\.8 kg/.test(await txt('#v2-ci-panel .v2-ph-cmp')), await txt('#v2-ci-panel .v2-ph-cmp'));
