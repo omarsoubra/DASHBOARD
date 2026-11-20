@@ -2,7 +2,7 @@
 // against a fake backend. Nothing leaves the machine.
 //   Home weigh-in: trend + pace + goal date · log today · outlier check · "✓ today"
 //   Train: reps pre-filled from last time (in range) · a heavier set -> PR moment · a first-ever exercise -> no PR
-//   Progress: photo compare (slider + side by side, view chips) · Nutrition: eating out (20 chains, lighter orders) -> swap form pre-filled
+//   Progress: photo compare (slider + side by side, view chips) · Nutrition: eating out (21 chains, lighter orders) -> swap form pre-filled
 //   no script errors
 // usage: node tests/plus_client.test.js [client_key] [--shots dir]
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -131,7 +131,7 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     await shot('7_eo_meal.png');
     await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-opt')).slice(-1)[0].click(); 1`); await wait(900);
     const s2 = await q('.lip-sh');
-    t('after the meal: the 20 chains (menus lazy-loaded from eatout-data.js)', /Guzman y Gomez/.test(s2) && /KFC/.test(s2) && /Nando's/.test(s2) && /Oporto/.test(s2) && /Subway/.test(s2) && /McDonald's/.test(s2) && /Hungry Jack's/.test(s2) && /Zambrero/.test(s2) && /Domino's/.test(s2) && await page.eval(`window.LockedInEatOutData.chains.length === 20`) && await page.eval(`!!window.LockedInEatOutData && !!document.querySelector('script[src*="eatout-data.js"]')`), s2);
+    t('after the meal: the 21 chains (menus lazy-loaded from eatout-data.js)', /Guzman y Gomez/.test(s2) && /KFC/.test(s2) && /Nando's/.test(s2) && /Oporto/.test(s2) && /Subway/.test(s2) && /McDonald's/.test(s2) && /Hungry Jack's/.test(s2) && /Zambrero/.test(s2) && /El Jannah/.test(s2) && /Domino's/.test(s2) && await page.eval(`window.LockedInEatOutData.chains.length === 21`) && await page.eval(`!!window.LockedInEatOutData && !!document.querySelector('script[src*="eatout-data.js"]')`), s2);
     await shot('8_eo_chains.png');
     await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-chain')).filter(function (b) { return /KFC/.test(b.textContent); })[0].click(); 1`); await wait(300);
     const s3 = await q('.lip-sh');
