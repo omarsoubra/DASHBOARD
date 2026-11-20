@@ -749,5 +749,5 @@
       loadWeights(true);
     } catch (e) {}
   }
-  window.LockedInPlus = { boot: boot, eatOut: function (i) { openEatOut(i); }, weighCount: function () { try { return dailySeries().length; } catch (e) { return 0; } }, _t: { trendOf: trendOf, paceOf: paceOf, lastReps: lastReps, priorBest: priorBest, fitTag: fitTag, bestPicks: bestPicks, eatOut: function () { EAT_OUT_ON = true; renderEatOut(); } } };
+  window.LockedInPlus = { boot: boot, eatOut: function (i) { openEatOut(i); }, weighCount: function () { try { return dailySeries().length; } catch (e) { return 0; } }, lastWeigh: function () { try { var d = dailySeries(); return d.length ? d[d.length - 1] : null; } catch (e) { return null; } }, _t: { trendOf: trendOf, paceOf: paceOf, lastReps: lastReps, priorBest: priorBest, fitTag: fitTag, bestPicks: bestPicks, eatOut: function () { EAT_OUT_ON = true; renderEatOut(); } } };
 })();

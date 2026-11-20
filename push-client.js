@@ -653,6 +653,19 @@
     } catch (e) {}
   }
 
+  // WEEKLY CHECK-IN SHEET (2026-11-20): checkin-client.js, next to this file - one screen with tap answers over the
+  // page's own check-in fields and saveCheckin(). It does nothing on pages without the form-v2 fields.
+  function bootCheckin(opts) {
+    try {
+      var start = function () { try { window.LockedInCheckin.boot({ storageKey: opts.storageKey }); } catch (e) {} };
+      if (window.LockedInCheckin) return start();
+      var s = document.createElement('script');
+      s.src = String(opts.swUrl || '../../sw.js').replace(/sw\.js$/, 'checkin-client.js');
+      s.async = true; s.onload = start;
+      document.head.appendChild(s);
+    } catch (e) {}
+  }
+
   // SET UP YOUR APP (2026-11-04): setup-client.js, next to this file - the Home card that walks login -> Home Screen ->
   // reminders -> first weigh-in. It reads this instance's diagnostics and calls its own Turn on (_onEnable).
   function bootSetup(opts) {
@@ -678,6 +691,7 @@
       bootPlus(opts || {});
       bootSetup(opts || {});
       bootSwap(opts || {});
+      bootCheckin(opts || {});
       bootFood(opts || {});   // every V2 page since 2026-11-19 (food-client.js keeps its own OFF list)
       return p;
     },

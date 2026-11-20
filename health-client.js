@@ -340,5 +340,5 @@
       refresh();
     } catch (e) {}
   }
-  window.LockedInHealth = { boot: boot };
+  window.LockedInHealth = { boot: boot, status: function () { return status; } };
 })();

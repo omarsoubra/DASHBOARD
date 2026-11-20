@@ -186,7 +186,7 @@ const CHECKS = {
   // check-in (form v2, 2026-11-04): Meals on plan + Training are asked and REQUIRED, and each answer lands in its own
   // field - the old form saved "Overall vibe" as both diet and training adherence and sleep quality as sleepHours
   async checkin(page, ctx) {
-    const has = await page.eval(`/Meals on plan/.test((document.getElementById('section-tracker') || document.body).innerText) && !!document.getElementById('input-training')`);
+    const has = await page.eval(`/Meals on plan/.test((document.getElementById('section-tracker') || document.body).textContent) && !!document.getElementById('input-training')`);
     if (!has) return 'WARN old check-in form (vibe saved as adherence) - run agent_workspace/checkin_form_v2/patch_form_v2.py';
     const r = await page.eval(`(async function () {
       var set = function (id, v) { document.getElementById(id).value = v; };
