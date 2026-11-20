@@ -126,6 +126,7 @@
       '.lip-chains{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 6px}',
       '.lip-chain{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px;border-radius:16px;border:1px solid var(--c-line,#e7e2d9);background:var(--c-surface,#fff);color:inherit;font:inherit;cursor:pointer;text-align:left}',
       '.lip-chain .ic{font-size:26px;line-height:1}.lip-chain b{font-size:15px;font-weight:800}',
+      '.lip-logo{width:44px;height:44px;border-radius:11px;object-fit:cover;display:block;box-shadow:0 0 0 1px rgba(0,0,0,.08)}.lip-chead{display:flex;align-items:center;gap:10px}.lip-chead .lip-logo{width:32px;height:32px;border-radius:8px;flex:0 0 auto}.lip-chead .ic{font-size:20px}',
       '.lip-seclabel{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted,#5d636b);margin:16px 0 8px}',
       '.lip-tips li b{display:block;font-size:13.5px;font-weight:700}.lip-tips li small{display:block;font-size:12.5px;color:var(--c-muted,#5d636b);margin:1px 0 6px}',
       '.lip-search{display:block;font-size:15px;font-weight:500;margin:0 0 10px}',
@@ -533,6 +534,14 @@
   }
   var S = { meal: null, chain: null, group: null, q: '', more: false, detail: null };
   var EOD = null, EODloading = null;
+  /* The chain's own logo (its Australian app icon, kept in brand/chains/<id>.jpg next to this file). If the picture
+     can't load, the old emoji shows instead. */
+  function chainLogo(c) {
+    var me = document.querySelector('script[src*="plus-client.js"]');
+    var img = el('img', { class: 'lip-logo', alt: '', width: '44', height: '44', src: (me ? me.src.replace(/plus-client\.js.*$/, '') : '../../') + 'brand/chains/' + c.id + '.jpg' });
+    img.addEventListener('error', function () { if (img.parentNode) img.parentNode.replaceChild(el('span', { class: 'ic', text: c.ic }), img); });
+    return img;
+  }
   function loadMenus() {
     if (EOD) return Promise.resolve(EOD);
     if (window.LockedInEatOutData) return Promise.resolve(EOD = window.LockedInEatOutData);
@@ -639,7 +648,7 @@
       if (meals.length > 1) sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ Change meal', on: { click: function () { S.meal = null; renderSheet(sh); } } }));
       sh.appendChild(el('p', { class: 'sub', text: 'Instead of ' + m.name + ' (' + m.cal + ' kcal, ' + m.p + ' g protein). Where are you eating?' }));
       sh.appendChild(el('div', { class: 'lip-chains' }, EOD.chains.map(function (c) {
-        return el('button', { type: 'button', class: 'lip-chain', on: { click: function () { S.chain = c.id; S.group = null; S.q = ''; S.more = false; S.detail = null; renderSheet(sh); } } }, [el('span', { class: 'ic', text: c.ic }), el('b', { text: c.name })]);
+        return el('button', { type: 'button', class: 'lip-chain', on: { click: function () { S.chain = c.id; S.group = null; S.q = ''; S.more = false; S.detail = null; renderSheet(sh); } } }, [chainLogo(c), el('b', { text: c.name })]);
       })));
       sh.appendChild(el('p', { class: 'lip-note', text: 'Official Australian menu numbers. Pork and bacon items aren\'t shown. Halal status varies by store, so check if it matters to you.' }));
       return;
@@ -647,7 +656,7 @@
     var ch = EOD.chains.filter(function (c) { return c.id === S.chain; })[0];
     if (S.detail) { renderDetail(sh, ch, m); return; }
     sh.appendChild(el('button', { type: 'button', class: 'lip-back', text: '‹ All places', on: { click: function () { S.chain = null; renderSheet(sh); } } }));
-    sh.appendChild(el('p', { class: 'sub', text: ch.ic + ' ' + ch.name + ' instead of ' + m.name.toLowerCase() + ': ' + m.cal + ' kcal, ' + m.p + ' g protein. Tap one to log it.' }));
+    sh.appendChild(el('p', { class: 'sub lip-chead' }, [chainLogo(ch), el('span', { text: ch.name + ' instead of ' + m.name.toLowerCase() + ': ' + m.cal + ' kcal, ' + m.p + ' g protein. Tap one to log it.' })]));
 
     var picks = bestPicks(ch, m);
     if (picks.length && !S.q && !S.group) {

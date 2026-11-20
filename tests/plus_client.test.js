@@ -40,7 +40,7 @@ const INIT = String.raw`
 })();`;
 
 function serve() {
-  const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+  const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
   const srv = http.createServer((req, res) => {
     let u = decodeURIComponent(req.url.split('?')[0]); if (u.endsWith('/')) u += 'index.html';
     const f = path.join(ROOT, u);
@@ -131,6 +131,7 @@ const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { f
     await shot('7_eo_meal.png');
     await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-opt')).slice(-1)[0].click(); 1`); await wait(900);
     const s2 = await q('.lip-sh');
+    t('every chain tile shows its logo file, and every logo file exists', await page.eval(`(function(){var i=[].slice.call(document.querySelectorAll('.lip-chain img.lip-logo'));return i.length===21&&i.every(function(x){return x.naturalWidth===160&&/brand\\/chains\\/[a-z]+\\.jpg$/.test(x.getAttribute('src'));});})()`) && require('fs').readdirSync(require('path').join(__dirname, '..', 'brand', 'chains')).filter(function (f) { return /\.jpg$/.test(f); }).length === 21, '');
     t('after the meal: the 21 chains (menus lazy-loaded from eatout-data.js)', /Guzman y Gomez/.test(s2) && /KFC/.test(s2) && /Nando's/.test(s2) && /Oporto/.test(s2) && /Subway/.test(s2) && /McDonald's/.test(s2) && /Hungry Jack's/.test(s2) && /Zambrero/.test(s2) && /El Jannah/.test(s2) && /Domino's/.test(s2) && await page.eval(`window.LockedInEatOutData.chains.length === 21`) && await page.eval(`!!window.LockedInEatOutData && !!document.querySelector('script[src*="eatout-data.js"]')`), s2);
     await shot('8_eo_chains.png');
     await page.eval(`[].slice.call(document.querySelectorAll('.lip-sh .lip-chain')).filter(function (b) { return /KFC/.test(b.textContent); })[0].click(); 1`); await wait(300);
