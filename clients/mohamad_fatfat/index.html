@@ -2598,6 +2598,7 @@ body.tv2-sub-open .fab{display:none!important;}
 .tv2-cta-top{margin-top:.9rem;margin-bottom:.4rem;}
 .tv2-phases-top{margin-top:.9rem;padding-right:0;}
 </style>
+<script id="cv2-planupdate">window.CV2_PLAN_UPDATE={"title": "Your training just stepped up", "rows": [{"label": "Sets", "to": "more on chest, legs and delts"}, {"label": "Effort", "from": "2 reps left", "to": "1 rep left, last set of cable and machine isolation to failure"}, {"label": "Rear delts", "to": "twice a week"}, {"label": "Leg curl", "from": "lying", "to": "seated"}], "why": "More work on the muscles that had room, and harder sets. Starts week 5. If sleep or strength drops tell me and we pull it back.", "cta": {"label": "See your sessions", "go": "training"}, "date": "2026-11-20", "id": "2026-11-20-mohamad_fatfat-20261120-training-standard"};</script>
 
 <!-- CV2:CSS:BEGIN -->
 <style id="cv2-css">
@@ -3376,6 +3377,83 @@ body.cv2 .cv2-meal .cv2-btn.ghost.muted{color:var(--c-muted)!important;}
 body.cv2 .cv2-notecard{background:var(--c-surface)!important;border:1px solid rgba(22,24,28,.06)!important;border-radius:var(--c-r)!important;
   box-shadow:var(--c-shadow)!important;padding:16px!important;}
 body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:var(--c-text)!important;letter-spacing:0!important;margin-bottom:6px!important;}
+/* ---- what changed: plan-update card on Home ----------------------------- */
+.cv2-wc{position:relative;overflow:hidden;border-radius:22px;padding:18px 18px 16px;
+  background:linear-gradient(180deg,#fff 0%,#fff 55%,var(--c-tint) 140%);
+  border:1px solid var(--c-edge);
+  box-shadow:0 1px 2px rgba(22,24,28,.04),0 18px 40px -26px rgba(232,84,46,.55);
+  transform-origin:50% 0;}
+.cv2-wc.pre{opacity:0;}
+.cv2-wc::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--c-accent),#ffb38f 45%,var(--c-accent));background-size:200% 100%;}
+.cv2-wc .orb{position:absolute;right:-70px;top:-90px;width:230px;height:230px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(255,92,51,.20),rgba(255,92,51,0));}
+.cv2-wc .sheen{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.85) 48%,rgba(255,214,196,.55) 52%,transparent 65%);
+  transform:translateX(-120%);}
+.cv2-wc > *{position:relative;}
+.cv2-wc .top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cv2-wc .pill{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px 0 10px;border-radius:999px;
+  background:var(--c-tint);border:1px solid var(--c-edge);color:var(--c-ink);font-size:12.5px;font-weight:800;letter-spacing:.01em;}
+.cv2-wc .pill i{position:relative;width:8px;height:8px;border-radius:50%;background:var(--c-accent);}
+.cv2-wc .pill i::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--c-accent);opacity:0;}
+.cv2-wc .top small{font-size:12.5px;font-weight:700;color:var(--c-muted);}
+.cv2-wc .big{display:flex;align-items:flex-end;flex-wrap:wrap;gap:2px 10px;margin:14px 0 0;}
+.cv2-wc .was{position:relative;font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--c-dim);
+  padding-bottom:9px;font-variant-numeric:tabular-nums;}
+.cv2-wc .was::after{content:"";position:absolute;left:-3px;right:-3px;top:32%;height:2px;border-radius:2px;background:var(--c-accent);
+  transform-origin:0 50%;}
+.cv2-wc .arr{display:inline-flex;color:var(--c-accent);padding-bottom:8px;margin:0 -2px;}
+.cv2-wc .arr svg{width:20px;height:20px;}
+.cv2-wc .now{display:inline-flex;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:60px;line-height:1;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+  color:var(--c-text);}
+.cv2-wc .now .dg{display:inline-block;height:1em;overflow:hidden;}
+.cv2-wc .now .sep{margin:0 .02em 0 -.02em;}
+.cv2-wc .now .col{display:block;will-change:transform;}
+.cv2-wc .now .col b{display:block;height:1em;font-weight:800;}
+.cv2-wc .unit{font-size:14px;font-weight:700;color:var(--c-muted);padding-bottom:9px;}
+body.cv2 .cv2-wc h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;font-size:19px!important;font-weight:800!important;
+  letter-spacing:-.015em!important;line-height:1.3!important;margin:10px 0 0!important;color:var(--c-text)!important;-webkit-text-fill-color:currentColor!important;}
+.cv2-wc .rows{list-style:none;margin:12px 0 0;padding:0;border-top:1px solid var(--c-line);}
+.cv2-wc .rows li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--c-line);
+  font-size:14.5px;}
+.cv2-wc .rows .k{display:inline-flex;align-items:center;gap:9px;font-weight:700;color:var(--c-text);}
+.cv2-wc .rows .k svg{width:17px;height:17px;color:var(--c-dim);}
+.cv2-wc .rows .v{display:inline-flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cv2-wc .rows s{color:var(--c-dim);font-weight:600;text-decoration-thickness:1.5px;}
+.cv2-wc .rows .v b{font-weight:800;color:var(--c-ink);background:var(--c-tint);border:1px solid var(--c-edge);border-radius:8px;padding:3px 8px;}
+.cv2-wc .rows .same b{color:var(--c-ok);background:var(--c-ok-tint);border-color:var(--c-ok-edge);}
+.cv2-wc .why{display:flex;gap:11px;align-items:flex-start;margin:14px 0 0;}
+.cv2-wc .why .cv2-av{flex:0 0 auto;width:34px;height:34px;font-size:12.5px;}
+.cv2-wc .why p{margin:0;font-size:14px;line-height:1.55;color:var(--c-muted);}
+.cv2-wc .why p b{display:block;color:var(--c-text);font-size:12.5px;font-weight:800;margin-bottom:1px;}
+.cv2-wc .act{display:flex;gap:10px;margin-top:16px;}
+.cv2-wc .act .cv2-btn{flex:1 1 0;min-height:48px;transition:transform .16s ease,background .2s ease;}
+.cv2-wc .act .cv2-btn:active{transform:scale(.97);}
+.cv2-wc .act .ok svg{width:20px;height:20px;}
+.cv2-wc.bye{transition:height .46s cubic-bezier(.4,0,.1,1),opacity .3s ease,transform .46s cubic-bezier(.4,0,.1,1),margin .46s cubic-bezier(.4,0,.1,1),padding .46s cubic-bezier(.4,0,.1,1),border-width .46s;
+  opacity:0;transform:scale(.96);}
+
+/* motion: the resting state above is the final state; .play only adds the way in */
+.cv2-wc.play{animation:wcIn .72s cubic-bezier(.2,.9,.25,1.06) both;}
+.cv2-wc.play::before{animation:wcBar 2.4s ease-in-out .3s 2;}
+.cv2-wc.play .orb{animation:wcOrb 9s ease-in-out infinite alternate;}
+.cv2-wc.play .sheen{animation:wcSheen 1.25s cubic-bezier(.3,.1,.2,1) .55s both;}
+.cv2-wc.play .pill i::after{animation:wcPing 1.8s cubic-bezier(.2,.7,.3,1) .9s 3;}
+.cv2-wc.play .rise{animation:wcRise .62s cubic-bezier(.2,.85,.25,1) both;animation-delay:calc(.16s + var(--i,0) * .075s);}
+.cv2-wc.play .was::after{animation:wcStrike .45s cubic-bezier(.6,0,.2,1) .62s both;}
+.cv2-wc.play .arr{animation:wcArr .5s cubic-bezier(.2,.9,.3,1.4) .8s both;}
+.cv2-wc.play .rows .v b{animation:wcPop .5s cubic-bezier(.2,.9,.3,1.5) both;animation-delay:calc(.75s + var(--i,0) * .075s);}
+@keyframes wcIn{from{opacity:0;transform:translateY(22px) scale(.965);}to{opacity:1;transform:none;}}
+@keyframes wcRise{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+@keyframes wcBar{0%{background-position:0 0;}100%{background-position:-200% 0;}}
+@keyframes wcOrb{from{transform:translate(0,0) scale(1);}to{transform:translate(-26px,22px) scale(1.12);}}
+@keyframes wcSheen{0%{opacity:1;transform:translateX(-120%);}99%{opacity:1;}100%{opacity:0;transform:translateX(120%);}}
+@keyframes wcPing{0%{opacity:.55;transform:scale(1);}100%{opacity:0;transform:scale(3.4);}}
+@keyframes wcStrike{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+@keyframes wcArr{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:none;}}
+@keyframes wcPop{0%{opacity:0;transform:scale(.8);}100%{opacity:1;transform:none;}}
 
 </style>
 <!-- CV2:CSS:END -->
@@ -3530,7 +3608,7 @@ body.cv2 .cv2-notehead{font-size:14px!important;font-weight:800!important;color:
 <div id="tv2-workout" hidden></div>
 <div id="tv2-guide" hidden></div>
 <div id="tv2-carry">
-<div data-copy="CLIENT_BRIEF_HTML"><div class="cardio-card p1" style="margin-bottom:2rem;"><div class="cardio-card-phase">READ BEFORE WEEK 1.</div><div class="cardio-card-title">How This Program Runs</div><div class="cardio-card-detail"><ul style="margin:0;padding-left:1.1rem;line-height:1.7;"><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR GOAL</strong> You told us: main gym goal is to lose body fat, get rid of my gut, and achieve a shredded, muscular physique.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR NUMBERS</strong> Your calories and macros are set per phase - see each phase card. This is a starting estimate: it changes only when your 7-day average weight and how consistently you are eating say it should, agreed with Omar.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">3 FEEDS A DAY</strong> Breakfast, Lunch, Dinner - any time that suits your day. All meat is halal.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">5 SESSIONS A WEEK</strong> Push, Pull, Legs, Upper, Lower.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">WEEK 1 IS LEARNING WEEK</strong> No weights are printed. Find a weight you can lift for the reps shown with the reps in reserve shown and good technique, and write it down. Never train to failure.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">IF SOMETHING IS NOT AVAILABLE</strong> Swaps for missing equipment are listed under each phase. If anything hurts (not normal training effort), stop that exercise and tell Omar.</li></ul></div></div></div>
+<div data-copy="CLIENT_BRIEF_HTML"><div class="cardio-card p1" style="margin-bottom:2rem;"><div class="cardio-card-phase">READ BEFORE WEEK 1.</div><div class="cardio-card-title">How This Program Runs</div><div class="cardio-card-detail"><ul style="margin:0;padding-left:1.1rem;line-height:1.7;"><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR GOAL</strong> You told us: main gym goal is to lose body fat, get rid of my gut, and achieve a shredded, muscular physique.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">YOUR NUMBERS</strong> Your calories and macros are set per phase - see each phase card. This is a starting estimate: it changes only when your 7-day average weight and how consistently you are eating say it should, agreed with Omar.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">3 FEEDS A DAY</strong> Breakfast, Lunch, Dinner - any time that suits your day. All meat is halal.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">5 SESSIONS A WEEK</strong> Push, Pull, Legs, Upper, Lower.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">WEEK 1 IS LEARNING WEEK</strong> No weights are printed. Find a weight you can lift for the reps shown with the reps in reserve shown and good technique, and write it down. Only the last set of the exercises your phase card names goes to failure. Every other set stops with reps left in the tank.</li><li style="margin-bottom:0.9rem;"><strong style="color:var(--text);">IF SOMETHING IS NOT AVAILABLE</strong> Swaps for missing equipment are listed under each phase. If anything hurts (not normal training effort), stop that exercise and tell Omar.</li></ul></div></div></div>
 </div>
 <div id="tv2-prog" hidden></div>
 <div id="tv2-done" hidden></div>
@@ -4360,6 +4438,47 @@ const howTos = {
   for (var a in A) if (!has(a) && has(A[a])) howTos[a] = howTos[A[a]];   // same movement: this page's own library text
 })();
 
+// HOW TO COVERAGE V2 (Omar 2026-11-20): HOW TO for exercise names added by the fleet training revamp.
+// Aliases point at the entry for the same movement already on this page; the rest is new (hypertrophy-programming, client-qa PASS).
+// Never overrides an existing entry. Source: client_template agent_workspace/onboarding/live_updates/fleet_howto_20261120.
+(function () { var X = {
+"Cable Fly": "Set the pulleys at about chest height and stand in the middle with one foot slightly forward. Hold a handle in each hand with a soft bend in your elbows and step forward until the cables are tight. Sweep your arms in a wide arc until your hands meet in front of your chest, then squeeze. Open back out slowly until you feel a stretch across your chest, and keep the elbow bend the same the whole time.",
+"Chin-Up": "Grip the bar with your palms facing you, hands about shoulder width apart, and hang with your arms long. Pull your elbows down toward your ribs until your chin clears the bar, leading with your chest. Lower slowly to a full hang before the next rep. Don't kick or swing your legs to get up.",
+"Dip": "Grip the parallel bars and lift yourself up with your arms nearly straight, shoulders down and away from your ears. Lean your torso slightly forward and lower under control until your upper arms are about parallel to the floor. Press back up through your palms without locking out hard. Stop the descent if your shoulders feel pinched, and don't bounce at the bottom.",
+"Dumbbell Arnold Press": "Sit upright on a bench or sturdy chair with a dumbbell in each hand at chest height and your palms facing you. Press up while rotating your palms to face forward, finishing with your arms nearly straight overhead. Reverse the rotation as you lower back to the start with control. Keep your ribs down and your core braced so your lower back doesn't arch.",
+"Dumbbell Goblet Squat": "Hold one dumbbell vertically against your chest with both hands, elbows pointing down. Stand with your feet slightly wider than your hips and toes turned out a little. Sit down between your knees as deep as you comfortably can, then drive through your whole foot to stand. Keep your chest tall and your heels flat on the floor.",
+"Dumbbell Hip Thrust": "Sit on the floor with your upper back against a bench or other sturdy low surface, and rest a dumbbell across your hips with a folded towel for comfort. Place your feet flat with your knees bent and drive through your heels to lift your hips until your torso is parallel to the floor. Squeeze your glutes hard at the top, then lower with control. Keep your ribs down so you don't hyperextend your lower back.",
+"Dumbbell Incline-Style Curl": "Sit upright on a sturdy chair with a dumbbell in each hand, leaning your torso back slightly against the backrest. Let your arms hang straight down behind your hips so your upper arms sit just behind your body. Curl both dumbbells up by bending only at the elbows, keeping your upper arms still, then lower slowly until your arms are fully straight for a deep stretch. Keep the chair flat on the floor and don't let your shoulders roll forward or swing the weights.",
+"Dumbbell Reverse Lunge": "Hold a dumbbell in each hand at your sides and stand tall. Step one foot back and lower your back knee toward the floor while your front shin stays roughly vertical. Push through the heel of your front foot to return to standing. Keep your torso upright and complete all reps on one leg, or alternate sides each rep.",
+"Dumbbell Triceps Kickback": "Hold a dumbbell in one hand and hinge forward at the hips with a flat back, supporting yourself with your other hand on a bench or sturdy surface. Pin your upper arm against your side, parallel to the floor, with your elbow bent. Straighten your arm back behind you until it is fully extended and squeeze your triceps. Lower slowly without letting your upper arm drop or swing.",
+"EZ-Bar Skull Crusher": "Lie on a bench holding an EZ bar with your arms extended straight above your shoulders. Keep your upper arms still and bend only at the elbows to lower the bar toward your forehead or just behind your head. Extend back up by squeezing your triceps, stopping just short of a hard lockout. Keep your elbows pointing at the ceiling rather than flaring out, and use a controlled lowering phase.",
+"Feet-Elevated Push-Up": "Place your hands on the floor slightly wider than your shoulders and rest your feet on a sturdy bench or step. Make a straight line from your head to your heels and brace your core and glutes. Lower your chest toward the floor with your elbows angled back and in toward your ribs, not flared straight out to the sides, then press back up. Don't let your hips sag or your elbows flare wide.",
+"Glute Bridge Machine": "Sit in the machine with your upper back against the back pad and the belt or pad set snugly across your hips, with your feet flat on the platform or floor as the machine is designed. Drive through your heels to lift your hips until your body forms a straight line from shoulders to knees, and squeeze your glutes hard at the top. Lower slowly under control. Keep your ribs down so the movement comes from your hips, not an arched lower back.",
+"Incline Dumbbell Curl": "Set a bench to a reclined angle and sit back with a dumbbell in each hand, arms hanging straight down behind your torso. Curl both dumbbells up by bending only at the elbows, keeping your upper arms still. Squeeze at the top, then lower slowly to a full stretch at the bottom. Keep your head and back against the pad and don't swing.",
+"Machine Row": "Adjust the seat so the handles are at mid-chest height when your arms are extended, and press your chest against the pad. Grip the handles and pull them back by driving your elbows behind you, squeezing your shoulder blades together at the end. Return slowly until your arms are straight and you feel a stretch across your back. Keep your chest on the pad and don't shrug or jerk the weight.",
+"One-Arm Dumbbell Row": "Place one knee and the same-side hand on a bench or sturdy chair for support, with your back flat. Hold the dumbbell in your free hand and row it up toward your hip, keeping your elbow close to your body. Squeeze your back hard at the top. Lower slowly and let your shoulder drop slightly for a full stretch.",
+"Pull-Up": "Grip the bar overhand, slightly wider than shoulder width, and hang with your arms long and shoulders engaged. Pull your elbows down and back until your chin clears the bar, keeping your chest up. Lower slowly to a full hang before the next rep. Avoid kipping or swinging your legs.",
+"Push-Up": "Place your hands on the floor slightly wider than your shoulders and make a straight line from your head to your heels. Brace your core and glutes, then lower your chest toward the floor with your elbows angled back and in toward your ribs, not flared straight out to the sides. Press back up until your arms are straight. Don't let your hips sag or your head drop forward.",
+"Single-Leg Calf Raise": "Stand on one foot with the ball of that foot on the edge of a step, heel hanging off, and hold a wall or rail for balance. Lower your heel below the step for a full stretch, then press up onto your toes as high as you can and squeeze. Lower slowly and don't bounce. Complete all reps on one leg, then switch.",
+"Single-Leg Dumbbell Romanian Deadlift": "Hold a dumbbell in one or both hands and stand on one leg with a soft bend in the knee. Hinge at your hip, pushing it back while your free leg extends behind you and the weight lowers down your standing leg. Feel the stretch in your hamstring, then drive your hips forward to stand tall. Keep your back flat and hips square to the floor, and complete all reps on one side before switching.",
+"Single-Leg Glute Bridge": "Lie on your back with one knee bent and that foot flat on the floor, and the other leg extended straight. Drive through the heel of the planted foot to lift your hips until your body forms a straight line from shoulders to knee. Squeeze the glute hard at the top. Lower with control.",
+"Skull Crusher": "Lie on a bench holding an EZ bar or dumbbells with your arms extended straight above your shoulders. Keep your upper arms still and bend only at the elbows to lower the weight toward your forehead or just behind your head. Extend back up by squeezing your triceps, stopping just short of a hard lockout. Keep your elbows pointing at the ceiling rather than flaring out, and use a controlled lowering phase.",
+"Standing Dumbbell Calf Raise": "Stand tall holding one dumbbell in one hand at your side, with the balls of your feet on the edge of the bottom stair or a low sturdy step and your heels hanging off. Rest your free hand on a wall for balance. Lower your heels below the step for a full stretch, then rise up onto your toes as high as you can and squeeze at the top. Lower slowly with no bouncing."
+};
+  var A = {
+"Assisted Pull-Up": "Pull-Up Assisted (Machine)",
+"Bent-Over Dumbbell Row": "DB Bent-Over Row",
+"Dumbbell Curl": "DB Bicep Curl",
+"Dumbbell Reverse Fly": "Rear Delt Fly (DB)",
+"Dumbbell Romanian Deadlift": "Romanian Deadlift (DB)",
+"Flat DB Bench Press": "Flat DB Chest Press",
+"Overhead Dumbbell Triceps Extension": "Overhead Tricep Extension (DB)"
+};
+  var has = function (k) { return Object.prototype.hasOwnProperty.call(howTos, k); };
+  for (var k in X) if (!has(k)) howTos[k] = X[k];
+  for (var a in A) if (!has(a) && has(A[a])) howTos[a] = howTos[A[a]];
+})();
+
 
 // ╔═════════════════════════════════════════════════════════════════════════╗
 // ║  EDIT ZONE — TRAINING PLANS                                             ║
@@ -4459,11 +4578,11 @@ const phases = {
   },
   2: {
     label: "Build", weeks: "5–8",
-    desc: "5 sessions a week - Push, Pull, Legs, Upper, Lower. Every set stops at the reps-in-reserve shown. Week 8 is a deload.",
+    desc: "5 sessions a week - Push, Pull, Legs, Upper, Lower. Work every set to 1 rep in reserve (RIR 1). Only the last set of a cable or machine isolation exercise goes to failure: cable lateral raise, face pull, triceps pushdown, overhead cable extension, cable kickback, cable curl, cable fly, leg extension and seated leg curl. Dumbbell lateral raise, every press, row, pulldown, squat, deadlift, hip thrust, lunge, free-weight curl, calf raise and ab exercise stays at RIR 1 and never goes to failure. Deload weeks have no failure sets. Week 8 is a deload.",
     info: [
       { label: "Weeks", val: "5–8", desc: "Build" },
       { label: "Sessions", val: "5/wk", desc: "Push · Pull · Legs · Upper · Lower" },
-      { label: "Effort", val: "1–2 RIR", desc: "Reps in reserve - never train to failure" },
+      { label: "Effort", val: "1 RIR", desc: "RIR 1; last isolation set to failure" },
       { label: "Deload", val: "Week 8", desc: "Fewer sets, easier effort" },
     ],
     days: [
@@ -4471,10 +4590,10 @@ const phases = {
         label: "Day 1 — Push",
         badge: "MANDATORY",
         exercises: [
-          { name: "Incline DB Press", sets: "3", reps: "6–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Machine Chest Press", sets: "3", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Seated DB Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Incline DB Press", sets: "4", reps: "6–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Machine Chest Press", sets: "4", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Seated DB Shoulder Press", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "5", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Triceps Pushdown", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Overhead Cable Triceps Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
@@ -4483,8 +4602,8 @@ const phases = {
         label: "Day 2 — Pull",
         badge: "MANDATORY",
         exercises: [
-          { name: "Lat Pulldown", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Lat Pulldown", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Seated Cable Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Face Pull", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "EZ Bar Curl", sets: "3", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
@@ -4496,23 +4615,24 @@ const phases = {
         label: "Day 3 — Legs",
         badge: "MANDATORY",
         exercises: [
-          { name: "Hack Squat", sets: "4", reps: "6–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "DB Romanian Deadlift", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Hack Squat", sets: "4", reps: "6–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "DB Romanian Deadlift", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Leg Extension", sets: "3", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Lying Leg Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Standing Calf Raise", sets: "4", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Seated Leg Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Pull-Through", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Standing Calf Raise", sets: "5", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
         label: "Day 4 — Upper",
         badge: "MANDATORY",
         exercises: [
-          { name: "Flat DB Bench Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "105s", rpe: "" },
+          { name: "Flat DB Bench Press", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "105s", rpe: "" },
           { name: "Cable Fly", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Machine Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "DB Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "DB Lateral Raise", sets: "5", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Face Pull", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Cable Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Triceps Kickback", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
@@ -4521,9 +4641,9 @@ const phases = {
         label: "Day 5 — Lower",
         badge: "MANDATORY",
         exercises: [
-          { name: "Leg Press", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Walking Lunge", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Leg Press", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "DB Hip Thrust", sets: "4", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "DB Walking Lunge", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Seated Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Seated Calf Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Hanging Leg Raise", sets: "3", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4533,8 +4653,8 @@ const phases = {
     ],
     progression: [
       ["Exercise", "How it moves"],
-      ["Every exercise", "Load progression: add 2.5 kg (upper isolation 1-2 kg) when the top of the rep range is hit on all working sets at target RIR."],
-      ["Deload week (week 8)", "Weeks 4, 8, 12: cut sets by ~40% and hold RIR 3-4; week 16 is a deload plus final review."],
+      ["Every exercise", "Load progression: add 2.5 kg (upper isolation 1-2 kg) when the top of the rep range is hit on every working set at RIR 1. Inside a phase only load and reps move; sets step up by phase."],
+      ["Deload week (week 8)", "Weeks 8, 12, 16: cut to 2 sets per exercise (calves/abs 1-2), RIR 3-4, no failure sets. Week 4 is the existing phase 1 deload, unchanged."],
       ["If this is not available", "Use this instead"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press"],
       ["Incline DB Press", "Incline Smith Press - otherwise Incline Machine Press"],
@@ -4542,15 +4662,16 @@ const phases = {
       ["DB Hip Thrust", "Machine Hip Thrust - otherwise Smith Machine Hip Thrust"],
       ["Chest-Supported Row", "Machine Row - otherwise Seated Cable Row"],
       ["Hanging Leg Raise", "Captain's Chair Leg Raise - otherwise Cable Crunch"],
+      ["Seated Leg Curl", "Lying Leg Curl - otherwise Cable Pull-Through"],
     ],
   },
   3: {
     label: "Consolidate", weeks: "9–12",
-    desc: "5 sessions a week - Push, Pull, Legs, Upper, Lower. Every set stops at the reps-in-reserve shown. Week 12 is a deload.",
+    desc: "5 sessions a week - Push, Pull, Legs, Upper, Lower. Work every set to 1 rep in reserve (RIR 1). Only the last set of a cable or machine isolation exercise goes to failure: cable lateral raise, face pull, triceps pushdown, overhead cable extension, cable kickback, cable curl, cable fly, leg extension and seated leg curl. Dumbbell lateral raise, every press, row, pulldown, squat, deadlift, hip thrust, lunge, free-weight curl, calf raise and ab exercise stays at RIR 1 and never goes to failure. Deload weeks have no failure sets. Week 12 is a deload.",
     info: [
       { label: "Weeks", val: "9–12", desc: "Consolidate" },
       { label: "Sessions", val: "5/wk", desc: "Push · Pull · Legs · Upper · Lower" },
-      { label: "Effort", val: "1–2 RIR", desc: "Reps in reserve - never train to failure" },
+      { label: "Effort", val: "1 RIR", desc: "RIR 1; last isolation set to failure" },
       { label: "Deload", val: "Week 12", desc: "Fewer sets, easier effort" },
     ],
     days: [
@@ -4558,20 +4679,20 @@ const phases = {
         label: "Day 1 — Push",
         badge: "MANDATORY",
         exercises: [
-          { name: "Incline DB Press", sets: "3", reps: "6–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Machine Chest Press", sets: "3", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Seated DB Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Incline DB Press", sets: "4", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Machine Chest Press", sets: "4", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Seated DB Shoulder Press", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "5", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Triceps Pushdown", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Overhead Cable Triceps Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Overhead Cable Triceps Extension", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 2 — Pull",
         badge: "MANDATORY",
         exercises: [
-          { name: "Lat Pulldown", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Chest-Supported Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
           { name: "Seated Cable Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Face Pull", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "EZ Bar Curl", sets: "3", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
@@ -4583,24 +4704,25 @@ const phases = {
         label: "Day 3 — Legs",
         badge: "MANDATORY",
         exercises: [
-          { name: "Hack Squat", sets: "4", reps: "6–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "DB Romanian Deadlift", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Lying Leg Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Standing Calf Raise", sets: "4", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Hack Squat", sets: "4", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "DB Romanian Deadlift", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Leg Extension", sets: "4", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Seated Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Pull-Through", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Standing Calf Raise", sets: "5", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
         label: "Day 4 — Upper",
         badge: "MANDATORY",
         exercises: [
-          { name: "Flat DB Bench Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "105s", rpe: "" },
-          { name: "Cable Fly", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Flat DB Bench Press", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "105s", rpe: "" },
+          { name: "Cable Fly", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Machine Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "DB Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
-          { name: "Cable Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "DB Lateral Raise", sets: "5", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Face Pull", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Cable Triceps Kickback", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
@@ -4608,9 +4730,9 @@ const phases = {
         label: "Day 5 — Lower",
         badge: "MANDATORY",
         exercises: [
-          { name: "Leg Press", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Walking Lunge", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Leg Press", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "DB Hip Thrust", sets: "5", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "DB Walking Lunge", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Seated Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Seated Calf Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Hanging Leg Raise", sets: "3", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4620,8 +4742,8 @@ const phases = {
     ],
     progression: [
       ["Exercise", "How it moves"],
-      ["Every exercise", "Load progression: add 2.5 kg (upper isolation 1-2 kg) when the top of the rep range is hit on all working sets at target RIR."],
-      ["Deload week (week 12)", "Weeks 4, 8, 12: cut sets by ~40% and hold RIR 3-4; week 16 is a deload plus final review."],
+      ["Every exercise", "Load progression: add 2.5 kg (upper isolation 1-2 kg) when the top of the rep range is hit on every working set at RIR 1. Inside a phase only load and reps move; sets step up by phase."],
+      ["Deload week (week 12)", "Weeks 8, 12, 16: cut to 2 sets per exercise (calves/abs 1-2), RIR 3-4, no failure sets. Week 4 is the existing phase 1 deload, unchanged."],
       ["If this is not available", "Use this instead"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press"],
       ["Incline DB Press", "Incline Smith Press - otherwise Incline Machine Press"],
@@ -4629,15 +4751,16 @@ const phases = {
       ["DB Hip Thrust", "Machine Hip Thrust - otherwise Smith Machine Hip Thrust"],
       ["Chest-Supported Row", "Machine Row - otherwise Seated Cable Row"],
       ["Hanging Leg Raise", "Captain's Chair Leg Raise - otherwise Cable Crunch"],
+      ["Seated Leg Curl", "Lying Leg Curl - otherwise Cable Pull-Through"],
     ],
   },
   4: {
     label: "Lock-in", weeks: "13–16",
-    desc: "5 sessions a week - Push, Pull, Legs, Upper, Lower. Every set stops at the reps-in-reserve shown. Week 16 is a deload. Week 16 is also your review with Omar.",
+    desc: "5 sessions a week - Push, Pull, Legs, Upper, Lower. Work every set to 1 rep in reserve (RIR 1). Only the last set of a cable or machine isolation exercise goes to failure: cable lateral raise, face pull, triceps pushdown, overhead cable extension, cable kickback, cable curl, cable fly, leg extension and seated leg curl. Dumbbell lateral raise, every press, row, pulldown, squat, deadlift, hip thrust, lunge, free-weight curl, calf raise and ab exercise stays at RIR 1 and never goes to failure. Deload weeks have no failure sets. Week 16 is a deload. Week 16 is also your review with Omar.",
     info: [
       { label: "Weeks", val: "13–16", desc: "Lock-in" },
       { label: "Sessions", val: "5/wk", desc: "Push · Pull · Legs · Upper · Lower" },
-      { label: "Effort", val: "1–2 RIR", desc: "Reps in reserve - never train to failure" },
+      { label: "Effort", val: "1 RIR", desc: "RIR 1; last isolation set to failure" },
       { label: "Deload", val: "Week 16", desc: "Fewer sets, easier effort" },
     ],
     days: [
@@ -4645,24 +4768,24 @@ const phases = {
         label: "Day 1 — Push",
         badge: "MANDATORY",
         exercises: [
-          { name: "Incline DB Press", sets: "3", reps: "6–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "Machine Chest Press", sets: "3", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Seated DB Shoulder Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Cable Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Incline DB Press", sets: "4", reps: "6–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "Machine Chest Press", sets: "4", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Seated DB Shoulder Press", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Cable Lateral Raise", sets: "6", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Triceps Pushdown", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Overhead Cable Triceps Extension", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Overhead Cable Triceps Extension", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
         ]
       },
       {
         label: "Day 2 — Pull",
         badge: "MANDATORY",
         exercises: [
-          { name: "Lat Pulldown", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Seated Cable Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Lat Pulldown", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Chest-Supported Row", sets: "3", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Seated Cable Row", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Face Pull", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "EZ Bar Curl", sets: "3", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Incline DB Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Incline DB Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Hammer Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
@@ -4670,34 +4793,35 @@ const phases = {
         label: "Day 3 — Legs",
         badge: "MANDATORY",
         exercises: [
-          { name: "Hack Squat", sets: "4", reps: "6–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
-          { name: "DB Romanian Deadlift", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Leg Extension", sets: "3", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Lying Leg Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
-          { name: "Cable Pull-Through", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "Standing Calf Raise", sets: "4", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Hack Squat", sets: "4", reps: "6–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2.5 min", rpe: "" },
+          { name: "DB Romanian Deadlift", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Leg Extension", sets: "4", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Seated Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Pull-Through", sets: "5", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Standing Calf Raise", sets: "5", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
         label: "Day 4 — Upper",
         badge: "MANDATORY",
         exercises: [
-          { name: "Flat DB Bench Press", sets: "3", reps: "8–10", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "105s", rpe: "" },
-          { name: "Cable Fly", sets: "2", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Flat DB Bench Press", sets: "4", reps: "8–10", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "Neutral-Grip Lat Pulldown", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "105s", rpe: "" },
+          { name: "Cable Fly", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Machine Row", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
-          { name: "DB Lateral Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
-          { name: "Cable Curl", sets: "2", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
-          { name: "Cable Triceps Kickback", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "DB Lateral Raise", sets: "5", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Face Pull", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
+          { name: "Cable Curl", sets: "3", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
+          { name: "Cable Triceps Kickback", sets: "4", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
         ]
       },
       {
         label: "Day 5 — Lower",
         badge: "MANDATORY",
         exercises: [
-          { name: "Leg Press", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Hip Thrust", sets: "4", reps: "8–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
-          { name: "DB Walking Lunge", sets: "3", reps: "10–12", rir: "2", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
+          { name: "Leg Press", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "DB Hip Thrust", sets: "5", reps: "8–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "2 min", rpe: "" },
+          { name: "DB Walking Lunge", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "90s", rpe: "" },
           { name: "Seated Leg Curl", sets: "4", reps: "10–12", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "75s", rpe: "" },
           { name: "Seated Calf Raise", sets: "3", reps: "12–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
           { name: "Hanging Leg Raise", sets: "3", reps: "10–15", rir: "1", weight: "Wk 1: find load · after: your logged load", rest: "60s", rpe: "" },
@@ -4707,8 +4831,8 @@ const phases = {
     ],
     progression: [
       ["Exercise", "How it moves"],
-      ["Every exercise", "Load progression: add 2.5 kg (upper isolation 1-2 kg) when the top of the rep range is hit on all working sets at target RIR."],
-      ["Deload week (week 16)", "Weeks 4, 8, 12: cut sets by ~40% and hold RIR 3-4; week 16 is a deload plus final review."],
+      ["Every exercise", "Load progression: add 2.5 kg (upper isolation 1-2 kg) when the top of the rep range is hit on every working set at RIR 1. Inside a phase only load and reps move; sets step up by phase."],
+      ["Deload week (week 16)", "Weeks 8, 12, 16: cut to 2 sets per exercise (calves/abs 1-2), RIR 3-4, no failure sets. Week 4 is the existing phase 1 deload, unchanged."],
       ["If this is not available", "Use this instead"],
       ["Hack Squat", "Smith Machine Squat - otherwise Leg Press"],
       ["Incline DB Press", "Incline Smith Press - otherwise Incline Machine Press"],
@@ -4716,6 +4840,7 @@ const phases = {
       ["DB Hip Thrust", "Machine Hip Thrust - otherwise Smith Machine Hip Thrust"],
       ["Chest-Supported Row", "Machine Row - otherwise Seated Cable Row"],
       ["Hanging Leg Raise", "Captain's Chair Leg Raise - otherwise Cable Crunch"],
+      ["Seated Leg Curl", "Lying Leg Curl - otherwise Cable Pull-Through"],
     ],
   },
 };
@@ -12332,15 +12457,91 @@ window.CV2_DEFAULT = 'v2';
       '<div class="cv2-divider"></div>' + ck + '</div>';
   }
 
+  /* ---- what changed: one card at the top of Home for 7 days after a plan update ----
+     Data: window.CV2_PLAN_UPDATE = { id, date:'YYYY-MM-DD', title, headline:{from,to,unit}, rows:[{icon,label,from,to}], why, cta:{label,go} }
+     The node is kept across Home re-renders so the way in plays once. */
+  var _wcEl = null, WC_DAYS = 7, WC_KEY = SK + '_wc_seen';
+  function wcData() {
+    var u = window.CV2_PLAN_UPDATE; if (!u || !u.id || !u.title) return null;
+    var d = parseYmd(u.date); if (!d) return null;
+    var age = (new Date() - d) / 864e5; if (age < 0 || age > WC_DAYS) return null;
+    if (lsGet(WC_KEY, '') === u.id) return null;
+    return u;
+  }
+  function wcFmt(n) { return typeof n === 'number' ? n.toLocaleString('en-AU') : String(n == null ? '' : n); }
+  function wcOdo(to) {
+    return wcFmt(to).split('').map(function (ch) {
+      if (!/\d/.test(ch)) return '<span class="sep">' + esc(ch) + '</span>';
+      return '<span class="dg"><span class="col" data-d="' + ch + '" style="transform:translateY(-' + (+ch * 10) + '%)"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span>';
+    }).join('');
+  }
+  function wcBuild(u) {
+    var el = document.createElement('section'); el.className = 'cv2-wc pre'; el.id = 'cv2-wc'; el.setAttribute('aria-label', 'Plan update');
+    var d = parseYmd(u.date), hl = u.headline, i = 0, r = function () { return ' class="rise" style="--i:' + (i++) + '"'; };
+    var rc = function (c) { return ' class="' + c + ' rise" style="--i:' + (i++) + '"'; };
+    el.innerHTML = '<span class="orb"></span><span class="sheen"></span>' +
+      '<div' + rc('top') + '><span class="pill"><i></i>Plan updated</span><small>' + esc(fmtWD(d)) + '</small></div>' +
+      (hl ? '<div' + rc('big') + ' aria-label="' + esc(wcFmt(hl.from) + ' to ' + wcFmt(hl.to) + ' ' + (hl.unit || '')) + '">' +
+        (hl.from != null ? '<span class="was">' + esc(wcFmt(hl.from)) + '</span><span class="arr">' + I('flat') + '</span>' : '') +
+        '<span class="now" aria-hidden="true">' + wcOdo(hl.to) + '</span><span class="unit">' + esc(hl.unit || '') + '</span></div>' : '') +
+      '<h2' + r() + '>' + esc(u.title) + '</h2>' +
+      ((u.rows || []).length ? '<ul class="rows">' + u.rows.map(function (x) {
+        var same = x.from == null || x.from === x.to;
+        return '<li' + rc(x.keep ? 'same' : '') + '><span class="k">' + I(x.icon || 'target') + esc(x.label) + '</span><span class="v">' +
+          (x.from != null && !x.keep ? '<s>' + esc(wcFmt(x.from)) + '</s>' : '') + '<b>' + esc(wcFmt(x.to)) + '</b></span></li>';
+      }).join('') + '</ul>' : '') +
+      (u.why ? '<div' + rc('why') + '><span class="cv2-av">' + esc(initials(COACH)) + '</span><p><b>Why, from ' + esc(COACH) + '</b>' + esc(u.why) + '</p></div>' : '') +
+      '<div' + rc('act') + '>' + (u.cta ? '<button type="button" class="cv2-btn primary go">' + esc(u.cta.label) + '</button>' : '') +
+      '<button type="button" class="cv2-btn secondary ok">Got it</button></div>';
+    var go = el.querySelector('.go'); if (go) go.onclick = function () { window.cv2Go(u.cta.go); };
+    el.querySelector('.ok').onclick = function () { wcDismiss(el, u); };
+    return el;
+  }
+  function wcPlay(el, u) {
+    var hl = u.headline || {}, from = wcFmt(hl.from != null ? hl.from : hl.to).replace(/\D/g, ''), cols = el.querySelectorAll('.now .col');
+    var pad = cols.length - from.length;
+    [].forEach.call(cols, function (c, i) {      // each digit rolls from the old number to the new one, left to right
+      var f = +(from.charAt(i - pad) || 0), t = +c.getAttribute('data-d');
+      c.style.transition = 'none'; c.style.transform = 'translateY(-' + (f * 10) + '%)';
+      void c.offsetHeight;
+      c.style.transition = 'transform ' + (1.15 + i * .12) + 's cubic-bezier(.16,.9,.2,1) ' + (.7 + i * .07) + 's';
+      c.style.transform = 'translateY(-' + (t * 10) + '%)';
+    });
+    el.classList.remove('pre'); el.classList.add('play');
+  }
+  function wcDismiss(el, u) {
+    try { localStorage.setItem(WC_KEY, JSON.stringify(u.id)); } catch (e) {}
+    var b = el.querySelector('.ok'); if (b) b.innerHTML = I('check');
+    setTimeout(function () {
+      el.style.height = el.offsetHeight + 'px'; void el.offsetHeight; el.classList.remove('play'); el.classList.add('bye');
+      el.style.height = '0px'; el.style.paddingTop = el.style.paddingBottom = '0px'; el.style.marginBottom = '-12px'; el.style.borderWidth = '0px';
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); _wcEl = null; }, 500);
+    }, 260);
+  }
+  function wcMount() {
+    var slot = $('cv2-wc-slot'); if (!slot) return;
+    var u = call(wcData); if (!u) { if (slot.parentNode) slot.parentNode.removeChild(slot); _wcEl = null; return; }
+    var isNew = !_wcEl; if (isNew) _wcEl = call(function () { return wcBuild(u); });
+    if (!_wcEl) { slot.parentNode.removeChild(slot); return; }
+    slot.parentNode.replaceChild(_wcEl, slot);
+    if (!isNew) return;
+    var el = _wcEl, start = function () { call(function () { wcPlay(el, u); }); };
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) { if (es.some(function (e) { return e.isIntersecting; })) { io.disconnect(); start(); } }, { threshold: .35 });
+      io.observe(el);
+    } else start();
+  }
+
   function renderHome() {
     var el = $('cv2-cv2home-page'); if (!el) return;
     var wk = D.week();
     var sub = (wk.canonical ? (wk.started ? (wk.over ? 'Program complete · ' : 'Week ' + wk.week + ' of ' + wk.total + ' · ') : 'Starts soon · ') : '') + 'Coached by ' + COACH;
     el.innerHTML =
       '<div class="cv2-hello"><div class="tx"><h1>' + esc(greeting()) + ', ' + esc(firstName()) + '</h1><div class="sub">' + esc(sub) + '</div></div></div>' +
-      todayCard() + nutritionCard() +
+      '<div id="cv2-wc-slot"></div>' + todayCard() + nutritionCard() +
       secLabel('This week', '<small>from ' + esc(fmtD(mondayOf(new Date()))) + '</small>') + weekCard() +
       secLabel('Your coach') + coachTeaser();
+    wcMount();
     if (_serverWeights === null) D.fetchWeights().then(function (w) { if (w && w.length && current === 'cv2home') renderHome(); });
   }
 
@@ -13177,7 +13378,7 @@ window.CV2_DEFAULT = 'v2';
 <!-- StrengthByO Program Metadata
   generatorVersion: 2026-08-24-v3
   nutritionDBVersion: 2026-08-24-simple_meal_prep-audited
-  generatedAt: 2026-11-02T03:21:24.568236Z
+  generatedAt: 2026-11-20T02:30:28.018584Z
   clientStorageKey: mohamad_fatfat
   configPath: mohamad_fatfat.json
   safetyBlockers: 0
