@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#000000"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="StrengthByO Coach"/>
+<meta name="apple-mobile-web-app-title" content="LOCKED IN Coach"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Omar Soubra Coaching — Coach Dashboard</title>
@@ -2732,6 +2732,23 @@ body.v2-p5 #cc-review-modal .cc-btn.primary { background: var(--v2-ink); border-
 body.v2-p5 #cc-review-modal .cc-btn.ghost { background: transparent; }
 body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
 /* ─── UI_V2 POLISH PASS CSS END ─── */
+/* 2026-11-23 audit, batch 2: the client form and the message composer were still the old dark design inside the light layout */
+body.ui-v2 #client-form-overlay, body.ui-v2 .cd3-compose-overlay {
+  --bg: #f4f5f7; --surface: #ffffff; --surface2: #f6f7f9; --border: #e3e5ea; --text: #15161c; --muted: #6b7080;
+  --accent: #15161c; --accent3: #00845b; --danger: #c43c3c; --warn: #9a6408;
+  background: rgba(21, 22, 28, .45);
+}
+body.ui-v2 #client-form-overlay .cf-panel, body.ui-v2 .cd3-compose-modal { background: #fff; color: #15161c; border-color: #e3e5ea; box-shadow: 0 20px 60px rgba(21,22,28,.18); }
+body.ui-v2 #client-form-overlay .cf-panel { margin: 0 auto; }
+body.ui-v2 #client-form-overlay .cf-mode-badge { display: none; }
+body.ui-v2 #client-form-overlay input, body.ui-v2 #client-form-overlay select, body.ui-v2 #client-form-overlay textarea,
+body.ui-v2 .cd3-compose-modal input, body.ui-v2 .cd3-compose-modal select, body.ui-v2 .cd3-compose-modal textarea {
+  background: #fff; color: #15161c; border: 1px solid #d3d6dd; color-scheme: light;
+}
+body.ui-v2 #client-form-overlay input::placeholder, body.ui-v2 #client-form-overlay textarea::placeholder { color: #9aa0ad; }
+body.ui-v2 #client-form-overlay .cf-footer, body.ui-v2 #client-form-overlay .cf-header { background: #fff; border-color: #e3e5ea; }
+body.ui-v2 #client-form-overlay .btn, body.ui-v2 .cd3-compose-modal .cd3-btn { background: #fff; color: #15161c; border: 1px solid #d3d6dd; }
+body.ui-v2 #client-form-overlay .btn.primary, body.ui-v2 #client-form-overlay .cf-footer .btn:last-child { background: #15161c; color: #fff; border-color: #15161c; }
 /* 2026-11-23 dashboard audit */
 .v2-cd-stats > .v2-cd-stat:last-child { grid-column-end: -1; }             /* a wrapped last tile fills its row: no grey block */
 .v2-cl-row .c-why2 { font-size: 12.5px; font-weight: 500; }
@@ -2773,13 +2790,13 @@ body.ui-v2 .v2-chip.lc, body.ui-v2 .lc-chip { text-transform: capitalize; }
   <div id="v2-shell" hidden>
     <div class="v2-topbar">
       <button class="v2-icon-btn" type="button" aria-label="Open navigation" onclick="UIV2.openDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-      <span class="v2-topbar-brand">STRENGTH<span>BY</span>O</span>
+      <span class="v2-topbar-brand">LOCKED <span>IN</span></span>
       <span class="v2-topbar-title" id="v2-topbar-title">Today</span>
     </div>
     <div class="v2-backdrop" onclick="UIV2.closeDrawer()"></div>
     <nav class="v2-sidebar" aria-label="Coach navigation">
       <div class="v2-side-head">
-        <span class="v2-brand"><b>STRENGTH<span>BY</span>O</b><small>Coach dashboard</small></span>
+        <span class="v2-brand"><b>LOCKED <span>IN</span></b><small>Coach dashboard</small></span>
         <span class="v2-brand-mini">S<span>O</span></span>
         <button class="v2-icon-btn v2-collapse" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="UIV2.toggleCollapse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
       </div>
@@ -2909,7 +2926,7 @@ body.ui-v2 .v2-chip.lc, body.ui-v2 .lc-chip { text-transform: capitalize; }
 
   <div class="header">
     <div class="brand">
-      <h1>STRENGTH<span class="accent">BY</span>O</h1>
+      <h1>LOCKED <span class="accent">IN</span></h1>
       <span class="tag">Coach Dashboard</span>
     </div>
     <div class="header-controls">
@@ -12959,8 +12976,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // "Contacted" / "Snooze" sync across devices on the roster (churnState) like the queue's done/snooze (todayState).
   var CR = { filter: 'high', open: null, rules: false, all: false, keys: {} };
   var CR_FOLD = 'lockedin.churnFold.v1';                                          // collapsed until the next day (per device)
-  function crFolded() { try { return localStorage.getItem(CR_FOLD) === new Date().toDateString(); } catch (e) { return false; } }
-  function crFold(on) { try { if (on) localStorage.setItem(CR_FOLD, new Date().toDateString()); else localStorage.removeItem(CR_FOLD); } catch (e) {} }
+  // 2026-11-23 audit: folded is the default (the open radar pushed the queue below the first screen); Show keeps it open for the day.
+  function crFolded() { try { return localStorage.getItem(CR_FOLD) !== 'open:' + new Date().toDateString(); } catch (e) { return true; } }
+  function crFold(on) { try { if (on) localStorage.removeItem(CR_FOLD); else localStorage.setItem(CR_FOLD, 'open:' + new Date().toDateString()); } catch (e) {} }
   var CR_SKIP = { omar: 1, isaac_alameddine: 1 };                                   // coach account / legacy page without the app
   var CR_DECLINED = { ali_alfatlawi: 1, hamzah_dargham: 1, malak_hanani: 1, mayank: 1, dib_kerdy: 1, lana: 1 };   // no next block / on Block 3 (Omar 2026-11-04; adam_ahmad renewed 2026-11-07)
   var CR_QUIT = /\b(cancel|quit|stop(ping)?|pause|break from|afford|money|expensive|cost|refund|not worth|done with)\b/i;
@@ -13087,15 +13105,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
         '<h2 id="v2-cr-title">' + (calm ? 'No client is showing churn signs' : '<span class="n">' + (hi.length + wa.length) + '</span> client' + (hi.length + wa.length === 1 ? ' is' : 's are') + ' showing churn signs') + '</h2>' +
         '<p class="v2-cr-sub">' + (calm ? 'Everyone is logging, checking in and on track. Nice.' :
           'The signs people show before they cancel: app silence, missed check-ins, falling adherence, stress, a block ending with nothing next. Reach out this week, before they decide.') + '</p></div>' +
-        '<div class="v2-cr-kpis"><div class="v2-cr-kpi red"><b>' + hi.length + '</b><span>High risk</span></div>' +
-          '<div class="v2-cr-kpi amber"><b>' + wa.length + '</b><span>Watch</span></div>' +
-          '<div class="v2-cr-kpi"><b>$' + ((hi.length + wa.length) * CR_WEEKLY).toLocaleString('en-AU') + '</b><span>a week at risk</span></div>' +
-          (calm ? '' : '<button type="button" class="v2-cr-min" data-cr-fold="1" title="Collapse to one line until tomorrow">Collapse ▴</button>') + '</div></div>' +
+        '<div class="v2-cr-kpis"><div class="v2-cr-kpi"><b>$' + ((hi.length + wa.length) * CR_WEEKLY).toLocaleString('en-AU') + '</b><span>a week at risk</span></div>' +
+          (calm ? '' : '<button type="button" class="v2-cr-min" data-cr-fold="1" title="Collapse to one line">Collapse ▴</button>') + '</div></div>' +
       '<div class="v2-cr-dist" role="img" aria-label="' + hi.length + ' high, ' + wa.length + ' watch, ' + handled.length + ' contacted, ' + safe + ' on track">' +
         '<i style="width:' + pct(hi.length) + ';background:#ff5a4f"></i><i style="width:' + pct(wa.length) + ';background:#f2b44b"></i>' +
         '<i style="width:' + pct(handled.length) + ';background:#6b6d85"></i><i style="width:' + pct(safe) + ';background:var(--v2-accent)"></i></div>' +
-      '<div class="v2-cr-legend"><span><i style="background:#ff5a4f"></i>' + hi.length + ' high</span><span><i style="background:#f2b44b"></i>' + wa.length + ' watch</span>' +
-        '<span><i style="background:#6b6d85"></i>' + handled.length + ' contacted / snoozed</span><span><i style="background:var(--v2-accent)"></i>' + safe + ' on track</span></div>' +
+      '<div class="v2-cr-legend"><span><i style="background:#ff5a4f"></i>high</span><span><i style="background:#f2b44b"></i>watch</span>' +
+        '<span><i style="background:#6b6d85"></i>contacted / snoozed</span><span><i style="background:var(--v2-accent)"></i>' + safe + ' with no signs</span></div>' +
       '<div class="v2-cr-tabs" role="group" aria-label="Churn filter">' +
         [['high', 'High risk', hi.length], ['watch', 'Watch', wa.length], ['handled', 'Contacted', handled.length]].map(function (t) {
           return '<button type="button" class="v2-cr-tab" data-crf="' + t[0] + '" aria-pressed="' + (CR.filter === t[0]) + '">' + t[1] + ' · ' + t[2] + '</button>'; }).join('') +
@@ -13397,7 +13413,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (TQ.sel >= list.length) TQ.sel = Math.max(0, list.length - 1);
     var titles = { today: 'Needs you today', checkin: 'Check-ins & replies', week: 'Coming up', ok: 'On track' };
     $('v2-tq-title').textContent = titles[TQ.filter];
-    $('v2-tq-meta').textContent = TQ.filter === 'ok' ? '' : list.length + ' left';
+    $('v2-tq-meta').textContent = '';
     var empty = function (b, s) { return '<div class="v2-tq-empty"><div class="tick">✓</div><b>' + b + '</b><span>' + s + '</span></div>'; };
     if (TQ.filter === 'ok') {
       $('v2-tq-list').innerHTML = empty(onTrack + ' clients on track', 'Nothing flagged for them: training, nutrition, check-ins and programme all in range.');
