@@ -2749,6 +2749,7 @@ body.ui-v2 #client-form-overlay input::placeholder, body.ui-v2 #client-form-over
 body.ui-v2 #client-form-overlay .cf-footer, body.ui-v2 #client-form-overlay .cf-header { background: #fff; border-color: #e3e5ea; }
 body.ui-v2 #client-form-overlay .btn, body.ui-v2 .cd3-compose-modal .cd3-btn { background: #fff; color: #15161c; border: 1px solid #d3d6dd; }
 body.ui-v2 #client-form-overlay .btn.primary, body.ui-v2 #client-form-overlay .cf-footer .btn:last-child { background: #15161c; color: #fff; border-color: #15161c; }
+#v2-cl-detail .cd3-compare-table td:last-child { white-space: normal; min-width: 220px; max-width: 420px; }
 /* 2026-11-23 dashboard audit */
 .v2-cd-stats > .v2-cd-stat:last-child { grid-column-end: -1; }             /* a wrapped last tile fills its row: no grey block */
 .v2-cl-row .c-why2 { font-size: 12.5px; font-weight: 500; }
@@ -9940,13 +9941,15 @@ function _cd3CheckInTable(sum) {
   const list = raw.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   if (!list.length) return _cd3Empty('No check-ins yet.');
   const cols = [
-    { label: 'Date',    get: ci => String(ci.timestamp || '').slice(0,10) },
+    { label: 'Date',    get: ci => { const d = new Date(ci.timestamp); return isNaN(d) ? String(ci.timestamp || '').slice(0, 10) : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); } },
     { label: 'Wk',     get: ci => ci.week || '—' },
     { label: 'Weight', get: ci => ci.weightKg != null ? ci.weightKg + ' kg' : '—' },
     { label: 'Diet',   get: ci => (ci.dietAdherence1to10 || '—') + '/10' },
     { label: 'Train',  get: ci => (ci.trainingAdherence1to10 || '—') + '/10' },
     { label: 'Sleep',  get: ci => ci.sleepHours ? ci.sleepHours + 'h' : '—' },
     { label: 'Energy', get: ci => (ci.energy1to10 || '—') + '/10' },
+    { label: 'Stress', get: ci => (ci.stress1to10 || '—') + '/10' },
+    { label: 'Notes',  get: ci => String(ci.notes || '').replace(/\[PHOTO_[A-Z]+:[^\]]*\]/g, '').trim() || '—' },
   ];
   const head = cols.map(col => `<th>${col.label}</th>`).join('');
   const rows = list.slice(0, 8).map(ci =>
@@ -9959,8 +9962,7 @@ function _cd3CheckInTable(sum) {
         <tbody>${rows}</tbody>
       </table>
     </div>
-    ${list.length > 1 ? renderCheckIn(list[0]) : ''}
-  `;
+  `;   // 2026-11-23 audit: the old monospace table that repeated the newest check-in underneath is gone; Stress and Notes are columns above
 }
 
 // ── Inline macro editor (click-to-open) ──────────────────────────────────
@@ -14409,7 +14411,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       '<label class="v2-ctl"><span>Sort</span>' + sel('v2-cl-sort', SORT_OPTS, S.sort) + '</label>' +
       '<span class="v2-cl-count" id="v2-cl-count"></span></div>' +
     '<div class="v2-card v2-cl-table" id="v2-cl-table" role="table">' +
-      '<div class="v2-cl-row v2-cl-th" role="row"><span>Client</span><span>Status</span><span>Weight · 14d</span><span>Adherence</span>' +
+      '<div class="v2-cl-row v2-cl-th" role="row"><span>Client</span><span>Status</span><span>Weight · 14d</span><span title="Share of the last 7 days with a workout or meals logged in the app">Logging · 7d</span>' +
       '<span>Check-in</span><span>Review</span><span>Next action</span><span></span></div>' +
       '<div id="v2-cl-rows"></div></div>' +
     '<div class="v2-cl-menu" id="v2-cl-menu" hidden></div>';
@@ -14678,7 +14680,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       item('Weight', r.cur === null ? '<span class="v2-muted">—</span>' : esc(r.cur) + 'kg') +
       item('Expected today', '<span data-exp-key="' + esc(c.storageKey) + '"><span class="v2-muted">…</span></span>') +
       item('14-day trend', trendHtml(r.trend)) +
-      item('Adherence', r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') +
+      item('<span title="Share of the last 7 days with a workout or meals logged in the app">App logging · 7 days</span>', r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') +
       item('Last check-in', ciHtml(r)) + item('Last review', revHtml(r)) +
       (r.c.nextCoachAction ? item('Next action', nextHtml(r)) : '') + '</div>';
   }
@@ -14710,7 +14712,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
             (workouts.length ? renderWorkoutLogTable(workouts) : _cd3Empty('No workouts logged yet.')) + '</div></details></div>';
       case 'checkins': {
         var latest = _lastCheckInIso(sum);
-        return '<div class="cd3-panel-body">' + card('Check-in comparison', _cd3CheckInTable(sum)) +
+        return '<div class="cd3-panel-body">' + card('Check-ins', _cd3CheckInTable(sum)) +
           (latest && Array.isArray(sum.recentCheckIns) && sum.recentCheckIns.length
             ? '<div><button class="cd3-btn" type="button" onclick="openCheckInReview(\'' + esc(key) + '\',\'' + esc(sum.recentCheckIns[0].timestamp) + '\')">Open latest check-in</button></div>' : '') +
           '</div>';
