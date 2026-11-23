@@ -992,7 +992,7 @@ const knownBug = (name, holds, detail) => {
         t('onboarding clients list Hana', /Hana Sato/.test(await txt('#v2-o-clients')));
         t('strip: unlinked intakes = 2', /2\s*Unlinked intakes|Unlinked intakes\s*2/.test((await txt('#v2-o-strip')).replace(/\n/g, ' ')), await txt('#v2-o-strip'));
         const il = await txt('#v2-o-intakes');
-        t('unlinked intakes listed (Mateo, Yara with upload state)', /Mateo Lindqvist/.test(il) && /Yara Haddon/.test(il) && /upload photos_pending/.test(il) && !/Hana Sato/.test(il), il);
+        t('unlinked intakes listed (Mateo, Yara with upload state)', /Mateo Lindqvist/.test(il) && /Yara Haddon/.test(il) && /Photos still uploading/.test(il) && !/Hana Sato/.test(il), il);
         await ev(`(function(){ var b = document.getElementById('v2-o-showlinked'); b.click(); return 1; })()`); await idle(150);
         t('"Show linked" adds the linked intake', /linked · Hana Sato/.test(await txt('#v2-o-intakes')));
         await ev(`document.getElementById('v2-o-showlinked').click(); 1`);

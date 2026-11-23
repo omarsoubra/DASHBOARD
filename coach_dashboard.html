@@ -2732,6 +2732,24 @@ body.v2-p5 #cc-review-modal .cc-btn.primary { background: var(--v2-ink); border-
 body.v2-p5 #cc-review-modal .cc-btn.ghost { background: transparent; }
 body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
 /* ─── UI_V2 POLISH PASS CSS END ─── */
+/* 2026-11-23 dashboard audit */
+.v2-cd-stats > .v2-cd-stat:last-child { grid-column-end: -1; }             /* a wrapped last tile fills its row: no grey block */
+.v2-cl-row .c-why2 { font-size: 12.5px; font-weight: 500; }
+.v2-cl-row .c-why2.red { color: #b5332c; } .v2-cl-row .c-why2.amber { color: #8a5a06; }
+@media (min-width: 1100px) { .v2-cl-row.has-why2 .c-status .c-why { display: none; } }
+@media (max-width: 1099px) { .v2-cl-row.has-why2 .c-next { display: none !important; } }
+body.ui-v2 > button.li-install-fab { display: none !important; }            /* install lives in Admin > This device */
+body.ui-v2 .cf-footer-left .btn.danger { display: none; }                   /* Reset roster lives in Admin > Danger zone only */
+#v2-cl-detail .cd3-card h3.pr-h { display: none; }                          /* the card already carries this heading */
+
+@media (max-width: 767px) {   /* phone client header: the old 6-tile order rules left dead cells once a 7th tile was added */
+  body.v2-p5 .v2-cd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.v2-p5 .v2-cd-stats > .v2-cd-stat { order: 0 !important; grid-column: auto !important; }
+  body.v2-p5 .v2-cd-stats > .v2-cd-stat:last-child { grid-column-end: -1 !important; }
+  body.v2-p5 .v2-cd-stats > .v2-cd-stat b { white-space: normal; }
+}
+.v2-cd-stat b { white-space: normal; }                                      /* expected-weight text wraps instead of cutting off */
+body.ui-v2 .v2-chip.lc, body.ui-v2 .lc-chip { text-transform: capitalize; }
 </style>
 </head>
 <body>
@@ -2777,7 +2795,7 @@ body.v2-p5 #cc-review-modal code { font-family: 'DM Mono', monospace; }
       <div class="v2-side-foot">
         <div class="v2-sync" id="v2-sync">⟳ checking…</div>
         <button class="v2-foot-btn" type="button" onclick="loadAll()" title="Refresh"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span class="v2-label">Refresh</span></button>
-        <button class="v2-foot-btn" type="button" onclick="logout()" title="Exit"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3"/><path d="M10 16l-4-4 4-4"/><path d="M6 12h10"/></svg><span class="v2-label">Exit</span></button>
+        <button class="v2-foot-btn" type="button" onclick="logout()" title="Log out"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3"/><path d="M10 16l-4-4 4-4"/><path d="M6 12h10"/></svg><span class="v2-label">Log out</span></button>
       </div>
     </nav>
 
@@ -9502,7 +9520,7 @@ function renderMacroTallySection(sum) {
     </div>
     <div class="kcal-chart-wrap">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.04em;color:var(--muted);">14-day kcal · hover bars for detail</h3>
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.04em;color:var(--muted);">Calories, last 14 days</h3>
         <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);">today highlighted</span>
       </div>
       <div class="kcal-bar-row">${bars}</div>
@@ -9517,14 +9535,14 @@ function renderPRSection(sum) {
   if (!all.length) {
     return `
       <div class="log-section">
-        <h3>🏆 Personal Records</h3>
+        <h3 class="pr-h">🏆 Personal Records</h3>
         <div class="log-empty">No PRs detected yet. Logged sets will be compared to history.</div>
       </div>
     `;
   }
   return `
     <div class="log-section">
-      <h3>🏆 Personal Records · ${all.length} total</h3>
+      <h3 class="pr-h">🏆 Personal Records · ${all.length} total</h3>
       <table class="log-table">
         <tr><th>When</th><th>Exercise</th><th>New PR</th><th>Previous</th><th>+Δ</th></tr>
         ${all.slice(0, 10).map(p => `
@@ -9862,7 +9880,9 @@ function _cd3WhatChangedCard(c) {
   if (last.outcome) parts.push(last.outcome);
   if (last.note) parts.push(last.note);
   if (last.nextAction) parts.push('Next: ' + last.nextAction);
-  const when = (last.ts || last.iso || last.at || '').slice(0, 10);
+  const whenIso = (last.ts || last.iso || last.at || '');
+  const whenD = whenIso ? new Date(whenIso) : null;
+  const when = whenD && !isNaN(whenD) ? whenD.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : whenIso.slice(0, 10);
   return `
     <div class="cd3-card">
       <div class="cd3-card-h">Since last review <span style="font-weight:400;opacity:.55;font-size:0.75rem;margin-left:4px">${_esc(when)}</span></div>
@@ -12471,7 +12491,7 @@ let _deferredInstallCoach = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault(); _deferredInstallCoach = e;
   const b = document.createElement('button');
-  b.textContent = '📲 INSTALL DASHBOARD';
+  b.textContent = '📲 INSTALL DASHBOARD'; b.className = 'li-install-fab';
   b.style.cssText = 'position:fixed;bottom:14px;right:14px;background:var(--accent3);color:#000;border:none;padding:0.6rem 1rem;border-radius:8px;font-family:DM Mono,monospace;font-size:0.75rem;font-weight:700;cursor:pointer;z-index:9500;box-shadow:0 4px 16px rgba(0,229,160,0.4);';
   b.onclick = async () => { b.remove(); if (_deferredInstallCoach) { _deferredInstallCoach.prompt(); _deferredInstallCoach = null; } };
   document.body.appendChild(b);
@@ -14616,7 +14636,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   var EXP_CHIP = { on_track: ['green', 'On track'], behind: ['amber', 'Behind'], ahead: ['blue', 'Ahead'] };
   function expectedHtml(x, compact) {
-    if (!x) return '<span class="v2-muted">no plan curve</span>';
+    if (!x) return compact ? '' : '<span class="v2-muted" title="No plan weight curve for this client yet">—</span>';
     var r = x.r;
     if (r.status === 'not_started') return '<span class="v2-muted">starts ' + esc(x.exp.start_date) + '</span>';
     if (r.status === 'no_recent_weighins') return '<span class="v2-muted">exp ' + r.expected_kg.toFixed(1) + 'kg · no recent weigh-ins</span>';
@@ -14644,7 +14664,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       item('14-day trend', trendHtml(r.trend)) +
       item('Adherence', r.adh != null ? r.adh + '%' : '<span class="v2-muted">—</span>') +
       item('Last check-in', ciHtml(r)) + item('Last review', revHtml(r)) +
-      item('Next action', nextHtml(r)) + '</div>';
+      (r.c.nextCoachAction ? item('Next action', nextHtml(r)) : '') + '</div>';
   }
   function card(title, body) { return '<div class="cd3-card"><div class="cd3-card-h">' + title + '</div>' + body + '</div>'; }
   function tabBody(tab, c, sum, m30) {
@@ -14692,7 +14712,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
               '<a class="cd3-btn" href="https://wa.me/' + esc(String(c.phone).replace('+', '')) + '" target="_blank">WhatsApp</a></div>' : '')) +
           card('Coaching lifecycle &amp; access',
             row('Lifecycle', _cd3LifecycleChip(c)) + row('Access', _cd3AccessChip(c) || '<span class="v2-muted">—</span>') +
-            '<p class="v2-acc-note">Lifecycle (move to active, pause, resume, complete, archive, restore), access-link controls (copy, generate, rotate, open, suspend, revoke, restore) and the <b>App login</b> (invite link, password reset link) are in the client editor.</p>' +
+            '<p class="v2-acc-note">Pause, archive, app link and app login are under Edit client.</p>' +
             '<div class="v2-acc-actions"><button class="cd3-btn primary" type="button" onclick="openClientForm(\'' + esc(key) + '\')">Open access &amp; App login</button></div>') +
           '</div>';
       }
@@ -15455,7 +15475,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
       side.lastChild.appendChild(draftSec);
     } else side.lastChild.insertAdjacentHTML('beforeend', '<p class="v2-muted">No draft available.</p>');
     if (!rd) side.lastChild.insertAdjacentHTML('beforeend', '<button type="button" class="v2-btn sm v2-ci-compose" data-compose="' + esc(key) + '">Message via WhatsApp / SMS…</button>' +
-      '<p class="v2-ci-hint">Opens the existing message composer (templates · Copy · WhatsApp · SMS).</p>');
+      '');
     // E. Outcome + coach note
     var fld = function (label, el, req) { var w = document.createElement('label'); w.className = 'v2-ci-field'; w.innerHTML = '<span>' + label + (req ? ' <em>*</em>' : '') + '</span>'; if (el) w.appendChild(el); return w; };
     side.insertAdjacentHTML('beforeend', section('Outcome', '', 'sec-outcome'));
@@ -15702,7 +15722,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     '<section class="v2-card v2-o-sec"><div class="v2-card-head"><h2>Setup tasks</h2><span class="v2-meta" id="v2-o-tasks-sub"></span></div><div class="v2-card-body" id="v2-o-tasks"></div></section>' +
     '<section class="v2-card v2-o-sec"><div class="v2-card-head"><h2>Intakes</h2><span class="v2-o-head-actions"><label class="v2-o-toggle"><input type="checkbox" id="v2-o-showlinked"/> Show linked</label>' +
       '<button class="v2-link" type="button" data-o="reload">Reload intakes</button></span></div><div class="v2-card-body" id="v2-o-intakes"></div></section>' +
-    '<p class="v2-o-foot">Pipeline status from the onboarding worker (Agent #5) isn\'t available to this dashboard and isn\'t shown here.</p>';
+    '';
   main.appendChild(O);
   var showLinked = $('v2-o-showlinked');
   showLinked.checked = ss.get('v2o_showlinked') === '1';
@@ -15719,7 +15739,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   }
   function views(i) {
     var pv = i.photoViews || [], lv = i.legacyPhotoViews || [];
-    return pv.length ? pv.join(' / ') : (lv.length ? lv.join(' / ') + ' (legacy)' : 'no photos');
+    return pv.length ? pv.join(' / ') : (lv.length ? lv.join(' / ') + ' (old upload)' : 'no photos');
   }
   function renderOnboarding() {
     var all = COACH.clients || [];
@@ -15733,8 +15753,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     $('v2-o-strip').innerHTML =
       stat('Onboarding clients', onb.length, 'lifecycle = onboarding', 'blue') +
       stat('Unlinked intakes', intakes.state === 'ok' ? unlinked.length : '—', intakes.state === 'ok' ? 'not linked to a client' : (intakes.state === 'err' ? 'couldn\'t load' : 'loading…'), 'amber') +
-      stat('No link on this device', noLink.length, 'onboarding · device-local, not link validity', noLink.length ? 'amber' : 'green') +
-      stat('Program file missing', missing.length, 'on the books', missing.length ? 'red' : 'green');
+      stat('No app link saved here', noLink.length, 'link not saved on this device', noLink.length ? 'amber' : 'green') +
+      stat('Plan page missing', missing.length, missing.length ? 'current clients with no plan page' : 'every client has a plan page', missing.length ? 'red' : 'green');
 
     // A. onboarding clients
     $('v2-o-clients').innerHTML = !onb.length ? '<div class="v2-empty">No clients are in onboarding.</div>' : onb.map(function (c) {
@@ -15785,10 +15805,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
                      : (i.linkedClientId ? '<span class="v2-chip green">linked</span>' : '<span class="v2-chip amber">not linked</span>');
         return '<div class="v2-o-row v2-o-intake"><div class="o-who"><span class="o-name">' + esc((i.fullName || '(no name)').trim()) + '</span>' +
           '<span class="o-sub">submitted ' + esc(fmtDate(i.submittedAt)) + '</span></div>' +
-          '<div class="o-chips">' + linkedTo + (stuck ? '<span class="v2-chip red">upload ' + esc(i.ingestionState) + '</span>' : '') + '</div>' +
+          '<div class="o-chips">' + linkedTo + (stuck ? '<span class="v2-chip red" title="' + esc(i.ingestionState) + '">' + esc(({ photos_pending: 'Photos still uploading', photos_failed: 'Photo upload failed' })[i.ingestionState] || ('Upload: ' + String(i.ingestionState).replace(/_/g, ' '))) + '</span>' : '') + '</div>' +
           '<div class="o-data">Photos: ' + esc(views(i)) + '</div><div class="o-acts"></div></div>';
       }).join('')) +
-      '<p class="v2-o-hint">To link an intake as a client\'s baseline, open the client → Progress → Progress photos (existing control). Loaded ' + esc(fmtTime(intakes.at)) + '.</p>';
+      '<p class="v2-o-hint">To link an intake as a client\'s baseline, open the client → Progress → Progress photos. Loaded ' + esc(fmtTime(intakes.at)) + '.</p>';
     }
   }
   P4.renderOnboarding = function () { try { renderOnboarding(); } catch (e) { console.warn('[ui-v2] onboarding render failed', e); } };
@@ -15922,6 +15942,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
       if (!r || !r.text) return;
       var st = row.querySelector('.c-status');
       st.insertAdjacentHTML('beforeend', '<span class="c-why ' + (a.severity === 'red' ? 'red' : 'amber') + '" title="' + esc(r.text) + '">Next: ' + esc(r.text) + '</span>');
+      // 2026-11-23 audit: the Next action column was a column of dashes while the reason sat cut off under Status.
+      // With no coach-set next action, the reason fills that column in full (wide screens; narrow ones keep it under Status).
+      var nx = row.querySelector('.c-next');
+      if (nx && nx.children.length === 1 && nx.querySelector('.v2-muted')) {
+        nx.innerHTML = '<span class="c-why2 ' + (a.severity === 'red' ? 'red' : 'amber') + '" title="' + esc(r.text) + '">' + esc(r.text) + '</span>';
+        row.classList.add('has-why2');
+      }
     });
     var menu = $('v2-cl-menu');
     if (menu) menu.querySelectorAll('[data-mact="open"]').forEach(function (b) { setText(b, 'Client →'); });
