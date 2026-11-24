@@ -4609,6 +4609,14 @@ async function cpBuildCreate(body: any) {
     const own = await cpOwnClient(coach, body.storageKey);
     if (!own) return err('unknown_client');
     storageKey = own.storage_key; isUpdate = true;
+    // The coach's "what changed" note for the client (shown on the app's Home for 7 days). The date is stamped here.
+    const u = body?.form?.update;
+    if (u !== undefined && u !== null) {
+      const title = typeof u?.title === 'string' ? u.title.trim() : '', why = typeof u?.why === 'string' ? u.why.trim() : '';
+      if (!title && why) return err('bad_update', { detail: 'Give the note a short title.' });
+      if (title.length > 70 || why.length > 260) return err('bad_update', { detail: 'Keep the title under 70 characters and the note under 260.' });
+      if (title) form.update = { title, why, date: new Date().toISOString().slice(0, 10) };
+    }
   } else {
     storageKey = cpStorageKey(coach.slug, form.firstName, form.lastName);
     if (!/^c_[a-z0-9_]{2,38}$/.test(storageKey)) return err('bad_form');

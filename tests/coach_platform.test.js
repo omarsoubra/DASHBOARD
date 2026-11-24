@@ -263,6 +263,18 @@ async function buildAndPublish(coach, form, storageKey) {
     && B(await M.cpCheckinReviewed({ session: other.session, storageKey: ej.storageKey })).error === 'unknown_client' && B(await M.cpCheckinReviewed({ session: al3, storageKey: 'cruz_rehayem' })).error === 'unknown_client'
     && B(await M.cpClientNote({ session: 'x'.repeat(50), storageKey: ej.storageKey, notes: 'x' })).error === 'unauthorized');
 
+  console.log('coach platform — what changed note');
+  const upForm = { ...liveAnn.form, update: { title: '  Calories down a little ', why: 'You stalled for two weeks.', date: '1999-01-01', id: 'x' } };
+  const up1 = B(await M.cpBuildCreate({ session: al3, form: upForm, storageKey: ej.storageKey }));
+  const upRow = DB.plan_builds.find((b) => b.id === up1.buildId);
+  t('a plan update carries the coach\'s note, trimmed, with the server\'s date', up1.ok && upRow.form.update.title === 'Calories down a little' && upRow.form.update.why === 'You stalled for two weeks.'
+    && upRow.form.update.date === new Date().toISOString().slice(0, 10) && !('id' in upRow.form.update), upRow && upRow.form.update);
+  await M.cpBuildDiscard({ session: al3, buildId: up1.buildId });
+  t('a note that is too long, or has no title, is refused in plain words', B(await M.cpBuildCreate({ session: al3, form: { ...liveAnn.form, update: { title: 'x'.repeat(71) } }, storageKey: ej.storageKey })).error === 'bad_update'
+    && B(await M.cpBuildCreate({ session: al3, form: { ...liveAnn.form, update: { why: 'hello' } }, storageKey: ej.storageKey })).error === 'bad_update');
+  const nu = B(await M.cpBuildCreate({ session: other.session, form: { ...liveAnn.form, firstName: 'Newby', update: { title: 'Hi' } } }));
+  t('a brand new client never gets a what-changed note', nu.ok && !('update' in DB.plan_builds.find((b) => b.id === nu.buildId).form));
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

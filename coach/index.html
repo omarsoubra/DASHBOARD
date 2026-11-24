@@ -740,6 +740,7 @@
               go.addEventListener('click', function () {
                 go.disabled = true;
                 var form = Object.assign({}, b.form, { edits: ctx.draft });
+                if (ctx.update && ctx.update.title.trim()) form.update = { title: ctx.update.title.trim(), why: ctx.update.why.trim() }; else delete form.update;
                 call('cpBuildCreate', Object.assign({ form: form }, b.isUpdate ? { storageKey: b.storageKey } : {})).then(function (r) {
                   if (!r.ok) { go.disabled = false; msg.replaceChildren(banner('bad', say(r))); window.scrollTo(0, 0); return; }
                   call('cpBuildDiscard', { buildId: id }).then(function () { buildView(r.buildId); });
@@ -748,6 +749,15 @@
               bar.appendChild(el('div', { class: 'bar', role: 'status' }, [el('span', { class: 'grow', text: 'Your changes are not in the plan yet.' }), go,
                 el('button', { type: 'button', class: 'ghost', text: 'Undo changes', onclick: function () { buildView(id); } })]));
             };
+            if (b.isUpdate) {
+              ctx.update = { title: (b.form.update && b.form.update.title) || '', why: (b.form.update && b.form.update.why) || '' };
+              var ut = el('input', { type: 'text', maxlength: '70', 'aria-label': 'What changed, in a few words', placeholder: 'What changed, in a few words' }); ut.value = ctx.update.title;
+              var uw = el('textarea', { rows: '2', maxlength: '260', 'aria-label': 'Why you changed it', placeholder: 'Why you changed it, in your own words', style: 'min-height:64px;margin-top:8px' }); uw.value = ctx.update.why;
+              var touch = function () { ctx.update.title = ut.value; ctx.update.why = uw.value; ctx.onChange(); };
+              ut.addEventListener('input', touch); uw.addEventListener('input', touch);
+              nodes.push(el('div', { class: 'card' }, [el('h3', { text: 'Tell ' + b.form.firstName + ' what changed' }),
+                el('p', { class: 'mute small', text: b.form.update ? 'This note is in the plan. It shows on the Home screen of their app for 7 days.' : 'Optional. Your note shows on the Home screen of their app for 7 days after you publish.' }), ut, uw]));
+            }
             nodes.push(el('p', { class: 'mute small', text: 'Tap Edit on any training day or meal to change it your way.' }));
           }
           if (b.status === 'built' || b.status === 'live') nodes.push(templateSaver(id, b));
@@ -796,7 +806,8 @@
       nodes.push(el('div', { class: 'row', style: 'margin-bottom:12px' }, [
         el('button', { text: 'Edit plan', disabled: !form, onclick: function (e) {
           e.target.disabled = true;
-          call('cpBuildCreate', { form: form, storageKey: c.storageKey }).then(function (r) { if (r.ok) buildView(r.buildId); else { e.target.disabled = false; msg.replaceChildren(banner('bad', say(r))); } });
+          var f0 = clone(form); delete f0.update;
+          call('cpBuildCreate', { form: f0, storageKey: c.storageKey }).then(function (r) { if (r.ok) buildView(r.buildId); else { e.target.disabled = false; msg.replaceChildren(banner('bad', say(r))); } });
         } }),
         el('button', { class: 'ghost', text: 'Start a new plan', disabled: !form, onclick: function () { formView(form, c.storageKey, c.name); } }),
         el('button', { class: 'ghost', text: 'New app link', onclick: function () {

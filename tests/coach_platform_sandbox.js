@@ -39,9 +39,10 @@ http.createServer(async (req, res) => {
       if (!fs.existsSync(seedFile)) return send(res, 200, JSON.stringify({ ok: false, error: 'no_seed_build' }));
       const seed = JSON.parse(fs.readFileSync(seedFile, 'utf8'));
       const crypto = require('crypto'), DAY = 86400000, iso = (d) => new Date(Date.now() + d * DAY).toISOString();
-      const token = crypto.randomBytes(32).toString('base64url'), coachId = crypto.randomUUID();
+      const token = crypto.randomBytes(32).toString('base64url'), had = DB.coaches.find((c) => c.slug === 'demo'), coachId = had ? had.id : crypto.randomUUID();
+      DB.coach_sessions.push({ id: 9000 + DB.coach_sessions.length, coach_id: coachId, token_hash: crypto.createHash('sha256').update(token).digest('hex'), expires_at: iso(30), revoked_at: null });
+      if (had) return send(res, 200, JSON.stringify({ ok: true, session: token }));
       DB.coaches.push({ id: coachId, slug: 'demo', name: 'Demo Coach', brand: 'Demo Coaching', email: 'demo@example.test', status: 'active', client_limit: 25, accent: null, logo: null });
-      DB.coach_sessions.push({ id: 9000, coach_id: coachId, token_hash: crypto.createHash('sha256').update(token).digest('hex'), expires_at: iso(30), revoked_at: null });
       const add = (first, startDays, weeks, o) => {
         const key = 'c_demo_' + first.toLowerCase() + '_tester', id = crypto.randomUUID();
         DB.clients.push({ id, storage_key: key, display_name: first + ' Tester', start_weight: 88, goal_weight: 76.9, start_date: iso(startDays).slice(0, 10), coach_id: coachId, is_internal: true, profile_id: null, program_url: null });
@@ -62,6 +63,8 @@ http.createServer(async (req, res) => {
       add('Leo', -30, 12, { opened: true, logs: true, lastLog: 10, checkins: [12] });         // gone quiet
       add('Mia', -6, 12, { opened: false, logs: false });                                      // never opened
       add('Zoe', -20, 16, { opened: true, logs: true, lastLog: 0, checkins: [2] });            // fine once the check-in is read
+      const zoe = DB.plan_builds.find((b) => b.storage_key === 'c_demo_zoe_tester');
+      DB.plan_builds.push({ ...zoe, id: crypto.randomUUID(), is_update: true, status: 'built', created_at: iso(0), updated_at: iso(0), published_at: null });   // a plan update waiting for review
       return send(res, 200, JSON.stringify({ ok: true, session: token }));
     }
     if (url.pathname === '/sandbox/builder-key') return send(res, 200, BUILDER_KEY, 'text/plain');
