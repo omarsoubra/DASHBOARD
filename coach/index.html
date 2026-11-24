@@ -83,6 +83,8 @@
   .two { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; } @media (max-width:720px) { .two { grid-template-columns:1fr; } .erow { grid-template-columns:minmax(0,1fr) 56px 72px 40px; } .erow .rest { display:none; } }
   .checks { display:flex; flex-wrap:wrap; gap:8px; } .checks label { display:flex; align-items:center; gap:6px; font-weight:400; margin:0; border:1px solid var(--line); border-radius:99px; padding:7px 12px; background:#fff; }
   .checks input { width:auto; min-height:0; }
+  nav a.navlink { font:inherit; font-size:14px; font-weight:600; color:var(--mute); text-decoration:none; padding:8px 10px; border-radius:8px; white-space:nowrap; }
+  nav a.navlink:hover { color:var(--ink); background:var(--soft); }
 </style>
 </head>
 <body>
@@ -94,6 +96,7 @@
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   var API = LOCAL ? '/api' : 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
   var KEY = 'cp_session_v1';
+  var DASH = '../dashboard.html';                      // the coach dashboard (the daily screen); this app is its plan builder
   var S = { session: null, coach: null, options: null, timer: null };
   try { S.session = localStorage.getItem(KEY); } catch (e) {}
 
@@ -165,13 +168,14 @@
     var who = document.getElementById('who'); who.replaceChildren();
     if (!S.coach) return;
     if (section) S.section = section;
-    [['clients', 'Clients', homeView], ['templates', 'Templates', templatesView], ['look', 'Your look', lookView]].forEach(function (x) {
+    nav.appendChild(el('a', { class: 'navlink', href: DASH, text: '‹ Dashboard' }));
+    [['clients', 'Plans and forms', homeView], ['templates', 'Templates', templatesView], ['look', 'Your look', lookView]].forEach(function (x) {
       nav.appendChild(el('button', { type: 'button', 'aria-current': S.section === x[0] ? 'page' : null, text: x[1], onclick: x[2] }));
     });
     who.appendChild(el('button', { class: 'link', text: 'Sign out', onclick: function () { call('cpLogout').catch(function () {}); signOut(false); } }));
   }
   function signOut(expired) {
-    S.session = null; S.coach = null; try { localStorage.removeItem(KEY); } catch (e) {}
+    S.session = null; S.coach = null; try { localStorage.removeItem(KEY); localStorage.removeItem('sbo_coach_token'); localStorage.removeItem('cp_coach_v1'); } catch (e) {}
     setHeader(); loginView(expired ? 'Please sign in again.' : null);
   }
   function options() {
@@ -194,7 +198,7 @@
       call('cpLogin', { email: email.value, password: pw.value }).then(function (j) {
         btn.disabled = false;
         if (!j.ok) { msg.appendChild(banner('bad', say(j))); return; }
-        S.session = j.session; S.coach = j.coach; try { localStorage.setItem(KEY, j.session); } catch (e2) {}
+        S.session = j.session; S.coach = j.coach; try { localStorage.setItem(KEY, j.session); localStorage.setItem('sbo_coach_token', j.session); localStorage.setItem('cp_coach_v1', JSON.stringify(j.coach)); } catch (e2) {}
         setHeader(); homeView();
       }).catch(function () { btn.disabled = false; msg.appendChild(banner('bad', 'Could not reach the server. Check your connection.')); });
     } }, [msg, field('Email', email), el('div', { style: 'height:12px' }), field('Password', pw), el('div', { style: 'height:16px' }), btn]);
@@ -409,7 +413,7 @@
       if (!j.ok) { show(banner('bad', say(j))); return; }
       S.coach = j.coach; setHeader('clients');
       S.intake = null;
-      var nodes = [el('div', { class: 'row' }, [el('h1', { class: 'grow', text: 'Clients' }), el('button', { text: 'New client', onclick: function () { formView(null, null); } })])];
+      var nodes = [el('div', { class: 'row' }, [el('h1', { class: 'grow', text: 'Plans and forms' }), el('button', { text: 'New client', onclick: function () { formView(null, null); } })])];
       if (j.builds.length) {
         nodes.push(el('h2', { text: 'Plans in progress' }));
         nodes.push(el('div', { class: 'card' }, j.builds.map(function (b) {
@@ -421,26 +425,13 @@
       var formsBox = el('div');
       nodes.push(formsBox);
       drawForms(formsBox);
-      var todo = [];
-      j.clients.forEach(function (c) { (c.needs || []).forEach(function (n) { todo.push({ c: c, n: n }); }); });
-      todo.sort(function (a, b) { return NEED_ORDER.indexOf(a.n.kind) - NEED_ORDER.indexOf(b.n.kind); });
-      if (j.clients.length) {
-        nodes.push(el('h2', { text: 'Needs you' + (todo.length ? ' · ' + todo.length : '') }));
-        nodes.push(el('div', { class: 'card' }, todo.length ? todo.map(function (x) {
-          return el('button', { class: 'item', onclick: function () { clientView(x.c.storageKey); } }, [
-            el('span', { class: 'grow' }, [el('span', { class: 'name', text: x.c.name }), el('div', { class: 'mute small', text: needText(x.n) })]),
-            el('span', { class: 'pill ' + (NEED_TONE[x.n.kind] || ''), text: NEED_LABEL[x.n.kind] || x.n.kind })]);
-        }) : el('p', { class: 'mute', style: 'margin:0', text: 'Nothing waiting. Every check-in is read and everyone is logging.' })));
-      }
-      nodes.push(el('h2', { text: j.clients.length + (j.clients.length === 1 ? ' client' : ' clients') }));
-      if (!j.clients.length) nodes.push(el('div', { class: 'card' }, [el('p', { text: 'No clients yet.' }), el('p', { class: 'mute', text: 'Tap New client, fill in the short form and the plan is built for you to review.' })]));
-      else nodes.push(el('div', { class: 'card' }, j.clients.map(function (c) {
-        var last = [c.lastWorkoutAt, c.lastMealAt, c.latestWeightAt, c.lastCheckinAt].filter(Boolean).sort().pop();
+      nodes.push(el('h2', { text: 'Change an existing client\'s plan' }));
+      nodes.push(el('div', { class: 'card' }, j.clients.length ? j.clients.map(function (c) {
         return el('button', { class: 'item', onclick: function () { clientView(c.storageKey); } }, [
-          el('span', { class: 'grow' }, [el('span', { class: 'name', text: c.name }),
-            el('div', { class: 'mute small', text: (c.latestWeight ? c.latestWeight + ' kg · ' : '') + 'last active ' + when(last) + ' · check-in ' + when(c.lastCheckinAt) })]),
-          c.access === 'suspended' ? el('span', { class: 'pill bad', text: 'Paused' }) : !c.lastOpenedAt && !last ? el('span', { class: 'pill', text: 'Not opened' }) : null]);
-      })));
+          el('span', { class: 'grow' }, [el('span', { class: 'name', text: c.name }), el('div', { class: 'mute small', text: c.plan ? c.plan.weeks + ' weeks · ' + c.plan.training : 'No plan published yet' })]),
+          c.access === 'suspended' ? el('span', { class: 'pill bad', text: 'Paused' }) : null]);
+      }) : [el('p', { text: 'No clients yet.' }), el('p', { class: 'mute', style: 'margin:0', text: 'Tap New client, or send a client form. The plan is built for you to review.' })]));
+      nodes.push(el('p', { class: 'mute small', style: 'margin-top:14px' }, [document.createTextNode('Check-ins, weights, photos and who needs you today are on your '), el('a', { href: DASH, text: 'dashboard' }), document.createTextNode('.')]));
       show(nodes);
     }).catch(oops);
   }
@@ -742,7 +733,7 @@
       call('cpBuildGet', { buildId: id }).then(function (j) {
         if (!j.ok) { show(banner('bad', say(j))); return; }
         var b = j.build, nm = (b.summary && b.summary.name) || [b.form.firstName, b.form.lastName].filter(Boolean).join(' ');
-        var back = el('button', { class: 'link', text: '‹ Clients', onclick: homeView });
+        var back = el('button', { class: 'link', text: '‹ Plans and forms', onclick: homeView });
         var head = el('div', { class: 'row' }, [el('h1', { class: 'grow', text: nm }), pill(b.status)]);
         if (b.status === 'queued' || b.status === 'building') {
           show([back, head, el('div', { class: 'card' }, [busy('Building the plan. This usually takes under a minute.'), el('p', { class: 'mute small', text: 'You can leave this page. The plan will be waiting under Plans in progress.' })])]);
@@ -847,7 +838,7 @@
     call('cpClient', { storageKey: key }).then(function (j) {
       if (!j.ok) { show(banner('bad', say(j))); return; }
       var c = j.client, msg = el('div');
-      var nodes = [el('button', { class: 'link', text: '‹ Clients', onclick: homeView }),
+      var nodes = [el('button', { class: 'link', text: '‹ Plans and forms', onclick: homeView }),
         el('div', { class: 'row' }, [el('h1', { class: 'grow', text: c.name }), c.access === 'suspended' ? el('span', { class: 'pill bad', text: 'Paused' }) : null]), msg];
       var form = j.live ? j.live.form : null;
       nodes.push(el('div', { class: 'row', style: 'margin-bottom:12px' }, [
@@ -951,7 +942,12 @@
   var m = /^#setup=([A-Za-z0-9_-]{30,100})$/.exec(location.hash);
   if (m) { setupView(m[1]); return; }
   if (!S.session) { loginView(null); return; }
-  call('cpMe').then(function (j) { if (j.ok) { S.coach = j.coach; setHeader(); homeView(); } }).catch(function (e) { if (e.message !== 'signed_out') loginView('Could not reach the server. Try again.'); });
+  function route() {
+    var h = location.hash, c = /^#client=(c_[a-z0-9_]{2,38})$/.exec(h);
+    if (h === '#new') formView(null, null); else if (h === '#templates') templatesView(); else if (h === '#look') lookView(); else if (c) clientView(c[1]); else homeView();
+  }
+  window.addEventListener('hashchange', function () { if (S.coach && /^#(new|plans|templates|look|client=)/.test(location.hash)) route(); });
+  call('cpMe').then(function (j) { if (j.ok) { S.coach = j.coach; try { localStorage.setItem('cp_coach_v1', JSON.stringify(j.coach)); } catch (e) {} setHeader(); route(); } }).catch(function (e) { if (e.message !== 'signed_out') loginView('Could not reach the server. Try again.'); });
 })();
 </script>
 </body>
