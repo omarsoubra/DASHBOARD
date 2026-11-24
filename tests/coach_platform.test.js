@@ -213,6 +213,29 @@ async function buildAndPublish(coach, form, storageKey) {
   await M.cpClientAccess({ session: cy.session, storageKey: ej.storageKey, status: 'suspended' });
   t('no login link while the client is paused', B(await M.cpClientInvite({ session: cy.session, storageKey: ej.storageKey })).error === 'access_not_active');
 
+  console.log('coach platform — saved plans and photos');
+  const liveAnn = DB.plan_builds.find((b) => b.storage_key === ej.storageKey && b.status === 'live');
+  t('saving a template needs your own build', B(await M.cpTemplateSave({ session: al.session, buildId: liveAnn.id, name: 'Mine' })).error === 'unauthorized' || B(await M.cpTemplateSave({ session: bo.session, buildId: liveAnn.id, name: 'Mine' })).error === 'unauthorized');
+  const al3 = await (async () => { const l = B(await M.cpLogin({ email: 'cy@z.co', password: cy.password })); return l.session; })();
+  const ts1 = B(await M.cpTemplateSave({ session: al3, buildId: liveAnn.id, name: '  My 5 day  cut ' }));
+  const tpl = DB.coach_templates[0];
+  t('template saved: structure and training edits, no client details, no meal amounts by default', ts1.ok && tpl.name === 'My 5 day cut' && tpl.form.training === 'gym5_ppl_ul' && tpl.form.edits.training[1][0].exercises[0].name === 'Barbell Bench Press'
+    && !('firstName' in tpl.form) && !('weightKg' in tpl.form) && !('age' in tpl.form) && !tpl.form.edits.meals, tpl.form);
+  t('saving under the same name replaces it', B(await M.cpTemplateSave({ session: al3, buildId: liveAnn.id, name: 'my 5 DAY cut', includeMeals: true })).replaced === true && DB.coach_templates.length === 1 && !!DB.coach_templates[0].form.edits.meals);
+  t('a template name with markup is refused', B(await M.cpTemplateSave({ session: al3, buildId: liveAnn.id, name: '<i>x</i>' })).error === 'bad_name');
+  const list = B(await M.cpTemplates({ session: al3 }));
+  t('a coach lists only their own templates', list.templates.length === 1 && list.templates[0].trainingEdited === true && B(await M.cpTemplates({ session: (B(await M.cpLogin({ email: 'al@x.co', password: 'x'.repeat(12) })).session) || 'x'.repeat(50) })).error === 'unauthorized');
+  const other = await newCoach('Di', 'di@w.co');
+  t('another coach sees none of them and cannot delete or copy them', B(await M.cpTemplates({ session: other.session })).templates.length === 0
+    && B(await M.cpTemplateDelete({ session: other.session, id: tpl.id })).error === 'unknown_template' && B(await M.cpTemplateSave({ session: other.session, buildId: liveAnn.id, name: 'Stolen' })).error === 'unknown_build');
+  DB.photo_uploads.push({ id: 1, client_key: ej.storageKey, storage_path: 'ann/w1-front.jpg', view: 'front', week: 1, uploaded_at: '2026-11-20T00:00:00Z', source: 'checkin' },
+    { id: 2, client_key: 'cruz_rehayem', storage_path: 'cruz/w1-front.jpg', view: 'front', week: 1, uploaded_at: '2026-11-20T00:00:00Z', source: 'checkin' });
+  await M.cpClientAccess({ session: al3, storageKey: ej.storageKey, status: 'active' });
+  const ph = B(await M.cpClientPhotos({ session: al3, storageKey: ej.storageKey }));
+  t('own client photos come back as signed links only', ph.ok && ph.photos.length === 1 && ph.photos[0].url.startsWith('https://signed.example/ann/') && !('storage_path' in ph.photos[0]), ph);
+  t('a coach cannot see another coach\'s or Omar\'s client photos', B(await M.cpClientPhotos({ session: other.session, storageKey: ej.storageKey })).error === 'unknown_client' && B(await M.cpClientPhotos({ session: al3, storageKey: 'cruz_rehayem' })).error === 'unknown_client');
+  t('deleting your own template', B(await M.cpTemplateDelete({ session: al3, id: tpl.id })).ok && DB.coach_templates.length === 0);
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

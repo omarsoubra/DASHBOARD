@@ -700,6 +700,10 @@ Deno.serve(async (req) => {
       case 'cpRebrandAll':       return cpRebrandAll(body);
       case 'cpBrand':            return cpBrand(body);
       case 'cpClientInvite':     return cpClientInvite(body);
+      case 'cpTemplateSave':     return cpTemplateSave(body);
+      case 'cpTemplates':        return cpTemplates(body);
+      case 'cpTemplateDelete':   return cpTemplateDelete(body);
+      case 'cpClientPhotos':     return cpClientPhotos(body);
       case 'cpWorkerClaim':      return cpWorkerClaim(body);
       case 'cpWorkerDone':       return cpWorkerDone(body);
       default: return err('unknown_type');
@@ -4947,4 +4951,75 @@ async function cpClientInvite(body: any) {
   if (error) { logEfError('cpClientInvite', c.storage_key, 'insert_failed', error.message); return err('write_failed'); }
   // the token rides in the URL fragment (never sent to a server); ?c= only tells the login page whose colours to show
   return ok({ purpose, expiresAt, link: `${CP_LOGIN_URL}?c=${coach.slug}#${purpose}=${token}` });
+}
+
+
+// ── coach: their own saved plans (templates) and their clients' progress photos ─────────────────────────────
+const CP_TEMPLATE_KEYS = ['goal', 'training', 'menu', 'mealsPerDay', 'weeks'];
+const CP_MAX_TEMPLATES = 40;
+const cpTemplateView = (t: any) => ({
+  id: t.id, name: t.name, createdAt: t.created_at, form: t.form,
+  trainingEdited: Object.keys(t.form?.edits?.training ?? {}).length > 0, mealsEdited: Object.keys(t.form?.edits?.meals ?? {}).length > 0,
+});
+
+/** Save the structure of one of the coach's own plans (never the client's name or body numbers) to reuse later. */
+async function cpTemplateSave(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const name = String(body?.name ?? '').replace(/\s+/g, ' ').trim();
+  if (!name || name.length > 60 || /[<>"]/.test(name)) return err('bad_name');
+  const { data: b } = await admin.from('plan_builds').select('id, coach_id, form, status').eq('id', String(body?.buildId ?? '')).maybeSingle();
+  if (!b || b.coach_id !== coach.id) return err('unknown_build');
+  if (!['built', 'publishing', 'live'].includes(b.status)) return err('not_ready', { status: b.status });
+  const form: Record<string, unknown> = {};
+  for (const k of CP_TEMPLATE_KEYS) if (b.form?.[k] !== undefined) form[k] = b.form[k];
+  const edits: Record<string, unknown> = {};
+  if (b.form?.edits?.training) edits.training = b.form.edits.training;
+  if (b.form?.edits?.meals && body?.includeMeals === true) edits.meals = b.form.edits.meals;   // amounts are per client: opt-in
+  if (Object.keys(edits).length) form.edits = edits;
+  const { data: mine } = await admin.from('coach_templates').select('id, name').eq('coach_id', coach.id);
+  const same = (mine ?? []).find((t: any) => t.name.toLowerCase() === name.toLowerCase());
+  if (same) {
+    const { error } = await admin.from('coach_templates').update({ form, name }).eq('id', same.id);
+    return error ? err('write_failed') : ok({ id: same.id, replaced: true });
+  }
+  if ((mine ?? []).length >= CP_MAX_TEMPLATES) return err('too_many_templates', { limit: CP_MAX_TEMPLATES });
+  const { data: row, error } = await admin.from('coach_templates').insert({ coach_id: coach.id, name, form }).select('id').single();
+  if (error || !row?.id) return err('write_failed');
+  return ok({ id: row.id, replaced: false });
+}
+async function cpTemplates(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data } = await admin.from('coach_templates').select('id, name, form, created_at').eq('coach_id', coach.id).order('name', { ascending: true });
+  return ok({ templates: (data ?? []).map(cpTemplateView) });
+}
+async function cpTemplateDelete(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: t } = await admin.from('coach_templates').select('id, coach_id').eq('id', String(body?.id ?? '')).maybeSingle();
+  if (!t || t.coach_id !== coach.id) return err('unknown_template');
+  await admin.from('coach_templates').delete().eq('id', t.id);
+  return ok();
+}
+
+/** Progress photos of ONE of the coach's own clients, as short-lived signed links (the files themselves stay private). */
+async function cpClientPhotos(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  const { data, error } = await admin.from('photo_uploads')
+    .select('id, storage_path, view, week, uploaded_at, source').eq('client_key', c.storage_key).order('uploaded_at', { ascending: false }).limit(120);
+  if (error) return err('read_failed');
+  const rows = (data ?? []).filter((r: any) => r.storage_path);
+  const paths = [...new Set(rows.map((r: any) => r.storage_path))] as string[];
+  const signed: Record<string, string> = {};
+  if (paths.length) {
+    const { data: urls } = await admin.storage.from(PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SEC);
+    for (const u of urls ?? []) if (u?.path && u?.signedUrl) signed[u.path] = u.signedUrl;
+  }
+  return ok({ photos: rows.filter((r: any) => signed[r.storage_path]).map((r: any) => ({
+    id: r.id, view: r.view ?? null, week: r.week ?? null, uploadedAt: r.uploaded_at, start: r.source === 'intake', url: signed[r.storage_path],
+  })) });
 }

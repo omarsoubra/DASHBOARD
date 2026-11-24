@@ -5,11 +5,12 @@
 -- Lets OTHER coaches use the platform: each coach has a login, sees only their
 -- own clients, and builds plans with the in-app plan builder (no AI in the loop).
 --
--- THREE new tables and ONE new nullable column:
+-- FOUR new tables and ONE new nullable column:
 --   coaches          one row per outside coach (Omar is NOT a row: his login is
 --                    unchanged and his clients keep coach_id = NULL)
 --   coach_sessions   login sessions (only the sha256 of the session key is stored)
 --   plan_builds      the plan-builder queue: form in, plan preview out, publish
+--   coach_templates  a coach's own saved plans, reusable for any client
 --   clients.coach_id NULL = Omar's client (every existing row). Set = that coach's.
 --
 -- No existing row, constraint, index, policy or function is changed. A coach's
@@ -74,6 +75,16 @@ create index if not exists plan_builds_coach_idx on public.plan_builds (coach_id
 create index if not exists plan_builds_open_idx on public.plan_builds (status, created_at)
   where status in ('queued', 'building', 'publishing');
 
+-- A coach's own saved plans: the structure of a plan (training plan, menu, length, hand edits) with no client in it.
+create table if not exists public.coach_templates (
+  id          uuid primary key default gen_random_uuid(),
+  coach_id    uuid not null references public.coaches(id) on delete cascade,
+  name        text not null check (length(name) between 1 and 60),
+  form        jsonb not null,
+  created_at  timestamptz not null default now(),
+  unique (coach_id, name)
+);
+
 alter table public.clients add column if not exists coach_id uuid references public.coaches(id);
 create index if not exists clients_coach_id_idx on public.clients (coach_id) where coach_id is not null;
 
@@ -83,12 +94,14 @@ comment on column public.clients.coach_id is
 alter table public.coaches        enable row level security;
 alter table public.coach_sessions enable row level security;
 alter table public.plan_builds    enable row level security;
+alter table public.coach_templates enable row level security;
 
 commit;
 
 -- Rollback (only if no coach has been created):
 --   drop index if exists public.clients_coach_id_idx;
 --   alter table public.clients drop column if exists coach_id;
+--   drop table if exists public.coach_templates;
 --   drop table if exists public.plan_builds;
 --   drop table if exists public.coach_sessions;
 --   drop table if exists public.coaches;
