@@ -275,6 +275,33 @@ async function buildAndPublish(coach, form, storageKey) {
   const nu = B(await M.cpBuildCreate({ session: other.session, form: { ...liveAnn.form, firstName: 'Newby', update: { title: 'Hi' } } }));
   t('a brand new client never gets a what-changed note', nu.ok && !('update' in DB.plan_builds.find((b) => b.id === nu.buildId).form));
 
+  console.log('coach platform — client form');
+  const ANS = { firstName: 'Kim', lastName: 'Newman', sex: 'female', age: 31, heightCm: 165, weightKg: 70, goalWeightKg: 62, goal: 'lose_fat', activity: 'moderate', where: 'gym', days: 5,
+                mealsPerDay: 4, allergies: ['peanut', '<x>'], health: 'Old ankle sprain', foods: 'No mushrooms', notes: '', phone: '+61 400 000 000<script>', coach_id: 'hack' };
+  const f1 = B(await M.cpIntakeCreate({ session: al3, label: 'Kim from the gym' }));
+  const ftok = f1.link.split('#f=')[1];
+  t('a form link: on the coach app address, token only in the fragment, only its hash stored', f1.ok && /\/coach\/intake\.html\?c=cy#f=[A-Za-z0-9_-]{40,}$/.test(f1.link) && !JSON.stringify(DB.coach_intakes).includes(ftok), f1);
+  const insp = B(await M.cpIntakeInspect({ token: ftok }));
+  t('the open form shows the coach\'s brand and nothing else', insp.ok && typeof insp.brand === 'string' && !('email' in insp) && B(await M.cpIntakeInspect({ token: 'x'.repeat(43) })).error === 'bad_link', insp);
+  t('answers need consent, an adult, and every required field', B(await M.cpIntakeSubmit({ token: ftok, answers: ANS })).error === 'consent_required'
+    && B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: { ...ANS, age: 17 } })).error === 'bad_answers' && B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: { ...ANS, firstName: '<b>' } })).error === 'bad_answers');
+  t('the client submits once', B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: ANS })).ok && B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: ANS })).error === 'bad_link' && B(await M.cpIntakeInspect({ token: ftok })).error === 'bad_link');
+  const forms = B(await M.cpIntakes({ session: al3 })).forms;
+  t('the coach sees the cleaned answers: unknown keys dropped, markup stripped', forms.length === 1 && forms[0].status === 'submitted' && forms[0].answers.firstName === 'Kim' && !('coach_id' in forms[0].answers)
+    && forms[0].answers.allergies.join() === 'peanut' && forms[0].answers.phone === '+61 400 000 000', forms[0]);
+  t('another coach sees no forms and cannot close this one', B(await M.cpIntakes({ session: other.session })).forms.length === 0 && B(await M.cpIntakeClose({ session: other.session, id: forms[0].id })).error === 'unknown_form');
+  t('closing a form erases the answers', B(await M.cpIntakeClose({ session: al3, id: forms[0].id })).ok && DB.coach_intakes[0].answers === null && B(await M.cpIntakes({ session: al3 })).forms.length === 0);
+  const f3 = B(await M.cpIntakeCreate({ session: al3 })), f3tok = f3.link.split('#f=')[1];
+  await M.cpIntakeSubmit({ token: f3tok, consent: true, answers: ANS });
+  t('another coach cannot build from this form', (await (async () => { const r = B(await M.cpBuildCreate({ session: other.session, form: { ...liveAnn.form, firstName: 'Thief' }, intakeId: f3.id })); return r.ok && DB.coach_intakes.find((x) => x.id === f3.id).status === 'submitted' && !DB.coach_client_state.some((x) => x.storage_key === r.storageKey); })()));
+  const kb = B(await M.cpBuildCreate({ session: al3, form: { ...liveAnn.form, firstName: 'Kim', lastName: 'Newman' }, intakeId: f3.id }));
+  const kn = DB.coach_client_state.find((x) => x.storage_key === kb.storageKey);
+  t('building from a form saves their health and food answers to the coach\'s notes and erases the form', kb.ok && kn && /Old ankle sprain/.test(kn.notes) && /No mushrooms/.test(kn.notes) && /5 days a week at a gym/.test(kn.notes)
+    && DB.coach_intakes.find((x) => x.id === f3.id).status === 'closed' && DB.coach_intakes.find((x) => x.id === f3.id).answers === null, kn);
+  const f2 = B(await M.cpIntakeCreate({ session: al3 }));
+  DB.coach_intakes.find((r) => r.id === f2.id).expires_at = '2020-01-01T00:00:00Z';
+  t('an expired link is dead', B(await M.cpIntakeInspect({ token: f2.link.split('#f=')[1] })).error === 'bad_link' && B(await M.cpIntakeSubmit({ token: f2.link.split('#f=')[1], consent: true, answers: ANS })).error === 'bad_link');
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

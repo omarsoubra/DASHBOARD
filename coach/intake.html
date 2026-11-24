@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your details</title>
+<style>
+  :root { --ink:#16161a; --mute:#6b6b76; --line:#e4e4ea; --soft:#f5f5f7; --bad:#b3261e; --accent:#16161a; --on:#fff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:var(--ink); background:var(--soft); }
+  header { display:flex; align-items:center; gap:10px; padding:16px 20px; background:#fff; border-bottom:1px solid var(--line); }
+  header img { width:32px; height:32px; border-radius:8px; }
+  header span { font-weight:800; letter-spacing:.06em; text-transform:uppercase; font-size:14px; }
+  main { max-width:560px; margin:0 auto; padding:24px 16px 80px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h2 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); margin:28px 0 10px; }
+  p { margin:0 0 12px; } .mute { color:var(--mute); } .small { font-size:14px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  label { display:block; font-weight:600; font-size:14px; margin:14px 0 6px; }
+  label:first-child { margin-top:0; }
+  input[type=text], input[type=number], input[type=tel], select, textarea { font:inherit; width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); min-height:48px; }
+  textarea { min-height:84px; resize:vertical; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline:3px solid var(--accent); outline-offset:1px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .two + .two { margin-top:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chips label { display:inline-flex; align-items:center; gap:8px; margin:0; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-weight:500; min-height:44px; cursor:pointer; }
+  .chips input { width:18px; height:18px; accent-color:var(--accent); }
+  .consent { display:flex; gap:10px; align-items:flex-start; font-weight:500; margin-top:20px; }
+  .consent input { width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--accent); }
+  button { font:inherit; font-weight:700; width:100%; min-height:52px; margin-top:18px; border:0; border-radius:12px; background:var(--accent); color:var(--on); cursor:pointer; }
+  button[disabled] { opacity:.55; cursor:default; }
+  .err { color:var(--bad); font-size:14px; margin-top:6px; }
+  .banner { background:#fdecea; color:var(--bad); border-radius:10px; padding:12px 14px; margin:16px 0 0; }
+  @media (max-width:420px) { .two { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header><img id="logo" alt="" hidden><span id="brand"></span></header>
+<main id="app" aria-live="polite"><p class="mute">Loading</p></main>
+<script>
+(function () {
+  'use strict';
+  var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var API = LOCAL ? '/api' : 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
+  var app = document.getElementById('app');
+  var m = /^#f=([A-Za-z0-9_-]{30,100})$/.exec(location.hash), token = m ? m[1] : null;
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) { if (k === 'text') n.textContent = attrs[k]; else if (attrs[k] !== null && attrs[k] !== undefined && attrs[k] !== false) n.setAttribute(k, attrs[k] === true ? '' : attrs[k]); });
+    [].concat(kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function call(type, body) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ type: type, token: token }, body || {})) }).then(function (r) { return r.json(); });
+  }
+  function lum(hex) { var c = [1, 3, 5].map(function (i) { var v = parseInt(hex.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  function dead() {
+    app.replaceChildren(el('h1', { text: 'This link has expired' }), el('p', { class: 'mute', text: 'It was already used, or it is more than two weeks old. Ask your coach for a new one.' }));
+  }
+  if (!token) { dead(); return; }
+
+  var ALLERGIES = { egg: 'Egg', fish: 'Fish', gluten: 'Gluten', peanut: 'Peanut', sesame: 'Sesame', shellfish: 'Shellfish', soy: 'Soy', tree_nut: 'Tree nuts', dairy: 'Dairy' };
+  function field(label, input, id) { input.id = id; return [el('label', { for: id, text: label }), input]; }
+  function select(name, opts) { var s = el('select', { name: name, required: true }, [el('option', { value: '', text: 'Choose' })].concat(Object.keys(opts).map(function (k) { return el('option', { value: k, text: opts[k] }); }))); return s; }
+  function num(name, lo, hi, step) { return el('input', { type: 'number', name: name, min: lo, max: hi, step: step || '1', inputmode: step ? 'decimal' : 'numeric', required: true }); }
+
+  function form(b) {
+    var coach = b.coachFirstName || 'your coach';
+    var f = el('form', { novalidate: true });
+    var problem = el('div');
+    var consent = el('input', { type: 'checkbox', id: 'consent' });
+    var goalW = num('goalWeightKg', 35, 250, '0.1'); goalW.required = false;
+    var send = el('button', { type: 'submit', text: 'Send to ' + coach });
+    f.append(
+      el('h2', { text: 'About you' }),
+      el('div', { class: 'card' }, [].concat(
+        [el('div', { class: 'two' }, [el('div', null, field('First name', el('input', { type: 'text', name: 'firstName', autocomplete: 'given-name', maxlength: '30', required: true }), 'fn')),
+                                      el('div', null, field('Last name', el('input', { type: 'text', name: 'lastName', autocomplete: 'family-name', maxlength: '30', required: true }), 'ln'))])],
+        [el('div', { class: 'two' }, [el('div', null, field('Sex', select('sex', { male: 'Male', female: 'Female' }), 'sx')), el('div', null, field('Age', num('age', 18, 80), 'ag'))])],
+        [el('div', { class: 'two' }, [el('div', null, field('Height (cm)', num('heightCm', 130, 220), 'ht')), el('div', null, field('Weight now (kg)', num('weightKg', 35, 250, '0.1'), 'wt'))])],
+        field('Mobile number (optional)', el('input', { type: 'tel', name: 'phone', autocomplete: 'tel', maxlength: '24' }), 'ph'))),
+      el('h2', { text: 'Your goal' }),
+      el('div', { class: 'card' }, [].concat(
+        field('What do you want most?', select('goal', { lose_fat: 'Lose fat', build_muscle: 'Build muscle' }), 'gl'),
+        field('Goal weight (kg), if you have one', goalW, 'gw'),
+        field('Your day job', select('activity', { sedentary: 'Desk job, mostly sitting', moderate: 'On my feet some of the day', active: 'On my feet most of the day', very_active: 'Hard physical job' }), 'ac'))),
+      el('h2', { text: 'Training' }),
+      el('div', { class: 'card' }, [].concat(
+        field('Where will you train?', select('where', { gym: 'At a gym', home: 'At home' }), 'wh'),
+        field('How many days a week can you train?', select('days', { 2: '2 days', 3: '3 days', 4: '4 days', 5: '5 days', 6: '6 days' }), 'dy'),
+        field('Injuries or health conditions ' + coach + ' should know about', el('textarea', { name: 'health', maxlength: '600' }), 'hl'))),
+      el('h2', { text: 'Food' }),
+      el('div', { class: 'card' }, [].concat(
+        field('Meals a day', select('mealsPerDay', { 3: '3 meals', 4: '3 meals and a snack' }), 'mp'),
+        [el('label', { text: 'Allergies. Tick any that apply.' }), el('div', { class: 'chips', role: 'group', 'aria-label': 'Allergies' }, Object.keys(ALLERGIES).map(function (k) {
+          return el('label', null, [el('input', { type: 'checkbox', name: 'allergy', value: k }), document.createTextNode(ALLERGIES[k])]); }))],
+        field('Foods you will not eat', el('textarea', { name: 'foods', maxlength: '400' }), 'fd'),
+        field('Anything else ' + coach + ' should know', el('textarea', { name: 'notes', maxlength: '600' }), 'nt'))),
+      el('label', { class: 'consent', for: 'consent' }, [consent, el('span', { text: 'I am 18 or older, and I agree to send these details to ' + b.brand + ' so they can build my plan.' })]),
+      problem, send);
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      problem.replaceChildren();
+      var first = null;
+      Array.prototype.forEach.call(f.querySelectorAll('.err'), function (n) { n.remove(); });
+      Array.prototype.forEach.call(f.querySelectorAll('input[required], select[required]'), function (i) {
+        var bad = !i.value.trim() || (i.type === 'number' && (Number(i.value) < Number(i.min) || Number(i.value) > Number(i.max)));
+        if (i.type === 'text' && i.value.trim() && !/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(i.value.trim())) bad = true;
+        i.setAttribute('aria-invalid', bad ? 'true' : 'false');
+        if (bad) {
+          var msg = i.name === 'age' ? 'You need to be 18 to 80 to use this form.' : i.type === 'number' ? 'Enter a number from ' + i.min + ' to ' + i.max + '.' : i.type === 'text' ? 'Letters only.' : 'Choose one.';
+          i.insertAdjacentElement('afterend', el('div', { class: 'err', text: msg })); first = first || i;
+        }
+      });
+      if (first) { first.focus(); return; }
+      if (!consent.checked) { problem.replaceChildren(el('div', { class: 'banner', role: 'alert', text: 'Tick the box to agree before you send.' })); consent.focus(); return; }
+      var a = {}; Array.prototype.forEach.call(f.querySelectorAll('[name]'), function (i) { if (i.name !== 'allergy' && i.value !== '') a[i.name] = i.type === 'number' || /^(days|mealsPerDay)$/.test(i.name) ? Number(i.value) : i.value.trim(); });
+      a.allergies = Array.prototype.map.call(f.querySelectorAll('[name=allergy]:checked'), function (i) { return i.value; });
+      send.disabled = true; send.textContent = 'Sending';
+      call('cpIntakeSubmit', { consent: true, answers: a }).then(function (j) {
+        if (j.ok) { app.replaceChildren(el('h1', { text: 'Sent. Thank you, ' + a.firstName + '.' }), el('p', { class: 'mute', text: coach + ' has your details and will be in touch with your plan.' })); window.scrollTo(0, 0); return; }
+        if (j.error === 'bad_link') { dead(); return; }
+        send.disabled = false; send.textContent = 'Send to ' + coach;
+        problem.replaceChildren(el('div', { class: 'banner', role: 'alert', text: j.error === 'bad_answers' ? 'Something in the form is not right. Check each answer and send again.' : 'Could not send. Check your connection and try again.' }));
+      }).catch(function () { send.disabled = false; send.textContent = 'Send to ' + coach; problem.replaceChildren(el('div', { class: 'banner', role: 'alert', text: 'Could not send. Check your connection and try again.' })); });
+    });
+    app.replaceChildren(el('h1', { text: 'Tell ' + coach + ' about you' }), el('p', { class: 'mute', text: 'It takes about two minutes. Your answers go to ' + b.brand + ' only.' }), f);
+  }
+
+  call('cpIntakeInspect').then(function (b) {
+    if (!b.ok) { dead(); return; }
+    document.title = b.brand + ' - your details';
+    document.getElementById('brand').textContent = b.brand;
+    if (b.logo) { var lg = document.getElementById('logo'); lg.src = 'data:image/png;base64,' + b.logo; lg.hidden = false; }
+    if (/^#[0-9a-fA-F]{6}$/.test(b.accent || '')) { document.documentElement.style.setProperty('--accent', b.accent); document.documentElement.style.setProperty('--on', lum(b.accent) > 0.3 ? '#16161a' : '#fff'); }
+    form(b);
+  }).catch(function () { app.replaceChildren(el('h1', { text: 'Could not load the form' }), el('p', { class: 'mute', text: 'Check your connection and open the link again.' })); });
+})();
+</script>
+</body>
+</html>

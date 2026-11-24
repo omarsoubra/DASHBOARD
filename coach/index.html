@@ -141,7 +141,7 @@
     client_exists: 'You already have a client with this name. Add a last name, or update their plan from their page.',
     client_limit: 'You have reached your client limit. Contact support to raise it.', too_many_open_builds: 'Three plans are already being built. Finish or discard one first.',
     build_in_progress: 'A plan for this client is already being built.', not_ready: 'This plan is not ready to publish yet.', write_failed: 'Could not save. Try again.',
-    unknown_client: 'Client not found.', unknown_build: 'Plan not found.'
+    unknown_client: 'Client not found.', unknown_form: 'That form is no longer there.', bad_update: 'Check the note to your client.', unknown_build: 'Plan not found.'
   };
   function say(j) { return (j && (j.detail || MSG[j.error])) || 'Something went wrong. Try again.'; }
   function when(iso) {
@@ -355,6 +355,42 @@
   // ── home: clients + plans in progress ────────────────────────────────────
   var STATUS = { queued: ['Building', 'warn'], building: ['Building', 'warn'], built: ['Ready to review', 'good'], failed: ['Needs a change', 'bad'], publishing: ['Going live', 'warn'], live: ['Live', 'good'] };
   function pill(status) { var s = STATUS[status] || [status, '']; return el('span', { class: 'pill ' + s[1], text: s[0] }); }
+  // The client form: the coach sends a link, the client fills in their own details, the plan form arrives filled in.
+  function intakeToForm(a) {
+    var f = { firstName: a.firstName, lastName: a.lastName, sex: a.sex, age: a.age, heightCm: a.heightCm, weightKg: a.weightKg, goal: a.goal, activity: a.activity,
+              training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : 'gym5_ppl_ul'), allergies: a.allergies || [] };
+    if (a.goalWeightKg) f.goalWeightKg = a.goalWeightKg;
+    if (a.mealsPerDay) f.mealsPerDay = a.mealsPerDay;
+    return f;
+  }
+  function drawForms(box) {
+    call('cpIntakes').then(function (r) {
+      if (!r.ok) return;
+      var out = el('div');
+      var sendBtn = el('button', { class: 'ghost', text: 'Send a client form', onclick: function () {
+        sendBtn.disabled = true;
+        call('cpIntakeCreate', {}).then(function (x) {
+          sendBtn.disabled = false;
+          out.replaceChildren(x.ok ? el('div', { style: 'margin-top:12px' }, [el('p', { class: 'mute small', text: 'Send this link to your new client. They fill in their details and it comes back here. It works once and lasts ' + x.expiresInDays + ' days.' }),
+            el('div', { class: 'linkbox', text: x.link }), el('button', { text: 'Copy link', onclick: function (e) { navigator.clipboard.writeText(x.link).then(function () { e.target.textContent = 'Copied'; }); } })]) : banner('bad', say(x)));
+        }).catch(function () { sendBtn.disabled = false; });
+      } });
+      var back = r.forms.filter(function (f) { return f.status === 'submitted'; }), waiting = r.forms.filter(function (f) { return f.status === 'open'; });
+      var remove = function (f, what) { return el('button', { class: 'link', text: 'Remove', 'aria-label': 'Remove ' + what, onclick: function () {
+        if (!confirm(f.status === 'submitted' ? 'Remove this form and the answers in it?' : 'Cancel this form link? It will stop working.')) return;
+        call('cpIntakeClose', { id: f.id }).then(function () { drawForms(box); });
+      } }); };
+      box.replaceChildren(el('h2', { text: 'New client forms' + (back.length ? ' · ' + back.length + ' back' : '') }), el('div', { class: 'card' }, [].concat(
+        back.map(function (f) {
+          var nm = f.answers.firstName + ' ' + f.answers.lastName;
+          return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('span', { class: 'grow' }, [el('strong', { text: nm }), el('div', { class: 'mute small', text: 'Filled in your form ' + when(f.submittedAt) })]),
+            el('button', { text: 'Build their plan', onclick: function () { S.intake = f; formView(intakeToForm(f.answers), null); } }), remove(f, nm + '\'s form')])]);
+        }),
+        waiting.length ? [el('p', { class: 'mute small', style: 'margin:8px 0', text: waiting.length + (waiting.length === 1 ? ' form is' : ' forms are') + ' out and not filled in yet.' })].concat(waiting.map(function (f) {
+          return el('div', { class: 'row small', style: 'margin-bottom:6px' }, [el('span', { class: 'grow mute', text: 'Sent ' + when(f.createdAt) }), remove(f, 'the form sent ' + when(f.createdAt))]); })) : [],
+        [sendBtn, out])));
+    }).catch(function () {});
+  }
   var NEED_ORDER = ['checkin', 'ended', 'ending', 'not_started', 'quiet', 'no_checkin'];
   var NEED_LABEL = { checkin: 'Check-in', ended: 'Plan ended', ending: 'Plan ending', not_started: 'Not started', quiet: 'Gone quiet', no_checkin: 'No check-in' };
   var NEED_TONE = { checkin: 'good', ended: 'bad', ending: 'warn', not_started: 'warn', quiet: 'bad', no_checkin: 'warn' };
@@ -372,6 +408,7 @@
     call('cpClients').then(function (j) {
       if (!j.ok) { show(banner('bad', say(j))); return; }
       S.coach = j.coach; setHeader('clients');
+      S.intake = null;
       var nodes = [el('div', { class: 'row' }, [el('h1', { class: 'grow', text: 'Clients' }), el('button', { text: 'New client', onclick: function () { formView(null, null); } })])];
       if (j.builds.length) {
         nodes.push(el('h2', { text: 'Plans in progress' }));
@@ -381,6 +418,9 @@
             el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm }), el('div', { class: 'mute small', text: (b.isUpdate ? 'Plan update' : 'New client') + ' · started ' + when(b.createdAt) })]), pill(b.status)]);
         })));
       }
+      var formsBox = el('div');
+      nodes.push(formsBox);
+      drawForms(formsBox);
       var todo = [];
       j.clients.forEach(function (c) { (c.needs || []).forEach(function (n) { todo.push({ c: c, n: n }); }); });
       todo.sort(function (a, b) { return NEED_ORDER.indexOf(a.n.kind) - NEED_ORDER.indexOf(b.n.kind); });
@@ -457,9 +497,10 @@
           else if (!confirm('Changing the training plan, food, meals a day or length starts a fresh plan, so your hand edits will be dropped. Continue?')) return;
         }
         btn.disabled = true;
-        call('cpBuildCreate', Object.assign({ form: out }, storageKey ? { storageKey: storageKey } : {})).then(function (j) {
+        call('cpBuildCreate', Object.assign({ form: out }, storageKey ? { storageKey: storageKey } : {}, !storageKey && S.intake ? { intakeId: S.intake.id } : {})).then(function (j) {
           btn.disabled = false;
           if (!j.ok) { msg.appendChild(banner('bad', say(j))); window.scrollTo(0, 0); return; }
+          if (!storageKey) S.intake = null;
           buildView(j.buildId);
         }).catch(function () { btn.disabled = false; });
       } }, [msg, el('div', { class: 'grid' }, [
@@ -485,7 +526,13 @@
         el('div', { class: 'full' }, el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500' }, [ownToggle, 'Set my own calories', el('span', { class: 'hint', text: '(otherwise worked out for you)' })])),
         kcalBox]), el('div', { style: 'height:16px' }), el('div', { class: 'row' }, [btn, el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: function () { storageKey ? clientView(storageKey) : homeView(); } })])]);
       ownToggle.style.width = 'auto'; ownToggle.style.minHeight = '0';
-      show([el('h1', { text: storageKey ? 'New plan for ' + (clientName || v.firstName) : 'New client' }),
+      var IN = !storageKey && S.intake ? S.intake : null, ia = IN ? IN.answers : null;
+      var intakeCard = ia ? el('div', { class: 'card', style: 'margin-bottom:14px' }, [el('h3', { text: 'From ' + ia.firstName + '\'s form' }),
+        el('p', { class: 'small', text: 'Wants to train ' + ia.days + ' days a week ' + (ia.where === 'home' ? 'at home' : 'at a gym') + '.' + (ia.phone ? ' Mobile ' + ia.phone + '.' : '') }),
+        ia.health ? el('p', { class: 'small', text: 'Injuries or health: ' + ia.health }) : null, ia.foods ? el('p', { class: 'small', text: 'Will not eat: ' + ia.foods }) : null,
+        ia.notes ? el('p', { class: 'small', text: 'Also: ' + ia.notes }) : null,
+        el('p', { class: 'mute small', style: 'margin:0', text: 'Check the details below, then build. What they wrote here is saved to your notes on this client.' })]) : null;
+      show([el('h1', { text: storageKey ? 'New plan for ' + (clientName || v.firstName) : 'New client' }), intakeCard,
         el('p', { class: 'mute', text: 'Fill this in and the plan is built in under a minute. Nothing reaches the client until you publish it.' }), form]);
     });
   }

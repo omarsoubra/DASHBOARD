@@ -5,12 +5,13 @@
 -- Lets OTHER coaches use the platform: each coach has a login, sees only their
 -- own clients, and builds plans with the in-app plan builder (no AI in the loop).
 --
--- FIVE new tables and ONE new nullable column:
+-- SIX new tables and ONE new nullable column:
 --   coaches          one row per outside coach (Omar is NOT a row: his login is
 --                    unchanged and his clients keep coach_id = NULL)
 --   coach_sessions   login sessions (only the sha256 of the session key is stored)
 --   plan_builds      the plan-builder queue: form in, plan preview out, publish
 --   coach_templates  a coach's own saved plans, reusable for any client
+--   coach_intakes    form links the coach sends to new clients, and their answers until the plan is built
 --   coach_client_state  the coach's private notes on a client + how far they have read the check-ins
 --   clients.coach_id NULL = Omar's client (every existing row). Set = that coach's.
 --
@@ -95,6 +96,20 @@ create table if not exists public.coach_client_state (
   updated_at       timestamptz not null default now()
 );
 
+-- A form link the coach sends to a new client. The client's answers wait here until the coach builds the plan, then are erased.
+create table if not exists public.coach_intakes (
+  id           uuid primary key default gen_random_uuid(),
+  coach_id     uuid not null references public.coaches(id) on delete cascade,
+  label        text not null default '' check (length(label) <= 40),
+  token_hash   text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  status       text not null default 'open' check (status in ('open', 'submitted', 'closed')),
+  answers      jsonb,
+  created_at   timestamptz not null default now(),
+  submitted_at timestamptz,
+  expires_at   timestamptz not null
+);
+create index if not exists coach_intakes_coach_idx on public.coach_intakes (coach_id, created_at desc);
+
 alter table public.clients add column if not exists coach_id uuid references public.coaches(id);
 create index if not exists clients_coach_id_idx on public.clients (coach_id) where coach_id is not null;
 
@@ -106,12 +121,14 @@ alter table public.coach_sessions enable row level security;
 alter table public.plan_builds    enable row level security;
 alter table public.coach_templates enable row level security;
 alter table public.coach_client_state enable row level security;
+alter table public.coach_intakes enable row level security;
 
 commit;
 
 -- Rollback (only if no coach has been created):
 --   drop index if exists public.clients_coach_id_idx;
 --   alter table public.clients drop column if exists coach_id;
+--   drop table if exists public.coach_intakes;
 --   drop table if exists public.coach_client_state;
 --   drop table if exists public.coach_templates;
 --   drop table if exists public.plan_builds;

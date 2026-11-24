@@ -704,6 +704,11 @@ Deno.serve(async (req) => {
       case 'cpTemplates':        return cpTemplates(body);
       case 'cpTemplateDelete':   return cpTemplateDelete(body);
       case 'cpClientPhotos':     return cpClientPhotos(body);
+      case 'cpIntakeCreate':     return cpIntakeCreate(body);
+      case 'cpIntakeInspect':     return cpIntakeInspect(body);
+      case 'cpIntakeSubmit':     return cpIntakeSubmit(body);
+      case 'cpIntakes':     return cpIntakes(body);
+      case 'cpIntakeClose':     return cpIntakeClose(body);
       case 'cpClientNote':     return cpClientNote(body);
       case 'cpCheckinReviewed':     return cpCheckinReviewed(body);
       case 'cpWorkerClaim':      return cpWorkerClaim(body);
@@ -4631,6 +4636,18 @@ async function cpBuildCreate(body: any) {
   const { data: row, error } = await admin.from('plan_builds')
     .insert({ coach_id: coach.id, storage_key: storageKey, is_update: isUpdate, form, status: 'queued' }).select('id').single();
   if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return err('write_failed'); }
+  // Built from a client's form: what they wrote about health and food moves into the coach's private notes, then the form is erased.
+  if (!isUpdate && body?.intakeId) {
+    const { data: it } = await admin.from('coach_intakes').select('id, coach_id, status, answers').eq('id', String(body.intakeId)).maybeSingle();
+    if (it && it.coach_id === coach.id && it.status === 'submitted' && it.answers) {
+      const a = it.answers;
+      const lines = [`From their form: wants ${a.days} days a week ${a.where === 'home' ? 'at home' : 'at a gym'}.`, a.health ? `Injuries or health: ${a.health}` : '',
+        a.foods ? `Will not eat: ${a.foods}` : '', a.notes ? `Also: ${a.notes}` : '', a.phone ? `Mobile: ${a.phone}` : ''].filter(Boolean);
+      const { data: had } = await admin.from('coach_client_state').select('storage_key').eq('storage_key', storageKey).maybeSingle();
+      if (!had) await admin.from('coach_client_state').insert({ storage_key: storageKey, coach_id: coach.id, notes: lines.join('\n').slice(0, 4000), updated_at: new Date().toISOString() });
+      await admin.from('coach_intakes').update({ status: 'closed', answers: null }).eq('id', it.id);
+    }
+  }
   return ok({ buildId: row.id, storageKey });
 }
 
@@ -5078,6 +5095,83 @@ async function cpCheckinReviewed(body: any) {
     .upsert({ storage_key: c.storage_key, coach_id: coach.id, reviewed_through: through, updated_at: new Date().toISOString() }, { onConflict: 'storage_key' });
   if (error) return err('save_failed');
   return ok({ reviewedThrough: through });
+}
+
+// ── client intake form: the coach sends a link, the client fills in their own details ────────────────────────────────
+const CP_INTAKE_TTL_DAYS = 14;
+const CP_INTAKE_MAX_OPEN = 50;
+const cpIntakeView = (r: any) => ({ id: r.id, label: r.label ?? '', status: r.status, createdAt: r.created_at, submittedAt: r.submitted_at ?? null, answers: r.status === 'submitted' ? r.answers : null });
+/** Shape and size only. The plan engine validates every value again when the coach builds the plan. */
+function cpCleanIntake(a: any): Record<string, unknown> | null {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  const name = (v: unknown) => typeof v === 'string' && /^[A-Za-z][A-Za-z '\-]{0,30}$/.test(v.trim()) ? v.trim() : null;
+  const num = (v: unknown, lo: number, hi: number) => { const n = Number(v); return v !== '' && v !== null && v !== undefined && Number.isFinite(n) && n >= lo && n <= hi ? n : null; };
+  const pick = (v: unknown, of: string[]) => (typeof v === 'string' && of.includes(v) ? v : null);
+  const text = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u0008\u000b-\u001f]/g, '').trim().slice(0, max) : '');
+  const out: Record<string, unknown> = {
+    firstName: name(a.firstName), lastName: name(a.lastName), sex: pick(a.sex, ['male', 'female']), age: num(a.age, 18, 80),
+    heightCm: num(a.heightCm, 130, 220), weightKg: num(a.weightKg, 35, 250), goal: pick(a.goal, ['lose_fat', 'build_muscle']),
+    activity: pick(a.activity, ['sedentary', 'moderate', 'active', 'very_active']), where: pick(a.where, ['gym', 'home']), days: num(a.days, 2, 6),
+  };
+  if (Object.values(out).some((v) => v === null)) return null;
+  const goalW = num(a.goalWeightKg, 35, 250); if (goalW !== null) out.goalWeightKg = goalW;
+  const meals = num(a.mealsPerDay, 3, 4); if (meals !== null) out.mealsPerDay = meals;
+  if (Array.isArray(a.allergies)) out.allergies = a.allergies.filter((x: unknown) => typeof x === 'string' && /^[a-z_]{2,20}$/.test(x)).slice(0, 12);
+  out.health = text(a.health, 600); out.foods = text(a.foods, 400); out.notes = text(a.notes, 600); out.phone = text(a.phone, 24).replace(/[^0-9+ ]/g, '');
+  return out;
+}
+async function cpIntakeCreate(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const label = typeof body?.label === 'string' ? body.label.replace(/[<>]/g, '').trim().slice(0, 40) : '';
+  const { data: open } = await admin.from('coach_intakes').select('id').eq('coach_id', coach.id).in('status', ['open', 'submitted']);
+  if ((open ?? []).length >= CP_INTAKE_MAX_OPEN) return err('too_many_forms', { detail: 'You have a lot of forms out. Remove some old ones first.' });
+  const token = randomToken();
+  const { data: row, error } = await admin.from('coach_intakes').insert({ coach_id: coach.id, label, token_hash: await sha256(token), status: 'open',
+    expires_at: new Date(Date.now() + CP_INTAKE_TTL_DAYS * 86400_000).toISOString() }).select('id').single();
+  if (error || !row?.id) return err('write_failed');
+  return ok({ id: row.id, link: `${CP_APP_URL}intake.html?c=${coach.slug}#f=${token}`, expiresInDays: CP_INTAKE_TTL_DAYS });
+}
+async function cpIntakeOpen(token: unknown): Promise<any | null> {
+  if (typeof token !== 'string' || token.length < 30 || token.length > 100) return null;
+  const { data: r } = await admin.from('coach_intakes').select('id, coach_id, status, expires_at').eq('token_hash', await sha256(token)).maybeSingle();
+  if (!r || r.status !== 'open' || !(Date.parse(r.expires_at) > Date.now())) return null;
+  const { data: c } = await admin.from('coaches').select('name, brand, accent, logo, status').eq('id', r.coach_id).maybeSingle();
+  if (!c || c.status !== 'active') return null;
+  return { row: r, coach: c };
+}
+/** Public, token-gated: is this form link still good, and whose look does it wear. */
+async function cpIntakeInspect(body: any) {
+  const o = await cpIntakeOpen(body?.token);
+  if (!o) return err('bad_link');
+  return ok({ brand: o.coach.brand || o.coach.name, coachFirstName: String(o.coach.name).split(/\s+/)[0], accent: o.coach.accent ?? null, logo: o.coach.logo?.['192'] ?? null });
+}
+/** Public, token-gated, once: the client's answers. They reach only the coach who made the link. */
+async function cpIntakeSubmit(body: any) {
+  const o = await cpIntakeOpen(body?.token);
+  if (!o) return err('bad_link');
+  if (body?.consent !== true) return err('consent_required');
+  const answers = cpCleanIntake(body?.answers);
+  if (!answers) return err('bad_answers');
+  const { error } = await admin.from('coach_intakes').update({ status: 'submitted', answers, submitted_at: new Date().toISOString() }).eq('id', o.row.id).eq('status', 'open');
+  if (error) return err('write_failed');
+  return ok({});
+}
+async function cpIntakes(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data } = await admin.from('coach_intakes').select('id, label, status, answers, created_at, submitted_at, expires_at')
+    .eq('coach_id', coach.id).in('status', ['open', 'submitted']).order('created_at', { ascending: false }).limit(100);
+  return ok({ forms: (data ?? []).filter((r: any) => r.status === 'submitted' || Date.parse(r.expires_at) > Date.now()).map(cpIntakeView) });
+}
+/** Done with a form: the plan was started from it, or the coach removed it. The answers are erased either way. */
+async function cpIntakeClose(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: r } = await admin.from('coach_intakes').select('id, coach_id').eq('id', String(body?.id ?? '')).maybeSingle();
+  if (!r || r.coach_id !== coach.id) return err('unknown_form');
+  await admin.from('coach_intakes').update({ status: 'closed', answers: null }).eq('id', r.id);
+  return ok({});
 }
 
 async function cpClientPhotos(body: any) {
