@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Coach</title>
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --ink:#16161a; --mute:#6b6b76; --line:#e4e4e0; --accent:#16161a; --good:#1c7c4a; --warn:#a15c00; --bad:#b3261e; --soft:#f0f0ec; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-text-size-adjust:100%; }
+  header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  header .brand { font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:14px; }
+  header .who { margin-left:auto; color:var(--mute); font-size:14px; }
+  main { max-width:860px; margin:0 auto; padding:18px 16px 80px; }
+  h1 { font-size:24px; margin:6px 0 14px; line-height:1.2; }
+  h2 { font-size:15px; margin:26px 0 10px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); font-weight:600; }
+  h3 { font-size:16px; margin:0 0 6px; }
+  p { margin:0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .grow { flex:1 1 auto; min-width:0; }
+  .mute { color:var(--mute); } .small { font-size:14px; } .right { text-align:right; }
+  button, .btn { font:inherit; font-weight:600; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:10px; padding:11px 16px; cursor:pointer; min-height:44px; }
+  button.ghost { background:transparent; color:var(--ink); border-color:var(--line); }
+  button.danger { background:transparent; color:var(--bad); border-color:var(--line); }
+  button.link { background:none; border:0; color:var(--ink); text-decoration:underline; padding:6px 0; min-height:0; font-weight:500; }
+  button:disabled { opacity:.5; cursor:default; }
+  label { display:block; font-size:14px; font-weight:600; margin:0 0 5px; }
+  .hint { font-weight:400; color:var(--mute); }
+  input, select { font:inherit; width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); min-height:44px; }
+  input:focus, select:focus, button:focus-visible { outline:2px solid var(--ink); outline-offset:1px; }
+  .grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+  .grid .full { grid-column:1 / -1; }
+  @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
+  .err { color:var(--bad); font-size:14px; margin-top:4px; }
+  .banner { border-radius:10px; padding:12px 14px; margin-bottom:12px; font-size:15px; }
+  .banner.bad { background:#fdecea; color:#7a1c16; } .banner.good { background:#e8f5ee; color:#14532d; } .banner.info { background:var(--soft); }
+  .pill { display:inline-block; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:99px; background:var(--soft); color:var(--mute); white-space:nowrap; }
+  .pill.good { background:#e8f5ee; color:var(--good); } .pill.warn { background:#fff3dd; color:var(--warn); } .pill.bad { background:#fdecea; color:var(--bad); }
+  .item { display:flex; gap:12px; align-items:center; padding:14px 0; border-top:1px solid var(--line); cursor:pointer; background:none; border-left:0; border-right:0; border-bottom:0; width:100%; text-align:left; color:inherit; border-radius:0; font-weight:400; min-height:0; }
+  .item:first-child { border-top:0; }
+  .item .name { font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { text-align:left; padding:8px 6px; border-top:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); font-weight:600; border-top:0; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
+  .tabs button { background:var(--soft); color:var(--ink); border-color:var(--soft); padding:8px 13px; min-height:38px; font-weight:600; font-size:14px; }
+  .tabs button[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .meal { padding:10px 0; border-top:1px solid var(--line); } .meal:first-child { border-top:0; }
+  .linkbox { font-family:ui-monospace, Menlo, monospace; font-size:13px; word-break:break-all; background:var(--soft); border-radius:8px; padding:10px; margin:8px 0; }
+  .spin { display:inline-block; width:16px; height:16px; border:2px solid var(--line); border-top-color:var(--ink); border-radius:50%; animation:sp 0.8s linear infinite; vertical-align:-3px; margin-right:8px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation:none; } }
+  svg.chart { width:100%; height:120px; display:block; }
+  .checks { display:flex; flex-wrap:wrap; gap:8px; } .checks label { display:flex; align-items:center; gap:6px; font-weight:400; margin:0; border:1px solid var(--line); border-radius:99px; padding:7px 12px; background:#fff; }
+  .checks input { width:auto; min-height:0; }
+</style>
+</head>
+<body>
+<header><span class="brand" id="brand">Coach</span><span class="who" id="who"></span></header>
+<main id="app" aria-live="polite"></main>
+<script>
+(function () {
+  'use strict';
+  var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var API = LOCAL ? '/api' : 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
+  var KEY = 'cp_session_v1';
+  var S = { session: null, coach: null, options: null, timer: null };
+  try { S.session = localStorage.getItem(KEY); } catch (e) {}
+
+  // ── tiny DOM helpers: every piece of text goes through textContent ──────
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      var v = attrs[k];
+      if (v === null || v === undefined || v === false) return;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? '' : v);
+    });
+    (function add(c) {
+      if (c == null || c === false) return;
+      if (Array.isArray(c)) { c.forEach(add); return; }
+      n.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+    })(kids);
+    return n;
+  }
+  var app = document.getElementById('app');
+  function show(nodes) { stopTimer(); app.replaceChildren.apply(app, Array.isArray(nodes) ? nodes.filter(Boolean) : [nodes]); window.scrollTo(0, 0); }
+  function stopTimer() { if (S.timer) { clearTimeout(S.timer); S.timer = null; } }
+  function banner(kind, text) { return el('div', { class: 'banner ' + kind, role: kind === 'bad' ? 'alert' : 'status', text: text }); }
+  function oops(e) {
+    if (e && e.message === 'signed_out') return;
+    if (window.console) console.error(e);
+    show(banner('bad', e instanceof TypeError && /fetch|network|load/i.test(String(e.message)) ? 'Could not reach the server. Check your connection.' : 'Something went wrong on this screen. Reload the page and try again.'));
+  }
+  function busy(text) { return el('p', { class: 'mute' }, [el('span', { class: 'spin' }), text]); }
+
+  function call(type, body) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ type: type, session: S.session }, body || {})) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok === false && j.error === 'unauthorized' && type !== 'cpLogin') { signOut(true); throw new Error('signed_out'); }
+        return j;
+      });
+  }
+  var MSG = {
+    bad_login: 'That email and password do not match.', locked: 'Too many tries. Wait 15 minutes and try again.', suspended: 'This account is paused. Contact support.',
+    link_invalid: 'This setup link has expired or was already used. Ask for a new one.', password_too_short: 'Use at least 10 characters.',
+    password_too_weak: 'Choose a stronger password.', password_too_long: 'That password is too long.', bad_form: 'Check the client\'s name: letters only.',
+    client_exists: 'You already have a client with this name. Add a last name, or update their plan from their page.',
+    client_limit: 'You have reached your client limit. Contact support to raise it.', too_many_open_builds: 'Three plans are already being built. Finish or discard one first.',
+    build_in_progress: 'A plan for this client is already being built.', not_ready: 'This plan is not ready to publish yet.', write_failed: 'Could not save. Try again.',
+    unknown_client: 'Client not found.', unknown_build: 'Plan not found.'
+  };
+  function say(j) { return (j && (j.detail || MSG[j.error])) || 'Something went wrong. Try again.'; }
+  function when(iso) {
+    if (!iso) return 'never';
+    var d = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
+    return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 14 ? d + ' days ago' : new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+  function setHeader() {
+    document.getElementById('brand').textContent = S.coach ? S.coach.brand : 'Coach';
+    document.title = S.coach ? S.coach.brand + ' - Coach' : 'Coach';
+    var who = document.getElementById('who'); who.replaceChildren();
+    if (S.coach) { who.appendChild(document.createTextNode(S.coach.name + '  ')); who.appendChild(el('button', { class: 'link', text: 'Sign out', onclick: function () { call('cpLogout').catch(function () {}); signOut(false); } })); }
+  }
+  function signOut(expired) {
+    S.session = null; S.coach = null; try { localStorage.removeItem(KEY); } catch (e) {}
+    setHeader(); loginView(expired ? 'Please sign in again.' : null);
+  }
+  function options() {
+    if (S.options) return Promise.resolve(S.options);
+    return fetch('options.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (o) { S.options = o; return o; });
+  }
+
+  // ── sign in / first-time setup ───────────────────────────────────────────
+  function field(label, input, hint) {
+    var id = 'f_' + Math.random().toString(36).slice(2, 8); input.id = id;
+    return el('div', null, [el('label', { for: id }, [label, hint ? el('span', { class: 'hint', text: '  ' + hint }) : null]), input, el('div', { class: 'err', 'data-err': input.name || '' })]);
+  }
+  function loginView(note) {
+    var email = el('input', { type: 'email', name: 'email', autocomplete: 'username', required: true });
+    var pw = el('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
+    var msg = el('div');
+    var btn = el('button', { type: 'submit', text: 'Sign in' });
+    var form = el('form', { class: 'card', onsubmit: function (e) {
+      e.preventDefault(); btn.disabled = true; msg.replaceChildren();
+      call('cpLogin', { email: email.value, password: pw.value }).then(function (j) {
+        btn.disabled = false;
+        if (!j.ok) { msg.appendChild(banner('bad', say(j))); return; }
+        S.session = j.session; S.coach = j.coach; try { localStorage.setItem(KEY, j.session); } catch (e2) {}
+        setHeader(); homeView();
+      }).catch(function () { btn.disabled = false; msg.appendChild(banner('bad', 'Could not reach the server. Check your connection.')); });
+    } }, [msg, field('Email', email), el('div', { style: 'height:12px' }), field('Password', pw), el('div', { style: 'height:16px' }), btn]);
+    show([el('h1', { text: 'Sign in' }), note ? banner('info', note) : null, form]);
+  }
+  function setupView(token) {
+    show(busy('Checking your link'));
+    call('cpSetupInspect', { token: token }).then(function (j) {
+      if (!j.ok) { show([el('h1', { text: 'Set up your account' }), banner('bad', say(j))]); return; }
+      var pw = el('input', { type: 'password', name: 'password', autocomplete: 'new-password', minlength: 10, required: true });
+      var pw2 = el('input', { type: 'password', name: 'password2', autocomplete: 'new-password', minlength: 10, required: true });
+      var msg = el('div'); var btn = el('button', { type: 'submit', text: 'Save password' });
+      show([el('h1', { text: 'Welcome, ' + j.name }), el('p', { class: 'mute', text: 'Choose a password for ' + j.email + '. You will use it to sign in from now on.' }),
+        el('form', { class: 'card', onsubmit: function (e) {
+          e.preventDefault(); msg.replaceChildren();
+          if (pw.value !== pw2.value) { msg.appendChild(banner('bad', 'The two passwords do not match.')); return; }
+          btn.disabled = true;
+          call('cpSetup', { token: token, password: pw.value }).then(function (r) {
+            btn.disabled = false;
+            if (!r.ok) { msg.appendChild(banner('bad', say(r))); return; }
+            history.replaceState(null, '', location.pathname); loginView('Password saved. Sign in to start.');
+          });
+        } }, [msg, field('New password', pw, 'at least 10 characters'), el('div', { style: 'height:12px' }), field('Type it again', pw2), el('div', { style: 'height:16px' }), btn])]);
+    });
+  }
+
+  // ── home: clients + plans in progress ────────────────────────────────────
+  var STATUS = { queued: ['Building', 'warn'], building: ['Building', 'warn'], built: ['Ready to review', 'good'], failed: ['Needs a change', 'bad'], publishing: ['Going live', 'warn'], live: ['Live', 'good'] };
+  function pill(status) { var s = STATUS[status] || [status, '']; return el('span', { class: 'pill ' + s[1], text: s[0] }); }
+  function homeView() {
+    show(busy('Loading your clients'));
+    call('cpClients').then(function (j) {
+      if (!j.ok) { show(banner('bad', say(j))); return; }
+      S.coach = j.coach; setHeader();
+      var nodes = [el('div', { class: 'row' }, [el('h1', { class: 'grow', text: 'Clients' }), el('button', { text: 'New client', onclick: function () { formView(null, null); } })])];
+      if (j.builds.length) {
+        nodes.push(el('h2', { text: 'Plans in progress' }));
+        nodes.push(el('div', { class: 'card' }, j.builds.map(function (b) {
+          var nm = (b.summary && b.summary.name) || [b.form.firstName, b.form.lastName].filter(Boolean).join(' ');
+          return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [
+            el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm }), el('div', { class: 'mute small', text: (b.isUpdate ? 'Plan update' : 'New client') + ' · started ' + when(b.createdAt) })]), pill(b.status)]);
+        })));
+      }
+      nodes.push(el('h2', { text: j.clients.length + (j.clients.length === 1 ? ' client' : ' clients') }));
+      if (!j.clients.length) nodes.push(el('div', { class: 'card' }, [el('p', { text: 'No clients yet.' }), el('p', { class: 'mute', text: 'Tap New client, fill in the short form and the plan is built for you to review.' })]));
+      else nodes.push(el('div', { class: 'card' }, j.clients.map(function (c) {
+        var last = [c.lastWorkoutAt, c.lastMealAt, c.latestWeightAt, c.lastCheckinAt].filter(Boolean).sort().pop();
+        return el('button', { class: 'item', onclick: function () { clientView(c.storageKey); } }, [
+          el('span', { class: 'grow' }, [el('span', { class: 'name', text: c.name }),
+            el('div', { class: 'mute small', text: (c.latestWeight ? c.latestWeight + ' kg · ' : '') + 'last active ' + when(last) + ' · check-in ' + when(c.lastCheckinAt) })]),
+          c.access === 'suspended' ? el('span', { class: 'pill bad', text: 'Paused' }) : !c.lastOpenedAt && !last ? el('span', { class: 'pill', text: 'Not opened' }) : null]);
+      })));
+      show(nodes);
+    }).catch(oops);
+  }
+
+  // ── the plan form (new client, or a new plan for an existing one) ────────
+  function formView(prev, storageKey, clientName) {
+    show(busy('Loading'));
+    options().then(function (O) {
+      var v = prev || {};
+      function sel(name, map, value) {
+        var s = el('select', { name: name });
+        Object.keys(map).forEach(function (k) { var o = el('option', { value: k, text: typeof map[k] === 'string' ? map[k] : map[k].label }); if (String(value) === k) o.selected = true; s.appendChild(o); });
+        return s;
+      }
+      function inp(name, type, value, extra) { return el('input', Object.assign({ name: name, type: type, value: value == null ? '' : value }, extra || {})); }
+      var feeds = {}; O.menus[Object.keys(O.menus)[0]].feeds.forEach(function (n) { feeds[n] = n + ' meals a day'; });
+      var weeks = {}; O.weeks.forEach(function (w) { weeks[w] = w + ' weeks'; });
+      var first = inp('firstName', 'text', v.firstName, { required: true, maxlength: 30, autocomplete: 'off' });
+      var last = inp('lastName', 'text', v.lastName, { maxlength: 30, autocomplete: 'off' });
+      if (storageKey) { first.readOnly = true; last.readOnly = true; }
+      var kcalBox = el('div', { class: 'grid full', hidden: !v.kcal });
+      var ownToggle = el('input', { type: 'checkbox' }); ownToggle.checked = !!v.kcal;
+      var weeksSel = sel('weeks', weeks, v.weeks || 12);
+      function drawKcal() {
+        kcalBox.replaceChildren(); var n = Number(weeksSel.value) / 4;
+        for (var i = 0; i < n; i++) kcalBox.appendChild(field('Calories, weeks ' + (i * 4 + 1) + '-' + (i * 4 + 4), inp('kcal' + i, 'number', v.kcal && v.kcal[i], { min: O.kcal[0], max: O.kcal[1], step: 50, inputmode: 'numeric' })));
+        kcalBox.appendChild(field('Protein per day', inp('proteinG', 'number', v.proteinG, { min: 60, max: 320, step: 5, inputmode: 'numeric' }), 'grams, optional'));
+      }
+      drawKcal(); weeksSel.addEventListener('change', drawKcal);
+      ownToggle.addEventListener('change', function () { kcalBox.hidden = !ownToggle.checked; });
+      var allergy = el('div', { class: 'checks' }, O.allergies.map(function (a) {
+        var c = el('input', { type: 'checkbox', name: 'allergy', value: a }); c.checked = (v.allergies || []).indexOf(a) >= 0;
+        return el('label', null, [c, a.replace('_', ' ')]);
+      }));
+      var msg = el('div'); var btn = el('button', { type: 'submit', text: 'Build the plan' });
+      var form = el('form', { class: 'card', novalidate: true, onsubmit: function (e) {
+        e.preventDefault(); msg.replaceChildren();
+        var f = new FormData(form), out = {};
+        ['firstName', 'lastName', 'sex', 'goal', 'activity', 'training', 'menu', 'startDate'].forEach(function (k) { var x = String(f.get(k) || '').trim(); if (x) out[k] = x; });
+        ['age', 'heightCm', 'weightKg', 'goalWeightKg', 'mealsPerDay', 'weeks'].forEach(function (k) { var x = String(f.get(k) || '').trim(); if (x) out[k] = Number(x); });
+        out.allergies = f.getAll('allergy');
+        var missing = ['firstName', 'age', 'heightCm', 'weightKg'].filter(function (k) { return out[k] === undefined || out[k] === ''; });
+        if (missing.length) { msg.appendChild(banner('bad', 'Fill in name, age, height and weight.')); return; }
+        if (ownToggle.checked) {
+          var ks = []; for (var i = 0; i < out.weeks / 4; i++) ks.push(Number(f.get('kcal' + i)));
+          if (ks.some(function (k) { return !k; })) { msg.appendChild(banner('bad', 'Enter calories for every phase, or untick "Set my own calories".')); return; }
+          out.kcal = ks; if (f.get('proteinG')) out.proteinG = Number(f.get('proteinG'));
+        }
+        btn.disabled = true;
+        call('cpBuildCreate', Object.assign({ form: out }, storageKey ? { storageKey: storageKey } : {})).then(function (j) {
+          btn.disabled = false;
+          if (!j.ok) { msg.appendChild(banner('bad', say(j))); window.scrollTo(0, 0); return; }
+          buildView(j.buildId);
+        }).catch(function () { btn.disabled = false; });
+      } }, [msg, el('div', { class: 'grid' }, [
+        field('First name', first), field('Last name', last),
+        field('Sex', sel('sex', { male: 'Male', female: 'Female' }, v.sex || 'male')), field('Age', inp('age', 'number', v.age, { min: 18, max: 80, inputmode: 'numeric' }), 'adults only'),
+        field('Height', inp('heightCm', 'number', v.heightCm, { min: 130, max: 220, inputmode: 'decimal' }), 'cm'), field('Weight now', inp('weightKg', 'number', v.weightKg, { min: 35, max: 250, step: 0.1, inputmode: 'decimal' }), 'kg'),
+        field('Goal', sel('goal', O.goals, v.goal || 'lose_fat')), field('Goal weight', inp('goalWeightKg', 'number', v.goalWeightKg, { min: 35, max: 250, step: 0.1, inputmode: 'decimal' }), 'kg, optional'),
+        el('div', { class: 'full' }, field('Daily activity', sel('activity', O.activity, v.activity || 'moderate'))),
+        el('div', { class: 'full' }, field('Training', sel('training', O.training, v.training || 'gym5_ppl_ul'))),
+        field('Food', sel('menu', O.menus, v.menu || Object.keys(O.menus)[0])), field('Meals', sel('mealsPerDay', feeds, v.mealsPerDay || 4)),
+        field('Length', weeksSel), field('Start date', inp('startDate', 'date', v.startDate), 'optional'),
+        el('div', { class: 'full' }, [el('label', { text: 'Allergies' }), allergy]),
+        el('div', { class: 'full' }, el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500' }, [ownToggle, 'Set my own calories', el('span', { class: 'hint', text: '(otherwise worked out for you)' })])),
+        kcalBox]), el('div', { style: 'height:16px' }), el('div', { class: 'row' }, [btn, el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: function () { storageKey ? clientView(storageKey) : homeView(); } })])]);
+      ownToggle.style.width = 'auto'; ownToggle.style.minHeight = '0';
+      show([el('h1', { text: storageKey ? 'New plan for ' + (clientName || v.firstName) : 'New client' }),
+        el('p', { class: 'mute', text: 'Fill this in and the plan is built in under a minute. Nothing reaches the client until you publish it.' }), form]);
+    });
+  }
+
+  // ── plan preview (shared by the review screen and the client page) ───────
+  function planNode(summary, plan) {
+    var box = el('div');
+    var t = el('table', null, [el('thead', null, el('tr', null, [el('th', { text: 'Weeks' }), el('th', { class: 'num', text: 'Calories' }), el('th', { class: 'num', text: 'Protein' }), el('th', { class: 'num', text: 'Carbs' }), el('th', { class: 'num', text: 'Fat' })]))]);
+    var tb = el('tbody'); (summary.targets || []).forEach(function (x) {
+      tb.appendChild(el('tr', null, [el('td', { text: (x.phase * 4 - 3) + '-' + (x.phase * 4) }), el('td', { class: 'num', text: x.kcal.toLocaleString() }), el('td', { class: 'num', text: x.p + ' g' }), el('td', { class: 'num', text: x.c + ' g' }), el('td', { class: 'num', text: x.f + ' g' })]));
+    }); t.appendChild(tb);
+    box.appendChild(el('div', { class: 'card' }, [el('h3', { text: summary.weeks + ' weeks · ' + (summary.strategy === 'cut' ? 'fat loss' : 'muscle gain') }),
+      el('p', { class: 'mute small', text: summary.training + ' · ' + summary.menu + ' · ' + summary.mealsPerDay + ' meals a day' + (summary.goalWeightKg ? ' · goal ' + summary.goalWeightKg + ' kg' : '') }), t,
+      summary.why ? el('p', { class: 'mute small', style: 'margin-top:10px', text: 'How the calories were set: ' + String(summary.why).replace(/autopilot policy v1 §A\.\d: /, '').replace(/ \(§A\.\d[^)]*\)/g, '').replace(/§A\.\d+ ?/g, '') }) : null,
+      (summary.notes || []).map(function (n) { return banner('info', n); })]));
+    if (!plan) return box;
+    var phases = Object.keys(plan.training || {});
+    var state = { tab: 'training', phase: phases[0], day: 0 };
+    var body = el('div');
+    function draw() {
+      body.replaceChildren();
+      body.appendChild(el('div', { class: 'tabs', role: 'group', 'aria-label': 'Section' }, [['training', 'Training'], ['meals', 'Meals']].map(function (x) {
+        return el('button', { type: 'button', 'aria-pressed': String(state.tab === x[0]), text: x[1], onclick: function () { state.tab = x[0]; state.day = 0; draw(); } }); })));
+      body.appendChild(el('div', { class: 'tabs', role: 'group', 'aria-label': 'Weeks' }, phases.map(function (p) {
+        return el('button', { type: 'button', 'aria-pressed': String(state.phase === p), text: 'Weeks ' + (p * 4 - 3) + '-' + (p * 4), onclick: function () { state.phase = p; draw(); } }); })));
+      if (state.tab === 'training') {
+        (plan.training[state.phase].days || []).forEach(function (d) {
+          var tt = el('table', null, [el('thead', null, el('tr', null, [el('th', { text: 'Exercise' }), el('th', { class: 'num', text: 'Sets' }), el('th', { class: 'num', text: 'Reps' }), el('th', { class: 'num', text: 'Rest' })]))]);
+          var b2 = el('tbody'); (d.exercises || []).forEach(function (x) { b2.appendChild(el('tr', null, [el('td', { text: x.name }), el('td', { class: 'num', text: x.sets }), el('td', { class: 'num', text: x.reps }), el('td', { class: 'num', text: x.rest || '' })])); });
+          tt.appendChild(b2); body.appendChild(el('div', { class: 'card' }, [el('h3', { text: d.label }), tt]));
+        });
+      } else {
+        var days = plan.meals[state.phase] || []; var names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        body.appendChild(el('div', { class: 'tabs', role: 'group', 'aria-label': 'Day' }, days.map(function (_, i) {
+          return el('button', { type: 'button', 'aria-pressed': String(state.day === i), text: names[i] || 'Day ' + (i + 1), onclick: function () { state.day = i; draw(); } }); })));
+        var meals = days[state.day] || []; var tot = meals.reduce(function (a, m) { return { cal: a.cal + m.cal, p: a.p + m.p }; }, { cal: 0, p: 0 });
+        body.appendChild(el('div', { class: 'card' }, meals.map(function (m) {
+          return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('span', { class: 'grow' }, [el('span', { class: 'mute small', text: m.time + '  ' }), el('strong', { text: m.name })]), el('span', { class: 'mute small', text: m.cal + ' kcal · ' + m.p + ' g protein' })]),
+            el('div', { class: 'small', style: 'margin-top:4px', text: m.desc })]);
+        }).concat([el('p', { class: 'mute small right', style: 'margin:10px 0 0', text: 'Day total ' + tot.cal.toLocaleString() + ' kcal · ' + tot.p + ' g protein (week 1 of this phase)' })])));
+      }
+    }
+    draw(); box.appendChild(body); return box;
+  }
+
+  // ── review a build ───────────────────────────────────────────────────────
+  function buildView(id, justPublished) {
+    show(busy('Loading the plan'));
+    function load() {
+      call('cpBuildGet', { buildId: id }).then(function (j) {
+        if (!j.ok) { show(banner('bad', say(j))); return; }
+        var b = j.build, nm = (b.summary && b.summary.name) || [b.form.firstName, b.form.lastName].filter(Boolean).join(' ');
+        var back = el('button', { class: 'link', text: '‹ Clients', onclick: homeView });
+        var head = el('div', { class: 'row' }, [el('h1', { class: 'grow', text: nm }), pill(b.status)]);
+        if (b.status === 'queued' || b.status === 'building') {
+          show([back, head, el('div', { class: 'card' }, [busy('Building the plan. This usually takes under a minute.'), el('p', { class: 'mute small', text: 'You can leave this page. The plan will be waiting under Plans in progress.' })])]);
+          S.timer = setTimeout(load, 3000); return;
+        }
+        if (b.status === 'failed') {
+          var reasons = (b.error && b.error.reasons) || ['The plan could not be built.'];
+          show([back, head, el('div', { class: 'card' }, [el('h3', { text: 'This plan could not be built as asked' }), reasons.map(function (r) { return el('p', { text: r }); }),
+            el('div', { class: 'row', style: 'margin-top:8px' }, [el('button', { text: 'Change and try again', onclick: function () { call('cpBuildDiscard', { buildId: id }).then(function () { formView(b.form, b.isUpdate ? b.storageKey : null, nm); }); } }),
+              el('button', { class: 'ghost', text: 'Discard', onclick: function () { call('cpBuildDiscard', { buildId: id }).then(homeView); } })])])]);
+          return;
+        }
+        var msg = el('div'); var nodes = [back, head, msg];
+        if (justPublished) {
+          nodes.push(el('div', { class: 'card' }, [el('h3', { text: justPublished.link ? 'Published. Send this link to ' + b.form.firstName : 'Published. ' + b.form.firstName + '\'s app is updating' }),
+            justPublished.link ? el('p', { class: 'mute small', text: 'This is their private link to the app. It is shown once, so copy it now. You can always make a new one from their page.' }) : el('p', { class: 'mute small', text: 'Their existing link keeps working. Nothing for you to send.' }),
+            justPublished.link ? el('div', { class: 'linkbox', text: justPublished.link }) : null,
+            justPublished.link ? el('button', { text: 'Copy link', onclick: function (e) { navigator.clipboard.writeText(justPublished.link).then(function () { e.target.textContent = 'Copied'; }); } }) : null,
+            el('p', { class: 'mute small', style: 'margin-top:10px', text: b.status === 'live' ? 'The app is live now.' : 'The app goes live in about 2 minutes.' })]));
+        }
+        if (b.status === 'built') {
+          var pub = el('button', { text: b.isUpdate ? 'Publish the new plan' : 'Publish to client' });
+          pub.addEventListener('click', function () {
+            pub.disabled = true; msg.replaceChildren();
+            call('cpPublish', { buildId: id }).then(function (r) { if (!r.ok) { pub.disabled = false; msg.appendChild(banner('bad', say(r))); return; } buildView(id, r); });
+          });
+          nodes.push(el('div', { class: 'card' }, [el('p', { text: 'Check the plan below. Nothing reaches ' + b.form.firstName + ' until you publish.' }),
+            el('div', { class: 'row' }, [pub, el('button', { class: 'ghost', text: 'Change something', onclick: function () { call('cpBuildDiscard', { buildId: id }).then(function () { formView(b.form, b.isUpdate ? b.storageKey : null, nm); }); } }),
+              el('button', { class: 'danger', text: 'Discard', onclick: function () { call('cpBuildDiscard', { buildId: id }).then(homeView); } })])]));
+        }
+        if (b.status === 'publishing' && b.error) nodes.push(banner('info', 'Still publishing. It will keep trying.'));
+        if (b.summary) nodes.push(planNode(b.summary, b.plan));
+        show(nodes);
+        if (b.status === 'publishing') S.timer = setTimeout(function () { call('cpBuildGet', { buildId: id }).then(function (x) { if (x.ok && x.build.status === 'live') buildView(id, justPublished); else S.timer = setTimeout(load, 5000); }); }, 5000);
+      }).catch(oops);
+    }
+    load();
+  }
+
+  // ── one client ───────────────────────────────────────────────────────────
+  function weightChart(ws) {
+    if (ws.length < 2) return null;
+    var W = 600, H = 120, pad = 8, lo = Math.min.apply(null, ws.map(function (w) { return w.weight_kg; })), hi = Math.max.apply(null, ws.map(function (w) { return w.weight_kg; }));
+    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+    var t0 = Date.parse(ws[0].logged_at), t1 = Date.parse(ws[ws.length - 1].logged_at) || t0 + 1;
+    var pts = ws.map(function (w) { return (pad + (W - 2 * pad) * (Date.parse(w.logged_at) - t0) / Math.max(1, t1 - t0)).toFixed(1) + ',' + (pad + (H - 2 * pad) * (1 - (w.weight_kg - lo) / (hi - lo))).toFixed(1); }).join(' ');
+    var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'chart'); svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Weight from ' + ws[0].weight_kg + ' kg to ' + ws[ws.length - 1].weight_kg + ' kg');
+    var pl = document.createElementNS(ns, 'polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#16161a'); pl.setAttribute('stroke-width', '2.5'); pl.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(pl); return svg;
+  }
+  function clientView(key) {
+    show(busy('Loading'));
+    call('cpClient', { storageKey: key }).then(function (j) {
+      if (!j.ok) { show(banner('bad', say(j))); return; }
+      var c = j.client, msg = el('div');
+      var nodes = [el('button', { class: 'link', text: '‹ Clients', onclick: homeView }),
+        el('div', { class: 'row' }, [el('h1', { class: 'grow', text: c.name }), c.access === 'suspended' ? el('span', { class: 'pill bad', text: 'Paused' }) : null]), msg];
+      var form = j.live ? j.live.form : null;
+      nodes.push(el('div', { class: 'row', style: 'margin-bottom:12px' }, [
+        el('button', { text: 'Update plan', disabled: !form, onclick: function () { formView(form, c.storageKey, c.name); } }),
+        el('button', { class: 'ghost', text: 'New app link', onclick: function () {
+          if (!confirm('Make a new link for ' + c.name + '? Their old link will stop working.')) return;
+          call('cpClientLink', { storageKey: key }).then(function (r) {
+            msg.replaceChildren(r.ok ? el('div', { class: 'card' }, [el('h3', { text: 'New link for ' + c.name }), el('div', { class: 'linkbox', text: r.link }), el('button', { text: 'Copy link', onclick: function (e) { navigator.clipboard.writeText(r.link).then(function () { e.target.textContent = 'Copied'; }); } })]) : banner('bad', say(r)));
+          });
+        } }),
+        el('button', { class: c.access === 'suspended' ? 'ghost' : 'danger', text: c.access === 'suspended' ? 'Resume access' : 'Pause access', onclick: function () {
+          var to = c.access === 'suspended' ? 'active' : 'suspended';
+          if (to === 'suspended' && !confirm('Pause ' + c.name + '\'s access to the app?')) return;
+          call('cpClientAccess', { storageKey: key, status: to }).then(function () { clientView(key); });
+        } })]));
+      j.builds.forEach(function (b) { nodes.push(el('button', { class: 'card item', style: 'border:1px solid var(--line);border-radius:12px;padding:14px 16px', onclick: function () { buildView(b.id); } }, [el('span', { class: 'grow name', text: 'Plan update' }), pill(b.status)])); });
+      nodes.push(el('h2', { text: 'Weight' }));
+      var ws = j.weights;
+      nodes.push(el('div', { class: 'card' }, ws.length ? [el('div', { class: 'row' }, [el('div', { class: 'grow' }, [el('strong', { text: ws[ws.length - 1].weight_kg + ' kg' }), el('span', { class: 'mute small', text: '  ' + when(ws[ws.length - 1].logged_at) })]),
+        el('span', { class: 'mute small', text: 'start ' + (c.startWeight || '?') + ' kg' + (c.goalWeight ? ' · goal ' + c.goalWeight + ' kg' : '') })]), weightChart(ws)] : el('p', { class: 'mute', text: 'No weigh-ins logged yet.' })));
+      nodes.push(el('h2', { text: 'Check-ins' }));
+      nodes.push(el('div', { class: 'card' }, j.checkIns.length ? j.checkIns.map(function (k) {
+        var bits = [k.weight_kg ? k.weight_kg + ' kg' : null, k.diet_adherence_1to10 != null ? 'food ' + k.diet_adherence_1to10 + '/10' : null, k.training_adherence_1to10 != null ? 'training ' + k.training_adherence_1to10 + '/10' : null,
+          k.energy_1to10 != null ? 'energy ' + k.energy_1to10 + '/10' : null, k.sleep_hours != null ? 'sleep ' + k.sleep_hours + ' h' : null].filter(Boolean).join(' · ');
+        return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('strong', { class: 'grow', text: 'Week ' + (k.week_number || '?') }), el('span', { class: 'mute small', text: when(k.submitted_at) })]), el('div', { class: 'small', text: bits }), k.notes ? el('div', { class: 'small', style: 'margin-top:4px', text: '"' + k.notes + '"' }) : null]);
+      }) : el('p', { class: 'mute', text: 'No check-ins yet.' })));
+      nodes.push(el('h2', { text: 'Recent training' }));
+      var byDay = {}; j.workouts.forEach(function (w) { var d = w.logged_at.slice(0, 10); (byDay[d] = byDay[d] || []).push(w); });
+      var dayKeys = Object.keys(byDay).sort().reverse().slice(0, 6);
+      nodes.push(el('div', { class: 'card' }, dayKeys.length ? dayKeys.map(function (d) {
+        var names = []; byDay[d].forEach(function (w) { if (names.indexOf(w.exercise_name) < 0) names.push(w.exercise_name); });
+        return el('div', { class: 'meal' }, [el('strong', { text: new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) }), el('div', { class: 'small mute', text: byDay[d].length + ' sets logged · ' + names.slice(0, 5).join(', ') + (names.length > 5 ? ' …' : '') })]);
+      }) : el('p', { class: 'mute', text: 'No training logged yet.' })));
+      nodes.push(el('h2', { text: 'Food log' }));
+      var mealDays = {}; j.meals.forEach(function (m) { mealDays[m.logged_at.slice(0, 10)] = (mealDays[m.logged_at.slice(0, 10)] || 0) + 1; });
+      var md = Object.keys(mealDays).sort().reverse().slice(0, 7);
+      nodes.push(el('div', { class: 'card' }, md.length ? el('p', { text: 'Meals ticked off: ' + md.map(function (d) { return new Date(d).toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + mealDays[d]; }).join(' · ') }) : el('p', { class: 'mute', text: 'No meals ticked off yet.' })));
+      if (j.live && j.live.summary) { nodes.push(el('h2', { text: 'Current plan' })); nodes.push(planNode(j.live.summary, j.live.plan)); }
+      show(nodes);
+    }).catch(oops);
+  }
+
+  // ── start ────────────────────────────────────────────────────────────────
+  var m = /^#setup=([A-Za-z0-9_-]{30,100})$/.exec(location.hash);
+  if (m) { setupView(m[1]); return; }
+  if (!S.session) { loginView(null); return; }
+  call('cpMe').then(function (j) { if (j.ok) { S.coach = j.coach; setHeader(); homeView(); } }).catch(function (e) { if (e.message !== 'signed_out') loginView('Could not reach the server. Try again.'); });
+})();
+</script>
+</body>
+</html>

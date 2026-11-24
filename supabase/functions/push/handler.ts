@@ -611,11 +611,14 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     if (error) throw new Error(error.message);
     const fresh = (cis ?? []).filter((c: any) => c.client_key && c.client_key !== 'omar' && !String(c.client_key).startsWith('_'));
     if (!fresh.length) return 'none';
-    const { data: names } = await admin.from('clients').select('storage_key, display_name').in('storage_key', [...new Set(fresh.map((c: any) => c.client_key))]);
+    const { data: names } = await admin.from('clients').select('storage_key, display_name, is_internal').in('storage_key', [...new Set(fresh.map((c: any) => c.client_key))]);
     const nameOf: Record<string, string> = Object.fromEntries((names ?? []).map((r: any) => [r.storage_key, String(r.display_name || r.storage_key).split(' ')[0]]));
+    // Coach Platform V1: another coach's client (always is_internal) is not Omar's check-in - never push it to his phone.
+    const notMine = new Set((names ?? []).filter((r: any) => r.is_internal === true).map((r: any) => r.storage_key));
     let sent = 0;
     for (const c of fresh) {
       if (sent >= 6) break;
+      if (notMine.has(c.client_key)) continue;
       const day = localParts(Date.parse(c.submitted_at), COACH_TZ).date;
       const key = `coach_checkin:${c.client_key}:${day}`;
       const { data: seen } = await admin.from('notification_events').select('id').eq('dedupe_key', key).limit(1);

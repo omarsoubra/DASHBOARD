@@ -1,0 +1,70 @@
+{
+ "goals": {
+  "lose_fat": "Lose fat",
+  "build_muscle": "Build muscle"
+ },
+ "activity": {
+  "sedentary": "Desk job, mostly sitting",
+  "moderate": "On feet some of the day",
+  "active": "On feet most of the day",
+  "very_active": "Hard physical job"
+ },
+ "weeks": [
+  12,
+  16
+ ],
+ "allergies": [
+  "egg",
+  "fish",
+  "gluten",
+  "peanut",
+  "sesame",
+  "shellfish",
+  "soy",
+  "tree_nut",
+  "dairy"
+ ],
+ "training": {
+  "gym3_full_body": {
+   "label": "3 days: Full Body A / B / C",
+   "daysPerWeek": 3,
+   "place": "gym",
+   "note": "compounds kept at 2 reps in reserve (conservative)"
+  },
+  "gym5_ppl_ul": {
+   "label": "5 days: Push / Pull / Legs / Upper / Lower",
+   "daysPerWeek": 5,
+   "place": "gym",
+   "note": ""
+  },
+  "home5": {
+   "label": "5 days at home: dumbbells and bodyweight",
+   "daysPerWeek": 5,
+   "place": "home",
+   "note": ""
+  }
+ },
+ "menus": {
+  "everyday": {
+   "label": "Everyday (halal meat)",
+   "feeds": [
+    3,
+    4
+   ],
+   "halal": true,
+   "contains": [
+    "dairy",
+    "egg",
+    "fish",
+    "gluten",
+    "peanut",
+    "shellfish",
+    "tree_nut"
+   ]
+  }
+ },
+ "kcal": [
+  1200,
+  4500
+ ]
+}

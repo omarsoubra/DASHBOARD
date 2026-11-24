@@ -680,6 +680,24 @@ Deno.serve(async (req) => {
       case 'testimonialFormGet':   return testimonialFormGet(body);
       case 'testimonialSubmit':    return testimonialSubmit(body);
       case 'testimonialsGet':      return testimonialsGet(body);
+      case 'cpCoachCreate':      return cpCoachCreate(body);
+      case 'cpCoachList':        return cpCoachList(body);
+      case 'cpCoachSetStatus':   return cpCoachSetStatus(body);
+      case 'cpSetupInspect':     return cpSetupInspect(body);
+      case 'cpSetup':            return cpSetup(body);
+      case 'cpLogin':            return cpLogin(body);
+      case 'cpLogout':           return cpLogout(body);
+      case 'cpMe':               return cpMe(body);
+      case 'cpBuildCreate':      return cpBuildCreate(body);
+      case 'cpBuildGet':         return cpBuildGet(body);
+      case 'cpBuildDiscard':     return cpBuildDiscard(body);
+      case 'cpPublish':          return cpPublish(body);
+      case 'cpClients':          return cpClients(body);
+      case 'cpClient':           return cpClient(body);
+      case 'cpClientLink':       return cpClientLink(body);
+      case 'cpClientAccess':     return cpClientAccess(body);
+      case 'cpWorkerClaim':      return cpWorkerClaim(body);
+      case 'cpWorkerDone':       return cpWorkerDone(body);
       default: return err('unknown_type');
     }
   } catch (e) {
@@ -4314,4 +4332,501 @@ async function testimonialsGet(body: any) {
     .order('created_at', { ascending: false }).limit(300);
   if (error) return err('read_failed');
   return ok({ testimonials: data ?? [] });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// COACH PLATFORM V1 (Omar 2026-11-24) — other coaches use the platform
+// ══════════════════════════════════════════════════════════════════════════
+// Each outside coach has their own login and sees ONLY their own clients. They build plans with the in-app plan
+// builder: a short form goes on a queue (plan_builds), a build worker runs LOCKED IN's deterministic plan engine
+// (no AI in the loop) and posts back a preview, and the coach publishes it.
+//
+// Isolation rules (every handler below follows them):
+//   * Omar's coach token is NOT a coach session and a coach session is NOT Omar's coach token. Every pre-existing
+//     coach endpoint still calls verifyCoachToken, so none of them is reachable with a coach session.
+//   * A coach handler reads or writes a client ONLY through cpOwnClient(), which requires clients.coach_id = the caller.
+//   * Storage keys of coach clients are built server-side as c_<coach slug>_<name>, never taken from the request.
+//   * A coach's client is is_internal = true, so it never shows in Omar's dashboard, registry, account list or pushes.
+//   * Only sha256 hashes of setup links and session keys are stored; passwords are PBKDF2-SHA256 with a per-coach salt.
+const CP_SESSION_TTL_DAYS = 30;
+const CP_SETUP_TTL_DAYS = 7;
+const CP_APP_URL = 'https://omarsoubra.github.io/DASHBOARD/coach/';
+const CP_PAGE_BASE = 'https://omarsoubra.github.io/DASHBOARD/clients/';
+const CP_PBKDF2_ITERATIONS = 210_000;
+const CP_MAX_OPEN_BUILDS = 3;
+const CP_STALE_CLAIM_MS = 10 * 60_000;
+const CP_LOCK_AFTER = 8;
+const CP_LOCK_MS = 15 * 60_000;
+const CP_EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+const CP_FORM_KEYS = ['firstName', 'lastName', 'sex', 'age', 'heightCm', 'weightKg', 'goalWeightKg', 'goal', 'activity', 'training',
+  'menu', 'mealsPerDay', 'weeks', 'allergies', 'kcal', 'proteinG', 'startDate'];
+
+function cpSlug(s: unknown): string {
+  return String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+/** Same rule as the plan engine (engine.storage_key): c_<coach>_<first>_<last>, max 40 chars. */
+function cpStorageKey(coachSlug: string, first: unknown, last: unknown): string {
+  return ['c', cpSlug(coachSlug), cpSlug(first), cpSlug(last)].filter(Boolean).join('_').slice(0, 40).replace(/^_+|_+$/g, '');
+}
+function cpHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function cpPasswordHash(password: string, saltHex: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(saltHex), iterations: CP_PBKDF2_ITERATIONS }, key, 256);
+  return cpHex(new Uint8Array(bits));
+}
+function cpSameHex(a: string, b: string): boolean {       // length-independent early exit only on length
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+function cpPasswordProblem(pw: unknown): string | null {
+  if (typeof pw !== 'string') return 'password_required';
+  if (pw.length < 10) return 'password_too_short';
+  if (pw.length > 100) return 'password_too_long';
+  if (/^(.)\1*$/.test(pw)) return 'password_too_weak';
+  return null;
+}
+const cpPublicCoach = (c: any) => ({ slug: c.slug, name: c.name, brand: c.brand || c.name, email: c.email, clientLimit: c.client_limit });
+
+/** The coach behind a session key, or null. Suspended coaches and expired or revoked sessions are refused. */
+async function cpCoach(session: unknown): Promise<any | null> {
+  if (typeof session !== 'string' || session.length < 30 || session.length > 100) return null;
+  const { data: s } = await admin.from('coach_sessions').select('id, coach_id, expires_at, revoked_at')
+    .eq('token_hash', await sha256(session)).maybeSingle();
+  if (!s || s.revoked_at || !(Date.parse(s.expires_at) > Date.now())) return null;
+  const { data: c } = await admin.from('coaches').select('id, slug, name, brand, email, status, client_limit').eq('id', s.coach_id).maybeSingle();
+  if (!c || c.status !== 'active') return null;
+  return c;
+}
+/** The caller's own client row, or null. The ONLY way a coach handler reaches a client. */
+async function cpOwnClient(coach: any, storageKey: unknown): Promise<any | null> {
+  const key = String(storageKey ?? '').toLowerCase();
+  if (!/^c_[a-z0-9_]{2,38}$/.test(key)) return null;
+  const { data: c } = await admin.from('clients')
+    .select('id, storage_key, display_name, start_weight, goal_weight, start_date, program_url, coach_id, profile_id')
+    .eq('storage_key', key).maybeSingle();
+  if (!c || !c.coach_id || c.coach_id !== coach.id) return null;
+  return c;
+}
+
+// ── owner (Omar) ────────────────────────────────────────────────────────────
+async function cpCoachCreate(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const name = String(body?.name ?? '').trim();
+  const brand = String(body?.brand ?? '').trim();
+  const email = String(body?.email ?? '').trim().toLowerCase();
+  const slug = cpSlug(body?.slug || name.split(/\s+/)[0]).replace(/_/g, '').slice(0, 16);
+  if (!name || name.length > 60) return err('bad_name');
+  if (brand.length > 40) return err('bad_brand');
+  if (!CP_EMAIL_RE.test(email)) return err('bad_email');
+  if (!/^[a-z0-9]{2,16}$/.test(slug)) return err('bad_slug');
+  const limit = body?.clientLimit === undefined ? 25 : Number(body.clientLimit);
+  if (!Number.isInteger(limit) || limit < 0 || limit > 1000) return err('bad_clientLimit');
+  const token = randomToken();
+  const setup = { setup_token_hash: await sha256(token), setup_expires_at: new Date(Date.now() + CP_SETUP_TTL_DAYS * 86400_000).toISOString() };
+  const { data: existing } = await admin.from('coaches').select('id, slug, email').eq('email', email).maybeSingle();
+  if (existing) {
+    if (body?.reissue !== true) return err('coach_exists', { slug: existing.slug });
+    // A fresh setup link is also the password reset: the old password and every session stop working now.
+    const { error } = await admin.from('coaches')
+      .update({ ...setup, password_hash: null, password_salt: null, failed_logins: 0, locked_until: null }).eq('id', existing.id);
+    if (error) return err('write_failed');
+    await admin.from('coach_sessions').update({ revoked_at: new Date().toISOString() }).eq('coach_id', existing.id).is('revoked_at', null);
+    return ok({ slug: existing.slug, reissued: true, setupLink: `${CP_APP_URL}#setup=${token}`, expiresAt: setup.setup_expires_at });
+  }
+  const { data: taken } = await admin.from('coaches').select('id').eq('slug', slug).maybeSingle();
+  if (taken) return err('slug_taken', { slug });
+  const { error } = await admin.from('coaches').insert({ slug, name, brand, email, client_limit: limit, ...setup });
+  if (error) { logEfError('cpCoachCreate', null, 'insert_failed', error.message); return err('write_failed'); }
+  return ok({ slug, reissued: false, setupLink: `${CP_APP_URL}#setup=${token}`, expiresAt: setup.setup_expires_at });
+}
+
+async function cpCoachList(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const [{ data: coaches }, { data: clients }] = await Promise.all([
+    admin.from('coaches').select('id, slug, name, brand, email, status, client_limit, created_at, last_login_at, password_hash').order('created_at', { ascending: true }),
+    admin.from('clients').select('coach_id').not('coach_id', 'is', null),
+  ]);
+  const count: Record<string, number> = {};
+  (clients ?? []).forEach((c: any) => { count[c.coach_id] = (count[c.coach_id] ?? 0) + 1; });
+  return ok({ coaches: (coaches ?? []).map((c: any) => ({
+    slug: c.slug, name: c.name, brand: c.brand, email: c.email, status: c.status, clientLimit: c.client_limit,
+    clients: count[c.id] ?? 0, createdAt: c.created_at, lastLoginAt: c.last_login_at, passwordSet: !!c.password_hash,
+  })) });
+}
+
+async function cpCoachSetStatus(body: any) {
+  if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
+  const status = String(body?.status ?? '');
+  if (status !== 'active' && status !== 'suspended') return err('bad_status');
+  const { data: c } = await admin.from('coaches').select('id').eq('slug', cpSlug(body?.slug)).maybeSingle();
+  if (!c) return err('unknown_coach');
+  const patch: Record<string, unknown> = { status };
+  if (body?.clientLimit !== undefined) {
+    const limit = Number(body.clientLimit);
+    if (!Number.isInteger(limit) || limit < 0 || limit > 1000) return err('bad_clientLimit');
+    patch.client_limit = limit;
+  }
+  const { error } = await admin.from('coaches').update(patch).eq('id', c.id);
+  if (error) return err('write_failed');
+  if (status === 'suspended') {
+    await admin.from('coach_sessions').update({ revoked_at: new Date().toISOString() }).eq('coach_id', c.id).is('revoked_at', null);
+  }
+  return ok({ status });
+}
+
+// ── coach: account ──────────────────────────────────────────────────────────
+async function cpOpenSetup(token: unknown) {
+  if (typeof token !== 'string' || token.length < 30 || token.length > 100) return null;
+  const { data: c } = await admin.from('coaches').select('id, name, brand, email, status, setup_expires_at')
+    .eq('setup_token_hash', await sha256(token)).maybeSingle();
+  if (!c || c.status !== 'active' || !(Date.parse(c.setup_expires_at) > Date.now())) return null;
+  return c;
+}
+async function cpSetupInspect(body: any) {
+  const c = await cpOpenSetup(body?.token);
+  if (!c) return err('link_invalid');
+  return ok({ name: c.name, brand: c.brand || c.name, email: c.email });
+}
+async function cpSetup(body: any) {
+  const c = await cpOpenSetup(body?.token);
+  if (!c) return err('link_invalid');
+  const problem = cpPasswordProblem(body?.password);
+  if (problem) return err(problem);
+  const salt = cpHex(crypto.getRandomValues(new Uint8Array(16)));
+  const { error } = await admin.from('coaches').update({
+    password_hash: await cpPasswordHash(body.password, salt), password_salt: salt,
+    setup_token_hash: null, setup_expires_at: null, failed_logins: 0, locked_until: null,
+  }).eq('id', c.id);
+  if (error) return err('write_failed');
+  return ok({ email: c.email });
+}
+async function cpLogin(body: any) {
+  const email = String(body?.email ?? '').trim().toLowerCase();
+  const password = body?.password;
+  if (!CP_EMAIL_RE.test(email) || typeof password !== 'string' || password.length > 100) return err('bad_login');
+  const { data: c } = await admin.from('coaches')
+    .select('id, slug, name, brand, email, status, client_limit, password_hash, password_salt, failed_logins, locked_until')
+    .eq('email', email).maybeSingle();
+  // Same answer for "no such coach", "no password yet" and "wrong password" - nothing to enumerate.
+  if (!c || !c.password_hash || !c.password_salt) { await cpPasswordHash(password, '00'); return err('bad_login'); }
+  if (c.locked_until && Date.parse(c.locked_until) > Date.now()) return err('locked', { until: c.locked_until });
+  if (!cpSameHex(await cpPasswordHash(password, c.password_salt), c.password_hash)) {
+    const fails = Number(c.failed_logins ?? 0) + 1;
+    await admin.from('coaches').update({
+      failed_logins: fails, locked_until: fails >= CP_LOCK_AFTER ? new Date(Date.now() + CP_LOCK_MS).toISOString() : null,
+    }).eq('id', c.id);
+    return err('bad_login');
+  }
+  if (c.status !== 'active') return err('suspended');
+  const session = randomToken();
+  const nowIso = new Date().toISOString();
+  const { error } = await admin.from('coach_sessions').insert({
+    coach_id: c.id, token_hash: await sha256(session), expires_at: new Date(Date.now() + CP_SESSION_TTL_DAYS * 86400_000).toISOString(),
+  });
+  if (error) return err('write_failed');
+  await admin.from('coaches').update({ failed_logins: 0, locked_until: null, last_login_at: nowIso }).eq('id', c.id);
+  return ok({ session, coach: cpPublicCoach(c) });
+}
+async function cpLogout(body: any) {
+  if (typeof body?.session === 'string' && body.session.length >= 30 && body.session.length <= 100) {
+    await admin.from('coach_sessions').update({ revoked_at: new Date().toISOString() }).eq('token_hash', await sha256(body.session));
+  }
+  return ok();
+}
+async function cpMe(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  return ok({ coach: cpPublicCoach(coach) });
+}
+
+// ── coach: plan builder ─────────────────────────────────────────────────────
+function cpCleanForm(raw: any): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out: Record<string, unknown> = {};
+  for (const k of CP_FORM_KEYS) {
+    const v = raw[k];
+    if (v === undefined || v === null || v === '') continue;
+    if (Array.isArray(v)) {
+      if (v.length > 12 || !v.every((x) => ['string', 'number'].includes(typeof x) && String(x).length <= 40)) return null;
+      out[k] = v;
+    } else if (['string', 'number'].includes(typeof v) && String(v).length <= 60) {
+      out[k] = v;
+    } else return null;
+  }
+  if (!/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(String(out.firstName ?? ''))) return null;
+  if (out.lastName !== undefined && !/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(String(out.lastName))) return null;
+  return out;
+}
+const cpBuildView = (b: any, full: boolean) => ({
+  id: b.id, storageKey: b.storage_key, isUpdate: !!b.is_update, status: b.status, createdAt: b.created_at, updatedAt: b.updated_at,
+  publishedAt: b.published_at ?? null, summary: b.summary ?? null, error: b.error ?? null, form: b.form,
+  ...(full ? { plan: b.plan ?? null } : {}),
+});
+
+async function cpBuildCreate(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const form = cpCleanForm(body?.form);
+  if (!form) return err('bad_form');
+  let storageKey: string; let isUpdate = false;
+  if (body?.storageKey) {                               // a new plan for an existing client of THIS coach
+    const own = await cpOwnClient(coach, body.storageKey);
+    if (!own) return err('unknown_client');
+    storageKey = own.storage_key; isUpdate = true;
+  } else {
+    storageKey = cpStorageKey(coach.slug, form.firstName, form.lastName);
+    if (!/^c_[a-z0-9_]{2,38}$/.test(storageKey)) return err('bad_form');
+    const { data: clash } = await admin.from('clients').select('id, coach_id').eq('storage_key', storageKey).maybeSingle();
+    if (clash) return err('client_exists', { detail: 'You already have a client with this name. Add or change the last name, or update their plan from their page.' });
+    const { data: mine } = await admin.from('clients').select('id').eq('coach_id', coach.id);
+    if ((mine ?? []).length >= Number(coach.client_limit ?? 0)) return err('client_limit', { limit: coach.client_limit });
+  }
+  const { data: open } = await admin.from('plan_builds').select('id, storage_key, status').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
+  if ((open ?? []).length >= CP_MAX_OPEN_BUILDS) return err('too_many_open_builds');
+  if ((open ?? []).some((b: any) => b.storage_key === storageKey)) return err('build_in_progress');
+  const { data: row, error } = await admin.from('plan_builds')
+    .insert({ coach_id: coach.id, storage_key: storageKey, is_update: isUpdate, form, status: 'queued' }).select('id').single();
+  if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return err('write_failed'); }
+  return ok({ buildId: row.id, storageKey });
+}
+
+async function cpBuildGet(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: b } = await admin.from('plan_builds').select('*').eq('id', String(body?.buildId ?? '')).maybeSingle();
+  if (!b || b.coach_id !== coach.id) return err('unknown_build');
+  return ok({ build: cpBuildView(b, true) });
+}
+
+async function cpBuildDiscard(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: b } = await admin.from('plan_builds').select('id, coach_id, status').eq('id', String(body?.buildId ?? '')).maybeSingle();
+  if (!b || b.coach_id !== coach.id) return err('unknown_build');
+  if (!['queued', 'built', 'failed'].includes(b.status)) return err('cannot_discard', { status: b.status });
+  await admin.from('plan_builds').update({ status: 'discarded', updated_at: new Date().toISOString() }).eq('id', b.id).eq('status', b.status);
+  return ok();
+}
+
+/** Coach approves a built plan. Creates the client (first time), hands the page to the worker, returns the access link once. */
+async function cpPublish(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: b } = await admin.from('plan_builds').select('*').eq('id', String(body?.buildId ?? '')).maybeSingle();
+  if (!b || b.coach_id !== coach.id) return err('unknown_build');
+  if (b.status !== 'built') return err('not_ready', { status: b.status });
+  const key: string = b.storage_key;
+  const s = b.summary ?? {};
+  const nowIso = new Date().toISOString();
+  let { data: client } = await admin.from('clients').select('id, coach_id, profile_id').eq('storage_key', key).maybeSingle();
+  if (client && client.coach_id !== coach.id) return err('unknown_build');          // never adopt someone else's key
+  let link: string | null = null;
+  if (!client) {
+    const displayName = String(s.name || s.firstName || b.form?.firstName || 'Client').slice(0, 120);
+    const { data: profile, error: pErr } = await admin.from('profiles').insert({ role: 'client', full_name: displayName }).select('id').single();
+    if (pErr || !profile?.id) return err('write_failed', { step: 'profile' });
+    const { data: created, error: cErr } = await admin.from('clients').insert({
+      profile_id: profile.id, storage_key: key, display_name: displayName, coach_id: coach.id, is_internal: true,
+      age: Number(b.form?.age) || null, height_cm: Number(b.form?.heightCm) || null,
+      start_weight: Number(s.startWeightKg ?? b.form?.weightKg) || null, goal_weight: Number(s.goalWeightKg) || null,
+      start_date: /^\d{4}-\d{2}-\d{2}$/.test(String(b.form?.startDate ?? '')) ? b.form.startDate : null,
+      program_type: `coach:${coach.slug}`, program_url: `${CP_PAGE_BASE}${key}/`,
+    }).select('id').single();
+    if (cErr || !created?.id) {
+      await admin.from('profiles').delete().eq('id', profile.id);
+      logEfError('cpPublish', key, 'client_insert_failed', cErr?.message ?? 'no_id');
+      return err('write_failed', { step: 'client' });
+    }
+    client = { id: created.id, coach_id: coach.id, profile_id: profile.id };
+    const { error: eErr } = await admin.from('client_entitlements').insert({
+      client_id: created.id, product_code: LEGACY_PRODUCT_CODE, status: 'active', starts_at: nowIso, ends_at: null,
+      source: 'admin', notes: `coach platform: ${coach.slug}`,
+    });
+    if (eErr) { logEfError('cpPublish', key, 'entitlement_failed', eErr.message); return err('write_failed', { step: 'entitlement' }); }
+    await admin.from('clients').update({ current_tier: LEGACY_PRODUCT_CODE }).eq('id', created.id);
+    link = await cpIssueLink(client.id, key, 'coach_publish');
+    if (!link) return err('write_failed', { step: 'link' });
+  }
+  const { data: moved } = await admin.from('plan_builds').update({ status: 'publishing', updated_at: nowIso, claimed_at: null })
+    .eq('id', b.id).eq('status', 'built').select('id');
+  if (!(moved ?? []).length) return err('not_ready', { status: 'changed' });
+  return ok({ storageKey: key, link, pageUrl: `${CP_PAGE_BASE}${key}/`, firstPublish: link !== null });
+}
+
+/** A fresh client access link (rotates: the previous link stops working). Returned once, never stored in the clear. */
+async function cpIssueLink(clientId: string, storageKey: string, reason: string): Promise<string | null> {
+  const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+  const salt = crypto.randomUUID().replace(/-/g, '');
+  const hash = await sha256(token + salt);
+  const { error } = await admin.from('client_sessions').upsert({
+    client_id: clientId, storage_key: storageKey, token_hash: hash, salt, access_status: 'active', rotation_count: 0, last_access_at: null,
+  }, { onConflict: 'storage_key' });
+  if (error) { logEfError('cpIssueLink', storageKey, 'session_write_failed', error.message); return null; }
+  await admin.from('access_log').insert({ client_id: clientId, client_key: storageKey, event: 'issued', source: 'coach', reason, token_hash: hash });
+  return `${CP_PAGE_BASE}${storageKey}/?t=${token}`;
+}
+
+async function cpClientLink(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  const link = await cpIssueLink(c.id, c.storage_key, 'coach_new_link');
+  return link ? ok({ link }) : err('write_failed');
+}
+
+async function cpClientAccess(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const status = String(body?.status ?? '');
+  if (status !== 'active' && status !== 'suspended') return err('bad_status');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  const { error } = await admin.from('client_sessions').update({ access_status: status }).eq('storage_key', c.storage_key);
+  if (error) return err('write_failed');
+  await admin.from('access_log').insert({ client_id: c.id, client_key: c.storage_key, event: status === 'active' ? 'restored' : 'suspended', source: 'coach', reason: 'coach_platform' });
+  return ok({ status });
+}
+
+// ── coach: clients ──────────────────────────────────────────────────────────
+async function cpClients(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: rows } = await admin.from('clients')
+    .select('id, storage_key, display_name, start_weight, goal_weight, start_date').eq('coach_id', coach.id);
+  const clients = rows ?? [];
+  const keys = clients.map((c: any) => c.storage_key);
+  const ids = clients.map((c: any) => c.id);
+  const since = new Date(Date.now() - 60 * 86400_000).toISOString();
+  const none = { data: [] as any[] };
+  const [{ data: builds }, { data: sessions }, { data: weights }, { data: checkins }, { data: workouts }, { data: meals }] = await Promise.all([
+    admin.from('plan_builds').select('id, storage_key, is_update, status, created_at, updated_at, published_at, summary, error, form')
+      .eq('coach_id', coach.id).order('created_at', { ascending: false }).limit(200),
+    keys.length ? admin.from('client_sessions').select('storage_key, access_status, last_access_at').in('storage_key', keys) : none,
+    keys.length ? admin.from('weight_logs').select('client_key, logged_at, weight_kg').in('client_key', keys).gte('logged_at', since).order('logged_at', { ascending: true }).limit(1000) : none,
+    keys.length ? admin.from('check_ins').select('client_key, submitted_at').in('client_key', keys).gte('submitted_at', since).order('submitted_at', { ascending: true }).limit(1000) : none,
+    keys.length ? admin.from('workout_log_entries').select('client_key, logged_at').in('client_key', keys).gte('logged_at', since).order('logged_at', { ascending: false }).limit(1000) : none,
+    ids.length ? admin.from('meal_logs').select('client_id, logged_at').in('client_id', ids).gte('logged_at', since).order('logged_at', { ascending: false }).limit(1000) : none,
+  ]);
+  const keyById: Record<string, string> = Object.fromEntries(clients.map((c: any) => [c.id, c.storage_key]));
+  const stat: Record<string, any> = Object.fromEntries(keys.map((k: string) => [k, { latestWeight: null, latestWeightAt: null, lastCheckinAt: null, lastWorkoutAt: null, lastMealAt: null }]));
+  (weights ?? []).forEach((r: any) => { const s = stat[r.client_key]; if (s) { s.latestWeight = r.weight_kg; s.latestWeightAt = r.logged_at; } });
+  (checkins ?? []).forEach((r: any) => { const s = stat[r.client_key]; if (s) s.lastCheckinAt = r.submitted_at; });
+  (workouts ?? []).forEach((r: any) => { const s = stat[r.client_key]; if (s && (!s.lastWorkoutAt || r.logged_at > s.lastWorkoutAt)) s.lastWorkoutAt = r.logged_at; });
+  (meals ?? []).forEach((r: any) => { const s = stat[keyById[r.client_id]]; if (s && (!s.lastMealAt || r.logged_at > s.lastMealAt)) s.lastMealAt = r.logged_at; });
+  const access: Record<string, any> = Object.fromEntries((sessions ?? []).map((s: any) => [s.storage_key, s]));
+  const all = (builds ?? []).filter((b: any) => b.status !== 'discarded');
+  const liveOf: Record<string, any> = {};
+  all.forEach((b: any) => { if (b.status === 'live' && !liveOf[b.storage_key]) liveOf[b.storage_key] = b; });
+  return ok({
+    coach: cpPublicCoach(coach),
+    clients: clients.map((c: any) => ({
+      storageKey: c.storage_key, name: c.display_name, startWeight: c.start_weight, goalWeight: c.goal_weight, startDate: c.start_date,
+      access: access[c.storage_key]?.access_status ?? 'none', lastOpenedAt: access[c.storage_key]?.last_access_at ?? null,
+      ...stat[c.storage_key], plan: liveOf[c.storage_key]?.summary ?? null, planPublishedAt: liveOf[c.storage_key]?.published_at ?? null,
+    })).sort((a: any, b: any) => String(a.name).localeCompare(String(b.name))),
+    // drafts and work in progress: everything that is not the live plan of an existing client
+    builds: all.filter((b: any) => b.status !== 'live').slice(0, 30).map((b: any) => cpBuildView(b, false)),
+  });
+}
+
+async function cpClient(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  const since = new Date(Date.now() - 120 * 86400_000).toISOString();
+  const [{ data: weights }, { data: checkins }, { data: workouts }, { data: meals }, { data: builds }, { data: sess }] = await Promise.all([
+    admin.from('weight_logs').select('logged_at, weight_kg').eq('client_key', c.storage_key).gte('logged_at', since).order('logged_at', { ascending: true }).limit(400),
+    admin.from('check_ins').select('submitted_at, week_number, weight_kg, energy_1to10, sleep_hours, stress_1to10, diet_adherence_1to10, training_adherence_1to10, notes')
+      .eq('client_key', c.storage_key).order('submitted_at', { ascending: false }).limit(20),
+    admin.from('workout_log_entries').select('logged_at, exercise_name, weight, sets_done, reps_done, phase_key, day_index')
+      .eq('client_key', c.storage_key).gte('logged_at', since).order('logged_at', { ascending: false }).limit(300),
+    admin.from('meal_logs').select('logged_at, meal_name, kcal, protein_g').eq('client_id', c.id).gte('logged_at', since).order('logged_at', { ascending: false }).limit(300),
+    admin.from('plan_builds').select('*').eq('coach_id', coach.id).eq('storage_key', c.storage_key).order('created_at', { ascending: false }).limit(10),
+    admin.from('client_sessions').select('access_status, last_access_at').eq('storage_key', c.storage_key).maybeSingle(),
+  ]);
+  const list = (builds ?? []).filter((b: any) => b.status !== 'discarded');
+  const live = list.find((b: any) => b.status === 'live') ?? null;
+  return ok({
+    client: { storageKey: c.storage_key, name: c.display_name, startWeight: c.start_weight, goalWeight: c.goal_weight, startDate: c.start_date,
+              pageUrl: c.program_url, access: sess?.access_status ?? 'none', lastOpenedAt: sess?.last_access_at ?? null },
+    weights: weights ?? [], checkIns: checkins ?? [], workouts: workouts ?? [], meals: meals ?? [],
+    live: live ? cpBuildView(live, true) : null,
+    builds: list.filter((b: any) => b.status !== 'live').map((b: any) => cpBuildView(b, false)),
+  });
+}
+
+// ── build worker (machine to machine) ───────────────────────────────────────
+// The worker holds CP_BUILDER_KEY; the function knows only its sha256 (CP_BUILDER_KEY_SHA256). It can claim queue jobs
+// and post results. It cannot read clients, logs or any coach data beyond the job it claimed.
+async function cpWorkerOk(key: unknown): Promise<boolean> {
+  const want = Deno.env.get('CP_BUILDER_KEY_SHA256') ?? '';
+  if (!/^[0-9a-f]{64}$/.test(want) || typeof key !== 'string' || key.length < 30 || key.length > 200) return false;
+  return cpSameHex(await sha256(key), want);
+}
+async function cpWorkerClaim(body: any) {
+  if (!(await cpWorkerOk(body?.builderKey))) return err('unauthorized');
+  const nowIso = new Date().toISOString();
+  const stale = new Date(Date.now() - CP_STALE_CLAIM_MS).toISOString();
+  // a build whose worker died goes back on the queue
+  await admin.from('plan_builds').update({ status: 'queued', claimed_at: null, updated_at: nowIso }).eq('status', 'building').lt('claimed_at', stale);
+  for (const [status, kind] of [['publishing', 'publish'], ['queued', 'build']] as const) {
+    const { data: next } = await admin.from('plan_builds').select('id, coach_id, storage_key, form, status, claimed_at, page_sha256')
+      .eq('status', status).order('created_at', { ascending: true }).limit(5);
+    for (const b of next ?? []) {
+      if (kind === 'publish' && b.claimed_at && b.claimed_at > stale) continue;          // another worker is on it
+      const patch = kind === 'build' ? { status: 'building', claimed_at: nowIso, updated_at: nowIso } : { claimed_at: nowIso, updated_at: nowIso };
+      let q = admin.from('plan_builds').update(patch).eq('id', b.id).eq('status', status);
+      q = b.claimed_at ? q.eq('claimed_at', b.claimed_at) : q.is('claimed_at', null);
+      const { data: won } = await q.select('id');
+      if (!(won ?? []).length) continue;                                                  // lost the race
+      const { data: coach } = await admin.from('coaches').select('slug, name, brand, email, status').eq('id', b.coach_id).maybeSingle();
+      if (!coach || coach.status !== 'active') {
+        await admin.from('plan_builds').update({ status: 'failed', error: { stage: 'coach', reasons: ['coach account is not active'] }, updated_at: nowIso }).eq('id', b.id);
+        continue;
+      }
+      return ok({ job: { id: b.id, kind, storageKey: b.storage_key, form: b.form, pageSha256: b.page_sha256 ?? null, coach: { slug: coach.slug, name: coach.name, brand: coach.brand || coach.name, email: coach.email } } });
+    }
+  }
+  return ok({ job: null });
+}
+async function cpWorkerDone(body: any) {
+  if (!(await cpWorkerOk(body?.builderKey))) return err('unauthorized');
+  const kind = String(body?.kind ?? '');
+  const { data: b } = await admin.from('plan_builds').select('id, status, storage_key').eq('id', String(body?.id ?? '')).maybeSingle();
+  if (!b) return err('unknown_build');
+  const nowIso = new Date().toISOString();
+  const good = body?.ok === true;
+  const cap = (o: unknown, max: number) => { const s = JSON.stringify(o ?? null); return s.length <= max ? (o ?? null) : null; };
+  if (kind === 'build') {
+    if (b.status !== 'building') return err('not_claimed', { status: b.status });
+    if (good && body?.summary?.storageKey !== b.storage_key) {                             // the engine must agree on whose client this is
+      await admin.from('plan_builds').update({ status: 'failed', error: { stage: 'engine', reasons: ['storage key mismatch'] }, updated_at: nowIso }).eq('id', b.id);
+      return err('key_mismatch');
+    }
+    const patch = good
+      ? { status: 'built', summary: cap(body.summary, 20_000), plan: cap(body.plan, 400_000), page_sha256: String(body?.pageSha256 ?? '').slice(0, 64) || null, error: null, updated_at: nowIso }
+      : { status: 'failed', error: cap(body?.error, 8_000) ?? { stage: 'engine', reasons: ['build failed'] }, updated_at: nowIso };
+    const { error } = await admin.from('plan_builds').update(patch).eq('id', b.id).eq('status', 'building');
+    return error ? err('write_failed') : ok();
+  }
+  if (kind === 'publish') {
+    if (b.status !== 'publishing') return err('not_claimed', { status: b.status });
+    if (!good) {                                                                           // stays approved: the worker retries
+      await admin.from('plan_builds').update({ claimed_at: null, error: cap(body?.error, 8_000), updated_at: nowIso }).eq('id', b.id).eq('status', 'publishing');
+      return ok({ retry: true });
+    }
+    // exactly one live plan per client: the previous one becomes history
+    await admin.from('plan_builds').update({ status: 'discarded', updated_at: nowIso }).eq('storage_key', b.storage_key).eq('status', 'live');
+    const { error } = await admin.from('plan_builds').update({ status: 'live', published_at: nowIso, error: null, updated_at: nowIso }).eq('id', b.id).eq('status', 'publishing');
+    return error ? err('write_failed') : ok();
+  }
+  return err('bad_kind');
 }

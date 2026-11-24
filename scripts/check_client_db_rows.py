@@ -44,6 +44,9 @@ DASHBOARD = HERE.parent
 CLIENTS_DIR = DASHBOARD / "clients"
 
 REGISTRY_SKIP_MARKER = '<meta name="x-registry-skip" content="redirect-shim">'
+# Coach Platform V1 (Omar 2026-11-24): a page built for ANOTHER coach's client is not one of Omar's clients. It declares
+# this marker itself (the plan engine writes it), so it never enters the public registry or Omar's roster.
+COACH_PLATFORM_MARKER = '<meta name="x-registry-skip" content="coach-platform">'
 
 
 def discover_client_keys() -> list[str]:
@@ -58,7 +61,8 @@ def discover_client_keys() -> list[str]:
         if not index_html.is_file():
             continue
         try:
-            if REGISTRY_SKIP_MARKER in index_html.read_text(encoding="utf-8", errors="ignore"):
+            _html = index_html.read_text(encoding="utf-8", errors="ignore")
+            if REGISTRY_SKIP_MARKER in _html or COACH_PLATFORM_MARKER in _html:
                 continue
         except OSError:
             pass
