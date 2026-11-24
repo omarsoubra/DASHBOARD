@@ -236,6 +236,33 @@ async function buildAndPublish(coach, form, storageKey) {
   t('a coach cannot see another coach\'s or Omar\'s client photos', B(await M.cpClientPhotos({ session: other.session, storageKey: ej.storageKey })).error === 'unknown_client' && B(await M.cpClientPhotos({ session: al3, storageKey: 'cruz_rehayem' })).error === 'unknown_client');
   t('deleting your own template', B(await M.cpTemplateDelete({ session: al3, id: tpl.id })).ok && DB.coach_templates.length === 0);
 
+  console.log('coach platform — today, notes, check-in review');
+  const DAY = 86400000, now = Date.parse('2026-12-01T00:00:00Z'), iso = (d) => new Date(now + d * DAY).toISOString();
+  const kinds = (c) => M.cpNeeds(c, now).map((n) => n.kind).join(',');
+  const base = { publishedAt: iso(-20), startDate: iso(-20).slice(0, 10), weeks: 12, access: 'active', lastOpenedAt: iso(-1), lastWorkoutAt: iso(-1), lastCheckinAt: iso(-2), reviewedThrough: iso(-2) };
+  t('a client who is logging and reviewed needs nothing', kinds(base) === '');
+  t('a new check-in needs the coach until it is marked read', kinds({ ...base, reviewedThrough: iso(-5) }) === 'checkin' && kinds({ ...base, reviewedThrough: null }) === 'checkin');
+  t('a plan in its last two weeks, then ended', kinds({ ...base, weeks: 4 }) === 'ending' && M.cpNeeds({ ...base, weeks: 4 }, now)[0].days === 8 && kinds({ ...base, weeks: 2 }) === 'ended');
+  t('a client who never opened the app after 3 days', kinds({ ...base, lastOpenedAt: null, lastWorkoutAt: null, lastCheckinAt: null }) === 'not_started');
+  t('a client gone quiet for a week', kinds({ ...base, lastWorkoutAt: iso(-8), lastCheckinAt: iso(-8), reviewedThrough: iso(-8) }) === 'quiet');
+  t('logging but no check-in for 9 days', kinds({ ...base, lastCheckinAt: null }) === 'no_checkin');
+  t('a paused client, a future start and an unpublished plan are left alone', kinds({ ...base, access: 'suspended', lastWorkoutAt: iso(-30), lastCheckinAt: null }) === ''
+    && kinds({ ...base, startDate: iso(5).slice(0, 10), lastWorkoutAt: null, lastCheckinAt: null, lastOpenedAt: null }) === '' && kinds({ ...base, publishedAt: null, lastWorkoutAt: null, lastCheckinAt: null }) === '');
+  DB.check_ins.push({ client_key: ej.storageKey, submitted_at: '2026-11-22T08:00:00Z', week_number: 1, weight_kg: 80 }, { client_key: 'cruz_rehayem', submitted_at: '2026-11-23T08:00:00Z', week_number: 3 });
+  const home1 = B(await M.cpClients({ session: al3 })).clients.find((c) => c.storageKey === ej.storageKey);
+  t('the client list flags the unread check-in', home1.needs.some((n) => n.kind === 'checkin'), home1.needs);
+  const rv = B(await M.cpCheckinReviewed({ session: al3, storageKey: ej.storageKey }));
+  const home2 = B(await M.cpClients({ session: al3 })).clients.find((c) => c.storageKey === ej.storageKey);
+  t('marking it read clears the flag', rv.ok && rv.reviewedThrough === '2026-11-22T08:00:00Z' && !home2.needs.some((n) => n.kind === 'checkin'), home2.needs);
+  DB.check_ins.push({ client_key: ej.storageKey, submitted_at: '2026-11-29T08:00:00Z', week_number: 2 });
+  t('the next check-in raises it again', B(await M.cpClients({ session: al3 })).clients.find((c) => c.storageKey === ej.storageKey).needs.some((n) => n.kind === 'checkin'));
+  t('notes save and come back, and keep the read mark', B(await M.cpClientNote({ session: al3, storageKey: ej.storageKey, notes: 'Knee niggle. Likes mornings.' })).ok
+    && B(await M.cpClient({ session: al3, storageKey: ej.storageKey })).client.notes === 'Knee niggle. Likes mornings.' && DB.coach_client_state.length === 1 && DB.coach_client_state[0].reviewed_through === '2026-11-22T08:00:00Z');
+  t('notes over 4000 characters are refused', B(await M.cpClientNote({ session: al3, storageKey: ej.storageKey, notes: 'x'.repeat(4001) })).error === 'bad_notes');
+  t('another coach cannot write notes on, or mark, this client; nor can anyone touch Omar\'s', B(await M.cpClientNote({ session: other.session, storageKey: ej.storageKey, notes: 'x' })).error === 'unknown_client'
+    && B(await M.cpCheckinReviewed({ session: other.session, storageKey: ej.storageKey })).error === 'unknown_client' && B(await M.cpCheckinReviewed({ session: al3, storageKey: 'cruz_rehayem' })).error === 'unknown_client'
+    && B(await M.cpClientNote({ session: 'x'.repeat(50), storageKey: ej.storageKey, notes: 'x' })).error === 'unauthorized');
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

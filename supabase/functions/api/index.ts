@@ -704,6 +704,8 @@ Deno.serve(async (req) => {
       case 'cpTemplates':        return cpTemplates(body);
       case 'cpTemplateDelete':   return cpTemplateDelete(body);
       case 'cpClientPhotos':     return cpClientPhotos(body);
+      case 'cpClientNote':     return cpClientNote(body);
+      case 'cpCheckinReviewed':     return cpCheckinReviewed(body);
       case 'cpWorkerClaim':      return cpWorkerClaim(body);
       case 'cpWorkerDone':       return cpWorkerDone(body);
       default: return err('unknown_type');
@@ -4723,6 +4725,35 @@ async function cpClientAccess(body: any) {
 }
 
 // ── coach: clients ──────────────────────────────────────────────────────────
+/** When the live plan runs out (start date + its length), or null when either is unknown. */
+function cpPlanEnd(startDate: unknown, weeks: unknown): string | null {
+  const t = Date.parse(String(startDate ?? '')), w = Number(weeks);
+  if (!Number.isFinite(t) || !(w > 0)) return null;
+  return new Date(t + w * 7 * 86400_000).toISOString();
+}
+/** Why a client needs the coach today. Plain rules, no AI: a new check-in, a plan running out, a client gone quiet. */
+function cpNeeds(c: any, now: number): { kind: string; at?: string | null; days?: number }[] {
+  const DAY = 86400_000, out: { kind: string; at?: string | null; days?: number }[] = [];
+  if (c.lastCheckinAt && (!c.reviewedThrough || c.lastCheckinAt > c.reviewedThrough)) out.push({ kind: 'checkin', at: c.lastCheckinAt });
+  if (!c.publishedAt || c.access === 'suspended') return out;
+  const end = cpPlanEnd(c.startDate, c.weeks);
+  if (end) {
+    const left = Math.ceil((Date.parse(end) - now) / DAY);
+    if (left <= 0) out.push({ kind: 'ended', at: end });
+    else if (left <= 14) out.push({ kind: 'ending', at: end, days: left });
+  }
+  const start = Date.parse(String(c.startDate ?? ''));
+  const began = Math.max(Number.isFinite(start) ? start : 0, Date.parse(c.publishedAt));
+  if (now < began) return out;
+  const since = Math.floor((now - began) / DAY);
+  const last = [c.lastWorkoutAt, c.lastMealAt, c.latestWeightAt, c.lastCheckinAt].filter(Boolean).sort().pop() ?? null;
+  if (!last && !c.lastOpenedAt && since >= 3) out.push({ kind: 'not_started', days: since });
+  else if (!last && since >= 7) out.push({ kind: 'quiet', days: since });
+  else if (last && now - Date.parse(last) >= 7 * DAY) out.push({ kind: 'quiet', at: last, days: Math.floor((now - Date.parse(last)) / DAY) });
+  else if (!out.some((n) => n.kind === 'checkin') && since >= 9 && (!c.lastCheckinAt || now - Date.parse(c.lastCheckinAt) >= 9 * DAY)) out.push({ kind: 'no_checkin', at: c.lastCheckinAt ?? null });
+  return out;
+}
+
 async function cpClients(body: any) {
   const coach = await cpCoach(body?.session);
   if (!coach) return err('unauthorized');
@@ -4752,13 +4783,21 @@ async function cpClients(body: any) {
   const all = (builds ?? []).filter((b: any) => b.status !== 'discarded');
   const liveOf: Record<string, any> = {};
   all.forEach((b: any) => { if (b.status === 'live' && !liveOf[b.storage_key]) liveOf[b.storage_key] = b; });
+  const { data: states } = keys.length ? await admin.from('coach_client_state').select('storage_key, reviewed_through').in('storage_key', keys) : none;
+  const reviewed: Record<string, string | null> = Object.fromEntries((states ?? []).map((r: any) => [r.storage_key, r.reviewed_through ?? null]));
   return ok({
     coach: cpPublicCoach(coach),
-    clients: clients.map((c: any) => ({
-      storageKey: c.storage_key, name: c.display_name, startWeight: c.start_weight, goalWeight: c.goal_weight, startDate: c.start_date,
-      access: access[c.storage_key]?.access_status ?? 'none', lastOpenedAt: access[c.storage_key]?.last_access_at ?? null,
-      ...stat[c.storage_key], plan: liveOf[c.storage_key]?.summary ?? null, planPublishedAt: liveOf[c.storage_key]?.published_at ?? null,
-    })).sort((a: any, b: any) => String(a.name).localeCompare(String(b.name))),
+    clients: clients.map((c: any) => {
+      const acc = access[c.storage_key]?.access_status ?? 'none', opened = access[c.storage_key]?.last_access_at ?? null;
+      const live = liveOf[c.storage_key] ?? null;
+      const needs = cpNeeds({ ...stat[c.storage_key], startDate: c.start_date, weeks: live?.summary?.weeks ?? null, publishedAt: live?.published_at ?? null,
+                              access: acc, lastOpenedAt: opened, reviewedThrough: reviewed[c.storage_key] ?? null }, Date.now());
+      return {
+        storageKey: c.storage_key, name: c.display_name, startWeight: c.start_weight, goalWeight: c.goal_weight, startDate: c.start_date,
+        access: acc, lastOpenedAt: opened, ...stat[c.storage_key], plan: live?.summary ?? null, planPublishedAt: live?.published_at ?? null,
+        planEndsAt: cpPlanEnd(c.start_date, live?.summary?.weeks), needs,
+      };
+    }).sort((a: any, b: any) => String(a.name).localeCompare(String(b.name))),
     // drafts and work in progress: everything that is not the live plan of an existing client
     builds: all.filter((b: any) => b.status !== 'live').slice(0, 30).map((b: any) => cpBuildView(b, false)),
   });
@@ -4781,12 +4820,14 @@ async function cpClient(body: any) {
     admin.from('client_sessions').select('access_status, last_access_at').eq('storage_key', c.storage_key).maybeSingle(),
   ]);
   const { data: prof } = await admin.from('profiles').select('auth_user_id').eq('id', c.profile_id).maybeSingle();
+  const { data: state } = await admin.from('coach_client_state').select('notes, reviewed_through').eq('storage_key', c.storage_key).maybeSingle();
   const list = (builds ?? []).filter((b: any) => b.status !== 'discarded');
   const live = list.find((b: any) => b.status === 'live') ?? null;
   return ok({
     client: { storageKey: c.storage_key, name: c.display_name, startWeight: c.start_weight, goalWeight: c.goal_weight, startDate: c.start_date,
               pageUrl: c.program_url, access: sess?.access_status ?? 'none', lastOpenedAt: sess?.last_access_at ?? null,
-              hasLogin: !!prof?.auth_user_id },
+              hasLogin: !!prof?.auth_user_id, notes: state?.notes ?? '', reviewedThrough: state?.reviewed_through ?? null,
+              planEndsAt: cpPlanEnd(c.start_date, live?.summary?.weeks) },
     weights: weights ?? [], checkIns: checkins ?? [], workouts: workouts ?? [], meals: meals ?? [],
     live: live ? cpBuildView(live, true) : null,
     builds: list.filter((b: any) => b.status !== 'live').map((b: any) => cpBuildView(b, false)),
@@ -5004,6 +5045,33 @@ async function cpTemplateDelete(body: any) {
 }
 
 /** Progress photos of ONE of the coach's own clients, as short-lived signed links (the files themselves stay private). */
+/** The coach's private notes on a client. The client never sees them. */
+async function cpClientNote(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  if (typeof body?.notes !== 'string' || body.notes.length > 4000) return err('bad_notes');
+  const { error } = await admin.from('coach_client_state')
+    .upsert({ storage_key: c.storage_key, coach_id: coach.id, notes: body.notes, updated_at: new Date().toISOString() }, { onConflict: 'storage_key' });
+  if (error) return err('save_failed');
+  return ok({});
+}
+/** Marks every check-in the client has sent so far as read by the coach. */
+async function cpCheckinReviewed(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  const { data: last } = await admin.from('check_ins').select('submitted_at').eq('client_key', c.storage_key).order('submitted_at', { ascending: false }).limit(1);
+  const through = last?.[0]?.submitted_at ?? null;
+  if (!through) return err('no_checkin');
+  const { error } = await admin.from('coach_client_state')
+    .upsert({ storage_key: c.storage_key, coach_id: coach.id, reviewed_through: through, updated_at: new Date().toISOString() }, { onConflict: 'storage_key' });
+  if (error) return err('save_failed');
+  return ok({ reviewedThrough: through });
+}
+
 async function cpClientPhotos(body: any) {
   const coach = await cpCoach(body?.session);
   if (!coach) return err('unauthorized');

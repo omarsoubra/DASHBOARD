@@ -355,6 +355,18 @@
   // ── home: clients + plans in progress ────────────────────────────────────
   var STATUS = { queued: ['Building', 'warn'], building: ['Building', 'warn'], built: ['Ready to review', 'good'], failed: ['Needs a change', 'bad'], publishing: ['Going live', 'warn'], live: ['Live', 'good'] };
   function pill(status) { var s = STATUS[status] || [status, '']; return el('span', { class: 'pill ' + s[1], text: s[0] }); }
+  var NEED_ORDER = ['checkin', 'ended', 'ending', 'not_started', 'quiet', 'no_checkin'];
+  var NEED_LABEL = { checkin: 'Check-in', ended: 'Plan ended', ending: 'Plan ending', not_started: 'Not started', quiet: 'Gone quiet', no_checkin: 'No check-in' };
+  var NEED_TONE = { checkin: 'good', ended: 'bad', ending: 'warn', not_started: 'warn', quiet: 'bad', no_checkin: 'warn' };
+  function needText(n) {
+    if (n.kind === 'checkin') return 'Sent a check-in ' + when(n.at) + '. Read it and reply.';
+    if (n.kind === 'ended') return 'Their plan finished ' + when(n.at) + '. Build the next block.';
+    if (n.kind === 'ending') return 'Their plan ends in ' + n.days + (n.days === 1 ? ' day' : ' days') + '. Build the next block.';
+    if (n.kind === 'not_started') return 'Has not opened the app in ' + n.days + ' days. Send them the link again.';
+    if (n.kind === 'quiet') return 'Nothing logged for ' + n.days + ' days. Message them.';
+    if (n.kind === 'no_checkin') return n.at ? 'Last check-in was ' + when(n.at) + '. Ask for one.' : 'No check-in yet. Ask for one.';
+    return '';
+  }
   function homeView() {
     show(busy('Loading your clients'));
     call('cpClients').then(function (j) {
@@ -368,6 +380,17 @@
           return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [
             el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm }), el('div', { class: 'mute small', text: (b.isUpdate ? 'Plan update' : 'New client') + ' · started ' + when(b.createdAt) })]), pill(b.status)]);
         })));
+      }
+      var todo = [];
+      j.clients.forEach(function (c) { (c.needs || []).forEach(function (n) { todo.push({ c: c, n: n }); }); });
+      todo.sort(function (a, b) { return NEED_ORDER.indexOf(a.n.kind) - NEED_ORDER.indexOf(b.n.kind); });
+      if (j.clients.length) {
+        nodes.push(el('h2', { text: 'Needs you' + (todo.length ? ' · ' + todo.length : '') }));
+        nodes.push(el('div', { class: 'card' }, todo.length ? todo.map(function (x) {
+          return el('button', { class: 'item', onclick: function () { clientView(x.c.storageKey); } }, [
+            el('span', { class: 'grow' }, [el('span', { class: 'name', text: x.c.name }), el('div', { class: 'mute small', text: needText(x.n) })]),
+            el('span', { class: 'pill ' + (NEED_TONE[x.n.kind] || ''), text: NEED_LABEL[x.n.kind] || x.n.kind })]);
+        }) : el('p', { class: 'mute', style: 'margin:0', text: 'Nothing waiting. Every check-in is read and everyone is logging.' })));
       }
       nodes.push(el('h2', { text: j.clients.length + (j.clients.length === 1 ? ' client' : ' clients') }));
       if (!j.clients.length) nodes.push(el('div', { class: 'card' }, [el('p', { text: 'No clients yet.' }), el('p', { class: 'mute', text: 'Tap New client, fill in the short form and the plan is built for you to review.' })]));
@@ -738,15 +761,28 @@
   }
 
   // ── one client ───────────────────────────────────────────────────────────
-  function weightChart(ws) {
+  // The plan's own line: from the starting weight to the plan's goal weight over the plan's length.
+  function planLine(c, summary) {
+    if (!summary || !c.startDate || !(summary.weeks > 0) || !(summary.startWeightKg > 0) || !(summary.goalWeightKg > 0)) return null;
+    var t0 = Date.parse(c.startDate); if (!isFinite(t0)) return null;
+    return { t0: t0, t1: t0 + summary.weeks * 7 * 86400000, w0: summary.startWeightKg, w1: summary.goalWeightKg };
+  }
+  function weightChart(ws, line) {
     if (ws.length < 2) return null;
     var W = 600, H = 120, pad = 8, lo = Math.min.apply(null, ws.map(function (w) { return w.weight_kg; })), hi = Math.max.apply(null, ws.map(function (w) { return w.weight_kg; }));
-    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
     var t0 = Date.parse(ws[0].logged_at), t1 = Date.parse(ws[ws.length - 1].logged_at) || t0 + 1;
+    var at = function (t) { return line.w0 + (line.w1 - line.w0) * Math.min(1, Math.max(0, (t - line.t0) / (line.t1 - line.t0))); };
+    if (line) { lo = Math.min(lo, at(t0), at(t1)); hi = Math.max(hi, at(t0), at(t1)); }
+    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
     var pts = ws.map(function (w) { return (pad + (W - 2 * pad) * (Date.parse(w.logged_at) - t0) / Math.max(1, t1 - t0)).toFixed(1) + ',' + (pad + (H - 2 * pad) * (1 - (w.weight_kg - lo) / (hi - lo))).toFixed(1); }).join(' ');
     var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'chart'); svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', 'Weight from ' + ws[0].weight_kg + ' kg to ' + ws[ws.length - 1].weight_kg + ' kg');
     var pl = document.createElementNS(ns, 'polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#16161a'); pl.setAttribute('stroke-width', '2.5'); pl.setAttribute('stroke-linejoin', 'round');
+    if (line) {
+      var y = function (w) { return (pad + (H - 2 * pad) * (1 - (w - lo) / (hi - lo))).toFixed(1); };
+      var ln = document.createElementNS(ns, 'line'); ln.setAttribute('x1', pad); ln.setAttribute('x2', W - pad); ln.setAttribute('y1', y(at(t0))); ln.setAttribute('y2', y(at(t1)));
+      ln.setAttribute('stroke', '#9a9aa3'); ln.setAttribute('stroke-width', '2'); ln.setAttribute('stroke-dasharray', '6 6'); svg.appendChild(ln);
+    }
     svg.appendChild(pl); return svg;
   }
   function clientView(key) {
@@ -774,6 +810,27 @@
           if (to === 'suspended' && !confirm('Pause ' + c.name + '\'s access to the app?')) return;
           call('cpClientAccess', { storageKey: key, status: to }).then(function () { clientView(key); });
         } })]));
+      var latestW = j.weights.length ? j.weights[j.weights.length - 1].weight_kg : null;
+      var endsIn = c.planEndsAt ? Math.ceil((Date.parse(c.planEndsAt) - Date.now()) / 86400000) : null;
+      if (form && endsIn !== null && endsIn <= 14) {
+        nodes.push(el('div', { class: 'card' }, [el('h3', { text: endsIn <= 0 ? 'This plan has finished' : 'This plan ends in ' + endsIn + (endsIn === 1 ? ' day' : ' days') }),
+          el('p', { class: 'mute', text: 'Build the next block from this one. It starts from ' + (latestW ? 'their latest weight, ' + latestW + ' kg' : 'their last plan') + ', and keeps your training changes.' }),
+          el('button', { text: 'Build the next block', onclick: function () {
+            var f = clone(form); if (latestW) f.weightKg = latestW; delete f.kcal; delete f.proteinG;
+            f.startDate = endsIn > 0 ? c.planEndsAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+            if (f.edits) { delete f.edits.meals; if (!f.edits.training) delete f.edits; }
+            formView(f, c.storageKey, c.name);
+          } })]));
+      }
+      var noteArea = el('textarea', { 'aria-label': 'Your notes on this client', rows: '3', maxlength: '4000', placeholder: 'Injuries, preferences, what you agreed on a call. Only you see this.', style: 'width:100%' });
+      noteArea.value = c.notes || '';
+      var noteSaved = el('span', { class: 'mute small' });
+      nodes.push(el('h2', { text: 'Your notes' }));
+      nodes.push(el('div', { class: 'card' }, [noteArea, el('div', { class: 'row', style: 'margin-top:8px' }, [
+        el('button', { class: 'ghost', text: 'Save notes', onclick: function (e) {
+          e.target.disabled = true; noteSaved.textContent = '';
+          call('cpClientNote', { storageKey: key, notes: noteArea.value }).then(function (r) { e.target.disabled = false; noteSaved.textContent = r.ok ? 'Saved' : say(r); }).catch(function () { e.target.disabled = false; noteSaved.textContent = 'Could not save. Try again.'; });
+        } }), noteSaved])]));
       j.builds.forEach(function (b) { nodes.push(el('button', { class: 'card item', style: 'border:1px solid var(--line);border-radius:12px;padding:14px 16px', onclick: function () { buildView(b.id); } }, [el('span', { class: 'grow name', text: 'Plan update' }), pill(b.status)])); });
       var loginBox = el('div');
       nodes.push(el('h2', { text: 'Their login' }));
@@ -787,12 +844,16 @@
       nodes.push(el('h2', { text: 'Weight' }));
       var ws = j.weights;
       nodes.push(el('div', { class: 'card' }, ws.length ? [el('div', { class: 'row' }, [el('div', { class: 'grow' }, [el('strong', { text: ws[ws.length - 1].weight_kg + ' kg' }), el('span', { class: 'mute small', text: '  ' + when(ws[ws.length - 1].logged_at) })]),
-        el('span', { class: 'mute small', text: 'start ' + (c.startWeight || '?') + ' kg' + (c.goalWeight ? ' · goal ' + c.goalWeight + ' kg' : '') })]), weightChart(ws)] : el('p', { class: 'mute', text: 'No weigh-ins logged yet.' })));
-      nodes.push(el('h2', { text: 'Check-ins' }));
+        el('span', { class: 'mute small', text: 'start ' + (c.startWeight || '?') + ' kg' + (c.goalWeight ? ' · goal ' + c.goalWeight + ' kg' : '') })]), weightChart(ws, planLine(c, j.live && j.live.summary)), planLine(c, j.live && j.live.summary) ? el('p', { class: 'mute small', style: 'margin:6px 0 0', text: 'Dashed line: where the plan expects them to be.' }) : null] : el('p', { class: 'mute', text: 'No weigh-ins logged yet.' })));
+      var unread = j.checkIns.filter(function (k) { return !c.reviewedThrough || k.submitted_at > c.reviewedThrough; });
+      nodes.push(el('div', { class: 'row' }, [el('h2', { class: 'grow', text: 'Check-ins' }), unread.length ? el('button', { class: 'ghost', text: unread.length === 1 ? 'Mark as read' : 'Mark ' + unread.length + ' as read', onclick: function (e) {
+        e.target.disabled = true; call('cpCheckinReviewed', { storageKey: key }).then(function () { clientView(key); }).catch(oops);
+      } }) : null]));
       nodes.push(el('div', { class: 'card' }, j.checkIns.length ? j.checkIns.map(function (k) {
-        var bits = [k.weight_kg ? k.weight_kg + ' kg' : null, k.diet_adherence_1to10 != null ? 'food ' + k.diet_adherence_1to10 + '/10' : null, k.training_adherence_1to10 != null ? 'training ' + k.training_adherence_1to10 + '/10' : null,
+        var isNew = unread.indexOf(k) >= 0;
+        var bits = [k.weight_kg ? Math.round(k.weight_kg * 10) / 10 + ' kg' : null, k.diet_adherence_1to10 != null ? 'food ' + k.diet_adherence_1to10 + '/10' : null, k.training_adherence_1to10 != null ? 'training ' + k.training_adherence_1to10 + '/10' : null,
           k.energy_1to10 != null ? 'energy ' + k.energy_1to10 + '/10' : null, k.sleep_hours != null ? 'sleep ' + k.sleep_hours + ' h' : null].filter(Boolean).join(' · ');
-        return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('strong', { class: 'grow', text: 'Week ' + (k.week_number || '?') }), el('span', { class: 'mute small', text: when(k.submitted_at) })]), el('div', { class: 'small', text: bits }), k.notes ? el('div', { class: 'small', style: 'margin-top:4px', text: '"' + k.notes + '"' }) : null]);
+        return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('strong', { class: 'grow', text: 'Week ' + (k.week_number || '?') }), isNew ? el('span', { class: 'pill good', text: 'New' }) : null, el('span', { class: 'mute small', text: when(k.submitted_at) })]), el('div', { class: 'small', text: bits }), k.notes ? el('div', { class: 'small', style: 'margin-top:4px', text: '"' + k.notes + '"' }) : null]);
       }) : el('p', { class: 'mute', text: 'No check-ins yet.' })));
       var photoBox = el('div', { class: 'card' }, busy('Loading photos'));
       nodes.push(el('h2', { text: 'Progress photos' })); nodes.push(photoBox);
@@ -815,9 +876,14 @@
         return el('div', { class: 'meal' }, [el('strong', { text: new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) }), el('div', { class: 'small mute', text: byDay[d].length + ' sets logged · ' + names.slice(0, 5).join(', ') + (names.length > 5 ? ' …' : '') })]);
       }) : el('p', { class: 'mute', text: 'No training logged yet.' })));
       nodes.push(el('h2', { text: 'Food log' }));
-      var mealDays = {}; j.meals.forEach(function (m) { mealDays[m.logged_at.slice(0, 10)] = (mealDays[m.logged_at.slice(0, 10)] || 0) + 1; });
+      var mealDays = {}; j.meals.forEach(function (m) { var d = mealDays[m.logged_at.slice(0, 10)] = mealDays[m.logged_at.slice(0, 10)] || { n: 0, kcal: 0, p: 0, names: [] }; d.n++; d.kcal += Number(m.kcal) || 0; d.p += Number(m.protein_g) || 0; if (m.meal_name && d.names.indexOf(m.meal_name) < 0) d.names.push(m.meal_name); });
       var md = Object.keys(mealDays).sort().reverse().slice(0, 7);
-      nodes.push(el('div', { class: 'card' }, md.length ? el('p', { text: 'Meals ticked off: ' + md.map(function (d) { return new Date(d).toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + mealDays[d]; }).join(' · ') }) : el('p', { class: 'mute', text: 'No meals ticked off yet.' })));
+      nodes.push(el('div', { class: 'card' }, md.length ? md.map(function (d) {
+        var x = mealDays[d];
+        return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('strong', { class: 'grow', text: new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) }),
+          el('span', { class: 'small', text: x.n + (x.n === 1 ? ' meal' : ' meals') + (x.kcal ? ' · ' + Math.round(x.kcal) + ' kcal · ' + Math.round(x.p) + ' g protein' : '') })]),
+          el('div', { class: 'small mute', text: x.names.slice(0, 6).join(', ') })]);
+      }) : el('p', { class: 'mute', text: 'No meals logged yet.' })));
       if (j.live && j.live.summary) { nodes.push(el('h2', { text: 'Current plan' })); nodes.push(planNode(j.live.summary, j.live.plan)); }
       show(nodes);
     }).catch(oops);
