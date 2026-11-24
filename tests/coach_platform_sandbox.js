@@ -67,6 +67,11 @@ http.createServer(async (req, res) => {
       DB.plan_builds.push({ ...zoe, id: crypto.randomUUID(), is_update: true, status: 'built', created_at: iso(0), updated_at: iso(0), published_at: null });   // a plan update waiting for review
       return send(res, 200, JSON.stringify({ ok: true, session: token }));
     }
+    if (url.pathname === '/sandbox/schema') {              // the Drafted schema file, readable by a browser tab on another origin
+      const f = path.join(ROOT, '..', 'drafted', 'drafted_schema.sql');
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Private-Network': 'true' });
+      return res.end(fs.existsSync(f) ? fs.readFileSync(f) : '');
+    }
     if (url.pathname === '/sandbox/builder-key') return send(res, 200, BUILDER_KEY, 'text/plain');
     if (url.pathname === '/login/config.js') {             // the login page talks to this sandbox, not to production
       return send(res, 200, fs.readFileSync(path.join(ROOT, 'login/config.js'), 'utf8').replace(/apiUrl:\s*'[^']*'/, "apiUrl: '/api'"), TYPES['.js']);

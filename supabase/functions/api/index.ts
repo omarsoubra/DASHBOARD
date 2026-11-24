@@ -4365,9 +4365,11 @@ async function testimonialsGet(body: any) {
 //   * Only sha256 hashes of setup links and session keys are stored; passwords are PBKDF2-SHA256 with a per-coach salt.
 const CP_SESSION_TTL_DAYS = 30;
 const CP_SETUP_TTL_DAYS = 7;
-const CP_APP_URL = 'https://omarsoubra.github.io/DASHBOARD/coach/';
-const CP_PAGE_BASE = 'https://omarsoubra.github.io/DASHBOARD/clients/';
-const CP_LOGIN_URL = 'https://omarsoubra.github.io/DASHBOARD/login/';
+// Where the coach platform's website lives. CP_SITE_BASE (a function secret) moves it to its own address; unset = this site.
+const CP_SITE_BASE = (() => { const v = (Deno.env.get('CP_SITE_BASE') ?? '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(\/[A-Za-z0-9._\/-]*)?$/.test(v) ? v : 'https://omarsoubra.github.io/DASHBOARD'; })();
+const CP_APP_URL = `${CP_SITE_BASE}/coach/`;
+const CP_PAGE_BASE = `${CP_SITE_BASE}/clients/`;
+const CP_LOGIN_URL = `${CP_SITE_BASE}/login/`;
 const CP_PBKDF2_ITERATIONS = 210_000;
 const CP_MAX_OPEN_BUILDS = 3;
 const CP_STALE_CLAIM_MS = 10 * 60_000;
