@@ -75,6 +75,16 @@ http.createServer(async (req, res) => {
     if (url.pathname === '/login/config.js') {             // the login page talks to this sandbox, not to production
       return send(res, 200, fs.readFileSync(path.join(ROOT, 'login/config.js'), 'utf8').replace(/apiUrl:\s*'[^']*'/, "apiUrl: '/api'"), TYPES['.js']);
     }
+    const cm = url.pathname.match(/^\/clients\/([^/]+)\/(index\.html)?$/);
+    if (cm && DB.clients.some((c) => c.storage_key === cm[1] && c.coach_id)) {       // a stand-in client page for seeded demo clients
+      return send(res, 200, '<!doctype html><title>demo client page</title><script>var P = {\n  2: {\n    label: "Build", weeks: "5–8",\n  },\n  3: {\n    label: "Peak", weeks: "9–12",\n  },\n};\nvar CLIENT_CONFIG = { phases: {\n    2: { unlockCode: \'DEMO20\', unlockAfterDays: 28 },\n    3: { unlockCode: \'DEMO30\', unlockAfterDays: 56 },\n  } };</script>', TYPES['.html']);
+    }
+    if (url.pathname.startsWith('/clients/') && !fs.existsSync(path.join(ROOT, '..', 'sbx_clone', decodeURIComponent(url.pathname)))) return send(res, 404, 'not in the sandbox', 'text/plain');   // never a real client page
+    if (url.pathname === '/dashboard.html') {             // the coach's dashboard: Omar's page as made over by drafted/make_dashboard.py
+      const f = path.join(ROOT, '..', 'drafted_build', 'dashboard.html');
+      return fs.existsSync(f) ? send(res, 200, fs.readFileSync(f), TYPES['.html']) : send(res, 404, 'run drafted/make_dashboard.py first', 'text/plain');
+    }
+    if (url.pathname === '/clients_registry.json' || url.pathname === '/coach_dashboard.html') return send(res, 404, 'not in the sandbox', 'text/plain');   // never Omar's own
     if (url.pathname === '/' || url.pathname === '/index.html') { res.writeHead(302, { Location: '/coach/' }); return res.end(); }   // never serve Omar's own dashboard here
     let p = path.normalize(path.join(ROOT, decodeURIComponent(url.pathname)));
     if (!p.startsWith(ROOT)) return send(res, 403, 'no', 'text/plain');

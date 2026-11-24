@@ -718,6 +718,7 @@ async function route(type: string, body: any): Promise<Response> {
       case 'cpTemplates':        return cpTemplates(body);
       case 'cpTemplateDelete':   return cpTemplateDelete(body);
       case 'cpClientPhotos':     return cpClientPhotos(body);
+      case 'cpRegistry':     return cpRegistry(body);
       case 'cpIntakeCreate':     return cpIntakeCreate(body);
       case 'cpIntakeInspect':     return cpIntakeInspect(body);
       case 'cpIntakeSubmit':     return cpIntakeSubmit(body);
@@ -845,7 +846,7 @@ function cwvSummarize(rows: any[], nowMs: number, storedTz?: string | null) {
 
 async function coachWorkoutCompletions(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
-  const showInternal = body?.includeInternal === true;
+  const showInternal = body?.includeInternal === true || !!TENANT.getStore();   // a platform coach's clients are all marked internal
   const only = body?.storageKey == null ? null : String(body.storageKey).toLowerCase();
   const { data: clientRows, error: cErr } = await admin.from('clients').select('id, storage_key, display_name, is_internal');
   if (cErr) { logEfError('coachWorkoutCompletions', null, 'clients_read_failed', cErr.message); return err('db_error'); }
@@ -968,7 +969,7 @@ async function accountList(body: any) {
     const active = devs.filter((d: any) => !d.revoked_at && Date.parse(d.expires_at) > nowMs);
     const seen = devs.map((d: any) => d.last_used_at ?? d.created_at).filter(Boolean).sort().pop() ?? null;
     return {
-      storageKey: c.storage_key, name: c.display_name ?? null, internal: !!c.is_internal,
+      storageKey: c.storage_key, name: c.display_name ?? null, internal: !!c.is_internal && !TENANT.getStore(),
       account: p.auth_user_id ? 'active' : 'none', email: p.auth_user_id ? (p.email ?? null) : null,
       accessStatus: access.get(c.storage_key) ?? 'none',
       invite: { status: inviteStatus, purpose: inv?.purpose ?? null, expiresAt: inv?.expires_at ?? null },
@@ -1204,7 +1205,7 @@ async function dashboard(body: any) {
   const todayStr  = new Date().toISOString().slice(0, 10);
   // Internal/test accounts (sg_canary) are excluded from the numbers Omar
   // reads as his business. Pass includeInternal:true to see them deliberately.
-  const showInternal = body?.includeInternal === true;
+  const showInternal = body?.includeInternal === true || !!TENANT.getStore();   // a platform coach's clients are all marked internal
   // Every 90-day read is paged oldest-first (Omar 2026-11-04): one unpaged select stops at PostgREST's 1,000-row cap,
   // so once the fleet passed 1,000 meal / workout rows the NEWEST logs were silently dropped and active clients looked
   // quiet (latestWorkoutTs weeks stale for 24 clients). Oldest-first keeps the slice(-N) "most recent" lists below.
@@ -5181,6 +5182,25 @@ async function cpCheckinReviewed(body: any) {
     .upsert({ storage_key: c.storage_key, coach_id: coach.id, reviewed_through: through, updated_at: new Date().toISOString() }, { onConflict: 'storage_key' });
   if (error) return err('save_failed');
   return ok({ reviewedThrough: through });
+}
+
+/** The coach dashboard's client list for a platform coach: what clients_registry.json is for Omar, built from the coach's own published plans. */
+async function cpRegistry(body: any) {
+  const coach = await cpCoach(body?.session ?? body?.coachToken);
+  if (!coach) return err('unauthorized');
+  const { data: rows } = await admin.from('clients').select('storage_key, display_name, start_weight, goal_weight, start_date, program_url').eq('coach_id', coach.id).limit(1000);
+  const { data: builds } = await admin.from('plan_builds').select('storage_key, summary, published_at').eq('coach_id', coach.id).eq('status', 'live').order('published_at', { ascending: false }).limit(1000);
+  const live: Record<string, any> = {};
+  (builds ?? []).forEach((b: any) => { if (!live[b.storage_key]) live[b.storage_key] = b; });
+  const clients = (rows ?? []).map((c: any) => {
+    const b = live[c.storage_key], sm = b?.summary ?? {}, t0 = (sm.targets ?? [])[0] ?? {};
+    return { storageKey: c.storage_key, displayName: c.display_name, programUrl: `clients/${c.storage_key}/`, programType: sm.training ?? null,
+      programGoal: sm.strategy ?? null, programUpdatedAt: b?.published_at ?? null, durationWeeks: sm.weeks ?? null, phaseCount: sm.weeks ? Math.round(sm.weeks / 4) : null,
+      startWeight: c.start_weight ?? null, goalWeight: c.goal_weight ?? sm.goalWeightKg ?? null, startDate: c.start_date ?? null,
+      kcal: t0.kcal ?? null, p: t0.p ?? null, c: t0.c ?? null, f: t0.f ?? null };
+  });
+  return ok({ schemaVersion: 1, generatedAt: new Date().toISOString(), generatedBy: 'coach-platform', clientCount: clients.length, clients,
+              coach: cpPublicCoach(coach) });
 }
 
 // ── client intake form: the coach sends a link, the client fills in their own details ────────────────────────────────
