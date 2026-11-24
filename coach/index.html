@@ -704,7 +704,7 @@
             loginBox.replaceChildren(r.ok ? el('div', null, [el('p', { class: 'mute small', style: 'margin-top:12px', text: r.purpose === 'reset' ? 'Send this to them. It works once and lasts 24 hours.' : 'Send this to them. They choose their own email and password. It works once and lasts 7 days.' }),
               el('div', { class: 'linkbox', text: r.link }), el('button', { text: 'Copy link', onclick: function (e) { navigator.clipboard.writeText(r.link).then(function () { e.target.textContent = 'Copied'; }); } })]) : banner('bad', r.error === 'access_not_active' ? 'Resume their access first.' : say(r)));
           });
-        } }), loginBox]));
+        } }), loginBox, c.hasLogin ? el('p', { class: 'mute small', style: 'margin:12px 0 0', text: 'They log in at ' + (LOCAL ? location.origin : 'https://omarsoubra.github.io/DASHBOARD') + '/login/?c=' + S.coach.slug }) : null]));
       nodes.push(el('h2', { text: 'Weight' }));
       var ws = j.weights;
       nodes.push(el('div', { class: 'card' }, ws.length ? [el('div', { class: 'row' }, [el('div', { class: 'grow' }, [el('strong', { text: ws[ws.length - 1].weight_kg + ' kg' }), el('span', { class: 'mute small', text: '  ' + when(ws[ws.length - 1].logged_at) })]),
