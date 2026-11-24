@@ -101,7 +101,7 @@ async function buildAndPublish(coach, form, storageKey) {
     { client_key: 'cruz_rehayem', logged_at: new Date().toISOString(), weight_kg: 66 });
   DB.check_ins.push({ client_key: 'c_al_sam_tester', submitted_at: new Date().toISOString(), notes: 'al-private-note' });
   const al2 = B(await M.cpClients({ session: al.session }));
-  t('list shows the latest weight of own clients only', al2.clients[0].latestWeight === 91.2 && !JSON.stringify(al2).includes('70') && !JSON.stringify(B(await M.cpClients({ session: bo.session }))).includes('91.2'));
+  t('list shows the latest weight of own clients only', al2.clients.length === 1 && al2.clients[0].latestWeight === 91.2 && B(await M.cpClients({ session: bo.session })).clients.map((c) => c.latestWeight).join() === '70');
   t('a coach cannot open another coach\'s client', B(await M.cpClient({ session: bo.session, storageKey: 'c_al_sam_tester' })).error === 'unknown_client');
   t('a coach cannot open Omar\'s client', B(await M.cpClient({ session: al.session, storageKey: 'cruz_rehayem' })).error === 'unknown_client');
   t('a coach cannot open Omar\'s client even when its key looks like theirs', B(await M.cpClient({ session: al.session, storageKey: 'c_al_omars_client' })).error === 'unknown_client');
@@ -301,6 +301,52 @@ async function buildAndPublish(coach, form, storageKey) {
   const f2 = B(await M.cpIntakeCreate({ session: al3 }));
   DB.coach_intakes.find((r) => r.id === f2.id).expires_at = '2020-01-01T00:00:00Z';
   t('an expired link is dead', B(await M.cpIntakeInspect({ token: f2.link.split('#f=')[1] })).error === 'bad_link' && B(await M.cpIntakeSubmit({ token: f2.link.split('#f=')[1], consent: true, answers: ANS })).error === 'bad_link');
+
+  console.log('coach platform — the coach dashboard only reaches the coach\'s own clients');
+  const { admin: A } = require('./coach_platform_fixture.js');
+  const scA = await M.tenantScope('dashboard', { coachToken: al3 }), scB = await M.tenantScope('dashboard', { coachToken: other.session });
+  const mineKeys = DB.clients.filter((c) => c.coach_id === scA.coach.id).map((c) => c.storage_key).sort();
+  t('a coach session opens a scope holding exactly their clients', scA && scA !== 'refused' && scA.keys.slice().sort().join() === mineKeys.join() && mineKeys.includes(ej.storageKey) && !scA.keys.includes('cruz_rehayem'), scA && scA.keys);
+  t('Omar\'s token, a client, junk and cp* calls open no scope', (await M.tenantScope('dashboard', { coachToken: OMAR })) === null && (await M.tenantScope('dashboard', { coachToken: 'x'.repeat(50) })) === null
+    && (await M.tenantScope('dashboard', {})) === null && (await M.tenantScope('cpClients', { coachToken: al3 })) === null);
+  t('request types not opened to coaches are refused outright', ['clientCreate', 'intakeList', 'intakePromote', 'entitlementGrant', 'provisionSelfGuidedClient', 'testimonialsGet', 'coachSettingsPut', 'legacyQueueGet', 'registryGetPrivate', 'someFutureEndpoint']
+    .every((ty) => !M.TENANT_TYPES.has(ty)) && (await M.tenantScope('clientCreate', { coachToken: al3 })) === 'refused');
+  DB.clients.push({ id: 'omar-client-1', storage_key: 'omar_only', coach_id: null, is_internal: false });
+  DB.weight_logs.push({ client_key: 'omar_only', logged_at: '2026-11-20T00:00:00Z', weight_kg: 99 }, { client_key: ej.storageKey, logged_at: '2026-11-21T00:00:00Z', weight_kg: 77 });
+  DB.meal_logs.push({ client_id: 'omar-client-1', logged_at: '2026-11-20T00:00:00Z', meal_name: 'secret' });
+  DB.client_sessions.push({ storage_key: 'omar_only', access_status: 'active' });
+  DB.roster_snapshots.push({ id: 1, snapshot_ts: '2026-11-20T00:00:00Z', roster_json: [{ storageKey: 'omar_only' }], coach_id: null });
+  const inA = (fn) => M.TENANT.run(scA, fn);
+  const seen = await inA(async () => ({
+    clients: (await A.from('clients').select('*')).data, weights: (await A.from('weight_logs').select('*')).data, checkins: (await A.from('check_ins').select('*').gte('submitted_at', '2000')).data,
+    meals: (await A.from('meal_logs').select('*')).data, sessions: (await A.from('client_sessions').select('*')).data, roster: (await A.from('roster_snapshots').select('*').order('snapshot_ts', { ascending: false }).limit(1)).data,
+    photos: (await A.from('photo_uploads').select('*')).data, intakes: await A.from('intakes').select('*').eq('id', 1).maybeSingle(), coaches: await A.from('coaches').select('*'), unknown: await A.from('brand_new_table').select('*'),
+  }));
+  t('every read inside the scope is narrowed to the coach\'s clients', seen.clients.length === mineKeys.length && seen.clients.every((c) => c.coach_id === scA.coach.id) && seen.weights.length > 0 && seen.weights.every((w) => mineKeys.includes(w.client_key))
+    && seen.checkins.every((c) => mineKeys.includes(c.client_key)) && seen.meals.every((m) => m.meal_name !== 'secret') && seen.sessions.every((x) => mineKeys.includes(x.storage_key)) && seen.photos.every((x) => mineKeys.includes(x.client_key))
+    && seen.roster.length === 0, { w: seen.weights.length, r: seen.roster });
+  t('tables with no rule are closed: Omar\'s intakes, the coaches table, any future table', seen.intakes.data === null && !!seen.intakes.error && seen.coaches.data === null && seen.unknown.data === null);
+  const wr = await inA(async () => ({
+    log: await A.from('weight_logs').insert({ client_key: ej.storageKey, weight_kg: 1 }), client: await A.from('clients').update({ coach_id: scA.coach.id }).eq('storage_key', 'omar_only'),
+    steal: await A.from('client_sessions').update({ access_status: 'revoked' }).eq('storage_key', 'omar_only'), own: await A.from('client_sessions').update({ reason: 'tenant-test' }).eq('storage_key', ej.storageKey),
+    foreignRow: await A.from('access_log').insert({ client_key: 'omar_only', event: 'x' }), ownRow: await A.from('access_log').insert({ client_key: ej.storageKey, event: 'tenant-test' }),
+    move: await A.from('client_sessions').update({ storage_key: 'omar_only' }).eq('storage_key', ej.storageKey), del: await A.from('weight_logs').delete().eq('client_key', 'omar_only'),
+    roster: await A.from('roster_snapshots').insert({ snapshot_ts: '2026-11-25T00:00:00Z', roster_json: [{ storageKey: ej.storageKey }], coach_id: 'forged' }), product: await A.from('products').insert({ code: 'free' }),
+  }));
+  t('writes: read-only tables refuse, a foreign row is untouched, an own row changes', !!wr.log.error && !!wr.client.error && DB.clients.find((c) => c.storage_key === 'omar_only').coach_id === null
+    && DB.client_sessions.find((x) => x.storage_key === 'omar_only').access_status === 'active' && DB.client_sessions.find((x) => x.storage_key === ej.storageKey).reason === 'tenant-test'
+    && !!wr.foreignRow.error && !DB.access_log.some((x) => x.client_key === 'omar_only') && DB.access_log.some((x) => x.event === 'tenant-test') && !!wr.move.error && !!wr.del.error
+    && DB.weight_logs.some((w) => w.client_key === 'omar_only') && !!wr.product.error, wr);
+  const rosterMine = await inA(async () => (await A.from('roster_snapshots').select('*').order('snapshot_ts', { ascending: false }).limit(1)).data);
+  t('the roster a coach saves is stamped as theirs and is the only one they read back', rosterMine.length === 1 && rosterMine[0].coach_id === scA.coach.id && rosterMine[0].roster_json[0].storageKey === ej.storageKey
+    && (await M.TENANT.run(scB, async () => (await A.from('roster_snapshots').select('*')).data)).length === 0 && DB.roster_snapshots.find((r) => r.id === 1).coach_id === null);
+  const both = await Promise.all([M.TENANT.run(scA, async () => { await new Promise((r) => setTimeout(r, 15)); return (await A.from('clients').select('*')).data.map((c) => c.coach_id); }),
+    M.TENANT.run(scB, async () => { await new Promise((r) => setTimeout(r, 5)); return (await A.from('clients').select('*')).data.map((c) => c.coach_id); }),
+    (async () => { await new Promise((r) => setTimeout(r, 10)); return (await A.from('clients').select('*')).data.length; })()]);
+  t('two coaches at the same moment never see each other, and Omar outside any scope sees everything', both[0].every((x) => x === scA.coach.id) && both[1].every((x) => x === scB.coach.id) && both[0].length > 0 && both[2] === DB.clients.length, both);
+  const gone = await M.tenantScope('dashboard', { coachToken: other.session });
+  await M.cpCoachSetStatus({ coachToken: OMAR, slug: other.coach ? other.coach.slug : scB.coach.slug, status: 'suspended' });
+  t('a suspended coach opens no scope', gone !== null && (await M.tenantScope('dashboard', { coachToken: other.session })) === null);
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

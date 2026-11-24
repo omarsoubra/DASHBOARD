@@ -10,15 +10,19 @@
 //   supabase functions serve api
 // ============================================================================
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 // ── env ────────────────────────────────────────────────────────────────────
 const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const COACH_PASSWORD_HASH  = Deno.env.get('COACH_PASSWORD_HASH') ?? '';
 
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+const rawAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+// Every database call goes through tenantAdmin (see "tenant scope" near the coach platform handlers): for Omar and for
+// clients it is the plain service client; inside a platform coach's request it can only reach that coach's own clients.
+const admin = tenantAdmin(rawAdmin) as SupabaseClient;
 
 // ── CORS + JSON helpers ────────────────────────────────────────────────────
 const CORS = {
@@ -37,6 +41,7 @@ function verifyCoachToken(token: string | undefined): boolean {
   // password + salt stored in COACH_PASSWORD_HASH. For migration we accept
   // the same hash the Apps Script accepts so coach dashboard keeps working
   // without a re-login. Move to Supabase Auth (magic-link email) post-migration.
+  if (TENANT.getStore()) return true;                     // a platform coach, already authenticated and scoped by the router
   if (!token || !COACH_PASSWORD_HASH) return false;
   return token === COACH_PASSWORD_HASH;
 }
@@ -603,6 +608,15 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return err('bad_json'); }
   const type: string = body?.type || '';
 
+  // A platform coach using the coach dashboard: their session rides in coachToken. Resolve it once, then run the handler
+  // inside their scope. Request types outside TENANT_TYPES are refused, so a new endpoint is closed to coaches by default.
+  const scope = await tenantScope(type, body);
+  if (scope === 'refused') return err('not_available');
+  if (scope) return TENANT.run(scope, () => route(type, body));
+  return route(type, body);
+});
+
+async function route(type: string, body: any): Promise<Response> {
   try {
     switch (type) {
       case 'ping':               return ok({ v: 'supabase-edge-v1' });
@@ -720,7 +734,7 @@ Deno.serve(async (req) => {
     logEfError(type, clientKey, 'internal_error', String(e));
     return err('internal_error', { detail: String(e).slice(0, 300) });
   }
-});
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // Endpoint implementations
@@ -4364,6 +4378,76 @@ async function testimonialsGet(body: any) {
 //   * A coach's client is is_internal = true, so it never shows in Omar's dashboard, registry, account list or pushes.
 //   * Only sha256 hashes of setup links and session keys are stored; passwords are PBKDF2-SHA256 with a per-coach salt.
 const CP_SESSION_TTL_DAYS = 30;
+
+// ── tenant scope ────────────────────────────────────────────────────────────────────────────────────────────────────
+// The coach dashboard was written for one coach. Rather than re-write each of its endpoints, a platform coach's request
+// runs inside TENANT, and `admin.from(table)` then adds the coach's own filter to every read, change and delete, and
+// refuses any new row that is not about one of their clients. A table with no rule here is closed to coaches.
+type TenantScope = { coach: any; keys: string[]; ids: string[]; profileIds: string[] };
+const TENANT = new AsyncLocalStorage<TenantScope>();
+/** How each table is tied to a client: [column, which list of the coach's values it must be in]. */
+const TENANT_RULES: Record<string, [string, 'keys' | 'ids' | 'profileIds' | 'coach' | 'open']> = {
+  clients: ['coach_id', 'coach'], roster_snapshots: ['coach_id', 'coach'],
+  weight_logs: ['client_key', 'keys'], check_ins: ['client_key', 'keys'], workout_log_entries: ['client_key', 'keys'], photo_uploads: ['client_key', 'keys'],
+  checkin_drafts: ['client_key', 'keys'], access_log: ['client_key', 'keys'],
+  client_sessions: ['storage_key', 'keys'], programs: ['storage_key', 'keys'], health_keys: ['storage_key', 'keys'], health_daily: ['storage_key', 'keys'],
+  client_invites: ['storage_key', 'keys'], client_device_tokens: ['storage_key', 'keys'], workout_completions: ['storage_key', 'keys'], push_preferences: ['storage_key', 'keys'],
+  meal_logs: ['client_id', 'ids'], client_entitlements: ['client_id', 'ids'], client_overrides: ['client_id', 'ids'],
+  profiles: ['id', 'profileIds'],
+  products: ['', 'open'],                                  // the product catalogue: readable, never writable
+};
+/** Tables a coach's dashboard request may add rows to or change (always inside the rule above). Everything else is read-only. */
+const TENANT_WRITABLE = new Set(['roster_snapshots', 'client_sessions', 'access_log', 'client_invites', 'client_device_tokens', 'client_overrides', 'health_keys', 'checkin_drafts']);
+/** Dashboard request types a platform coach may make. */
+const TENANT_TYPES = new Set(['dashboard', 'rosterGet', 'rosterPut', 'coachWorkoutCompletions', 'coachClientHistory', 'healthGet', 'accountList', 'accountInviteCreate',
+  'issueClientToken', 'setAccessStatus', 'clientProgram', 'weightLog', 'photosGet', 'overrideGet', 'overridePut', 'foodLogGet', 'progressionHistory', 'checkinDraftsGet',
+  'entitlementsGet', 'healthKeyIssue', 'healthRevoke']);
+/** A query that reaches nothing: every chained call returns itself, awaiting it gives an empty refused result. */
+function tenantRefused(): any {
+  const target = () => {};
+  const p: any = new Proxy(target, {
+    get: (_t, k) => (k === 'then' ? (res: (v: unknown) => unknown) => res({ data: null, error: { message: 'refused: outside this coach' }, count: 0 }) : () => p),
+    apply: () => p,
+  });
+  return p;
+}
+function tenantFrom(raw: any, table: string): any {
+  const scope = TENANT.getStore();
+  if (!scope) return raw.from(table);
+  const rule = TENANT_RULES[table];
+  if (!rule) return tenantRefused();
+  const [col, kind] = rule;
+  const mine = (v: unknown) => kind === 'coach' ? v === scope.coach.id : (scope as any)[kind].includes(v);
+  const narrow = (q: any) => kind === 'open' ? q : kind === 'coach' ? q.eq(col, scope.coach.id) : q.in(col, (scope as any)[kind]);
+  const writable = TENANT_WRITABLE.has(table);
+  const rowsOk = (rows: unknown) => (Array.isArray(rows) ? rows : [rows]).every((r: any) => r && typeof r === 'object' && mine(r[col]));
+  const qb = raw.from(table);
+  return {
+    select: (...a: unknown[]) => narrow(qb.select(...a)),
+    update: (v: any, ...a: unknown[]) => (writable && v && typeof v === 'object' && (!(col in v) || mine(v[col])) ? narrow(qb.update(v, ...a)) : tenantRefused()),
+    delete: (...a: unknown[]) => (writable ? narrow(qb.delete(...a)) : tenantRefused()),
+    insert: (rows: any, ...a: unknown[]) => {
+      if (!writable) return tenantRefused();
+      if (table === 'roster_snapshots') rows = Array.isArray(rows) ? rows.map((r: any) => ({ ...r, coach_id: scope.coach.id })) : { ...rows, coach_id: scope.coach.id };
+      return rowsOk(rows) ? qb.insert(rows, ...a) : tenantRefused();
+    },
+    upsert: (rows: any, ...a: unknown[]) => (writable && rowsOk(rows) ? qb.upsert(rows, ...a) : tenantRefused()),
+  };
+}
+function tenantAdmin(raw: any): any {
+  return new Proxy(raw, { get: (t, k) => (k === 'from' ? (table: string) => tenantFrom(t, table) : typeof t[k] === 'function' ? t[k].bind(t) : t[k]) });
+}
+/** null = not a platform coach (Omar, a client, or a cp* call that carries its own session). 'refused' = a coach asking for something closed to them. */
+async function tenantScope(type: string, body: any): Promise<TenantScope | 'refused' | null> {
+  const token = body?.coachToken;
+  if (typeof token !== 'string' || /^cp[A-Z]/.test(type) || (COACH_PASSWORD_HASH && token === COACH_PASSWORD_HASH)) return null;
+  const coach = await cpCoach(token);
+  if (!coach) return null;                                // not a coach session: the handler's own check answers 'unauthorized'
+  if (!TENANT_TYPES.has(type)) return 'refused';
+  const { data } = await rawAdmin.from('clients').select('id, storage_key, profile_id').eq('coach_id', coach.id).limit(1000);
+  const rows = data ?? [];
+  return { coach, keys: rows.map((r: any) => r.storage_key), ids: rows.map((r: any) => r.id), profileIds: rows.map((r: any) => r.profile_id).filter(Boolean) };
+}
 const CP_SETUP_TTL_DAYS = 7;
 // Where the coach platform's website lives. CP_SITE_BASE (a function secret) moves it to its own address; unset = this site.
 const CP_SITE_BASE = (() => { const v = (Deno.env.get('CP_SITE_BASE') ?? '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(\/[A-Za-z0-9._\/-]*)?$/.test(v) ? v : 'https://omarsoubra.github.io/DASHBOARD'; })();

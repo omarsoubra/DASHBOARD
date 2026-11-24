@@ -8,9 +8,10 @@ const i = SRC.indexOf('const CP_SESSION_TTL_DAYS');
 if (i < 0) throw new Error('locate coach platform handlers');
 const js = ts.transpileModule(SRC.slice(i), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 
+const M = {};
 // ── in-memory supabase-js subset ────────────────────────────────────────────
 const DB = { coaches: [], coach_sessions: [], plan_builds: [], clients: [], profiles: [], client_entitlements: [], client_sessions: [],
-             access_log: [], client_invites: [], coach_templates: [], coach_client_state: [], coach_intakes: [], photo_uploads: [], weight_logs: [], check_ins: [], workout_log_entries: [], meal_logs: [] };
+             access_log: [], client_invites: [], coach_templates: [], coach_client_state: [], coach_intakes: [], roster_snapshots: [], checkin_drafts: [], client_overrides: [], products: [], testimonials: [], programs: [], photo_uploads: [], weight_logs: [], check_ins: [], workout_log_entries: [], meal_logs: [] };
 let seq = 1;
 const uuid = () => nodeCrypto.randomUUID();
 const DEFAULTS = {
@@ -65,21 +66,24 @@ function table(name) {
   };
   return q;
 }
-const admin = { from: table, storage: { from: () => ({ createSignedUrls: async (paths, ttl) => ({ data: paths.map((p) => ({ path: p, signedUrl: 'https://signed.example/' + p + '?ttl=' + ttl })) }) }) } };
+const rawAdmin = { from: table, storage: { from: () => ({ createSignedUrls: async (paths, ttl) => ({ data: paths.map((p) => ({ path: p, signedUrl: 'https://signed.example/' + p + '?ttl=' + ttl })) }) }) } };
+// Handlers see the same tenant-scoped client as production: plain for Omar and cp* calls, narrowed inside a coach's dashboard request.
+const admin = { from: (t) => M.tenantAdmin(rawAdmin).from(t), storage: rawAdmin.storage };
+const { AsyncLocalStorage } = require('async_hooks');
 const json = (o) => ({ __body: o });
 const ok = (e = {}) => json({ ok: true, ...e });
 const err = (r, e = {}) => json({ ok: false, error: r, ...e });
-const OMAR = 'omar-coach-token-hash';
+const OMAR = 'omar-coach-token-hash', OMAR_HASH = OMAR;
 const verifyCoachToken = (t) => t === OMAR;
 const sha256 = async (s) => nodeCrypto.createHash('sha256').update(s).digest('hex');
 const randomToken = () => nodeCrypto.randomBytes(32).toString('base64url');
 const BUILDER_KEY = 'builder-key-' + 'x'.repeat(40);
 const Deno = { env: { get: (k) => (k === 'CP_BUILDER_KEY_SHA256' ? nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex') : undefined) } };
 const logEfError = () => {};
-const M = {};
-const NAMES = ['cpIntakeCreate', 'cpIntakeInspect', 'cpIntakeSubmit', 'cpIntakes', 'cpIntakeClose', 'cpClientNote', 'cpCheckinReviewed', 'cpNeeds', 'cpTemplateSave', 'cpTemplates', 'cpTemplateDelete', 'cpClientPhotos', 'cpSettingsSave', 'cpRebrandAll', 'cpBrand', 'cpClientInvite', 'cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
-  'cpBuildDiscard', 'cpPublish', 'cpClients', 'cpClient', 'cpClientLink', 'cpClientAccess', 'cpWorkerClaim', 'cpWorkerDone', 'cpStorageKey'];
-new Function('admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'PHOTO_BUCKET', 'SIGNED_URL_TTL_SEC', 'exports',
-  js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')(admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, 'progress-photos', 3600, M);
 
-module.exports = { M, DB, OMAR, BUILDER_KEY, uuid, nodeCrypto };
+const NAMES = ['tenantAdmin', 'tenantScope', 'TENANT', 'TENANT_TYPES', 'TENANT_RULES', 'cpIntakeCreate', 'cpIntakeInspect', 'cpIntakeSubmit', 'cpIntakes', 'cpIntakeClose', 'cpClientNote', 'cpCheckinReviewed', 'cpNeeds', 'cpTemplateSave', 'cpTemplates', 'cpTemplateDelete', 'cpClientPhotos', 'cpSettingsSave', 'cpRebrandAll', 'cpBrand', 'cpClientInvite', 'cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
+  'cpBuildDiscard', 'cpPublish', 'cpClients', 'cpClient', 'cpClientLink', 'cpClientAccess', 'cpWorkerClaim', 'cpWorkerDone', 'cpStorageKey'];
+new Function('rawAdmin', 'AsyncLocalStorage', 'COACH_PASSWORD_HASH', 'admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'PHOTO_BUCKET', 'SIGNED_URL_TTL_SEC', 'exports',
+  js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')(rawAdmin, AsyncLocalStorage, OMAR_HASH, admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, 'progress-photos', 3600, M);
+
+module.exports = { M, DB, admin, rawAdmin, OMAR, BUILDER_KEY, uuid, nodeCrypto };

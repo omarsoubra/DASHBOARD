@@ -113,6 +113,10 @@ create index if not exists coach_intakes_coach_idx on public.coach_intakes (coac
 alter table public.clients add column if not exists coach_id uuid references public.coaches(id);
 create index if not exists clients_coach_id_idx on public.clients (coach_id) where coach_id is not null;
 
+-- The coach dashboard's saved client list (roster). NULL = Omar's. A platform coach reads and writes only their own.
+alter table public.roster_snapshots add column if not exists coach_id uuid references public.coaches(id) on delete cascade;
+create index if not exists roster_snapshots_coach_idx on public.roster_snapshots (coach_id, snapshot_ts desc) where coach_id is not null;
+
 comment on column public.clients.coach_id is
   'Coach Platform V1: NULL = Omar''s own client. Set = the outside coach who owns this client (see public.coaches).';
 
