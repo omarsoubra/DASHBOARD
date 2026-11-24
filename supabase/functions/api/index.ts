@@ -1364,7 +1364,7 @@ async function checkinDraftsGet(body: any) {
   const since = new Date(Date.now() - days * 86400000).toISOString();
   const { data, error } = await admin.from('checkin_drafts')
     .select('client_key, checkin_ts, action, for_coach, draft, created_at, sent_at')
-    .gte('created_at', since).neq('client_key', COACH_SETTINGS_KEY).order('created_at', { ascending: false }).limit(500);
+    .gte('created_at', since).neq('client_key', coachSettingsKey()).order('created_at', { ascending: false }).limit(500);
   if (error) return err('read_failed');
   return ok({ drafts: data ?? [] });
 }
@@ -1379,9 +1379,11 @@ const COACH_RULE_BOUNDS: Record<string, [number, number]> = {
   lowSteps: [2000, 15000], stepsDropPct: [10, 70], underTargetPct: [50, 100], shortSleepMin: [240, 480],
   recoveryRhrUp: [2, 20], recoverySleepMaxMin: [300, 480],
 };
+/** Where the dashboard's rules are kept: one row for Omar, one per platform coach. */
+function coachSettingsKey(): string { const t = TENANT.getStore(); return t ? `${COACH_SETTINGS_KEY}:${t.coach.id}` : COACH_SETTINGS_KEY; }
 async function coachSettingsGet(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
-  const { data } = await admin.from('checkin_drafts').select('draft, created_at').eq('client_key', COACH_SETTINGS_KEY).eq('checkin_ts', COACH_SETTINGS_TS).maybeSingle();
+  const { data } = await admin.from('checkin_drafts').select('draft, created_at').eq('client_key', coachSettingsKey()).eq('checkin_ts', COACH_SETTINGS_TS).maybeSingle();
   let rules = {}; try { rules = JSON.parse(data?.draft || '{}') || {}; } catch (_) { rules = {}; }
   return ok({ rules, updatedAt: data?.created_at ?? null });
 }
@@ -1396,7 +1398,7 @@ async function coachSettingsPut(body: any) {
     if (!Number.isFinite(n) || n < b[0] || n > b[1]) return err('out_of_range', { rule: k, min: b[0], max: b[1] });
     clean[k] = n;
   }
-  const { error } = await admin.from('checkin_drafts').upsert({ client_key: COACH_SETTINGS_KEY, checkin_ts: COACH_SETTINGS_TS, action: 'settings',
+  const { error } = await admin.from('checkin_drafts').upsert({ client_key: coachSettingsKey(), checkin_ts: COACH_SETTINGS_TS, action: 'settings',
     for_coach: [], draft: JSON.stringify(clean), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'client_key,checkin_ts' });
   if (error) return err('write_failed');
   return ok({ rules: clean });
@@ -4402,7 +4404,7 @@ const TENANT_WRITABLE = new Set(['roster_snapshots', 'client_sessions', 'access_
 /** Dashboard request types a platform coach may make. */
 const TENANT_TYPES = new Set(['dashboard', 'rosterGet', 'rosterPut', 'coachWorkoutCompletions', 'coachClientHistory', 'healthGet', 'accountList', 'accountInviteCreate',
   'issueClientToken', 'setAccessStatus', 'clientProgram', 'weightLog', 'photosGet', 'overrideGet', 'overridePut', 'foodLogGet', 'progressionHistory', 'checkinDraftsGet',
-  'entitlementsGet', 'healthKeyIssue', 'healthRevoke']);
+  'entitlementsGet', 'healthKeyIssue', 'healthRevoke', 'coachSettingsGet', 'coachSettingsPut']);
 /** A query that reaches nothing: every chained call returns itself, awaiting it gives an empty refused result. */
 function tenantRefused(): any {
   const target = () => {};
@@ -4447,7 +4449,8 @@ async function tenantScope(type: string, body: any): Promise<TenantScope | 'refu
   if (!TENANT_TYPES.has(type)) return 'refused';
   const { data } = await rawAdmin.from('clients').select('id, storage_key, profile_id').eq('coach_id', coach.id).limit(1000);
   const rows = data ?? [];
-  return { coach, keys: rows.map((r: any) => r.storage_key), ids: rows.map((r: any) => r.id), profileIds: rows.map((r: any) => r.profile_id).filter(Boolean) };
+  // the coach's own rules row lives in checkin_drafts under a key only they can reach
+  return { coach, keys: [...rows.map((r: any) => r.storage_key), `${COACH_SETTINGS_KEY}:${coach.id}`], ids: rows.map((r: any) => r.id), profileIds: rows.map((r: any) => r.profile_id).filter(Boolean) };
 }
 const CP_SETUP_TTL_DAYS = 7;
 // Where the coach platform's website lives. CP_SITE_BASE (a function secret) moves it to its own address; unset = this site.

@@ -55,7 +55,8 @@ function table(name) {
         const p = Object.assign({}, (DEFAULTS[name] || (() => ({ id: seq++ })))(), q.payload);
         if (name === 'coaches' && DB.coaches.some((c) => c.email === p.email || c.slug === p.slug)) return res({ data: null, error: { message: 'duplicate key 23505' } });
         if (name === 'clients' && DB.clients.some((c) => c.storage_key === p.storage_key)) return res({ data: null, error: { message: 'duplicate key 23505' } });
-        const ex = q.op === 'upsert' && q.conflict ? DB[name].find((r) => r[q.conflict] === p[q.conflict]) : null;
+        const ck = q.conflict ? q.conflict.split(',').map((x) => x.trim()) : [];
+        const ex = q.op === 'upsert' && ck.length ? DB[name].find((r) => ck.every((k) => r[k] === p[k])) : null;
         if (ex) { Object.assign(ex, q.payload); rows = [ex]; } else { DB[name].push(p); rows = [p]; }
       } else {
         rows = DB[name].filter((r) => q.f.every((fn) => fn(r)));
@@ -89,7 +90,7 @@ const logEfError = () => {};
 
 const NAMES = ['cpRegistry', 'tenantAdmin', 'tenantScope', 'TENANT', 'TENANT_TYPES', 'TENANT_RULES', 'cpIntakeCreate', 'cpIntakeInspect', 'cpIntakeSubmit', 'cpIntakes', 'cpIntakeClose', 'cpClientNote', 'cpCheckinReviewed', 'cpNeeds', 'cpTemplateSave', 'cpTemplates', 'cpTemplateDelete', 'cpClientPhotos', 'cpSettingsSave', 'cpRebrandAll', 'cpBrand', 'cpClientInvite', 'cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
   'cpBuildDiscard', 'cpPublish', 'cpClients', 'cpClient', 'cpClientLink', 'cpClientAccess', 'cpWorkerClaim', 'cpWorkerDone', 'cpStorageKey'];
-new Function('rawAdmin', 'AsyncLocalStorage', 'COACH_PASSWORD_HASH', 'admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'PHOTO_BUCKET', 'SIGNED_URL_TTL_SEC', 'exports',
-  js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')(rawAdmin, AsyncLocalStorage, OMAR_HASH, admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, 'progress-photos', 3600, M);
+new Function('COACH_SETTINGS_KEY', 'rawAdmin', 'AsyncLocalStorage', 'COACH_PASSWORD_HASH', 'admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'PHOTO_BUCKET', 'SIGNED_URL_TTL_SEC', 'exports',
+  js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')('_coach', rawAdmin, AsyncLocalStorage, OMAR_HASH, admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, 'progress-photos', 3600, M);
 
 module.exports = { M, DB, admin, rawAdmin, BUILDER_KEY_SHA: nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex'), OMAR_HASH, OMAR, BUILDER_KEY, uuid, nodeCrypto };
