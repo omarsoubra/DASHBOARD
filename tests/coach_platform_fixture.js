@@ -10,7 +10,7 @@ const js = ts.transpileModule(SRC.slice(i), { compilerOptions: { target: ts.Scri
 
 // ── in-memory supabase-js subset ────────────────────────────────────────────
 const DB = { coaches: [], coach_sessions: [], plan_builds: [], clients: [], profiles: [], client_entitlements: [], client_sessions: [],
-             access_log: [], weight_logs: [], check_ins: [], workout_log_entries: [], meal_logs: [] };
+             access_log: [], client_invites: [], weight_logs: [], check_ins: [], workout_log_entries: [], meal_logs: [] };
 let seq = 1;
 const uuid = () => nodeCrypto.randomUUID();
 const DEFAULTS = {
@@ -75,7 +75,7 @@ const BUILDER_KEY = 'builder-key-' + 'x'.repeat(40);
 const Deno = { env: { get: (k) => (k === 'CP_BUILDER_KEY_SHA256' ? nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex') : undefined) } };
 const logEfError = () => {};
 const M = {};
-const NAMES = ['cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
+const NAMES = ['cpSettingsSave', 'cpRebrandAll', 'cpBrand', 'cpClientInvite', 'cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
   'cpBuildDiscard', 'cpPublish', 'cpClients', 'cpClient', 'cpClientLink', 'cpClientAccess', 'cpWorkerClaim', 'cpWorkerDone', 'cpStorageKey'];
 new Function('admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'exports',
   js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')(admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, M);

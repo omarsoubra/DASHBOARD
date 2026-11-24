@@ -696,6 +696,10 @@ Deno.serve(async (req) => {
       case 'cpClient':           return cpClient(body);
       case 'cpClientLink':       return cpClientLink(body);
       case 'cpClientAccess':     return cpClientAccess(body);
+      case 'cpSettingsSave':     return cpSettingsSave(body);
+      case 'cpRebrandAll':       return cpRebrandAll(body);
+      case 'cpBrand':            return cpBrand(body);
+      case 'cpClientInvite':     return cpClientInvite(body);
       case 'cpWorkerClaim':      return cpWorkerClaim(body);
       case 'cpWorkerDone':       return cpWorkerDone(body);
       default: return err('unknown_type');
@@ -4352,6 +4356,7 @@ const CP_SESSION_TTL_DAYS = 30;
 const CP_SETUP_TTL_DAYS = 7;
 const CP_APP_URL = 'https://omarsoubra.github.io/DASHBOARD/coach/';
 const CP_PAGE_BASE = 'https://omarsoubra.github.io/DASHBOARD/clients/';
+const CP_LOGIN_URL = 'https://omarsoubra.github.io/DASHBOARD/login/';
 const CP_PBKDF2_ITERATIONS = 210_000;
 const CP_MAX_OPEN_BUILDS = 3;
 const CP_STALE_CLAIM_MS = 10 * 60_000;
@@ -4360,6 +4365,10 @@ const CP_LOCK_MS = 15 * 60_000;
 const CP_EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 const CP_FORM_KEYS = ['firstName', 'lastName', 'sex', 'age', 'heightCm', 'weightKg', 'goalWeightKg', 'goal', 'activity', 'training',
   'menu', 'mealsPerDay', 'weeks', 'allergies', 'kcal', 'proteinG', 'startDate'];
+const CP_MAX_EDITS_BYTES = 60_000;
+const CP_LOGO_SIZES = ['512', '192', '180', '32'] as const;
+const CP_MAX_LOGO_B64 = 540_000;                       // ~400 KB of PNG per size
+const CP_HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 function cpSlug(s: unknown): string {
   return String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -4391,7 +4400,8 @@ function cpPasswordProblem(pw: unknown): string | null {
   if (/^(.)\1*$/.test(pw)) return 'password_too_weak';
   return null;
 }
-const cpPublicCoach = (c: any) => ({ slug: c.slug, name: c.name, brand: c.brand || c.name, email: c.email, clientLimit: c.client_limit });
+const cpPublicCoach = (c: any) => ({ slug: c.slug, name: c.name, brand: c.brand || c.name, email: c.email, clientLimit: c.client_limit,
+  accent: c.accent ?? null, logo: c.logo?.['180'] ?? null });
 
 /** The coach behind a session key, or null. Suspended coaches and expired or revoked sessions are refused. */
 async function cpCoach(session: unknown): Promise<any | null> {
@@ -4399,7 +4409,7 @@ async function cpCoach(session: unknown): Promise<any | null> {
   const { data: s } = await admin.from('coach_sessions').select('id, coach_id, expires_at, revoked_at')
     .eq('token_hash', await sha256(session)).maybeSingle();
   if (!s || s.revoked_at || !(Date.parse(s.expires_at) > Date.now())) return null;
-  const { data: c } = await admin.from('coaches').select('id, slug, name, brand, email, status, client_limit').eq('id', s.coach_id).maybeSingle();
+  const { data: c } = await admin.from('coaches').select('id, slug, name, brand, email, status, client_limit, accent, logo').eq('id', s.coach_id).maybeSingle();
   if (!c || c.status !== 'active') return null;
   return c;
 }
@@ -4511,7 +4521,7 @@ async function cpLogin(body: any) {
   const password = body?.password;
   if (!CP_EMAIL_RE.test(email) || typeof password !== 'string' || password.length > 100) return err('bad_login');
   const { data: c } = await admin.from('coaches')
-    .select('id, slug, name, brand, email, status, client_limit, password_hash, password_salt, failed_logins, locked_until')
+    .select('id, slug, name, brand, email, status, client_limit, accent, logo, password_hash, password_salt, failed_logins, locked_until')
     .eq('email', email).maybeSingle();
   // Same answer for "no such coach", "no password yet" and "wrong password" - nothing to enumerate.
   if (!c || !c.password_hash || !c.password_salt) { await cpPasswordHash(password, '00'); return err('bad_login'); }
@@ -4558,6 +4568,20 @@ function cpCleanForm(raw: any): Record<string, unknown> | null {
     } else if (['string', 'number'].includes(typeof v) && String(v).length <= 60) {
       out[k] = v;
     } else return null;
+  }
+  // The coach's hand edits ride along as data. Only the shape and size are checked here; the plan engine validates
+  // every exercise, food and amount and refuses with a plain reason.
+  if (raw.edits !== undefined && raw.edits !== null) {
+    const e = raw.edits;
+    if (typeof e !== 'object' || Array.isArray(e)) return null;
+    const clean: Record<string, unknown> = {};
+    for (const k of ['training', 'meals']) {
+      if (e[k] === undefined || e[k] === null) continue;
+      if (typeof e[k] !== 'object' || Array.isArray(e[k])) return null;
+      clean[k] = e[k];
+    }
+    if (JSON.stringify(clean).length > CP_MAX_EDITS_BYTES) return null;
+    if (Object.keys(clean).length) out.edits = clean;
   }
   if (!/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(String(out.firstName ?? ''))) return null;
   if (out.lastName !== undefined && !/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(String(out.lastName))) return null;
@@ -4752,11 +4776,13 @@ async function cpClient(body: any) {
     admin.from('plan_builds').select('*').eq('coach_id', coach.id).eq('storage_key', c.storage_key).order('created_at', { ascending: false }).limit(10),
     admin.from('client_sessions').select('access_status, last_access_at').eq('storage_key', c.storage_key).maybeSingle(),
   ]);
+  const { data: prof } = await admin.from('profiles').select('auth_user_id').eq('id', c.profile_id).maybeSingle();
   const list = (builds ?? []).filter((b: any) => b.status !== 'discarded');
   const live = list.find((b: any) => b.status === 'live') ?? null;
   return ok({
     client: { storageKey: c.storage_key, name: c.display_name, startWeight: c.start_weight, goalWeight: c.goal_weight, startDate: c.start_date,
-              pageUrl: c.program_url, access: sess?.access_status ?? 'none', lastOpenedAt: sess?.last_access_at ?? null },
+              pageUrl: c.program_url, access: sess?.access_status ?? 'none', lastOpenedAt: sess?.last_access_at ?? null,
+              hasLogin: !!prof?.auth_user_id },
     weights: weights ?? [], checkIns: checkins ?? [], workouts: workouts ?? [], meals: meals ?? [],
     live: live ? cpBuildView(live, true) : null,
     builds: list.filter((b: any) => b.status !== 'live').map((b: any) => cpBuildView(b, false)),
@@ -4787,12 +4813,12 @@ async function cpWorkerClaim(body: any) {
       q = b.claimed_at ? q.eq('claimed_at', b.claimed_at) : q.is('claimed_at', null);
       const { data: won } = await q.select('id');
       if (!(won ?? []).length) continue;                                                  // lost the race
-      const { data: coach } = await admin.from('coaches').select('slug, name, brand, email, status').eq('id', b.coach_id).maybeSingle();
+      const { data: coach } = await admin.from('coaches').select('slug, name, brand, email, status, accent, logo').eq('id', b.coach_id).maybeSingle();
       if (!coach || coach.status !== 'active') {
         await admin.from('plan_builds').update({ status: 'failed', error: { stage: 'coach', reasons: ['coach account is not active'] }, updated_at: nowIso }).eq('id', b.id);
         continue;
       }
-      return ok({ job: { id: b.id, kind, storageKey: b.storage_key, form: b.form, pageSha256: b.page_sha256 ?? null, coach: { slug: coach.slug, name: coach.name, brand: coach.brand || coach.name, email: coach.email } } });
+      return ok({ job: { id: b.id, kind, storageKey: b.storage_key, form: b.form, pageSha256: b.page_sha256 ?? null, coach: { slug: coach.slug, name: coach.name, brand: coach.brand || coach.name, email: coach.email, accent: coach.accent ?? null, logo: coach.logo ?? null } } });
     }
   }
   return ok({ job: null });
@@ -4829,4 +4855,96 @@ async function cpWorkerDone(body: any) {
     return error ? err('write_failed') : ok();
   }
   return err('bad_kind');
+}
+
+
+// ── coach: their own look, and logins for their clients (Omar 2026-11-24: "use our platform but through a different lens") ──
+function cpPngOk(b64: unknown, size: string): boolean {
+  if (typeof b64 !== 'string' || b64.length < 80 || b64.length > CP_MAX_LOGO_B64 || !/^[A-Za-z0-9+/]+=*$/.test(b64)) return false;
+  let head: string;
+  try { head = atob(b64.slice(0, 32)); } catch { return false; }
+  if (head.slice(0, 8) !== '\x89PNG\r\n\x1a\n') return false;
+  const n = (o: number) => ((head.charCodeAt(o) << 24) | (head.charCodeAt(o + 1) << 16) | (head.charCodeAt(o + 2) << 8) | head.charCodeAt(o + 3)) >>> 0;
+  return n(16) === Number(size) && n(20) === Number(size);            // IHDR width and height: exactly the size it claims
+}
+
+/** Save the coach's brand name, colour and logo. `logo: null` removes the logo; leaving a field out keeps it. */
+async function cpSettingsSave(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const patch: Record<string, unknown> = {};
+  if (body?.brand !== undefined) {
+    const brand = String(body.brand ?? '').replace(/\s+/g, ' ').trim();
+    if (!brand || brand.length > 40 || /[<>"]/.test(brand)) return err('bad_brand');
+    patch.brand = brand;
+  }
+  if (body?.accent !== undefined) {
+    if (body.accent !== null && !CP_HEX_RE.test(String(body.accent))) return err('bad_accent');
+    patch.accent = body.accent === null ? null : String(body.accent).toLowerCase();
+  }
+  if (body?.logo !== undefined) {
+    if (body.logo === null) patch.logo = null;
+    else {
+      const logo: Record<string, string> = {};
+      for (const size of CP_LOGO_SIZES) {
+        if (!cpPngOk(body.logo?.[size], size)) return err('bad_logo', { detail: 'Use a PNG or JPG image. Try a different file.' });
+        logo[size] = body.logo[size];
+      }
+      patch.logo = logo;
+    }
+  }
+  if (!Object.keys(patch).length) return err('nothing_to_save');
+  const { error } = await admin.from('coaches').update(patch).eq('id', coach.id);
+  if (error) return err('write_failed');
+  return ok({ coach: cpPublicCoach({ ...coach, ...patch }) });
+}
+
+/** Re-publish every live plan so each client's app picks up the coach's current look. The plans themselves do not change. */
+async function cpRebrandAll(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: builds } = await admin.from('plan_builds').select('id, storage_key, form, summary, plan, status')
+    .eq('coach_id', coach.id).in('status', ['live', 'publishing']);
+  const busy = new Set((builds ?? []).filter((b: any) => b.status === 'publishing').map((b: any) => b.storage_key));
+  let queued = 0;
+  for (const b of (builds ?? []).filter((x: any) => x.status === 'live' && !busy.has(x.storage_key)).slice(0, 200)) {
+    const { error } = await admin.from('plan_builds').insert({
+      coach_id: coach.id, storage_key: b.storage_key, is_update: true, form: b.form, summary: b.summary, plan: b.plan, status: 'publishing',
+    });
+    if (!error) queued++;
+  }
+  return ok({ queued });
+}
+
+/** Public: the look of one coach, for their clients' login page. Name, colour and logo only. */
+async function cpBrand(body: any) {
+  const slug = cpSlug(body?.slug);
+  if (!/^[a-z0-9]{2,16}$/.test(slug)) return err('unknown_coach');
+  const { data: c } = await admin.from('coaches').select('name, brand, accent, logo, status').eq('slug', slug).maybeSingle();
+  if (!c || c.status !== 'active') return err('unknown_coach');
+  return ok({ brand: c.brand || c.name, coachFirstName: String(c.name).split(/\s+/)[0], accent: c.accent ?? null, logo: c.logo?.['192'] ?? null });
+}
+
+/** A single-use link for ONE of the coach's own clients to make (or reset) their email + password login. */
+async function cpClientInvite(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const c = await cpOwnClient(coach, body?.storageKey);
+  if (!c) return err('unknown_client');
+  const { data: p } = await admin.from('profiles').select('auth_user_id').eq('id', c.profile_id).maybeSingle();
+  const { data: sess } = await admin.from('client_sessions').select('access_status').eq('storage_key', c.storage_key).maybeSingle();
+  if (!sess || sess.access_status !== 'active') return err('access_not_active');
+  const purpose = p?.auth_user_id ? 'reset' : 'invite';
+  const nowIso = new Date().toISOString();
+  await admin.from('client_invites').update({ revoked_at: nowIso })
+    .eq('client_id', c.id).eq('purpose', purpose).is('used_at', null).is('revoked_at', null);
+  const token = randomToken();
+  const ttl = purpose === 'reset' ? 24 * 3600_000 : 7 * 24 * 3600_000;
+  const expiresAt = new Date(Date.now() + ttl).toISOString();
+  const { error } = await admin.from('client_invites').insert({
+    client_id: c.id, storage_key: c.storage_key, purpose, token_hash: await sha256(token), expires_at: expiresAt,
+  });
+  if (error) { logEfError('cpClientInvite', c.storage_key, 'insert_failed', error.message); return err('write_failed'); }
+  // the token rides in the URL fragment (never sent to a server); ?c= only tells the login page whose colours to show
+  return ok({ purpose, expiresAt, link: `${CP_LOGIN_URL}?c=${coach.slug}#${purpose}=${token}` });
 }

@@ -35,6 +35,9 @@ http.createServer(async (req, res) => {
         clients: DB.clients.map((c) => ({ key: c.storage_key, coach: c.coach_id, internal: c.is_internal })) }));
     }
     if (url.pathname === '/sandbox/builder-key') return send(res, 200, BUILDER_KEY, 'text/plain');
+    if (url.pathname === '/login/config.js') {             // the login page talks to this sandbox, not to production
+      return send(res, 200, fs.readFileSync(path.join(ROOT, 'login/config.js'), 'utf8').replace(/apiUrl:\s*'[^']*'/, "apiUrl: '/api'"), TYPES['.js']);
+    }
     let p = path.normalize(path.join(ROOT, decodeURIComponent(url.pathname)));
     if (!p.startsWith(ROOT)) return send(res, 403, 'no', 'text/plain');
     if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');

@@ -151,6 +151,68 @@ async function buildAndPublish(coach, form, storageKey) {
   t('a result for a build that is not claimed is refused', B(await M.cpWorkerDone({ builderKey: BUILDER_KEY, id: j2.id, kind: 'build', ok: true, summary: { storageKey: j2.storageKey } })).error === 'not_claimed');
   t('storage key helper matches the engine rule', M.cpStorageKey('al', "Mary-Jane", "O'Neil") === 'c_al_mary_jane_o_neil' && M.cpStorageKey('a very long coach', 'Maximilian', 'Featherstonehaugh').length <= 40);
 
+  console.log('coach platform — look, hand edits, client logins');
+  const zlib = require('zlib');
+  const png = (n) => {                                   // a real n x n PNG, built by hand
+    const crc = (b) => { let c, t = []; for (let k = 0; k < 256; k++) { c = k; for (let j = 0; j < 8; j++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[k] = c >>> 0; }
+      let r = 0xffffffff; for (const x of b) r = t[(r ^ x) & 255] ^ (r >>> 8); return (r ^ 0xffffffff) >>> 0; };
+    const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(n, 0); ihdr.writeUInt32BE(n, 4); ihdr[8] = 8; ihdr[9] = 2;
+    const raw = Buffer.alloc((n * 3 + 1) * n, 40);
+    for (let y = 0; y < n; y++) raw[y * (n * 3 + 1)] = 0;
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
+  };
+  const logo = { 512: png(512), 192: png(192), 180: png(180), 32: png(32) };
+  const cy = bo2;
+  t('settings need a session', B(await M.cpSettingsSave({ session: OMAR, brand: 'X' })).error === 'unauthorized');
+  t('a colour must be a 6-digit hex', B(await M.cpSettingsSave({ session: cy.session, accent: 'red' })).error === 'bad_accent' && B(await M.cpSettingsSave({ session: cy.session, accent: '#12' })).error === 'bad_accent');
+  t('a brand name with markup is refused', B(await M.cpSettingsSave({ session: cy.session, brand: '<b>Cy</b>' })).error === 'bad_brand');
+  t('a file that is not a PNG is refused as a logo', B(await M.cpSettingsSave({ session: cy.session, logo: { ...logo, 180: Buffer.from('<svg onload=alert(1)>'.repeat(10)).toString('base64') } })).error === 'bad_logo');
+  t('a PNG of the wrong size is refused', B(await M.cpSettingsSave({ session: cy.session, logo: { ...logo, 180: logo[32] } })).error === 'bad_logo');
+  const saved = B(await M.cpSettingsSave({ session: cy.session, brand: 'CY STRONG', accent: '#D4AF37', logo }));
+  t('brand, colour and logo saved', saved.ok && saved.coach.brand === 'CY STRONG' && saved.coach.accent === '#d4af37' && saved.coach.logo === logo[180], saved.ok ? Object.keys(saved.coach) : saved);
+  t('cpMe returns the look', B(await M.cpMe({ session: cy.session })).coach.accent === '#d4af37');
+  const pub = B(await M.cpBrand({ slug: 'cy' }));
+  t('the public brand has name, colour, logo and nothing else', pub.ok && pub.brand === 'CY STRONG' && pub.accent === '#d4af37' && pub.logo === logo[192] && Object.keys(pub).sort().join() === 'accent,brand,coachFirstName,logo,ok', Object.keys(pub));
+  t('the public brand of an unknown or suspended coach is refused', B(await M.cpBrand({ slug: 'nobody' })).error === 'unknown_coach' && B(await M.cpBrand({ slug: 'bo' })).error === 'unknown_coach');
+  t('removing the logo keeps the colour', B(await M.cpSettingsSave({ session: cy.session, logo: null })).coach.logo === null && DB.coaches.find((c) => c.slug === 'cy').accent === '#d4af37');
+  await M.cpSettingsSave({ session: cy.session, logo });
+
+  const edits = { training: { 1: [{ day: 'Push', exercises: [{ name: 'Barbell Bench Press', sets: 5, reps: '5-8', rest_seconds: 180 }] }] }, meals: { 1: { 'Chicken Rice Bowl': { items: [{ id: 'halal_chicken_breast_raw', qty: 200 }] } } }, junk: 'x' };
+  await M.cpBuildDiscard({ session: cy.session, buildId: cb.buildId });
+  const eb = B(await M.cpBuildCreate({ session: cy.session, form: { ...FORM, firstName: 'Ann', edits } }));
+  const stored = DB.plan_builds.find((b) => b.id === eb.buildId);
+  t('hand edits are stored with the form; unknown edit sections are dropped', eb.ok && stored.form.edits.training[1][0].exercises[0].name === 'Barbell Bench Press' && stored.form.edits.meals && !('junk' in stored.form.edits), eb);
+  t('edits that are not an object are refused', B(await M.cpBuildCreate({ session: cy.session, form: { ...FORM, firstName: 'Zoe', edits: 'drop table' } })).error === 'bad_form');
+  t('oversized edits are refused', B(await M.cpBuildCreate({ session: cy.session, form: { ...FORM, firstName: 'Zoe', edits: { meals: { 1: { x: { items: [], pad: 'y'.repeat(70000) } } } } } })).error === 'bad_form');
+  const ej = B(await M.cpWorkerClaim({ builderKey: BUILDER_KEY })).job;
+  t('the worker job carries the coach\'s colour and logo', ej.coach.accent === '#d4af37' && ej.coach.logo[512] === logo[512] && ej.form.edits.training[1].length === 1);
+  await M.cpWorkerDone({ builderKey: BUILDER_KEY, id: ej.id, kind: 'build', ok: true, pageSha256: 'b'.repeat(64), summary: { storageKey: ej.storageKey, name: 'Ann', firstName: 'Ann', startWeightKg: 92 }, plan: {} });
+  const ep = B(await M.cpPublish({ session: cy.session, buildId: eb.buildId }));
+  const pj2 = B(await M.cpWorkerClaim({ builderKey: BUILDER_KEY })).job;
+  await M.cpWorkerDone({ builderKey: BUILDER_KEY, id: pj2.id, kind: 'publish', ok: true });
+  t('edited plan published', ep.ok && DB.plan_builds.find((b) => b.id === eb.buildId).status === 'live');
+
+  const rb2 = B(await M.cpRebrandAll({ session: cy.session }));
+  const rj = B(await M.cpWorkerClaim({ builderKey: BUILDER_KEY })).job;
+  t('"apply my look to every client" queues one publish per live plan, same form', rb2.ok && rb2.queued === 1 && rj.kind === 'publish' && rj.storageKey === ej.storageKey && rj.form.edits.meals[1]['Chicken Rice Bowl'].items[0].qty === 200, [rb2, rj && rj.kind]);
+  t('asking twice while it is still going queues nothing more', B(await M.cpRebrandAll({ session: cy.session })).queued === 0);
+  await M.cpWorkerDone({ builderKey: BUILDER_KEY, id: rj.id, kind: 'publish', ok: true });
+  t('still exactly one live plan after re-branding', DB.plan_builds.filter((b) => b.storage_key === ej.storageKey && b.status === 'live').length === 1);
+  t('re-branding only touches the caller\'s own clients', DB.plan_builds.filter((b) => b.status === 'publishing').length === 0 && B(await M.cpRebrandAll({ session: 'x'.repeat(50) })).error === 'unauthorized');
+
+  const inv = B(await M.cpClientInvite({ session: cy.session, storageKey: ej.storageKey }));
+  t('a login invite for own client: branded login link, token only in the fragment', inv.ok && inv.purpose === 'invite' && /\/login\/\?c=cy#invite=[A-Za-z0-9_-]{40,}$/.test(inv.link), inv);
+  t('only the sha256 of the invite token is stored', DB.client_invites.length === 1 && !JSON.stringify(DB.client_invites).includes(inv.link.split('#invite=')[1]));
+  const inv2 = B(await M.cpClientInvite({ session: cy.session, storageKey: ej.storageKey }));
+  t('a second invite replaces the first', inv2.ok && DB.client_invites.filter((x) => !x.revoked_at).length === 1 && DB.client_invites.length === 2);
+  t('a coach cannot invite another coach\'s client or Omar\'s', B(await M.cpClientInvite({ session: cy.session, storageKey: 'c_al_sam_tester' })).error === 'unknown_client' && B(await M.cpClientInvite({ session: cy.session, storageKey: 'cruz_rehayem' })).error === 'unknown_client');
+  const annRow = DB.clients.find((c) => c.storage_key === ej.storageKey);
+  DB.profiles.find((p) => p.id === annRow.profile_id).auth_user_id = 'auth-1';
+  t('once the client has a login, the link becomes a password reset', B(await M.cpClientInvite({ session: cy.session, storageKey: ej.storageKey })).purpose === 'reset' && B(await M.cpClient({ session: cy.session, storageKey: ej.storageKey })).client.hasLogin === true);
+  await M.cpClientAccess({ session: cy.session, storageKey: ej.storageKey, status: 'suspended' });
+  t('no login link while the client is paused', B(await M.cpClientInvite({ session: cy.session, storageKey: ej.storageKey })).error === 'access_not_active');
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

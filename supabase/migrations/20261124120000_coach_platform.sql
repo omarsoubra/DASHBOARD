@@ -28,6 +28,8 @@ create table if not exists public.coaches (
   slug             text not null unique check (slug ~ '^[a-z0-9]{2,16}$'),
   name             text not null check (length(name) between 1 and 60),
   brand            text not null default '' check (length(brand) <= 40),
+  accent           text check (accent is null or accent ~ '^#[0-9a-fA-F]{6}$'),   -- the coach's colour for their clients' app
+  logo             jsonb,                                                          -- {"512","192","180","32"}: base64 PNG at each size
   email            text not null unique check (email = lower(email) and length(email) <= 200),
   password_hash    text check (password_hash is null or password_hash ~ '^[0-9a-f]{64}$'),
   password_salt    text check (password_salt is null or password_salt ~ '^[0-9a-f]{32}$'),

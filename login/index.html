@@ -71,7 +71,10 @@
   .foot { text-align: center; color: #64748B; font-size: 12px; margin-top: 22px; }
   [hidden] { display: none !important; }
   @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2s; } }
+  /* Coach Platform V1: a coach's client (/login/?c=<coach>) never sees LOCKED IN branding flash before theirs loads */
+  .cb-wait .brand, .cb-wait .foot, .cb-wait .card { visibility: hidden; }
 </style>
+<script>try { if (/[?&]c=[a-z0-9]{2,16}(&|$)/.test(location.search) || (!/[?&]c=(&|$)/.test(location.search) && localStorage.getItem('li_login_coach'))) document.documentElement.className += ' cb-wait'; } catch (e) {}</script>
 </head>
 <body>
 <main class="wrap">
@@ -153,6 +156,7 @@
 </main>
 
 <script src="config.js"></script>
+<script src="coach-brand.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 (function () {
