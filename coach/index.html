@@ -176,7 +176,7 @@
   }
   function signOut(expired) {
     S.session = null; S.coach = null; try { localStorage.removeItem(KEY); localStorage.removeItem('sbo_coach_token'); localStorage.removeItem('cp_coach_v1'); } catch (e) {}
-    setHeader(); loginView(expired ? 'Please sign in again.' : null);
+    location.replace(DASH);
   }
   function options() {
     if (S.options) return Promise.resolve(S.options);
@@ -219,7 +219,12 @@
           call('cpSetup', { token: token, password: pw.value }).then(function (r) {
             btn.disabled = false;
             if (!r.ok) { msg.appendChild(banner('bad', say(r))); return; }
-            history.replaceState(null, '', location.pathname); loginView('Password saved. Sign in to start.');
+            history.replaceState(null, '', location.pathname);
+            call('cpLogin', { email: j.email, password: pw.value }).then(function (l) {       // straight in: no second sign-in screen
+              if (!l.ok) { loginView('Password saved. Sign in to start.'); return; }
+              try { localStorage.setItem(KEY, l.session); localStorage.setItem('sbo_coach_token', l.session); localStorage.setItem('cp_coach_v1', JSON.stringify(l.coach)); } catch (e2) {}
+              location.replace(DASH);
+            }).catch(function () { loginView('Password saved. Sign in to start.'); });
           });
         } }, [msg, field('New password', pw, 'at least 10 characters'), el('div', { style: 'height:12px' }), field('Type it again', pw2), el('div', { style: 'height:16px' }), btn])]);
     });
@@ -941,7 +946,7 @@
   // ── start ────────────────────────────────────────────────────────────────
   var m = /^#setup=([A-Za-z0-9_-]{30,100})$/.exec(location.hash);
   if (m) { setupView(m[1]); return; }
-  if (!S.session) { loginView(null); return; }
+  if (!S.session) { location.replace(DASH); return; }        // one sign-in screen: the dashboard's
   function route() {
     var h = location.hash, c = /^#client=(c_[a-z0-9_]{2,38})$/.exec(h);
     if (h === '#new') formView(null, null); else if (h === '#templates') templatesView(); else if (h === '#look') lookView(); else if (c) clientView(c[1]); else homeView();
