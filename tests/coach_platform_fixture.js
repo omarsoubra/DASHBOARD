@@ -25,7 +25,7 @@ const DEFAULTS = {
   profiles: () => ({ id: uuid() }),
 };
 function table(name) {
-  if (!DB[name]) throw new Error('unknown table ' + name);
+  if (!DB[name]) DB[name] = [];
   const q = { f: [], op: 'select', payload: null, one: null, ord: null, lim: null, ret: false, conflict: null };
   const add = (fn) => { q.f.push(fn); return q; };
   q.select = () => { if (q.op !== 'select') q.ret = true; return q; };
@@ -34,8 +34,13 @@ function table(name) {
   q.is = (c, v) => add((r) => (r[c] ?? null) === v);
   q.not = (c, op, v) => add((r) => !((r[c] ?? null) === v));
   q.gte = (c, v) => add((r) => r[c] >= v);
+  q.gt = (c, v) => add((r) => r[c] > v);
+  q.lte = (c, v) => add((r) => r[c] != null && r[c] <= v);
+  q.neq = (c, v) => add((r) => r[c] !== v);
+  q.like = (c, v) => add((r) => new RegExp('^' + String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$').test(String(r[c] ?? '')));
+  q.range = (a, b) => { q.rng = [a, b]; return q; };
   q.lt = (c, v) => add((r) => r[c] != null && r[c] < v);
-  q.order = (c, o) => { q.ord = [c, !(o && o.ascending === false)]; return q; };
+  q.order = (c, o) => { if (!q.ord) q.ord = [c, !(o && o.ascending === false)]; return q; };   // first order wins; later ones are tie-breaks
   q.limit = (n) => { q.lim = n; return q; };
   q.maybeSingle = () => { q.one = 'maybe'; return q; };
   q.single = () => { q.one = 'single'; return q; };
@@ -57,6 +62,7 @@ function table(name) {
         if (q.op === 'update') rows.forEach((r) => Object.assign(r, q.payload));
         if (q.op === 'delete') { DB[name] = DB[name].filter((r) => !rows.includes(r)); }
         if (q.ord) rows = rows.slice().sort((a, b) => (a[q.ord[0]] < b[q.ord[0]] ? -1 : a[q.ord[0]] > b[q.ord[0]] ? 1 : 0) * (q.ord[1] ? 1 : -1));
+        if (q.rng) rows = rows.slice(q.rng[0], q.rng[1] + 1);
         if (q.lim != null) rows = rows.slice(0, q.lim);
       }
       const copy = rows.map((r) => JSON.parse(JSON.stringify(r)));
@@ -86,4 +92,4 @@ const NAMES = ['tenantAdmin', 'tenantScope', 'TENANT', 'TENANT_TYPES', 'TENANT_R
 new Function('rawAdmin', 'AsyncLocalStorage', 'COACH_PASSWORD_HASH', 'admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'PHOTO_BUCKET', 'SIGNED_URL_TTL_SEC', 'exports',
   js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')(rawAdmin, AsyncLocalStorage, OMAR_HASH, admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, 'progress-photos', 3600, M);
 
-module.exports = { M, DB, admin, rawAdmin, OMAR, BUILDER_KEY, uuid, nodeCrypto };
+module.exports = { M, DB, admin, rawAdmin, BUILDER_KEY_SHA: nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex'), OMAR_HASH, OMAR, BUILDER_KEY, uuid, nodeCrypto };

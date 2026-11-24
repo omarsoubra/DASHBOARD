@@ -9,6 +9,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { M, DB, OMAR, BUILDER_KEY } = require('./coach_platform_fixture.js');
+const FULL = require('./coach_platform_full.js');     // the whole Edge Function, so the real coach dashboard runs here too
 const ROOT = path.resolve(__dirname, '..');
 const PORT = Number(process.env.PORT || process.argv[2] || 8791);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.css': 'text/css', '.svg': 'image/svg+xml' };
@@ -20,9 +21,7 @@ http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (req.method === 'POST' && url.pathname === '/api') {
       let body; try { body = JSON.parse(await read(req)); } catch { return send(res, 200, JSON.stringify({ ok: false, error: 'bad_json' })); }
-      const fn = /^cp[A-Z]/.test(String(body?.type)) ? M[body.type] : null;
-      if (!fn) return send(res, 200, JSON.stringify({ ok: false, error: 'unknown_type' }));
-      return send(res, 200, JSON.stringify((await fn(body)).__body));
+      return send(res, 200, JSON.stringify(await FULL.call(body)));
     }
     if (req.method === 'POST' && url.pathname === '/sandbox/coach') {
       const b = JSON.parse(await read(req));
