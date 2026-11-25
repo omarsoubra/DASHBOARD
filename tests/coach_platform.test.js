@@ -372,6 +372,22 @@ async function buildAndPublish(coach, form, storageKey) {
     t('a removed food leaves the coach\'s list but stays for the builder, so old plans still rebuild', del.ok && B(await M.cpLibrary({ session: al3 })).foods.length === 0 && DB.coach_foods.length === 1 && !!DB.coach_foods[0].archived_at);
     t('removing a saved meal removes it', B(await M.cpMealDelete({ session: al3, id: ms.id })).ok && B(await M.cpLibrary({ session: al3 })).meals.length === 0);
   }
+  console.log('coach platform — bringing clients over');
+  {
+    const mover = B(await M.cpCoachCreate({ coachToken: OMAR, name: 'Mia Mover', brand: 'Mover Fit', email: 'mia@mover.test', slug: 'mover', clientLimit: 4 }));
+    const mtok = mover.setupLink.split('#setup=')[1];
+    await M.cpSetup({ token: mtok, password: 'mover-password-1' });
+    const ms = B(await M.cpLogin({ email: 'mia@mover.test', password: 'mover-password-1' })).session;
+    const row = (first, extra) => ({ firstName: first, lastName: 'Moved', sex: 'female', age: 30, heightCm: 165, weightKg: 70, goal: 'lose_fat', activity: 'moderate', training: 'gym3_full_body', menu: 'everyday', mealsPerDay: 4, weeks: 12, ...extra });
+    const before = DB.plan_builds.length;
+    const imp = B(await M.cpImport({ session: ms, rows: [row('Ann'), row('Bea'), row('Bad', { age: undefined }), row('Ann'), row('<b>')] }));
+    t('a list of clients is queued row by row: good ones start, each bad one says why', imp.ok && imp.queued === 2 && imp.results.length === 5 && imp.results[0].ok && imp.results[1].ok
+      && imp.results[2].error === 'bad_form' && imp.results[3].error === 'build_in_progress' && imp.results[4].error === 'bad_form' && typeof imp.results[2].why === 'string' && DB.plan_builds.length === before + 2, imp);
+    t('brought-over plans belong to that coach, start on a Monday and are not published', DB.plan_builds.slice(-2).every((b) => b.status === 'queued' && /^c_mover_/.test(b.storage_key) && new Date(b.form.startDate + 'T00:00:00Z').getUTCDay() === 1)
+      && !DB.clients.some((c) => /^c_mover_/.test(c.storage_key)));
+    t('an empty list, more than 50, or no sign-in is refused', B(await M.cpImport({ session: ms, rows: [] })).error === 'bad_rows' && B(await M.cpImport({ session: ms, rows: Array(51).fill(row('Zed')) })).error === 'bad_rows'
+      && B(await M.cpImport({ session: 'x'.repeat(43), rows: [row('Zed')] })).error === 'unauthorized');
+  }
   console.log('coach platform — the coach dashboard only reaches the coach\'s own clients');
   const { admin: A } = require('./coach_platform_fixture.js');
   const scA = await M.tenantScope('dashboard', { coachToken: al3 }), scB = await M.tenantScope('dashboard', { coachToken: other.session });

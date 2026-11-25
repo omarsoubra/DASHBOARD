@@ -717,6 +717,7 @@ async function route(type: string, body: any): Promise<Response> {
       case 'cpTemplateSave':     return cpTemplateSave(body);
       case 'cpTemplates':        return cpTemplates(body);
       case 'cpLibrary':     return cpLibrary(body);
+      case 'cpImport':     return cpImport(body);
       case 'cpFoodSave':     return cpFoodSave(body);
       case 'cpFoodDelete':     return cpFoodDelete(body);
       case 'cpMealSave':     return cpMealSave(body);
@@ -4732,7 +4733,7 @@ function cpDefaultStart(): string {
   d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7));
   return d.toISOString().slice(0, 10);
 }
-async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intakeId: unknown, fromForm: boolean):
+async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intakeId: unknown, fromForm: boolean, opts: { maxOpen?: number; wake?: boolean } = {}):
     Promise<{ ok: true; buildId: string; storageKey: string } | { ok: false; error: string; extra?: Record<string, unknown> }> {
   const storageKey = cpStorageKey(coach.slug, form.firstName, form.lastName);
   if (!/^c_[a-z0-9_]{2,38}$/.test(storageKey)) return { ok: false, error: 'bad_form' };
@@ -4742,7 +4743,7 @@ async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intak
   const { data: mine } = await admin.from('clients').select('id').eq('coach_id', coach.id);
   if ((mine ?? []).length >= Number(coach.client_limit ?? 0)) return { ok: false, error: 'client_limit', extra: { limit: coach.client_limit } };
   const { data: open } = await admin.from('plan_builds').select('id, storage_key, status').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
-  if ((open ?? []).length >= (fromForm ? CP_MAX_OPEN_FORM_BUILDS : CP_MAX_OPEN_BUILDS)) return { ok: false, error: 'too_many_open_builds' };
+  if ((open ?? []).length >= (opts.maxOpen ?? (fromForm ? CP_MAX_OPEN_FORM_BUILDS : CP_MAX_OPEN_BUILDS))) return { ok: false, error: 'too_many_open_builds' };
   if ((open ?? []).some((b: any) => b.storage_key === storageKey)) return { ok: false, error: 'build_in_progress' };
   if (fromForm) {                                        // a sign-up form never starts a second plan for a name already waiting for review
     const { data: waiting } = await admin.from('plan_builds').select('id').eq('coach_id', coach.id).eq('storage_key', storageKey).in('status', ['built', 'failed']);
@@ -4751,7 +4752,7 @@ async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intak
   const { data: row, error } = await admin.from('plan_builds')
     .insert({ coach_id: coach.id, storage_key: storageKey, is_update: false, form, status: 'queued', ...(fromForm ? { from_form: true } : {}) }).select('id').single();
   if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return { ok: false, error: 'write_failed' }; }
-  await cpWakeBuilder();
+  if (opts.wake !== false) await cpWakeBuilder();
   if (intakeId) {
     const { data: it } = await admin.from('coach_intakes').select('id, coach_id, status, answers').eq('id', String(intakeId)).maybeSingle();
     if (it && it.coach_id === coach.id && it.status === 'submitted' && it.answers) {
@@ -4764,6 +4765,33 @@ async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intak
     }
   }
   return { ok: true, buildId: row.id, storageKey };
+}
+/** Bringing clients over from another platform: up to 50 at a time, each one queued as an ordinary new-client plan.
+ *  Every row gets its own answer, so one bad row never stops the rest. Nothing is published: the coach reviews, then
+ *  publishes. The same limits apply as one by one (client limit, no two clients with one name). */
+const CP_IMPORT_MAX_ROWS = 50, CP_IMPORT_MAX_OPEN = 60;
+const CP_IMPORT_WHY: Record<string, string> = {
+  bad_form: 'Check the name, sex, age, height and weight.', client_exists: 'You already have a client with this name.',
+  client_limit: 'You have reached your client limit.', too_many_open_builds: 'Too many plans are building. Wait for these to finish, then bring the rest.',
+  build_in_progress: 'A plan for this name is already building.', write_failed: 'Could not save. Try this one again.',
+};
+async function cpImport(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const rows = body?.rows;
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > CP_IMPORT_MAX_ROWS) return err('bad_rows', { detail: `Bring 1 to ${CP_IMPORT_MAX_ROWS} clients at a time.` });
+  const results: Array<Record<string, unknown>> = [];
+  let queued = 0;
+  for (const raw of rows) {
+    const form = cpCleanForm(raw);
+    const name = [raw?.firstName, raw?.lastName].filter((x: unknown) => typeof x === 'string' && x).join(' ').slice(0, 70);
+    if (!form || form.edits || !form.sex || !form.age || !form.heightCm || !form.weightKg) { results.push({ ok: false, name, error: 'bad_form', why: CP_IMPORT_WHY.bad_form }); continue; }
+    const q = await cpQueueNewClient(coach, form, null, false, { maxOpen: CP_IMPORT_MAX_OPEN, wake: false });
+    if (q.ok) { queued++; results.push({ ok: true, name, buildId: q.buildId, storageKey: q.storageKey }); }
+    else results.push({ ok: false, name, error: q.error, why: CP_IMPORT_WHY[q.error] ?? 'Could not start this one.' });
+  }
+  if (queued) await cpWakeBuilder();
+  return ok({ queued, results });
 }
 async function cpBuildCreate(body: any) {
   const coach = await cpCoach(body?.session);

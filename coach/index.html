@@ -188,6 +188,7 @@
     document.documentElement.style.setProperty('--brand', a);
   }
   var ICON = {
+    'switch': '<path d="M4 8h13"/><path d="M13 4l4 4-4 4"/><path d="M20 16H7"/><path d="M11 12l-4 4 4 4"/>',
     today: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
     clients: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 010 6.4"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
     checkins: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/>',
@@ -213,7 +214,7 @@
     document.body.classList.toggle('bare', !S.coach); document.body.classList.remove('drawer');
     if (!S.coach) return;
     if (section) S.section = section;
-    var NAMES = { 'new': 'New client', clients: 'Plans and forms', templates: 'Templates', look: 'Your look' };
+    var NAMES = { 'new': 'New client', clients: 'Plans and forms', templates: 'Templates', look: 'Your look', 'switch': 'Bring clients over' };
     document.getElementById('where').textContent = NAMES[S.section] || '';
     function link(ic, text, href, current) {
       var a = el('a', { class: 'nv', href: href, 'aria-current': current ? 'page' : null }); a.appendChild(icon(ic)); a.appendChild(el('span', { text: text })); return a;
@@ -228,6 +229,7 @@
     nav.appendChild(link('plans', 'Plans and forms', '#plans', S.section === 'clients'));
     nav.appendChild(link('templates', 'Templates', '#templates', S.section === 'templates'));
     nav.appendChild(link('look', 'Your look', '#look', S.section === 'look'));
+    nav.appendChild(link('switch', 'Bring clients over', '#switch', S.section === 'switch'));
     who.appendChild(el('button', { class: 'out', type: 'button', text: 'Sign out', onclick: function () { call('cpLogout').catch(function () {}); signOut(false); } }));
   }
   document.getElementById('menu').addEventListener('click', function () { document.body.classList.toggle('drawer'); });
@@ -317,6 +319,131 @@
     if (S.templates) return Promise.resolve(S.templates);
     return call('cpTemplates').then(function (j) { S.templates = j.ok ? j.templates : []; return S.templates; });
   }
+  // ── bring clients over from another platform ───────────────────────────────────────────────────────────────────
+  // Three ways in, easiest first: paste a spreadsheet of the clients whose details the coach has; send everyone else
+  // one sign-up link; then publish every plan that is ready in one go and copy all the app links.
+  var IMPORT_COLS = [['firstName', /^(first ?name|first|given ?name)$/], ['lastName', /^(last ?name|last|surname|family ?name)$/], ['name', /^(name|full ?name|client|client ?name)$/],
+    ['sex', /^(sex|gender)$/], ['age', /^(age|years?)$/], ['heightCm', /^height/], ['weightKg', /^(weight|current ?weight|start ?weight|weight ?now|bodyweight)/], ['goalWeightKg', /^(goal ?weight|target ?weight)/],
+    ['goal', /^(goal|aim)$/], ['days', /^(days|training ?days|days ?per ?week|sessions)/], ['where', /^(where|place|gym|location)$/], ['allergies', /^(allerg)/]];
+  function parseClients(text) {
+    var lines = String(text || '').split(/\r?\n/).filter(function (l) { return l.trim(); });
+    if (lines.length < 2) return { error: 'Paste your list with its top row of headings, then at least one client under it.' };
+    var sep = lines[0].indexOf('\t') >= 0 ? '\t' : lines[0].indexOf(';') >= 0 ? ';' : ',';
+    var cells = function (l) { return l.split(sep).map(function (c) { return c.trim().replace(/^"|"$/g, ''); }); };
+    var head = cells(lines[0]).map(function (h) { h = h.toLowerCase().replace(/[()._-]/g, ' ').replace(/\b(cm|kg)\b/g, '').replace(/\s+/g, ' ').trim(); var m = IMPORT_COLS.filter(function (c) { return c[1].test(h); })[0]; return m ? m[0] : null; });
+    if (head.indexOf('name') < 0 && head.indexOf('firstName') < 0) return { error: 'The top row needs a heading called Name (or First name and Last name).' };
+    var rows = lines.slice(1, 51).map(function (l) {
+      var c = cells(l), r = {}; head.forEach(function (k, i) { if (k && c[i] !== undefined && c[i] !== '') r[k] = c[i]; });
+      var f = {}, why = [];
+      var nm = r.name ? r.name.split(/\s+/) : [r.firstName || '', r.lastName || ''];
+      f.firstName = (r.firstName || nm[0] || '').replace(/[^A-Za-z '\-]/g, ''); f.lastName = (r.lastName || nm.slice(1).join(' ') || '').replace(/[^A-Za-z '\-]/g, '');
+      if (!f.firstName) why.push('name');
+      var sx = String(r.sex || '').toLowerCase(); f.sex = /^(m|male|man)$/.test(sx) ? 'male' : /^(f|female|woman)$/.test(sx) ? 'female' : null; if (!f.sex) why.push('sex');
+      var num = function (v) { var n = parseFloat(String(v || '').replace(',', '.')); return isFinite(n) ? n : null; };
+      f.age = num(r.age); if (!(f.age >= 18 && f.age <= 80)) why.push('age 18 to 80');
+      f.heightCm = num(r.heightCm); if (f.heightCm && f.heightCm < 3) f.heightCm = Math.round(f.heightCm * 100); if (!(f.heightCm >= 130 && f.heightCm <= 220)) why.push('height in cm');
+      f.weightKg = num(r.weightKg); if (!(f.weightKg >= 35 && f.weightKg <= 250)) why.push('weight in kg');
+      var gw = num(r.goalWeightKg); if (gw >= 35 && gw <= 250) f.goalWeightKg = gw;
+      var g = String(r.goal || '').toLowerCase();
+      f.goal = /gain|build|bulk|muscle/.test(g) ? 'build_muscle' : /los|cut|fat|lean|shred/.test(g) ? 'lose_fat' : (gw && f.weightKg && gw > f.weightKg ? 'build_muscle' : 'lose_fat');
+      var d = num(r.days), home = /home/.test(String(r.where || '').toLowerCase());
+      f.training = home ? 'home5' : d && d <= 3 ? 'gym3_full_body' : d === 4 ? 'gym4_upper_lower' : 'gym5_ppl_ul';
+      var known = ['egg', 'fish', 'gluten', 'peanut', 'sesame', 'shellfish', 'soy', 'tree_nut', 'dairy'], al = String(r.allergies || '').toLowerCase().replace(/tree ?nuts?/g, 'tree_nut').replace(/nuts\b/g, 'tree_nut').replace(/milk|lactose/g, 'dairy').replace(/wheat/g, 'gluten');
+      f.allergies = known.filter(function (k) { return al.indexOf(k) >= 0; });
+      f.activity = 'moderate'; f.menu = f.allergies.length ? 'freefrom' : 'everyday'; f.mealsPerDay = 4; f.weeks = 12;
+      return { form: f, why: why, line: [f.firstName, f.lastName].join(' ').trim() || l.slice(0, 30) };
+    });
+    return { rows: rows, more: Math.max(0, lines.length - 51) };
+  }
+  function switchView() {
+    setHeader('switch'); show(busy('Loading'));
+    Promise.all([call('cpClients'), call('cpIntakeLink', {}), options()]).then(function (res) {
+      var J = res[0], link = (res[1] && res[1].link) || '', O = res[2];
+      if (!J.ok) { show(banner('bad', say(J))); return; }
+      S.coach = J.coach; setHeader('switch');
+      var coachFirst = String(J.coach.name || '').split(' ')[0];
+      // 1. paste a spreadsheet
+      var ta = el('textarea', { rows: 6, 'aria-label': 'Your client list', placeholder: 'Name\tSex\tAge\tHeight\tWeight\tGoal weight\tDays\nSam Taylor\tMale\t34\t180\t92\t84\t4' });
+      var out = el('div');
+      var tpl = 'Name,Sex,Age,Height cm,Weight kg,Goal weight kg,Goal,Days per week,Where,Allergies\nSam Taylor,Male,34,180,92,84,Lose fat,4,Gym,\nJess Wong,Female,29,165,61,64,Build muscle,3,Home,peanut\n';
+      var check = el('button', { type: 'button', text: 'Check my list', onclick: function () {
+        var P = parseClients(ta.value); out.replaceChildren();
+        if (P.error) { out.appendChild(banner('bad', P.error)); return; }
+        var good = P.rows.filter(function (r) { return !r.why.length; }), bad = P.rows.filter(function (r) { return r.why.length; });
+        var t = el('table', null, [el('thead', null, el('tr', null, [el('th', { text: 'Client' }), el('th', { text: 'Plan they will get' }), el('th', { text: '' })]))]), tb = el('tbody');
+        P.rows.forEach(function (r) {
+          var f = r.form;
+          tb.appendChild(el('tr', null, [el('td', { text: r.line }),
+            el('td', { class: 'small', text: r.why.length ? '' : (f.goal === 'build_muscle' ? 'Build muscle' : 'Lose fat') + ' · ' + ((O.training[f.training] || {}).label || f.training) + (f.allergies.length ? ' · allergy-friendly food' : '') }),
+            el('td', { class: 'small', text: r.why.length ? 'Needs: ' + r.why.join(', ') : 'Ready' })]));
+        });
+        t.appendChild(tb);
+        var go = el('button', { type: 'button', text: 'Build ' + good.length + ' plan' + (good.length === 1 ? '' : 's'), onclick: function () {
+          go.disabled = true; go.textContent = 'Starting';
+          call('cpImport', { rows: good.map(function (r) { return r.form; }) }).then(function (j) {
+            if (!j.ok) { go.disabled = false; go.textContent = 'Try again'; out.appendChild(banner('bad', say(j))); return; }
+            var failed = j.results.filter(function (x) { return !x.ok; });
+            out.replaceChildren(banner('good', j.queued + ' plan' + (j.queued === 1 ? ' is' : 's are') + ' building. Each takes about a minute. You can leave this page; they wait for you in step 3.'),
+              failed.length ? el('div', { class: 'card' }, [el('h3', { text: 'Not started' })].concat(failed.map(function (x) { return el('p', { class: 'small', text: x.name + ': ' + x.why }); }))) : null);
+            ta.value = ''; drawReady();
+          }).catch(function () { go.disabled = false; go.textContent = 'Try again'; });
+        } });
+        out.appendChild(el('div', { class: 'card', style: 'margin-top:12px;overflow-x:auto' }, [t,
+          bad.length ? el('p', { class: 'small', style: 'margin-top:10px', text: bad.length + ' row' + (bad.length === 1 ? ' needs' : 's need') + ' fixing in your list. Fix and check again, or build the rest now and add those by hand.' }) : null,
+          P.more ? el('p', { class: 'small', text: 'Only the first 50 are shown. Bring the other ' + P.more + ' after these.' }) : null,
+          good.length ? el('div', { style: 'margin-top:12px' }, [go]) : null]));
+      } });
+      // 2. everyone else: one link
+      var msgText = 'Hey! I have moved my coaching to a new app. Takes 2 minutes: fill this in and your plan will be ready in the app.\n' + link;
+      var copyMsg = el('button', { type: 'button', class: 'ghost', text: 'Copy the message', onclick: function () { navigator.clipboard.writeText(msgText).then(function () { copyMsg.textContent = 'Copied'; setTimeout(function () { copyMsg.textContent = 'Copy the message'; }, 1500); }); } });
+      // 3. publish everything that is ready, collect the app links
+      var ready = el('div');
+      function drawReady() {
+        call('cpClients').then(function (j) {
+          if (!j.ok) return;
+          var builds = j.builds.filter(function (b) { return !b.isUpdate; });
+          var done = builds.filter(function (b) { return b.status === 'built'; }), busyN = builds.filter(function (b) { return b.status === 'queued' || b.status === 'building'; }).length;
+          var stuck = builds.filter(function (b) { return b.status === 'failed'; });
+          var nm = function (b) { return (b.summary && b.summary.name) || [b.form.firstName, b.form.lastName].filter(Boolean).join(' '); };
+          var links = el('div');
+          var pub = el('button', { type: 'button', text: 'Publish all ' + done.length + ' and get their links', onclick: function () {
+            if (!confirm('Publish ' + done.length + ' plan' + (done.length === 1 ? '' : 's') + ' as they are? You can still change any of them afterwards.')) return;
+            pub.disabled = true; var got = [], i = 0;
+            (function next() {
+              if (i >= done.length) {
+                var text = got.map(function (g) { return g.name + ': ' + g.link; }).join('\n');
+                var cp = el('button', { type: 'button', text: 'Copy all names and links', onclick: function () { navigator.clipboard.writeText(text).then(function () { cp.textContent = 'Copied'; }); } });
+                links.replaceChildren(el('div', { class: 'card', style: 'margin-top:12px' }, [el('h3', { text: 'Send each client their own link' }),
+                  el('p', { class: 'mute small', text: 'These show once. Copy them now. Each link opens that client\'s app; they go live over the next few minutes. You can always make a new link from a client\'s page.' }),
+                  el('div', { class: 'linkbox', style: 'white-space:pre-wrap', text: text || 'Nothing was published.' }), el('div', { style: 'height:8px' }), cp]));
+                pub.textContent = 'Published'; return;
+              }
+              var b = done[i++]; pub.textContent = 'Publishing ' + i + ' of ' + done.length;
+              call('cpPublish', { buildId: b.id }).then(function (r) { if (r.ok && r.link) got.push({ name: nm(b), link: r.link }); next(); }).catch(next);
+            })();
+          } });
+          ready.replaceChildren(
+            el('p', { class: 'small', text: done.length + ' ready to publish' + (busyN ? ' · ' + busyN + ' still building' : '') + (stuck.length ? ' · ' + stuck.length + ' need a change' : '') + '.' }),
+            done.length ? el('div', { class: 'card' }, done.map(function (b) { return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm(b) }), el('div', { class: 'mute small', text: 'Tap to look it over or change it first' })]), pill(b.status)]); })) : null,
+            stuck.length ? el('div', { class: 'card' }, stuck.map(function (b) { return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm(b) }), el('div', { class: 'mute small', text: 'Tap to see what needs changing' })]), pill(b.status)]); })) : null,
+            done.length ? el('div', { style: 'margin-top:12px' }, [pub]) : null, links,
+            busyN ? el('button', { type: 'button', class: 'link', style: 'margin-top:8px', text: 'Refresh', onclick: drawReady }) : null);
+        }).catch(function () {});
+      }
+      drawReady();
+      show([el('h1', { text: 'Bring your clients over' }),
+        el('p', { class: 'mute', text: 'Moving from another app? Three steps, and nothing reaches a client until you publish.' }),
+        el('h2', { text: '1 · Clients whose details you have' }),
+        el('div', { class: 'card' }, [el('p', { class: 'small', text: 'Copy the rows from your spreadsheet (or your old app\'s export) and paste them here with the headings. Name, sex, age, height and weight are needed. Goal weight, goal, days a week, gym or home and allergies are used if they are there.' }),
+          ta, el('div', { class: 'row', style: 'margin-top:10px' }, [check, el('a', { class: 'link', href: 'data:text/csv;charset=utf-8,' + encodeURIComponent(tpl), download: 'clients-template.csv', text: 'Download a blank template' })]), out]),
+        el('h2', { text: '2 · Everyone else: send one link' }),
+        el('div', { class: 'card' }, [el('p', { class: 'small', text: 'Send this to all your other clients at once. Each one fills in a 2 minute form and their plan builds itself, ready for you in step 3.' }),
+          el('div', { class: 'linkbox', style: 'white-space:pre-wrap', text: msgText }), el('div', { style: 'height:8px' }), copyMsg]),
+        el('h2', { text: '3 · Publish and send the app links' }),
+        el('div', { class: 'card' }, [ready])]);
+    }).catch(function () { show(banner('bad', 'Could not load. Check your connection and try again.')); });
+  }
+
   function templatesView() {
     setHeader('templates'); show(busy('Loading'));
     S.templates = null;
@@ -1119,10 +1246,10 @@
   if (!S.session) { location.replace(DASH); return; }        // one sign-in screen: the dashboard's
   function route() {
     var h = location.hash, c = /^#client=(c_[a-z0-9_]{2,38})$/.exec(h);
-    if (h === '#new') formView(null, null); else if (h === '#templates') templatesView(); else if (h === '#look') lookView(); else if (c) clientView(c[1]); else homeView();
+    if (h === '#new') formView(null, null); else if (h === '#templates') templatesView(); else if (h === '#look') lookView(); else if (h === '#switch') switchView(); else if (c) clientView(c[1]); else homeView();
     document.body.classList.remove('drawer');
   }
-  window.addEventListener('hashchange', function () { if (S.coach && /^#(new|plans|templates|look|client=)/.test(location.hash)) route(); });
+  window.addEventListener('hashchange', function () { if (S.coach && /^#(new|plans|templates|look|switch|client=)/.test(location.hash)) route(); });
   call('cpMe').then(function (j) { if (j.ok) { S.coach = j.coach; try { localStorage.setItem('cp_coach_v1', JSON.stringify(j.coach)); } catch (e) {} setHeader(); route(); } }).catch(function (e) { if (e.message !== 'signed_out') loginView('Could not reach the server. Try again.'); });
 })();
 </script>
