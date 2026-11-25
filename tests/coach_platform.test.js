@@ -286,18 +286,48 @@ async function buildAndPublish(coach, form, storageKey) {
   t('answers need consent, an adult, and every required field', B(await M.cpIntakeSubmit({ token: ftok, answers: ANS })).error === 'consent_required'
     && B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: { ...ANS, age: 17 } })).error === 'bad_answers' && B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: { ...ANS, firstName: '<b>' } })).error === 'bad_answers');
   t('the client submits once', B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: ANS })).ok && B(await M.cpIntakeSubmit({ token: ftok, consent: true, answers: ANS })).error === 'bad_link' && B(await M.cpIntakeInspect({ token: ftok })).error === 'bad_link');
+  const auto = DB.plan_builds.find((x) => x.from_form && /kim_newman$/.test(x.storage_key));
+  const an = auto && DB.coach_client_state.find((x) => x.storage_key === auto.storage_key);
+  t('a sent form starts the plan by itself: queued for the coach to review, nothing published', auto && auto.status === 'queued' && auto.is_update === false && auto.form.firstName === 'Kim'
+    && auto.form.training === 'gym5_ppl_ul' && auto.form.menu === 'everyday' && auto.form.allergies.join() === 'peanut' && !('coach_id' in auto.form) && !DB.clients.some((c) => c.storage_key === auto.storage_key), auto);
+  t('their health and food answers land in the coach\'s notes and the form is erased', an && /Old ankle sprain/.test(an.notes) && /No mushrooms/.test(an.notes) && /5 days a week at a gym/.test(an.notes) && !/script/.test(an.notes)
+    && DB.coach_intakes[0].status === 'closed' && DB.coach_intakes[0].answers === null && B(await M.cpIntakes({ session: al3 })).forms.length === 0, an);
+  t('the coach\'s plan list marks it as coming from their form', B(await M.cpClients({ session: al3 })).builds.some((x) => x.id === auto.id && x.fromForm === true));
+  // the same name again while that plan is waiting: no second plan, the answers wait in the form list
+  const f3 = B(await M.cpIntakeCreate({ session: al3 })), f3tok = f3.link.split('#f=')[1];
+  const nBefore = DB.plan_builds.length;
+  await M.cpIntakeSubmit({ token: f3tok, consent: true, answers: ANS });
   const forms = B(await M.cpIntakes({ session: al3 })).forms;
-  t('the coach sees the cleaned answers: unknown keys dropped, markup stripped', forms.length === 1 && forms[0].status === 'submitted' && forms[0].answers.firstName === 'Kim' && !('coach_id' in forms[0].answers)
+  t('a form that cannot start a plan waits in the list with cleaned answers: unknown keys dropped, markup stripped', DB.plan_builds.length === nBefore && forms.length === 1 && forms[0].status === 'submitted' && forms[0].answers.firstName === 'Kim' && !('coach_id' in forms[0].answers)
     && forms[0].answers.allergies.join() === 'peanut' && forms[0].answers.phone === '+61 400 000 000', forms[0]);
   t('another coach sees no forms and cannot close this one', B(await M.cpIntakes({ session: other.session })).forms.length === 0 && B(await M.cpIntakeClose({ session: other.session, id: forms[0].id })).error === 'unknown_form');
-  t('closing a form erases the answers', B(await M.cpIntakeClose({ session: al3, id: forms[0].id })).ok && DB.coach_intakes[0].answers === null && B(await M.cpIntakes({ session: al3 })).forms.length === 0);
-  const f3 = B(await M.cpIntakeCreate({ session: al3 })), f3tok = f3.link.split('#f=')[1];
-  await M.cpIntakeSubmit({ token: f3tok, consent: true, answers: ANS });
   t('another coach cannot build from this form', (await (async () => { const r = B(await M.cpBuildCreate({ session: other.session, form: { ...liveAnn.form, firstName: 'Thief' }, intakeId: f3.id })); return r.ok && DB.coach_intakes.find((x) => x.id === f3.id).status === 'submitted' && !DB.coach_client_state.some((x) => x.storage_key === r.storageKey); })()));
-  const kb = B(await M.cpBuildCreate({ session: al3, form: { ...liveAnn.form, firstName: 'Kim', lastName: 'Newman' }, intakeId: f3.id }));
+  const kb = B(await M.cpBuildCreate({ session: al3, form: { ...liveAnn.form, firstName: 'Kim', lastName: 'Newmanb' }, intakeId: f3.id }));
   const kn = DB.coach_client_state.find((x) => x.storage_key === kb.storageKey);
-  t('building from a form saves their health and food answers to the coach\'s notes and erases the form', kb.ok && kn && /Old ankle sprain/.test(kn.notes) && /No mushrooms/.test(kn.notes) && /5 days a week at a gym/.test(kn.notes)
+  t('building from a waiting form by hand saves the notes and erases the form', kb.ok && kn && /Old ankle sprain/.test(kn.notes) && /No mushrooms/.test(kn.notes)
     && DB.coach_intakes.find((x) => x.id === f3.id).status === 'closed' && DB.coach_intakes.find((x) => x.id === f3.id).answers === null, kn);
+  const f4 = B(await M.cpIntakeCreate({ session: al3 }));
+  await M.cpIntakeSubmit({ token: f4.link.split('#f=')[1], consent: true, answers: ANS });
+  const f4row = B(await M.cpIntakes({ session: al3 })).forms[0];
+  t('closing a form erases the answers', f4row && B(await M.cpIntakeClose({ session: al3, id: f4row.id })).ok && DB.coach_intakes.find((x) => x.id === f4row.id).answers === null && B(await M.cpIntakes({ session: al3 })).forms.length === 0);
+  // the standing sign-up link
+  const L1 = B(await M.cpIntakeLink({ session: al3 })), L1b = B(await M.cpIntakeLink({ session: al3 }));
+  const code = (L1.link || '').split('#s=')[1];
+  t('the coach has one standing sign-up link and it stays the same', L1.ok && /\/coach\/intake\.html\?c=cy#s=[A-Za-z0-9_-]{16,64}$/.test(L1.link) && L1b.link === L1.link && B(await M.cpIntakeLink({ session: 'x'.repeat(43) })).error === 'unauthorized', L1);
+  const si = B(await M.cpIntakeInspect({ code }));
+  t('the standing link shows the coach\'s brand, and a made-up one is dead', si.ok && si.brand === insp.brand && !('email' in si) && B(await M.cpIntakeInspect({ code: 'a'.repeat(24) })).error === 'bad_link');
+  const ANS2 = { ...ANS, firstName: 'Lee', lastName: 'Standing', where: 'home', days: 3, allergies: [] };
+  const s1 = B(await M.cpIntakeSubmit({ code, consent: true, answers: ANS2 })), s2 = B(await M.cpIntakeSubmit({ code, consent: true, answers: { ...ANS2, firstName: 'Mia' } }));
+  const lee = DB.plan_builds.find((x) => /lee_standing$/.test(x.storage_key)), mia = DB.plan_builds.find((x) => /mia_standing$/.test(x.storage_key));
+  t('the standing link works for many people, each one starting their own plan for this coach only', s1.ok && s2.ok && lee && mia && lee.from_form && lee.form.training === 'home5' && lee.coach_id === auto.coach_id && mia.coach_id === auto.coach_id
+    && B(await M.cpIntakeSubmit({ code, answers: ANS2 })).error === 'consent_required' && B(await M.cpIntakeSubmit({ code, consent: true, answers: { ...ANS2, age: 17 } })).error === 'bad_answers', [s1, s2]);
+  const L2 = B(await M.cpIntakeLink({ session: al3, reset: true }));
+  t('a new link kills the old one', L2.ok && L2.link !== L1.link && B(await M.cpIntakeInspect({ code })).error === 'bad_link' && B(await M.cpIntakeSubmit({ code, consent: true, answers: ANS2 })).error === 'bad_link'
+    && B(await M.cpIntakeInspect({ code: L2.link.split('#s=')[1] })).ok);
+  const stamp = new Date().toISOString();
+  for (let i = 0; i < 30; i++) DB.coach_intakes.push({ id: 'flood' + i, coach_id: auto.coach_id, status: 'closed', answers: null, created_at: stamp, token_hash: 'f' + i, expires_at: stamp });
+  t('the standing link stops taking answers after 30 in a day', B(await M.cpIntakeSubmit({ code: L2.link.split('#s=')[1], consent: true, answers: { ...ANS2, firstName: 'Zed' } })).error === 'form_busy');
+  DB.coach_intakes = DB.coach_intakes.filter((r) => !String(r.id).startsWith('flood'));
   const f2 = B(await M.cpIntakeCreate({ session: al3 }));
   DB.coach_intakes.find((r) => r.id === f2.id).expires_at = '2020-01-01T00:00:00Z';
   t('an expired link is dead', B(await M.cpIntakeInspect({ token: f2.link.split('#f=')[1] })).error === 'bad_link' && B(await M.cpIntakeSubmit({ token: f2.link.split('#f=')[1], consent: true, answers: ANS })).error === 'bad_link');

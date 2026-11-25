@@ -432,11 +432,26 @@
     call('cpIntakes').then(function (r) {
       if (!r.ok) return;
       var out = el('div');
-      var sendBtn = el('button', { class: 'ghost', text: 'Send a client form', onclick: function () {
+      var linkBox = el('div', { style: 'margin-bottom:14px' });
+      function drawLink() {
+        call('cpIntakeLink', {}).then(function (x) {
+          if (!x.ok || !x.link) return;
+          var copy = el('button', { text: 'Copy link', onclick: function () { navigator.clipboard.writeText(x.link).then(function () { copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy link'; }, 1500); }); } });
+          linkBox.replaceChildren(el('strong', { text: 'Your sign-up link' }),
+            el('p', { class: 'mute small', style: 'margin:4px 0 8px', text: 'One link for every new client. Put it in your bio or send it to anyone. They fill in their details, and their plan is built and waiting here for you to review. Nothing reaches them until you publish.' }),
+            el('div', { class: 'linkbox', text: x.link }),
+            el('div', { class: 'row', style: 'margin-top:8px' }, [copy, el('button', { class: 'link', text: 'Make a new link', onclick: function () {
+              if (!confirm('Make a new link? The old one stops working everywhere you have posted it.')) return;
+              call('cpIntakeLink', { reset: true }).then(drawLink);
+            } })]));
+        }).catch(function () {});
+      }
+      drawLink();
+      var sendBtn = el('button', { class: 'ghost', text: 'Send a one-time form instead', onclick: function () {
         sendBtn.disabled = true;
         call('cpIntakeCreate', {}).then(function (x) {
           sendBtn.disabled = false;
-          out.replaceChildren(x.ok ? el('div', { style: 'margin-top:12px' }, [el('p', { class: 'mute small', text: 'Send this link to your new client. They fill in their details and it comes back here. It works once and lasts ' + x.expiresInDays + ' days.' }),
+          out.replaceChildren(x.ok ? el('div', { style: 'margin-top:12px' }, [el('p', { class: 'mute small', text: 'This link works once and lasts ' + x.expiresInDays + ' days. Use it when you want a form for one person only.' }),
             el('div', { class: 'linkbox', text: x.link }), el('button', { text: 'Copy link', onclick: function (e) { navigator.clipboard.writeText(x.link).then(function () { e.target.textContent = 'Copied'; }); } })]) : banner('bad', say(x)));
         }).catch(function () { sendBtn.disabled = false; });
       } });
@@ -448,12 +463,12 @@
       box.replaceChildren(el('h2', { text: 'New client forms' + (back.length ? ' · ' + back.length + ' back' : '') }), el('div', { class: 'card' }, [].concat(
         back.map(function (f) {
           var nm = f.answers.firstName + ' ' + f.answers.lastName;
-          return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('span', { class: 'grow' }, [el('strong', { text: nm }), el('div', { class: 'mute small', text: 'Filled in your form ' + when(f.submittedAt) })]),
+          return el('div', { class: 'meal' }, [el('div', { class: 'row' }, [el('span', { class: 'grow' }, [el('strong', { text: nm }), el('div', { class: 'mute small', text: 'Filled in your form ' + when(f.submittedAt) + '. Their plan did not start by itself (same name as someone you have, or you are at your client limit).' })]),
             el('button', { text: 'Build their plan', onclick: function () { S.intake = f; formView(intakeToForm(f.answers), null); } }), remove(f, nm + '\'s form')])]);
         }),
         waiting.length ? [el('p', { class: 'mute small', style: 'margin:8px 0', text: waiting.length + (waiting.length === 1 ? ' form is' : ' forms are') + ' out and not filled in yet.' })].concat(waiting.map(function (f) {
           return el('div', { class: 'row small', style: 'margin-bottom:6px' }, [el('span', { class: 'grow mute', text: 'Sent ' + when(f.createdAt) }), remove(f, 'the form sent ' + when(f.createdAt))]); })) : [],
-        [sendBtn, out])));
+        [linkBox, sendBtn, out])));
     }).catch(function () {});
   }
   function homeView() {
@@ -468,7 +483,7 @@
         nodes.push(el('div', { class: 'card' }, j.builds.map(function (b) {
           var nm = (b.summary && b.summary.name) || [b.form.firstName, b.form.lastName].filter(Boolean).join(' ');
           return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [
-            el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm }), el('div', { class: 'mute small', text: (b.isUpdate ? 'Plan update' : 'New client') + ' · started ' + when(b.createdAt) })]), pill(b.status)]);
+            el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm }), el('div', { class: 'mute small', text: (b.isUpdate ? 'Plan update' : b.fromForm ? 'Filled in your sign-up form' : 'New client') + ' · started ' + when(b.createdAt) })]), pill(b.status)]);
         })));
       }
       var formsBox = el('div');

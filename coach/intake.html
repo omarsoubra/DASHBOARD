@@ -47,6 +47,7 @@
   var API = LOCAL ? '/api' : 'https://cwrrxieahrcustjvpqsk.supabase.co/functions/v1/api';
   var app = document.getElementById('app');
   var m = /^#f=([A-Za-z0-9_-]{30,100})$/.exec(location.hash), token = m ? m[1] : null;
+  var m2 = /^#s=([A-Za-z0-9_-]{16,64})$/.exec(location.hash), code = m2 ? m2[1] : null;
   function el(tag, attrs, kids) {
     var n = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) { if (k === 'text') n.textContent = attrs[k]; else if (attrs[k] !== null && attrs[k] !== undefined && attrs[k] !== false) n.setAttribute(k, attrs[k] === true ? '' : attrs[k]); });
@@ -54,13 +55,13 @@
     return n;
   }
   function call(type, body) {
-    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ type: type, token: token }, body || {})) }).then(function (r) { return r.json(); });
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ type: type }, code ? { code: code } : { token: token }, body || {})) }).then(function (r) { return r.json(); });
   }
   function lum(hex) { var c = [1, 3, 5].map(function (i) { var v = parseInt(hex.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
   function dead() {
-    app.replaceChildren(el('h1', { text: 'This link has expired' }), el('p', { class: 'mute', text: 'It was already used, or it is more than two weeks old. Ask your coach for a new one.' }));
+    app.replaceChildren(el('h1', { text: code ? 'This link is not working' : 'This link has expired' }), el('p', { class: 'mute', text: code ? 'Ask your coach for their current link.' : 'It was already used, or it is more than two weeks old. Ask your coach for a new one.' }));
   }
-  if (!token) { dead(); return; }
+  if (!token && !code) { dead(); return; }
 
   var ALLERGIES = { egg: 'Egg', fish: 'Fish', gluten: 'Gluten', peanut: 'Peanut', sesame: 'Sesame', shellfish: 'Shellfish', soy: 'Soy', tree_nut: 'Tree nuts', dairy: 'Dairy' };
   function field(label, input, id) { input.id = id; return [el('label', { for: id, text: label }), input]; }
@@ -124,7 +125,7 @@
         if (j.ok) { app.replaceChildren(el('h1', { text: 'Sent. Thank you, ' + a.firstName + '.' }), el('p', { class: 'mute', text: coach + ' has your details and will be in touch with your plan.' })); window.scrollTo(0, 0); return; }
         if (j.error === 'bad_link') { dead(); return; }
         send.disabled = false; send.textContent = 'Send to ' + coach;
-        problem.replaceChildren(el('div', { class: 'banner', role: 'alert', text: j.error === 'bad_answers' ? 'Something in the form is not right. Check each answer and send again.' : 'Could not send. Check your connection and try again.' }));
+        problem.replaceChildren(el('div', { class: 'banner', role: 'alert', text: j.error === 'form_busy' ? 'This form is not taking new answers right now. Message your coach directly.' : j.error === 'bad_answers' ? 'Something in the form is not right. Check each answer and send again.' : 'Could not send. Check your connection and try again.' }));
       }).catch(function () { send.disabled = false; send.textContent = 'Send to ' + coach; problem.replaceChildren(el('div', { class: 'banner', role: 'alert', text: 'Could not send. Check your connection and try again.' })); });
     });
     app.replaceChildren(el('h1', { text: 'Tell ' + coach + ' about you' }), el('p', { class: 'mute', text: 'It takes about two minutes. Your answers go to ' + b.brand + ' only.' }), f);

@@ -720,6 +720,7 @@ async function route(type: string, body: any): Promise<Response> {
       case 'cpClientPhotos':     return cpClientPhotos(body);
       case 'cpRegistry':     return cpRegistry(body);
       case 'cpIntakeCreate':     return cpIntakeCreate(body);
+      case 'cpIntakeLink':     return cpIntakeLink(body);
       case 'cpIntakeInspect':     return cpIntakeInspect(body);
       case 'cpIntakeSubmit':     return cpIntakeSubmit(body);
       case 'cpIntakes':     return cpIntakes(body);
@@ -4469,6 +4470,7 @@ const CP_PAGE_BASE = `${CP_SITE_BASE}/clients/`;
 const CP_LOGIN_URL = `${CP_SITE_BASE}/login/`;
 const CP_PBKDF2_ITERATIONS = 210_000;
 const CP_MAX_OPEN_BUILDS = 3;
+const CP_MAX_OPEN_FORM_BUILDS = 12;                    // sign-ups can arrive in a burst from the coach's standing link
 const CP_STALE_CLAIM_MS = 10 * 60_000;
 const CP_LOCK_AFTER = 8;
 const CP_LOCK_MS = 15 * 60_000;
@@ -4698,11 +4700,45 @@ function cpCleanForm(raw: any): Record<string, unknown> | null {
   return out;
 }
 const cpBuildView = (b: any, full: boolean) => ({
-  id: b.id, storageKey: b.storage_key, isUpdate: !!b.is_update, status: b.status, createdAt: b.created_at, updatedAt: b.updated_at,
+  id: b.id, storageKey: b.storage_key, isUpdate: !!b.is_update, fromForm: !!b.from_form, status: b.status, createdAt: b.created_at, updatedAt: b.updated_at,
   publishedAt: b.published_at ?? null, summary: b.summary ?? null, error: b.error ?? null, form: b.form,
   ...(full ? { plan: b.plan ?? null } : {}),
 });
 
+/** Queues the first plan for a new client of this coach. Used by the coach's own form and by a client's sign-up form.
+ *  With an intake id that belongs to the coach, what the client wrote about health and food moves into the coach's
+ *  private notes and the form is erased. */
+async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intakeId: unknown, fromForm: boolean):
+    Promise<{ ok: true; buildId: string; storageKey: string } | { ok: false; error: string; extra?: Record<string, unknown> }> {
+  const storageKey = cpStorageKey(coach.slug, form.firstName, form.lastName);
+  if (!/^c_[a-z0-9_]{2,38}$/.test(storageKey)) return { ok: false, error: 'bad_form' };
+  const { data: clash } = await admin.from('clients').select('id, coach_id').eq('storage_key', storageKey).maybeSingle();
+  if (clash) return { ok: false, error: 'client_exists', extra: { detail: 'You already have a client with this name. Add or change the last name, or update their plan from their page.' } };
+  const { data: mine } = await admin.from('clients').select('id').eq('coach_id', coach.id);
+  if ((mine ?? []).length >= Number(coach.client_limit ?? 0)) return { ok: false, error: 'client_limit', extra: { limit: coach.client_limit } };
+  const { data: open } = await admin.from('plan_builds').select('id, storage_key, status').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
+  if ((open ?? []).length >= (fromForm ? CP_MAX_OPEN_FORM_BUILDS : CP_MAX_OPEN_BUILDS)) return { ok: false, error: 'too_many_open_builds' };
+  if ((open ?? []).some((b: any) => b.storage_key === storageKey)) return { ok: false, error: 'build_in_progress' };
+  if (fromForm) {                                        // a sign-up form never starts a second plan for a name already waiting for review
+    const { data: waiting } = await admin.from('plan_builds').select('id').eq('coach_id', coach.id).eq('storage_key', storageKey).in('status', ['built', 'failed']);
+    if ((waiting ?? []).length) return { ok: false, error: 'build_in_progress' };
+  }
+  const { data: row, error } = await admin.from('plan_builds')
+    .insert({ coach_id: coach.id, storage_key: storageKey, is_update: false, form, status: 'queued', ...(fromForm ? { from_form: true } : {}) }).select('id').single();
+  if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return { ok: false, error: 'write_failed' }; }
+  if (intakeId) {
+    const { data: it } = await admin.from('coach_intakes').select('id, coach_id, status, answers').eq('id', String(intakeId)).maybeSingle();
+    if (it && it.coach_id === coach.id && it.status === 'submitted' && it.answers) {
+      const a = it.answers;
+      const lines = [`From their form: wants ${a.days} days a week ${a.where === 'home' ? 'at home' : 'at a gym'}.`, a.health ? `Injuries or health: ${a.health}` : '',
+        a.foods ? `Will not eat: ${a.foods}` : '', a.notes ? `Also: ${a.notes}` : '', a.phone ? `Mobile: ${a.phone}` : ''].filter(Boolean);
+      const { data: had } = await admin.from('coach_client_state').select('storage_key').eq('storage_key', storageKey).maybeSingle();
+      if (!had) await admin.from('coach_client_state').insert({ storage_key: storageKey, coach_id: coach.id, notes: lines.join('\n').slice(0, 4000), updated_at: new Date().toISOString() });
+      await admin.from('coach_intakes').update({ status: 'closed', answers: null }).eq('id', it.id);
+    }
+  }
+  return { ok: true, buildId: row.id, storageKey };
+}
 async function cpBuildCreate(body: any) {
   const coach = await cpCoach(body?.session);
   if (!coach) return err('unauthorized');
@@ -4722,12 +4758,8 @@ async function cpBuildCreate(body: any) {
       if (title) form.update = { title, why, date: new Date().toISOString().slice(0, 10) };
     }
   } else {
-    storageKey = cpStorageKey(coach.slug, form.firstName, form.lastName);
-    if (!/^c_[a-z0-9_]{2,38}$/.test(storageKey)) return err('bad_form');
-    const { data: clash } = await admin.from('clients').select('id, coach_id').eq('storage_key', storageKey).maybeSingle();
-    if (clash) return err('client_exists', { detail: 'You already have a client with this name. Add or change the last name, or update their plan from their page.' });
-    const { data: mine } = await admin.from('clients').select('id').eq('coach_id', coach.id);
-    if ((mine ?? []).length >= Number(coach.client_limit ?? 0)) return err('client_limit', { limit: coach.client_limit });
+    const q = await cpQueueNewClient(coach, form, body?.intakeId ?? null, false);
+    return q.ok ? ok({ buildId: q.buildId, storageKey: q.storageKey }) : err(q.error, q.extra);
   }
   const { data: open } = await admin.from('plan_builds').select('id, storage_key, status').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
   if ((open ?? []).length >= CP_MAX_OPEN_BUILDS) return err('too_many_open_builds');
@@ -4735,18 +4767,6 @@ async function cpBuildCreate(body: any) {
   const { data: row, error } = await admin.from('plan_builds')
     .insert({ coach_id: coach.id, storage_key: storageKey, is_update: isUpdate, form, status: 'queued' }).select('id').single();
   if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return err('write_failed'); }
-  // Built from a client's form: what they wrote about health and food moves into the coach's private notes, then the form is erased.
-  if (!isUpdate && body?.intakeId) {
-    const { data: it } = await admin.from('coach_intakes').select('id, coach_id, status, answers').eq('id', String(body.intakeId)).maybeSingle();
-    if (it && it.coach_id === coach.id && it.status === 'submitted' && it.answers) {
-      const a = it.answers;
-      const lines = [`From their form: wants ${a.days} days a week ${a.where === 'home' ? 'at home' : 'at a gym'}.`, a.health ? `Injuries or health: ${a.health}` : '',
-        a.foods ? `Will not eat: ${a.foods}` : '', a.notes ? `Also: ${a.notes}` : '', a.phone ? `Mobile: ${a.phone}` : ''].filter(Boolean);
-      const { data: had } = await admin.from('coach_client_state').select('storage_key').eq('storage_key', storageKey).maybeSingle();
-      if (!had) await admin.from('coach_client_state').insert({ storage_key: storageKey, coach_id: coach.id, notes: lines.join('\n').slice(0, 4000), updated_at: new Date().toISOString() });
-      await admin.from('coach_intakes').update({ status: 'closed', answers: null }).eq('id', it.id);
-    }
-  }
   return ok({ buildId: row.id, storageKey });
 }
 
@@ -4889,7 +4909,7 @@ async function cpClients(body: any) {
   const since = new Date(Date.now() - 60 * 86400_000).toISOString();
   const none = { data: [] as any[] };
   const [{ data: builds }, { data: sessions }, { data: weights }, { data: checkins }, { data: workouts }, { data: meals }] = await Promise.all([
-    admin.from('plan_builds').select('id, storage_key, is_update, status, created_at, updated_at, published_at, summary, error, form')
+    admin.from('plan_builds').select('id, storage_key, is_update, from_form, status, created_at, updated_at, published_at, summary, error, form')
       .eq('coach_id', coach.id).order('created_at', { ascending: false }).limit(200),
     keys.length ? admin.from('client_sessions').select('storage_key, access_status, last_access_at').in('storage_key', keys) : none,
     keys.length ? admin.from('weight_logs').select('client_key, logged_at, weight_kg').in('client_key', keys).gte('logged_at', since).order('logged_at', { ascending: true }).limit(1000) : none,
@@ -5250,29 +5270,81 @@ async function cpIntakeCreate(body: any) {
   if (error || !row?.id) return err('write_failed');
   return ok({ id: row.id, link: `${CP_APP_URL}intake.html?c=${coach.slug}#f=${token}`, expiresInDays: CP_INTAKE_TTL_DAYS });
 }
-async function cpIntakeOpen(token: unknown): Promise<any | null> {
+const CP_COACH_FORM_COLS = 'id, slug, name, brand, accent, logo, status, client_limit';
+/** A form link that is still good: a one-time link (token) or the coach's own standing link (code). */
+async function cpIntakeOpen(token: unknown, code?: unknown): Promise<any | null> {
+  if (typeof code === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(code)) {
+    const { data: c } = await admin.from('coaches').select(CP_COACH_FORM_COLS).eq('intake_code', code).maybeSingle();
+    if (!c || c.status !== 'active') return null;
+    return { row: null, coach: c };
+  }
   if (typeof token !== 'string' || token.length < 30 || token.length > 100) return null;
   const { data: r } = await admin.from('coach_intakes').select('id, coach_id, status, expires_at').eq('token_hash', await sha256(token)).maybeSingle();
   if (!r || r.status !== 'open' || !(Date.parse(r.expires_at) > Date.now())) return null;
-  const { data: c } = await admin.from('coaches').select('name, brand, accent, logo, status').eq('id', r.coach_id).maybeSingle();
+  const { data: c } = await admin.from('coaches').select(CP_COACH_FORM_COLS).eq('id', r.coach_id).maybeSingle();
   if (!c || c.status !== 'active') return null;
   return { row: r, coach: c };
 }
-/** Public, token-gated: is this form link still good, and whose look does it wear. */
+/** The coach's own standing sign-up link: one address they can put in a bio or send to anyone. `reset` makes a new one and kills the old. */
+async function cpIntakeLink(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: c } = await admin.from('coaches').select('intake_code').eq('id', coach.id).maybeSingle();
+  let code = c?.intake_code ?? null;
+  if (body?.off === true) {
+    await admin.from('coaches').update({ intake_code: null }).eq('id', coach.id);
+    return ok({ link: null });
+  }
+  if (!code || body?.reset === true) {
+    code = randomToken().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24);
+    const { error } = await admin.from('coaches').update({ intake_code: code }).eq('id', coach.id);
+    if (error) return err('write_failed');
+  }
+  return ok({ link: `${CP_APP_URL}intake.html?c=${coach.slug}#s=${code}` });
+}
+/** Public, link-gated: is this form link still good, and whose look does it wear. */
 async function cpIntakeInspect(body: any) {
-  const o = await cpIntakeOpen(body?.token);
+  const o = await cpIntakeOpen(body?.token, body?.code);
   if (!o) return err('bad_link');
   return ok({ brand: o.coach.brand || o.coach.name, coachFirstName: String(o.coach.name).split(/\s+/)[0], accent: o.coach.accent ?? null, logo: o.coach.logo?.['192'] ?? null });
 }
-/** Public, token-gated, once: the client's answers. They reach only the coach who made the link. */
+/** The plan form a sign-up form turns into. The coach reviews (and can change) everything before it reaches the client. */
+function cpIntakeToForm(a: any): Record<string, unknown> {
+  const f: Record<string, unknown> = { firstName: a.firstName, lastName: a.lastName, sex: a.sex, age: a.age, heightCm: a.heightCm, weightKg: a.weightKg,
+    goal: a.goal, activity: a.activity, training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : 'gym5_ppl_ul'),
+    menu: CP_DEFAULT_MENU, mealsPerDay: a.mealsPerDay ?? 4, weeks: 12, allergies: a.allergies ?? [] };
+  if (a.goalWeightKg) f.goalWeightKg = a.goalWeightKg;
+  return f;
+}
+const CP_DEFAULT_MENU = 'everyday';
+const CP_INTAKE_MAX_PER_DAY = 30;
+/** Public, link-gated: the client's answers. They reach only the coach who owns the link, and a plan starts building
+ *  straight away so the coach finds it ready to review. If it cannot start (same name as an existing client, client
+ *  limit reached), the answers wait in the coach's form list instead. Nothing reaches the client until the coach publishes. */
 async function cpIntakeSubmit(body: any) {
-  const o = await cpIntakeOpen(body?.token);
+  const o = await cpIntakeOpen(body?.token, body?.code);
   if (!o) return err('bad_link');
   if (body?.consent !== true) return err('consent_required');
   const answers = cpCleanIntake(body?.answers);
   if (!answers) return err('bad_answers');
-  const { error } = await admin.from('coach_intakes').update({ status: 'submitted', answers, submitted_at: new Date().toISOString() }).eq('id', o.row.id).eq('status', 'open');
-  if (error) return err('write_failed');
+  const now = new Date().toISOString();
+  let intakeId: string;
+  if (o.row) {
+    const { error } = await admin.from('coach_intakes').update({ status: 'submitted', answers, submitted_at: now }).eq('id', o.row.id).eq('status', 'open');
+    if (error) return err('write_failed');
+    intakeId = o.row.id;
+  } else {
+    const { data: recent } = await admin.from('coach_intakes').select('id, status, created_at').eq('coach_id', o.coach.id)
+      .gte('created_at', new Date(Date.now() - 86400_000).toISOString());
+    const { data: waiting } = await admin.from('coach_intakes').select('id').eq('coach_id', o.coach.id).eq('status', 'submitted');
+    if ((recent ?? []).length >= CP_INTAKE_MAX_PER_DAY || (waiting ?? []).length >= CP_INTAKE_MAX_OPEN) return err('form_busy');
+    const { data: row, error } = await admin.from('coach_intakes').insert({ coach_id: o.coach.id, label: 'Sign-up link', token_hash: await sha256(randomToken()),
+      status: 'submitted', answers, submitted_at: now, expires_at: new Date(Date.now() + CP_INTAKE_TTL_DAYS * 86400_000).toISOString() }).select('id').single();
+    if (error || !row?.id) return err('write_failed');
+    intakeId = row.id;
+  }
+  const form = cpCleanForm(cpIntakeToForm(answers));
+  if (form) { try { await cpQueueNewClient(o.coach, form, intakeId, true); } catch (_) { /* the answers stay in the coach's form list */ } }
   return ok({});
 }
 async function cpIntakes(body: any) {
