@@ -85,12 +85,13 @@ const verifyCoachToken = (t) => t === OMAR;
 const sha256 = async (s) => nodeCrypto.createHash('sha256').update(s).digest('hex');
 const randomToken = () => nodeCrypto.randomBytes(32).toString('base64url');
 const BUILDER_KEY = 'builder-key-' + 'x'.repeat(40);
-const Deno = { env: { get: (k) => (k === 'CP_BUILDER_KEY_SHA256' ? nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex') : undefined) } };
+const ENV = {};
+const Deno = { env: { get: (k) => (k === 'CP_BUILDER_KEY_SHA256' ? nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex') : ENV[k]) } };
 const logEfError = () => {};
 
-const NAMES = ['cpRegistry', 'tenantAdmin', 'tenantScope', 'TENANT', 'TENANT_TYPES', 'TENANT_RULES', 'cpIntakeCreate', 'cpIntakeLink', 'cpIntakeInspect', 'cpIntakeSubmit', 'cpIntakes', 'cpIntakeClose', 'cpClientNote', 'cpCheckinReviewed', 'cpNeeds', 'cpTemplateSave', 'cpTemplates', 'cpTemplateDelete', 'cpClientPhotos', 'cpSettingsSave', 'cpRebrandAll', 'cpBrand', 'cpClientInvite', 'cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
+const NAMES = ['cpRegistry', 'tenantAdmin', 'tenantScope', 'TENANT', 'TENANT_TYPES', 'TENANT_RULES', 'cpIntakeCreate', 'cpIntakeLink', 'cpWorkerPeek', 'cpIntakeInspect', 'cpIntakeSubmit', 'cpIntakes', 'cpIntakeClose', 'cpClientNote', 'cpCheckinReviewed', 'cpNeeds', 'cpTemplateSave', 'cpTemplates', 'cpTemplateDelete', 'cpClientPhotos', 'cpSettingsSave', 'cpRebrandAll', 'cpBrand', 'cpClientInvite', 'cpCoachCreate', 'cpCoachList', 'cpCoachSetStatus', 'cpSetupInspect', 'cpSetup', 'cpLogin', 'cpLogout', 'cpMe', 'cpBuildCreate', 'cpBuildGet',
   'cpBuildDiscard', 'cpPublish', 'cpClients', 'cpClient', 'cpClientLink', 'cpClientAccess', 'cpWorkerClaim', 'cpWorkerDone', 'cpStorageKey'];
 new Function('COACH_SETTINGS_KEY', 'rawAdmin', 'AsyncLocalStorage', 'COACH_PASSWORD_HASH', 'admin', 'ok', 'err', 'verifyCoachToken', 'sha256', 'randomToken', 'Deno', 'logEfError', 'LEGACY_PRODUCT_CODE', 'crypto', 'PHOTO_BUCKET', 'SIGNED_URL_TTL_SEC', 'exports',
   js + '\nObject.assign(exports, { ' + NAMES.join(', ') + ' });')('_coach', rawAdmin, AsyncLocalStorage, OMAR_HASH, admin, ok, err, verifyCoachToken, sha256, randomToken, Deno, logEfError, 'locked_in_1to1', globalThis.crypto, 'progress-photos', 3600, M);
 
-module.exports = { M, DB, admin, rawAdmin, BUILDER_KEY_SHA: nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex'), OMAR_HASH, OMAR, BUILDER_KEY, uuid, nodeCrypto };
+module.exports = { M, DB, admin, rawAdmin, BUILDER_KEY_SHA: nodeCrypto.createHash('sha256').update(BUILDER_KEY).digest('hex'), OMAR_HASH, OMAR, BUILDER_KEY, uuid, nodeCrypto, ENV };

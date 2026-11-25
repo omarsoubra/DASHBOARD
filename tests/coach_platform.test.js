@@ -1,7 +1,7 @@
 // COACH PLATFORM V1 (Omar 2026-11-24) — the real handler source against an in-memory database.
 //   Isolation is the point of this file: a coach reaches ONLY their own clients and builds; Omar's coach token and a
 //   coach session are never interchangeable; storage keys are made server-side; the worker key opens only the queue.
-const { M, DB, OMAR, BUILDER_KEY, uuid, nodeCrypto } = require('./coach_platform_fixture.js');
+const { M, DB, OMAR, BUILDER_KEY, uuid, nodeCrypto, ENV } = require('./coach_platform_fixture.js');
 
 let pass = 0, fail = 0;
 const t = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { fail++; console.log('  FAIL ' + n + (d !== undefined ? '  -- ' + JSON.stringify(d).slice(0, 400) : '')); } };
@@ -292,6 +292,8 @@ async function buildAndPublish(coach, form, storageKey) {
     && auto.form.training === 'gym5_ppl_ul' && auto.form.menu === 'freefrom' && auto.form.allergies.join() === 'peanut' && !('coach_id' in auto.form) && !DB.clients.some((c) => c.storage_key === auto.storage_key), auto);
   t('their health and food answers land in the coach\'s notes and the form is erased', an && /Old ankle sprain/.test(an.notes) && /No mushrooms/.test(an.notes) && /5 days a week at a gym/.test(an.notes) && !/script/.test(an.notes)
     && DB.coach_intakes[0].status === 'closed' && DB.coach_intakes[0].answers === null && B(await M.cpIntakes({ session: al3 })).forms.length === 0, an);
+  t('a plan with no start date gets the coming Monday stamped when it is queued', /^\d{4}-\d{2}-\d{2}$/.test(auto.form.startDate) && new Date(auto.form.startDate + 'T00:00:00Z').getUTCDay() === 1
+    && (Date.parse(auto.form.startDate) - Date.now()) / 864e5 > -1.5 && (Date.parse(auto.form.startDate) - Date.now()) / 864e5 <= 7.5, auto.form.startDate);
   t('the coach\'s plan list marks it as coming from their form', B(await M.cpClients({ session: al3 })).builds.some((x) => x.id === auto.id && x.fromForm === true));
   // the same name again while that plan is waiting: no second plan, the answers wait in the form list
   const f3 = B(await M.cpIntakeCreate({ session: al3 })), f3tok = f3.link.split('#f=')[1];
@@ -328,6 +330,23 @@ async function buildAndPublish(coach, form, storageKey) {
   for (let i = 0; i < 30; i++) DB.coach_intakes.push({ id: 'flood' + i, coach_id: auto.coach_id, status: 'closed', answers: null, created_at: stamp, token_hash: 'f' + i, expires_at: stamp });
   t('the standing link stops taking answers after 30 in a day', B(await M.cpIntakeSubmit({ code: L2.link.split('#s=')[1], consent: true, answers: { ...ANS2, firstName: 'Zed' } })).error === 'form_busy');
   DB.coach_intakes = DB.coach_intakes.filter((r) => !String(r.id).startsWith('flood'));
+  // the hosted builder is woken when there is work, and only when it has been set up
+  {
+    const realFetch = globalThis.fetch, calls = [];
+    globalThis.fetch = async (u, o) => { calls.push({ u: String(u), o }); return { ok: true, status: 204 }; };
+    const before = B(await M.cpWorkerPeek({ builderKey: BUILDER_KEY })).waiting;
+    await M.cpIntakeSubmit({ code: L2.link.split('#s=')[1], consent: true, answers: { ...ANS2, firstName: 'Noa' } });
+    const quiet = calls.length;
+    ENV.CP_GH_TOKEN = 'test-token'; ENV.CP_GH_REPO = 'someone/engine'; ENV.CP_GH_WORKFLOW = 'drafted-build.yml';
+    await M.cpIntakeSubmit({ code: L2.link.split('#s=')[1], consent: true, answers: { ...ANS2, firstName: 'Ola' } });
+    const woke = calls.filter((c) => c.u === 'https://api.github.com/repos/someone/engine/actions/workflows/drafted-build.yml/dispatches');
+    globalThis.fetch = async () => { throw new Error('network down'); };
+    const still = B(await M.cpIntakeSubmit({ code: L2.link.split('#s=')[1], consent: true, answers: { ...ANS2, firstName: 'Pia' } }));
+    globalThis.fetch = realFetch; delete ENV.CP_GH_TOKEN; delete ENV.CP_GH_REPO; delete ENV.CP_GH_WORKFLOW;
+    t('new work wakes the hosted builder once it is set up, never before, and a failed wake-up never breaks the sign-up', quiet === 0 && woke.length === 1
+      && woke[0].o.headers.Authorization === 'Bearer test-token' && JSON.parse(woke[0].o.body).ref === 'main' && still.ok
+      && B(await M.cpWorkerPeek({ builderKey: BUILDER_KEY })).waiting === before + 3 && B(await M.cpWorkerPeek({ builderKey: 'nope' })).error === 'unauthorized', { quiet, woke: woke.length, still });
+  }
   const f2 = B(await M.cpIntakeCreate({ session: al3 }));
   DB.coach_intakes.find((r) => r.id === f2.id).expires_at = '2020-01-01T00:00:00Z';
   t('an expired link is dead', B(await M.cpIntakeInspect({ token: f2.link.split('#f=')[1] })).error === 'bad_link' && B(await M.cpIntakeSubmit({ token: f2.link.split('#f=')[1], consent: true, answers: ANS })).error === 'bad_link');

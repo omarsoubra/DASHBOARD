@@ -727,6 +727,7 @@ async function route(type: string, body: any): Promise<Response> {
       case 'cpIntakeClose':     return cpIntakeClose(body);
       case 'cpClientNote':     return cpClientNote(body);
       case 'cpCheckinReviewed':     return cpCheckinReviewed(body);
+      case 'cpWorkerPeek':     return cpWorkerPeek(body);
       case 'cpWorkerClaim':      return cpWorkerClaim(body);
       case 'cpWorkerDone':       return cpWorkerDone(body);
       default: return err('unknown_type');
@@ -4710,10 +4711,20 @@ const cpBuildView = (b: any, full: boolean) => ({
 /** Queues the first plan for a new client of this coach. Used by the coach's own form and by a client's sign-up form.
  *  With an intake id that belongs to the coach, what the client wrote about health and food moves into the coach's
  *  private notes and the form is erased. */
+/** Week 1 starts on a Monday: today if it is Monday (Sydney), otherwise the coming Monday. A plan with no start date
+ *  gets this one stamped when it is queued, so the page the coach reviews and the page that is published carry the
+ *  same date however long the review takes. */
+function cpDefaultStart(): string {
+  const syd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
+  const d = new Date(`${syd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7));
+  return d.toISOString().slice(0, 10);
+}
 async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intakeId: unknown, fromForm: boolean):
     Promise<{ ok: true; buildId: string; storageKey: string } | { ok: false; error: string; extra?: Record<string, unknown> }> {
   const storageKey = cpStorageKey(coach.slug, form.firstName, form.lastName);
   if (!/^c_[a-z0-9_]{2,38}$/.test(storageKey)) return { ok: false, error: 'bad_form' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(form.startDate ?? ''))) form.startDate = cpDefaultStart();
   const { data: clash } = await admin.from('clients').select('id, coach_id').eq('storage_key', storageKey).maybeSingle();
   if (clash) return { ok: false, error: 'client_exists', extra: { detail: 'You already have a client with this name. Add or change the last name, or update their plan from their page.' } };
   const { data: mine } = await admin.from('clients').select('id').eq('coach_id', coach.id);
@@ -4728,6 +4739,7 @@ async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intak
   const { data: row, error } = await admin.from('plan_builds')
     .insert({ coach_id: coach.id, storage_key: storageKey, is_update: false, form, status: 'queued', ...(fromForm ? { from_form: true } : {}) }).select('id').single();
   if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return { ok: false, error: 'write_failed' }; }
+  await cpWakeBuilder();
   if (intakeId) {
     const { data: it } = await admin.from('coach_intakes').select('id, coach_id, status, answers').eq('id', String(intakeId)).maybeSingle();
     if (it && it.coach_id === coach.id && it.status === 'submitted' && it.answers) {
@@ -4751,6 +4763,7 @@ async function cpBuildCreate(body: any) {
     const own = await cpOwnClient(coach, body.storageKey);
     if (!own) return err('unknown_client');
     storageKey = own.storage_key; isUpdate = true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(form.startDate ?? ''))) form.startDate = /^\d{4}-\d{2}-\d{2}/.test(String(own.start_date ?? '')) ? String(own.start_date).slice(0, 10) : cpDefaultStart();
     // The coach's "what changed" note for the client (shown on the app's Home for 7 days). The date is stamped here.
     const u = body?.form?.update;
     if (u !== undefined && u !== null) {
@@ -4769,6 +4782,7 @@ async function cpBuildCreate(body: any) {
   const { data: row, error } = await admin.from('plan_builds')
     .insert({ coach_id: coach.id, storage_key: storageKey, is_update: isUpdate, form, status: 'queued' }).select('id').single();
   if (error || !row?.id) { logEfError('cpBuildCreate', storageKey, 'insert_failed', error?.message ?? 'no_id'); return err('write_failed'); }
+  await cpWakeBuilder();
   return ok({ buildId: row.id, storageKey });
 }
 
@@ -4832,6 +4846,7 @@ async function cpPublish(body: any) {
   const { data: moved } = await admin.from('plan_builds').update({ status: 'publishing', updated_at: nowIso, claimed_at: null })
     .eq('id', b.id).eq('status', 'built').select('id');
   if (!(moved ?? []).length) return err('not_ready', { status: 'changed' });
+  await cpWakeBuilder();
   return ok({ storageKey: key, link, pageUrl: `${CP_PAGE_BASE}${key}/`, firstPublish: link !== null });
 }
 
@@ -4988,6 +5003,26 @@ async function cpWorkerOk(key: unknown): Promise<boolean> {
   if (!/^[0-9a-f]{64}$/.test(want) || typeof key !== 'string' || key.length < 30 || key.length > 200) return false;
   return cpSameHex(await sha256(key), want);
 }
+/** How many plans are waiting for the builder. The hosted builder asks this first so an empty run ends in seconds. */
+async function cpWorkerPeek(body: any) {
+  if (!(await cpWorkerOk(body?.builderKey))) return err('unauthorized');
+  const { data } = await admin.from('plan_builds').select('id').in('status', ['queued', 'building', 'publishing']).limit(50);
+  return ok({ waiting: (data ?? []).length });
+}
+/** Starts the hosted builder (a GitHub Actions run) the moment there is work, so nothing waits on a timer or a computer.
+ *  Does nothing unless the three secrets are set. Never fails or slows the request that called it by more than a moment. */
+async function cpWakeBuilder(): Promise<void> {
+  const token = Deno.env.get('CP_GH_TOKEN') ?? '', repo = Deno.env.get('CP_GH_REPO') ?? '', wf = Deno.env.get('CP_GH_WORKFLOW') ?? '';
+  if (!token || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || !/^[A-Za-z0-9_.-]+\.ya?ml$/.test(wf)) return;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${wf}/dispatches`, {
+      method: 'POST', signal: AbortSignal.timeout(2500),
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'drafted-api' },
+      body: JSON.stringify({ ref: Deno.env.get('CP_GH_REF') ?? 'main' }),
+    });
+    if (!r.ok) logEfError('cpWakeBuilder', null, 'dispatch_failed', String(r.status));
+  } catch (e) { logEfError('cpWakeBuilder', null, 'dispatch_failed', String((e as Error)?.message ?? e).slice(0, 120)); }
+}
 async function cpWorkerClaim(body: any) {
   if (!(await cpWorkerOk(body?.builderKey))) return err('unauthorized');
   const nowIso = new Date().toISOString();
@@ -5104,6 +5139,7 @@ async function cpRebrandAll(body: any) {
     });
     if (!error) queued++;
   }
+  if (queued) await cpWakeBuilder();
   return ok({ queued });
 }
 
