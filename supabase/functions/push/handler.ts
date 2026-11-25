@@ -63,6 +63,13 @@ export type PushEnv = {
   checkinSequence?: { all: boolean; keys: Set<string> };
   /** Daily reminders V1 rollout (training + meals): '*' = every eligible client, else these keys. Unset = nobody. */
   dailyReminders?: { all: boolean; keys: Set<string> };
+  /** Coach platform deployment (PUSH_PLATFORM=1): every client belongs to a coach (clients.coach_id). Each coach has
+   *  their own device set and signs in with their own session; a notification wears the client's coach's brand.
+   *  Unset (LOCKED IN): nothing below changes. */
+  platform?: boolean;
+  /** Platform mode only: sha256 of the plan builder's key. The builder publishes the pages, so it may also report a
+   *  published page's facts and announce a plan update (the two deploy operations). */
+  builderKeySha256?: string;
 };
 
 export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
@@ -80,6 +87,8 @@ export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
     allowedClients: new Set(allowed),
     checkinSequence: { all: seq.includes('*'), keys: new Set(seq.filter((k) => k !== '*')) },
     dailyReminders: { all: daily.includes('*'), keys: new Set(daily.filter((k) => k !== '*')) },
+    platform: String(get('PUSH_PLATFORM') ?? '') === '1',
+    builderKeySha256: String(get('CP_BUILDER_KEY_SHA256') ?? '').toLowerCase(),
   };
 }
 
@@ -330,11 +339,19 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   }
 
   function verifyCoachToken(token: unknown): boolean {
+    if (env.platform) return false;                              // platform coaches sign in with their own session (platformCoach)
     if (typeof token !== 'string' || !token || !env.coachPasswordHash) return false;
     return timingSafeEqual(token, env.coachPasswordHash);
   }
 
   /** Internal callers: sha256(presented secret) must equal push_internal_auth.<name>. No row → refused. */
+  /** The deploy operations: LOCKED IN's deploy secret, or (platform mode only) the plan builder's own key. */
+  async function verifyDeploy(req: Request): Promise<boolean> {
+    if (await verifyInternal('deploy', req.headers.get('x-push-deploy-secret'))) return true;
+    const key = req.headers.get('x-builder-key');
+    if (!env.platform || !key || key.length < 32 || key.length > 256 || !SHA256_HEX_RE.test(env.builderKeySha256 ?? '')) return false;
+    return timingSafeEqual(await sha256(key), env.builderKeySha256!);
+  }
   async function verifyInternal(name: 'cron' | 'deploy', presented: string | null): Promise<boolean> {
     if (!presented || presented.length < 32 || presented.length > 256) return false;
     const { data, error } = await admin.from('push_internal_auth').select('secret_sha256').eq('name', name).maybeSingle();
@@ -342,8 +359,77 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     return timingSafeEqual(await sha256(presented), String(data.secret_sha256));
   }
 
-  type ClientRow = { id: string; storage_key: string; is_internal?: boolean | null; entitlement_legacy?: boolean | null };
-  const CLIENT_ELIG_COLS = 'id, storage_key, is_internal, entitlement_legacy';
+  type ClientRow = { id: string; storage_key: string; is_internal?: boolean | null; entitlement_legacy?: boolean | null; coach_id?: string | null };
+  const CLIENT_ELIG_COLS = 'id, storage_key, is_internal, entitlement_legacy' + (env.platform ? ', coach_id' : '');
+
+  // ── coach platform (env.platform only) ────────────────────────────────────
+  type PlatformCoach = { id: string; slug: string; name: string; brand: string };
+  /** A platform coach's session (the same one their dashboard holds) -> the coach, or null. Mirrors the api's cpCoach. */
+  async function platformCoach(session: unknown): Promise<PlatformCoach | null> {
+    if (!env.platform || typeof session !== 'string' || session.length < 30 || session.length > 100) return null;
+    const { data: s } = await admin.from('coach_sessions').select('coach_id, expires_at, revoked_at')
+      .eq('token_hash', await sha256(session)).maybeSingle();
+    if (!s || s.revoked_at || !(Date.parse(s.expires_at) > now())) return null;
+    const { data: c } = await admin.from('coaches').select('id, slug, name, brand, status').eq('id', s.coach_id).maybeSingle();
+    if (!c || c.status !== 'active') return null;
+    return { id: c.id, slug: c.slug, name: c.name, brand: c.brand || c.name };
+  }
+  const platformDeviceKey = (slug: string) => `_coach_${slug}`;
+  /** The internal account a coach's own phones subscribe under (never a client: no coach_id, no preferences). */
+  async function platformDeviceAccount(coach: PlatformCoach, create: boolean): Promise<string | null> {
+    const key = platformDeviceKey(coach.slug);
+    const { data } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+    if (data?.id || !create) return data?.id ?? null;
+    const { data: profile, error: pErr } = await admin.from('profiles').insert({ role: 'client', full_name: coach.name }).select('id').single();
+    if (pErr || !profile?.id) { log('platformDeviceAccount', 'profile_failed', pErr?.message ?? 'no_id'); return null; }
+    const { data: made, error } = await admin.from('clients').insert({ profile_id: profile.id, storage_key: key, display_name: coach.name, is_internal: true }).select('id').single();
+    if (error || !made?.id) {
+      const { data: again } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+      if (!again?.id) log('platformDeviceAccount', 'insert_failed', error?.message ?? 'no_id');
+      return again?.id ?? null;
+    }
+    return made.id;
+  }
+  /** Who is asking, and which internal account their devices live under. LOCKED IN: the one coach token and `_coach`. */
+  async function coachAccount(body: any, create: boolean): Promise<{ id: string | null; key: string } | null> {
+    if (env.platform) {
+      const coach = await platformCoach(body?.coachToken);
+      if (!coach) return null;
+      return { id: await platformDeviceAccount(coach, create), key: platformDeviceKey(coach.slug) };
+    }
+    if (!verifyCoachToken(body?.coachToken)) return null;
+    return { id: await coachClientId(), key: COACH_KEY };
+  }
+  /** A client's notification in their own coach's words: the brand as the title, the coach's first name, no slang. */
+  async function platformTemplate(clientId: string, tpl: Template): Promise<Template> {
+    if (tpl.kind === 'coach_morning') return { ...tpl, url: tpl.url.replace('coach_dashboard.html', 'dashboard.html') };
+    let brand = 'Your plan', first = 'your coach';
+    const { data: cl } = await admin.from('clients').select('coach_id').eq('id', clientId).maybeSingle();
+    if (cl?.coach_id) {
+      const { data: co } = await admin.from('coaches').select('name, brand').eq('id', cl.coach_id).maybeSingle();
+      if (co) { brand = String(co.brand || co.name || brand).slice(0, 40); first = String(co.name || first).trim().split(/\s+/)[0] || first; }
+    }
+    const say = (t: string) => t.replace(/Morning bro\. /g, 'Morning. ').replace(/ in LOCKED IN\./g, ' in your app.')
+      .replace(/LOCKED IN/g, brand).replace(/\bOmar\b/g, first).replace(/,? bro\b/g, '');
+    return { ...tpl, title: say(tpl.title), body: say(tpl.body) };
+  }
+  async function platformEligibility(rows: ClientRow[]): Promise<{ eligible: Set<string>; access: Map<string, string> }> {
+    const eligible = new Set<string>(), access = new Map<string, string>();
+    const { data: sess, error: sErr } = await admin.from('client_sessions')
+      .select('storage_key, access_status').in('storage_key', rows.map((r) => r.storage_key));
+    const coachIds = [...new Set(rows.map((r) => r.coach_id).filter(Boolean))] as string[];
+    const { data: coaches, error: cErr } = coachIds.length
+      ? await admin.from('coaches').select('id, status').in('id', coachIds) : { data: [], error: null };
+    if (sErr || cErr) { log('eligibility', 'read_failed', (sErr ?? cErr)?.message ?? ''); return { eligible, access }; }
+    for (const s of sess ?? []) access.set(s.storage_key, String(s.access_status ?? ''));
+    const active = new Set((coaches ?? []).filter((c: any) => c.status === 'active').map((c: any) => c.id));
+    for (const r of rows) {
+      if (!r.coach_id || !active.has(r.coach_id)) continue;      // no coach, or a suspended coach: silence
+      if (access.get(r.storage_key) !== 'active') continue;
+      eligible.add(r.id);
+    }
+    return { eligible, access };
+  }
 
   /**
    * Push eligibility for a batch of clients — trusted server state only.
@@ -357,6 +443,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   async function resolveEligibility(rows: ClientRow[]): Promise<{ eligible: Set<string>; access: Map<string, string> }> {
     const eligible = new Set<string>(), access = new Map<string, string>();
     if (!rows.length) return { eligible, access };
+    if (env.platform) return platformEligibility(rows);
     const { data: sess, error: sErr } = await admin.from('client_sessions')
       .select('storage_key, access_status').in('storage_key', rows.map((r) => r.storage_key));
     const { data: ents, error: eErr } = await admin.from('client_entitlements')
@@ -418,6 +505,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
       await finish({ status: 'suppressed', suppression_reason: 'no_active_device' });
       return { status: 'suppressed', reason: 'no_active_device', results: [] };
     }
+    if (env.platform) tpl = await platformTemplate(clientId, tpl);
     const payload = JSON.stringify({ v: 1, kind: tpl.kind, title: tpl.title, body: tpl.body, url: tpl.url, tag: tpl.tag, eventId });
     const results: Array<Record<string, unknown>> = [];
     for (const d of targets) {                                  // bounded: ≤ MAX_DEVICES_PER_SEND
@@ -498,11 +586,12 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   }
 
   async function coachPushStatus(body: any): Promise<Response> {
-    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    const acct = await coachAccount(body, false);
+    if (!acct) return err('unauthorized', 401);
     const v = await vapidOrNull();
     if (!v) return err('push_not_configured', 503);
-    const coachId = await coachClientId();
-    if (!coachId) return err('no_coach_account', 404);
+    const coachId = acct.id;
+    if (!coachId) return env.platform ? ok({ vapidPublicKey: v.publicKeyB64, registered: false, devices: 0 }) : err('no_coach_account', 404);
     let registered = false;
     if (typeof body?.endpoint === 'string' && body.endpoint && body.endpoint.length <= MAX_ENDPOINT_LEN) {
       const { data: dev } = await admin.from('push_devices').select('client_id, status')
@@ -513,9 +602,10 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   }
 
   async function coachPushSubscribe(body: any): Promise<Response> {
-    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    const acct = await coachAccount(body, true);
+    if (!acct) return err('unauthorized', 401);
     if (!(await vapidOrNull())) return err('push_not_configured', 503);
-    const coachId = await coachClientId();
+    const coachId = acct.id;
     if (!coachId) return err('no_coach_account', 404);
     const sub = body?.subscription;
     const ep = validateEndpoint(sub?.endpoint);
@@ -542,7 +632,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     }
     if ((await activeDeviceCount(coachId)) >= MAX_ACTIVE_DEVICES_PER_CLIENT) return err('too_many_devices', 429);
     const { data: ins, error } = await admin.from('push_devices').insert({
-      client_id: coachId, storage_key: COACH_KEY, endpoint_hash: endpointHash, created_at: nowIso, ...fields,
+      client_id: coachId, storage_key: acct.key, endpoint_hash: endpointHash, created_at: nowIso, ...fields,
     }).select('id').single();
     if (error || !ins?.id) {
       if (isDup(error)) return err('retry', 409);
@@ -598,6 +688,47 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     if (!got) throw new Error('claim_failed');
     const r = await deliver(got.id, coachId, tpl, v, nowMs);
     return r.status;
+  }
+
+  /** Coach platform: a new check-in goes to the phone of THAT client's coach, and to nobody else. Same limits as below
+   *  (last 2 hours, one per client per day, a first name and nothing else), at most 6 per coach per tick. */
+  async function platformCheckinStep(v: VapidKeys, nowMs: number, nowIso: string): Promise<string> {
+    const { data: cis, error } = await admin.from('check_ins').select('client_key, submitted_at')
+      .gte('submitted_at', new Date(nowMs - 2 * 3600_000).toISOString()).order('submitted_at', { ascending: true }).limit(200);
+    if (error) throw new Error(error.message);
+    const fresh = (cis ?? []).filter((c: any) => c.client_key && !String(c.client_key).startsWith('_'));
+    if (!fresh.length) return 'none';
+    const { data: rows } = await admin.from('clients').select('storage_key, display_name, coach_id').in('storage_key', [...new Set(fresh.map((c: any) => c.client_key))]);
+    const byKey: Record<string, any> = Object.fromEntries((rows ?? []).map((r: any) => [r.storage_key, r]));
+    const coachIds = [...new Set((rows ?? []).map((r: any) => r.coach_id).filter(Boolean))];
+    if (!coachIds.length) return 'none';
+    const { data: coaches } = await admin.from('coaches').select('id, slug, status').in('id', coachIds);
+    const account: Record<string, { id: string; key: string }> = {};
+    for (const c of coaches ?? []) {
+      if (c.status !== 'active') continue;
+      const key = platformDeviceKey(c.slug);
+      const { data: acc } = await admin.from('clients').select('id').eq('storage_key', key).maybeSingle();
+      if (acc?.id && (await activeDeviceCount(acc.id)) > 0) account[c.id] = { id: acc.id, key };
+    }
+    const perCoach: Record<string, number> = {};
+    let sent = 0;
+    for (const c of fresh) {
+      const row = byKey[c.client_key], acc = row?.coach_id ? account[row.coach_id] : null;
+      if (!acc || (perCoach[row.coach_id] ?? 0) >= 6) continue;
+      const day = localParts(Date.parse(c.submitted_at), COACH_TZ).date;
+      const key = `coach_checkin:${c.client_key}:${day}`;
+      const { data: seen } = await admin.from('notification_events').select('id').eq('dedupe_key', key).limit(1);
+      if ((seen ?? []).length) continue;
+      const tpl: Template = { ...TEMPLATES.coach_checkin, title: (String(row.display_name || '').split(' ')[0] || 'A client') + ' just checked in' };
+      const got = await claim({
+        client_id: acc.id, storage_key: acc.key, kind: tpl.kind, dedupe_key: key, status: 'claimed',
+        title: tpl.title, body: tpl.body, url: tpl.url, created_by: 'system', created_at: nowIso, eligible_at: nowIso, period_key: day,
+      });
+      if (got === 'duplicate' || !got) continue;
+      await deliver(got.id, acc.id, tpl, v, nowMs);
+      perCoach[row.coach_id] = (perCoach[row.coach_id] ?? 0) + 1; sent++;
+    }
+    return 'sent:' + sent;
   }
 
   /** New client check-ins -> the coach's phone (Omar 2026-10-14, replaces the check-in email). One per client per Sydney
@@ -885,13 +1016,15 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
 
   // ── coachPushSend ─────────────────────────────────────────────────────────
   async function coachPushSend(body: any): Promise<Response> {
-    if (!verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
+    const pCoach = env.platform ? await platformCoach(body?.coachToken) : null;
+    if (env.platform ? !pCoach : !verifyCoachToken(body?.coachToken)) return err('unauthorized', 401);
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
     if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
     const tpl = String(body?.template ?? '') === 'test' ? TEMPLATES.test : null;   // coach: test only
     if (!tpl) return err('unknown_template', 400);
     const { data: client } = await admin.from('clients').select(CLIENT_ELIG_COLS).eq('storage_key', storageKey).maybeSingle();
     if (!client?.id) return err('unknown_client', 404);
+    if (pCoach && client.coach_id !== pCoach.id) return err('unknown_client', 404);   // never another coach's client
     if (!(await isEligible(client))) return err('push_not_enabled', 403);
     const requestId = String(body?.requestId ?? '');
     if (!REQUEST_ID_RE.test(requestId)) return err('bad_requestId', 400);
@@ -953,9 +1086,9 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
     const bump = (r: string) => { summary.suppressed[r] = (summary.suppressed[r] ?? 0) + 1; };
 
     // ── Coach morning report: independent of every client reminder below ──
-    try { summary.coachMorning = await coachMorningStep(v, nowMs, nowIso); }
+    try { summary.coachMorning = env.platform ? 'off' : await coachMorningStep(v, nowMs, nowIso); }
     catch (e) { summary.coachMorning = 'error'; summary.stateErrors++; log('pushTick', 'coach_morning_failed', String((e as any)?.message ?? e)); }
-    try { summary.coachCheckins = await coachCheckinStep(v, nowMs, nowIso); }
+    try { summary.coachCheckins = env.platform ? await platformCheckinStep(v, nowMs, nowIso) : await coachCheckinStep(v, nowMs, nowIso); }
     catch (e) { summary.coachCheckins = 'error'; summary.stateErrors++; log('pushTick', 'coach_checkin_failed', String((e as any)?.message ?? e)); }
 
     // ── V2 check-in adherence sequence: one step per client per tick ───────
@@ -1211,7 +1344,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   // Called ONLY by the deploy notifier after the served shell bytes equal the
   // committed bytes. It never causes or participates in the deployment.
   async function programUpdated(req: Request, body: any): Promise<Response> {
-    if (!(await verifyInternal('deploy', req.headers.get('x-push-deploy-secret')))) return err('unauthorized', 401);
+    if (!(await verifyDeploy(req))) return err('unauthorized', 401);
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
     if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
     const deployHash = String(body?.deployHash ?? '');
@@ -1263,7 +1396,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   // verified bytes, so a 4 → 3 feed change or a new training week replaces the
   // old schedule the moment the new shell is live — there is no second copy.
   async function planFactsSync(req: Request, body: any): Promise<Response> {
-    if (!(await verifyInternal('deploy', req.headers.get('x-push-deploy-secret')))) return err('unauthorized', 401);
+    if (!(await verifyDeploy(req))) return err('unauthorized', 401);
     const storageKey = String(body?.storageKey ?? '').trim().toLowerCase();
     if (!CLIENT_KEY_RE.test(storageKey)) return err('bad_storageKey', 400);
     const f = body?.facts;

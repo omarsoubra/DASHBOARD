@@ -90,6 +90,13 @@ http.createServer(async (req, res) => {
       const f = path.join(ROOT, '..', 'drafted_build', 'dashboard.html');
       return fs.existsSync(f) ? send(res, 200, fs.readFileSync(f), TYPES['.html']) : send(res, 404, 'run drafted/make_dashboard.py first', 'text/plain');
     }
+    const addon = /^\/(push-client|account-setup|week-client|plus-client|food-client|food-data|swap-client|checkin-client|tidy-client|setup-client|sw)\.js$/.exec(url.pathname);
+    if (addon || url.pathname === '/health-client.js') {   // the coach site's neutral copies (drafted/make_site.py), never Omar's own scripts
+      const f = path.join(ROOT, '..', 'site_try', addon ? addon[1] + '.js' : 'none');
+      if (!addon || !fs.existsSync(f)) return send(res, 404, 'run drafted/make_site.py into work/site_try first', 'text/plain');
+      const local = fs.readFileSync(f, 'utf8').split('/^https:\\/\\/[a-z0-9]+\\.supabase\\.co\\/functions\\/v1\\/api$/').join('/^(https:\\/\\/[a-z0-9]+\\.supabase\\.co\\/functions\\/v1|http:\\/\\/localhost:\\d+)\\/api$/');
+      return send(res, 200, local, 'text/javascript; charset=utf-8');
+    }
     if (url.pathname === '/testimonial.html') {            // the coach version only: Omar's own page talks to the live server
       const f = path.join(ROOT, '..', 'drafted_build', 'testimonial.html');
       return fs.existsSync(f) ? send(res, 200, fs.readFileSync(f), TYPES['.html']) : send(res, 404, 'run drafted/make_dashboard.py first', 'text/plain');
