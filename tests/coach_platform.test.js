@@ -358,7 +358,7 @@ async function buildAndPublish(coach, form, storageKey) {
   t('a coach session opens a scope holding exactly their clients', scA && scA !== 'refused' && scA.keys.filter((k) => k.startsWith('c_')).sort().join() === mineKeys.join() && mineKeys.includes(ej.storageKey) && !scA.keys.includes('cruz_rehayem'), scA && scA.keys);
   t('Omar\'s token, a client, junk and cp* calls open no scope', (await M.tenantScope('dashboard', { coachToken: OMAR })) === null && (await M.tenantScope('dashboard', { coachToken: 'x'.repeat(50) })) === null
     && (await M.tenantScope('dashboard', {})) === null && (await M.tenantScope('cpClients', { coachToken: al3 })) === null);
-  t('request types not opened to coaches are refused outright', ['clientCreate', 'intakeList', 'intakePromote', 'entitlementGrant', 'provisionSelfGuidedClient', 'testimonialsGet', 'checkinDraftsPut', 'legacyQueueGet', 'registryGetPrivate', 'someFutureEndpoint']
+  t('request types not opened to coaches are refused outright', ['clientCreate', 'intakeList', 'intakePromote', 'entitlementGrant', 'provisionSelfGuidedClient', 'checkinDraftsPut', 'legacyQueueGet', 'registryGetPrivate', 'someFutureEndpoint']
     .every((ty) => !M.TENANT_TYPES.has(ty)) && (await M.tenantScope('clientCreate', { coachToken: al3 })) === 'refused');
   DB.clients.push({ id: 'omar-client-1', storage_key: 'omar_only', coach_id: null, is_internal: false });
   DB.weight_logs.push({ client_key: 'omar_only', logged_at: '2026-11-20T00:00:00Z', weight_kg: 99 }, { client_key: ej.storageKey, logged_at: '2026-11-21T00:00:00Z', weight_kg: 77 });

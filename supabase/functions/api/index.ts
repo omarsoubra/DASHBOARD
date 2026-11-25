@@ -4337,7 +4337,14 @@ async function testimonialLinkCreate(body: any) {
 async function testimonialFormGet(body: any) {
   const row = await testiByToken(body?.t);
   if (!row) return err('link_invalid');
-  return ok({ firstName: row.first_name, submittedAt: row.submitted_at, answers: row.answers ?? {}, consent: row.consent ?? {} });
+  // A platform coach's client sees their own coach's name and look on the form (none of this for LOCKED IN's own clients).
+  let look: Record<string, unknown> = {};
+  const { data: cl } = await admin.from('clients').select('coach_id').eq('storage_key', row.client_key).maybeSingle();
+  if (cl?.coach_id) {
+    const { data: co } = await admin.from('coaches').select('name, brand, accent').eq('id', cl.coach_id).maybeSingle();
+    if (co) look = { brand: co.brand || co.name, coachFirstName: String(co.name).split(/\s+/)[0], accent: co.accent ?? null };
+  }
+  return ok({ firstName: row.first_name, submittedAt: row.submitted_at, answers: row.answers ?? {}, consent: row.consent ?? {}, ...look });
 }
 
 // Public (link token only): saves the client's own answers to their own row. Editable until the link expires.
@@ -4403,7 +4410,7 @@ const TENANT = new AsyncLocalStorage<TenantScope>();
 const TENANT_RULES: Record<string, [string, 'keys' | 'ids' | 'profileIds' | 'coach' | 'open']> = {
   clients: ['coach_id', 'coach'], roster_snapshots: ['coach_id', 'coach'],
   weight_logs: ['client_key', 'keys'], check_ins: ['client_key', 'keys'], workout_log_entries: ['client_key', 'keys'], photo_uploads: ['client_key', 'keys'],
-  checkin_drafts: ['client_key', 'keys'], access_log: ['client_key', 'keys'],
+  checkin_drafts: ['client_key', 'keys'], access_log: ['client_key', 'keys'], testimonials: ['client_key', 'keys'],
   client_sessions: ['storage_key', 'keys'], programs: ['storage_key', 'keys'], health_keys: ['storage_key', 'keys'], health_daily: ['storage_key', 'keys'],
   client_invites: ['storage_key', 'keys'], client_device_tokens: ['storage_key', 'keys'], workout_completions: ['storage_key', 'keys'], push_preferences: ['storage_key', 'keys'],
   meal_logs: ['client_id', 'ids'], client_entitlements: ['client_id', 'ids'], client_overrides: ['client_id', 'ids'],
@@ -4411,11 +4418,11 @@ const TENANT_RULES: Record<string, [string, 'keys' | 'ids' | 'profileIds' | 'coa
   products: ['', 'open'],                                  // the product catalogue: readable, never writable
 };
 /** Tables a coach's dashboard request may add rows to or change (always inside the rule above). Everything else is read-only. */
-const TENANT_WRITABLE = new Set(['roster_snapshots', 'client_sessions', 'access_log', 'client_invites', 'client_device_tokens', 'client_overrides', 'health_keys', 'checkin_drafts']);
+const TENANT_WRITABLE = new Set(['roster_snapshots', 'client_sessions', 'access_log', 'client_invites', 'client_device_tokens', 'client_overrides', 'health_keys', 'checkin_drafts', 'testimonials']);
 /** Dashboard request types a platform coach may make. */
 const TENANT_TYPES = new Set(['dashboard', 'rosterGet', 'rosterPut', 'coachWorkoutCompletions', 'coachClientHistory', 'healthGet', 'accountList', 'accountInviteCreate',
   'issueClientToken', 'setAccessStatus', 'clientProgram', 'weightLog', 'photosGet', 'overrideGet', 'overridePut', 'foodLogGet', 'progressionHistory', 'checkinDraftsGet',
-  'entitlementsGet', 'healthKeyIssue', 'healthRevoke', 'coachSettingsGet', 'coachSettingsPut']);
+  'entitlementsGet', 'healthKeyIssue', 'healthRevoke', 'coachSettingsGet', 'coachSettingsPut', 'testimonialLinkCreate', 'testimonialsGet']);
 /** A query that reaches nothing: every chained call returns itself, awaiting it gives an empty refused result. */
 function tenantRefused(): any {
   const target = () => {};

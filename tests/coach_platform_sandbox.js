@@ -90,6 +90,10 @@ http.createServer(async (req, res) => {
       const f = path.join(ROOT, '..', 'drafted_build', 'dashboard.html');
       return fs.existsSync(f) ? send(res, 200, fs.readFileSync(f), TYPES['.html']) : send(res, 404, 'run drafted/make_dashboard.py first', 'text/plain');
     }
+    if (url.pathname === '/testimonial.html') {            // the coach version only: Omar's own page talks to the live server
+      const f = path.join(ROOT, '..', 'drafted_build', 'testimonial.html');
+      return fs.existsSync(f) ? send(res, 200, fs.readFileSync(f), TYPES['.html']) : send(res, 404, 'run drafted/make_dashboard.py first', 'text/plain');
+    }
     if (url.pathname === '/clients_registry.json' || url.pathname === '/coach_dashboard.html') return send(res, 404, 'not in the sandbox', 'text/plain');   // never Omar's own
     if (url.pathname === '/' || url.pathname === '/index.html') { res.writeHead(302, { Location: '/coach/' }); return res.end(); }   // never serve Omar's own dashboard here
     let p = path.normalize(path.join(ROOT, decodeURIComponent(url.pathname)));
