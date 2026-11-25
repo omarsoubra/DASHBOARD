@@ -89,11 +89,11 @@
   button, .btn { color:var(--on-accent, #fff); }
   .tabs button[aria-pressed="true"] { color:var(--on-accent, #fff); }
   .edit { display:grid; gap:8px; }
-  .erow { display:grid; grid-template-columns:minmax(0,1fr) 64px 84px 96px 40px; gap:6px; align-items:center; }
+  .erow { display:grid; grid-template-columns:minmax(0,1fr) 64px 84px 40px; gap:6px; align-items:center; }
   .frow { display:grid; grid-template-columns:minmax(0,1fr) 92px 44px 40px; gap:6px; align-items:center; }
   .erow input, .erow select, .frow input { padding:9px 8px; min-height:42px; }
   .ex { padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid var(--line); } .ex:last-child { border-bottom:0; }
-  .erow2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; } .erow2 input { grid-column:1 / -1; } .erow2 select, .erow2 input { padding:9px 8px; min-height:42px; font-size:14px; }
+  .erow2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; } .erow2 input, .erow2 select:nth-of-type(3) { grid-column:1 / -1; } .erow2 select, .erow2 input { padding:9px 8px; min-height:42px; font-size:14px; }
   .ehead { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); font-weight:600; }
   button.x { background:none; border:1px solid var(--line); color:var(--mute); padding:0; width:40px; min-height:42px; font-size:18px; line-height:1; }
   button.mini { padding:6px 12px; min-height:36px; font-size:14px; background:transparent; color:var(--ink); border-color:var(--line); }
@@ -110,7 +110,7 @@
   .phone .pc { background:#fff; border:1px solid #e8e3db; border-radius:12px; padding:10px; }
   .phone .pb { border-radius:99px; padding:9px 12px; text-align:center; font-weight:700; color:#fff; }
   .phone .bar2 { height:8px; border-radius:99px; background:#efece6; overflow:hidden; } .phone .bar2 i { display:block; height:100%; width:62%; }
-  .two { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; } @media (max-width:720px) { .two { grid-template-columns:1fr; } .erow { grid-template-columns:minmax(0,1fr) 56px 72px 40px; } .erow .rest { display:none; } }
+  .two { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; } @media (max-width:720px) { .two { grid-template-columns:1fr; } .erow { grid-template-columns:1fr 1fr 40px; } .ex .erow > input:first-child { grid-column:1 / -1; } .erow.ehead, .frow.ehead { display:none; } .frow { grid-template-columns:1fr 44px 40px; } .frow > input:first-child { grid-column:1 / -1; } }
   .checks { display:flex; flex-wrap:wrap; gap:8px; } .checks label { display:flex; align-items:center; gap:6px; font-weight:400; margin:0; border:1px solid var(--line); border-radius:99px; padding:7px 12px; background:#fff; }
   .checks input { width:auto; min-height:0; }
 </style>
@@ -636,7 +636,7 @@
     var name = el('input', { type: 'text', maxlength: 60, placeholder: 'e.g. Homemade turkey meatballs', 'aria-label': 'Food name' });
     var unit = el('select', { 'aria-label': 'Measured in' }, [el('option', { value: 'g', text: 'Per 100 g' }), el('option', { value: 'unit', text: 'Per one (each)' })]);
     var n = function (label) { return el('input', { type: 'number', min: 0, max: 300, step: '0.1', inputmode: 'decimal', placeholder: label, 'aria-label': label }); };
-    var p = n('Protein g'), c = n('Carbs g'), f = n('Fat g'), kcal = el('span', { class: 'mute small' });
+    var p = n('Protein'), c = n('Carbs'), f = n('Fat'), kcal = el('span', { class: 'mute small' });
     var tags = el('div', { class: 'checks' }, ['egg', 'fish', 'gluten', 'peanut', 'sesame', 'shellfish', 'soy', 'tree_nut', 'dairy'].map(function (a) {
       var cb = el('input', { type: 'checkbox', value: a }); return el('label', null, [cb, a.replace('_', ' ')]); }));
     var halal = el('input', { type: 'checkbox' }); halal.style.width = 'auto'; halal.style.minHeight = '0';
@@ -668,7 +668,7 @@
     return el('div', { class: 'card', style: 'margin-top:10px;background:var(--soft,#f5f5f7)' }, [el('h3', { text: 'Add your own food' }),
       el('p', { class: 'mute small', text: 'Take the numbers from the label. It joins your food list for every client.' }),
       field('Name', name), el('div', { style: 'height:8px' }), field('Measured', unit), el('div', { style: 'height:8px' }),
-      el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px' }, [p, c, f]), kcal, el('div', { style: 'height:8px' }),
+      el('label', { text: 'Grams of protein, carbs and fat' }), el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px' }, [p, c, f]), kcal, el('div', { style: 'height:8px' }),
       el('label', { text: 'Contains (tick every allergen in it)' }), tags,
       el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500;margin-top:10px' }, [halal, 'Halal, or has no meat in it']), msg,
       el('div', { class: 'row', style: 'margin-top:10px' }, [save]), mineList]);
@@ -706,8 +706,8 @@
       var method = el('select', { 'aria-label': 'How the sets are done' }, [['', 'Straight sets']].concat(METHODS).map(function (m) { var o = el('option', { value: m[0], text: m[1] }); if ((x.method || '') === m[0]) o.selected = true; return o; }));
       var note = el('input', { type: 'text', value: x.note || '', maxlength: 120, placeholder: 'Your instruction for this exercise (optional)', 'aria-label': 'Your instruction' });
       var r = el('div', { class: 'ex' }, [
-        el('div', { class: 'erow' }, [n, sets, reps, rest, el('button', { type: 'button', class: 'x', 'aria-label': 'Remove exercise', text: '×', onclick: function () { r.remove(); } })]),
-        el('div', { class: 'erow2' }, [rir, method, note])]);
+        el('div', { class: 'erow' }, [n, sets, reps, el('button', { type: 'button', class: 'x', 'aria-label': 'Remove exercise', text: '×', onclick: function () { r.remove(); } })]),
+        el('div', { class: 'erow2' }, [rir, rest, method, note])]);
       r.read = function () {
         var o = { name: n.value.trim(), sets: Number(sets.value), reps: reps.value.trim(), rir: Number(rir.value), rest_seconds: Number(rest.value) };
         if (method.value) o.method = method.value;
@@ -720,7 +720,7 @@
     var all = el('input', { type: 'checkbox' }); all.style.width = 'auto'; all.style.minHeight = '0';
     var msg = el('div');
     var box = el('div', { class: 'card changed' }, [field('Day name', name), el('div', { style: 'height:10px' }),
-      el('div', { class: 'erow ehead' }, [el('span', { text: 'Exercise' }), el('span', { text: 'Sets' }), el('span', { text: 'Reps' }), el('span', { class: 'rest', text: 'Rest' }), el('span')]), rows,
+      el('div', { class: 'erow ehead' }, [el('span', { text: 'Exercise' }), el('span', { text: 'Sets' }), el('span', { text: 'Reps' }), el('span')]), rows,
       el('div', { style: 'height:8px' }), el('button', { type: 'button', class: 'mini', text: '+ Add exercise', onclick: function () { var r = row({}); rows.appendChild(r); r.querySelector('input').focus(); } }),
       el('p', { class: 'mute small', style: 'margin:10px 0 0', text: 'Pick from the list to give the client a how-to guide. You can also type your own exercise.' }),
       phases.length > 1 && !isNew ? el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500;margin-top:12px' }, [all, 'Use this day in every phase']) : null,

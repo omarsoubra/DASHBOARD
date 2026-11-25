@@ -4812,7 +4812,7 @@ async function cpBuildDiscard(body: any) {
   const { data: b } = await admin.from('plan_builds').select('id, coach_id, status').eq('id', String(body?.buildId ?? '')).maybeSingle();
   if (!b || b.coach_id !== coach.id) return err('unknown_build');
   if (!['queued', 'built', 'failed'].includes(b.status)) return err('cannot_discard', { status: b.status });
-  await admin.from('plan_builds').update({ status: 'discarded', updated_at: new Date().toISOString() }).eq('id', b.id).eq('status', b.status);
+  await admin.from('plan_builds').update({ status: 'discarded', plan: null, updated_at: new Date().toISOString() }).eq('id', b.id).eq('status', b.status);
   return ok();
 }
 
@@ -5088,7 +5088,9 @@ async function cpWorkerDone(body: any) {
       return ok({ retry: true });
     }
     // exactly one live plan per client: the previous one becomes history
-    await admin.from('plan_builds').update({ status: 'discarded', updated_at: nowIso }).eq('storage_key', b.storage_key).eq('status', 'live');
+    // the plan that was live, and any older draft of this client's plan, step aside; their stored plan copies are dropped
+    // so the table holds one full plan per client (the live one) however many times a plan is rebuilt
+    await admin.from('plan_builds').update({ status: 'discarded', plan: null, updated_at: nowIso }).eq('storage_key', b.storage_key).in('status', ['live', 'built', 'failed']).neq('id', b.id);
     const { error } = await admin.from('plan_builds').update({ status: 'live', published_at: nowIso, error: null, updated_at: nowIso }).eq('id', b.id).eq('status', 'publishing');
     return error ? err('write_failed') : ok();
   }
