@@ -423,7 +423,7 @@
   // The client form: the coach sends a link, the client fills in their own details, the plan form arrives filled in.
   function intakeToForm(a) {
     var f = { firstName: a.firstName, lastName: a.lastName, sex: a.sex, age: a.age, heightCm: a.heightCm, weightKg: a.weightKg, goal: a.goal, activity: a.activity,
-              training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : 'gym5_ppl_ul'), allergies: a.allergies || [] };
+              training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : a.days === 4 ? 'gym4_upper_lower' : 'gym5_ppl_ul'), allergies: a.allergies || [] };
     if (a.goalWeightKg) f.goalWeightKg = a.goalWeightKg;
     if (a.mealsPerDay) f.mealsPerDay = a.mealsPerDay;
     return f;

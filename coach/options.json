@@ -31,6 +31,12 @@
    "place": "gym",
    "note": "compounds kept at 2 reps in reserve (conservative)"
   },
+  "gym4_upper_lower": {
+   "label": "4 days: Upper / Lower / Upper / Lower",
+   "daysPerWeek": 4,
+   "place": "gym",
+   "note": ""
+  },
   "gym5_ppl_ul": {
    "label": "5 days: Push / Pull / Legs / Upper / Lower",
    "daysPerWeek": 5,

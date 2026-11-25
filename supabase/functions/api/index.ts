@@ -5357,7 +5357,7 @@ async function cpIntakeInspect(body: any) {
 /** The plan form a sign-up form turns into. The coach reviews (and can change) everything before it reaches the client. */
 function cpIntakeToForm(a: any): Record<string, unknown> {
   const f: Record<string, unknown> = { firstName: a.firstName, lastName: a.lastName, sex: a.sex, age: a.age, heightCm: a.heightCm, weightKg: a.weightKg,
-    goal: a.goal, activity: a.activity, training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : 'gym5_ppl_ul'),
+    goal: a.goal, activity: a.activity, training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : a.days === 4 ? 'gym4_upper_lower' : 'gym5_ppl_ul'),
     menu: (a.allergies ?? []).length ? CP_ALLERGY_MENU : CP_DEFAULT_MENU, mealsPerDay: a.mealsPerDay ?? 4, weeks: 12, allergies: a.allergies ?? [] };
   if (a.goalWeightKg) f.goalWeightKg = a.goalWeightKg;
   return f;
