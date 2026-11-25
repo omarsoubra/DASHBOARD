@@ -4492,7 +4492,21 @@ const CP_LOCK_AFTER = 8;
 const CP_LOCK_MS = 15 * 60_000;
 const CP_EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 const CP_FORM_KEYS = ['firstName', 'lastName', 'sex', 'age', 'heightCm', 'weightKg', 'goalWeightKg', 'goal', 'activity', 'training',
-  'menu', 'mealsPerDay', 'weeks', 'allergies', 'kcal', 'proteinG', 'startDate'];
+  'menu', 'mealsPerDay', 'weeks', 'allergies', 'kcal', 'proteinG', 'startDate', 'diet', 'likes', 'avoid'];
+// Words in a client's own writing -> the plan engine's food keys (same table as engine.py FOOD_WORDS; a test keeps them equal).
+const CP_FOOD_WORDS: [string, string[]][] = [["sweet potato", ["sweet_potato"]], ["potato", ["potato"]], ["peanut butter", ["peanut_butter"]], ["protein powder|protein shake|whey", ["protein_powder"]], ["green bean", ["green_beans"]], ["chicken", ["chicken"]], ["steak", ["steak"]], ["mince", ["beef_mince"]], ["red meat|beef", ["steak", "beef_mince"]], ["seafood|fish", ["tuna", "prawns"]], ["tuna", ["tuna"]], ["prawn|shrimp", ["prawns"]], ["egg", ["eggs"]], ["rice", ["rice"]], ["pasta|spaghetti", ["pasta"]], ["couscous", ["couscous"]], ["quinoa", ["quinoa"]], ["bread|toast|sourdough", ["bread"]], ["wrap", ["wraps"]], ["taco|tortilla", ["tacos"]], ["oat|porridge|muesli", ["oats"]], ["yoghurt|yogurt", ["yoghurt"]], ["milk", ["milk"]], ["dairy", ["yoghurt", "milk", "protein_powder"]], ["almond|nuts", ["nuts"]], ["avocado|avo\\b", ["avocado"]], ["banana", ["banana"]], ["berr", ["berries"]], ["broccoli", ["broccoli"]], ["vegetable|veggie|veges", ["mixed_veg"]], ["spinach", ["spinach"]], ["tomato", ["tomato"]], ["honey", ["honey"]]];
+function cpFoodKeys(text: unknown): string[] {
+  let s = ' ' + String(text ?? '').toLowerCase().replace(/[^a-z ]+/g, ' ') + ' ';
+  const out: string[] = [];
+  for (const [words, keys] of CP_FOOD_WORDS) {
+    const re = new RegExp(words, 'g');
+    if (re.test(s)) {
+      for (const k of keys) if (!out.includes(k)) out.push(k);
+      if (words.split('|')[0].includes(' ')) s = s.replace(new RegExp(words, 'g'), ' ');
+    }
+  }
+  return out.slice(0, 30);
+}
 const CP_MAX_EDITS_BYTES = 60_000;
 const CP_LOGO_SIZES = ['512', '192', '180', '32'] as const;
 const CP_MAX_LOGO_B64 = 540_000;                       // ~400 KB of PNG per size
@@ -4691,7 +4705,7 @@ function cpCleanForm(raw: any): Record<string, unknown> | null {
     const v = raw[k];
     if (v === undefined || v === null || v === '') continue;
     if (Array.isArray(v)) {
-      if (v.length > 12 || !v.every((x) => ['string', 'number'].includes(typeof x) && String(x).length <= 40)) return null;
+      if (v.length > (k === 'likes' || k === 'avoid' ? 30 : 12) || !v.every((x) => ['string', 'number'].includes(typeof x) && String(x).length <= 40)) return null;
       out[k] = v;
     } else if (['string', 'number'].includes(typeof v) && String(v).length <= 60) {
       out[k] = v;
@@ -4760,7 +4774,7 @@ async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intak
     if (it && it.coach_id === coach.id && it.status === 'submitted' && it.answers) {
       const a = it.answers;
       const lines = [`From their form: wants ${a.days} days a week ${a.where === 'home' ? 'at home' : 'at a gym'}.`, a.health ? `Injuries or health: ${a.health}` : '',
-        a.foods ? `Will not eat: ${a.foods}` : '', a.notes ? `Also: ${a.notes}` : '', a.phone ? `Mobile: ${a.phone}` : ''].filter(Boolean);
+        a.foods ? `Will not eat: ${a.foods}` : '', a.likes ? `Likes: ${a.likes}` : '', a.notes ? `Also: ${a.notes}` : '', a.phone ? `Mobile: ${a.phone}` : ''].filter(Boolean);
       const { data: had } = await admin.from('coach_client_state').select('storage_key').eq('storage_key', storageKey).maybeSingle();
       if (!had) await admin.from('coach_client_state').insert({ storage_key: storageKey, coach_id: coach.id, notes: lines.join('\n').slice(0, 4000), updated_at: new Date().toISOString() });
       await admin.from('coach_intakes').update({ status: 'closed', answers: null }).eq('id', it.id);
@@ -5432,7 +5446,7 @@ function cpCleanIntake(a: any): Record<string, unknown> | null {
   const goalW = num(a.goalWeightKg, 35, 250); if (goalW !== null) out.goalWeightKg = goalW;
   const meals = num(a.mealsPerDay, 3, 4); if (meals !== null) out.mealsPerDay = meals;
   if (Array.isArray(a.allergies)) out.allergies = a.allergies.filter((x: unknown) => typeof x === 'string' && /^[a-z_]{2,20}$/.test(x)).slice(0, 12);
-  out.health = text(a.health, 600); out.foods = text(a.foods, 400); out.notes = text(a.notes, 600); out.phone = text(a.phone, 24).replace(/[^0-9+ ]/g, '');
+  out.health = text(a.health, 600); out.foods = text(a.foods, 400); out.likes = text(a.likes, 400); out.notes = text(a.notes, 600); out.phone = text(a.phone, 24).replace(/[^0-9+ ]/g, '');
   return out;
 }
 async function cpIntakeCreate(body: any) {
@@ -5491,6 +5505,10 @@ function cpIntakeToForm(a: any): Record<string, unknown> {
     goal: a.goal, activity: a.activity, training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : a.days === 4 ? 'gym4_upper_lower' : 'gym5_ppl_ul'),
     menu: (a.allergies ?? []).length ? CP_ALLERGY_MENU : CP_DEFAULT_MENU, mealsPerDay: a.mealsPerDay ?? 4, weeks: 12, allergies: a.allergies ?? [] };
   if (a.goalWeightKg) f.goalWeightKg = a.goalWeightKg;
+  // what they wrote about food pre-fills the plan: never the same food on both lists (won't eat wins)
+  const avoid = cpFoodKeys(a.foods), likes = cpFoodKeys(a.likes).filter((k) => !avoid.includes(k));
+  if (avoid.length) f.avoid = avoid;
+  if (likes.length) f.likes = likes;
   return f;
 }
 const CP_DEFAULT_MENU = 'everyday';

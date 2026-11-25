@@ -24,6 +24,248 @@
   "tree_nut",
   "dairy"
  ],
+ "foods": {
+  "chicken": "Chicken",
+  "steak": "Steak",
+  "beef_mince": "Beef mince",
+  "tuna": "Tuna",
+  "prawns": "Prawns",
+  "eggs": "Eggs",
+  "rice": "Rice",
+  "potato": "Potato",
+  "sweet_potato": "Sweet potato",
+  "pasta": "Pasta",
+  "couscous": "Couscous",
+  "quinoa": "Quinoa",
+  "bread": "Bread",
+  "wraps": "Wraps",
+  "tacos": "Corn tortillas",
+  "oats": "Oats",
+  "yoghurt": "Yoghurt",
+  "milk": "Milk",
+  "protein_powder": "Protein powder",
+  "peanut_butter": "Peanut butter",
+  "nuts": "Nuts",
+  "avocado": "Avocado",
+  "banana": "Banana",
+  "berries": "Berries",
+  "broccoli": "Broccoli",
+  "mixed_veg": "Mixed vegetables",
+  "green_beans": "Green beans",
+  "spinach": "Spinach",
+  "tomato": "Tomato",
+  "honey": "Honey"
+ },
+ "diets": {
+  "any": "Eats everything",
+  "no_red_meat": "No red meat",
+  "no_seafood": "No seafood",
+  "no_red_meat_no_seafood": "Chicken only (no red meat, no seafood)"
+ },
+ "foodWords": [
+  [
+   "sweet potato",
+   [
+    "sweet_potato"
+   ]
+  ],
+  [
+   "potato",
+   [
+    "potato"
+   ]
+  ],
+  [
+   "peanut butter",
+   [
+    "peanut_butter"
+   ]
+  ],
+  [
+   "protein powder|protein shake|whey",
+   [
+    "protein_powder"
+   ]
+  ],
+  [
+   "green bean",
+   [
+    "green_beans"
+   ]
+  ],
+  [
+   "chicken",
+   [
+    "chicken"
+   ]
+  ],
+  [
+   "steak",
+   [
+    "steak"
+   ]
+  ],
+  [
+   "mince",
+   [
+    "beef_mince"
+   ]
+  ],
+  [
+   "red meat|beef",
+   [
+    "steak",
+    "beef_mince"
+   ]
+  ],
+  [
+   "seafood|fish",
+   [
+    "tuna",
+    "prawns"
+   ]
+  ],
+  [
+   "tuna",
+   [
+    "tuna"
+   ]
+  ],
+  [
+   "prawn|shrimp",
+   [
+    "prawns"
+   ]
+  ],
+  [
+   "egg",
+   [
+    "eggs"
+   ]
+  ],
+  [
+   "rice",
+   [
+    "rice"
+   ]
+  ],
+  [
+   "pasta|spaghetti",
+   [
+    "pasta"
+   ]
+  ],
+  [
+   "couscous",
+   [
+    "couscous"
+   ]
+  ],
+  [
+   "quinoa",
+   [
+    "quinoa"
+   ]
+  ],
+  [
+   "bread|toast|sourdough",
+   [
+    "bread"
+   ]
+  ],
+  [
+   "wrap",
+   [
+    "wraps"
+   ]
+  ],
+  [
+   "taco|tortilla",
+   [
+    "tacos"
+   ]
+  ],
+  [
+   "oat|porridge|muesli",
+   [
+    "oats"
+   ]
+  ],
+  [
+   "yoghurt|yogurt",
+   [
+    "yoghurt"
+   ]
+  ],
+  [
+   "milk",
+   [
+    "milk"
+   ]
+  ],
+  [
+   "dairy",
+   [
+    "yoghurt",
+    "milk",
+    "protein_powder"
+   ]
+  ],
+  [
+   "almond|nuts",
+   [
+    "nuts"
+   ]
+  ],
+  [
+   "avocado|avo\\b",
+   [
+    "avocado"
+   ]
+  ],
+  [
+   "banana",
+   [
+    "banana"
+   ]
+  ],
+  [
+   "berr",
+   [
+    "berries"
+   ]
+  ],
+  [
+   "broccoli",
+   [
+    "broccoli"
+   ]
+  ],
+  [
+   "vegetable|veggie|veges",
+   [
+    "mixed_veg"
+   ]
+  ],
+  [
+   "spinach",
+   [
+    "spinach"
+   ]
+  ],
+  [
+   "tomato",
+   [
+    "tomato"
+   ]
+  ],
+  [
+   "honey",
+   [
+    "honey"
+   ]
+  ]
+ ],
  "training": {
   "gym3_full_body": {
    "label": "3 days: Full Body A / B / C",

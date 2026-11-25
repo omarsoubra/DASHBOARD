@@ -99,6 +99,7 @@
         [el('label', { text: 'Allergies. Tick any that apply.' }), el('div', { class: 'chips', role: 'group', 'aria-label': 'Allergies' }, Object.keys(ALLERGIES).map(function (k) {
           return el('label', null, [el('input', { type: 'checkbox', name: 'allergy', value: k }), document.createTextNode(ALLERGIES[k])]); }))],
         field('Foods you will not eat', el('textarea', { name: 'foods', maxlength: '400' }), 'fd'),
+        field('Foods you like and want in your plan', el('textarea', { name: 'likes', maxlength: '400' }), 'lk'),
         field('Anything else ' + coach + ' should know', el('textarea', { name: 'notes', maxlength: '600' }), 'nt'))),
       el('label', { class: 'consent', for: 'consent' }, [consent, el('span', { text: 'I am 18 or older, and I agree to send these details to ' + b.brand + ' so they can build my plan.' })]),
       problem, send);

@@ -113,6 +113,7 @@
   .two { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; } @media (max-width:720px) { .two { grid-template-columns:1fr; } .erow { grid-template-columns:1fr 1fr 40px; } .ex .erow > input:first-child { grid-column:1 / -1; } .erow.ehead, .frow.ehead { display:none; } .frow { grid-template-columns:1fr 44px 40px; } .frow > input:first-child { grid-column:1 / -1; } }
   .checks { display:flex; flex-wrap:wrap; gap:8px; } .checks label { display:flex; align-items:center; gap:6px; font-weight:400; margin:0; border:1px solid var(--line); border-radius:99px; padding:7px 12px; background:#fff; }
   .checks input { width:auto; min-height:0; }
+  .foodprefs { border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#fff; } .foodprefs summary { cursor:pointer; font-weight:600; } .foodprefs[open] summary { margin-bottom:12px; }
 </style>
 </head>
 <body class="bare">
@@ -550,6 +551,16 @@
   var STATUS = { queued: ['Building', 'warn'], building: ['Building', 'warn'], built: ['Ready to review', 'good'], failed: ['Needs a change', 'bad'], publishing: ['Going live', 'warn'], live: ['Live', 'good'] };
   function pill(status) { var s = STATUS[status] || [status, '']; return el('span', { class: 'pill ' + s[1], text: s[0] }); }
   // The client form: the coach sends a link, the client fills in their own details, the plan form arrives filled in.
+  function foodKeys(text, O) {
+    var s = ' ' + String(text || '').toLowerCase().replace(/[^a-z ]+/g, ' ') + ' ', out = [];
+    (O.foodWords || []).forEach(function (w) {
+      if (new RegExp(w[0]).test(s)) {
+        w[1].forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); });
+        if (w[0].split('|')[0].indexOf(' ') >= 0) s = s.replace(new RegExp(w[0], 'g'), ' ');
+      }
+    });
+    return out;
+  }
   function intakeToForm(a) {
     var f = { firstName: a.firstName, lastName: a.lastName, sex: a.sex, age: a.age, heightCm: a.heightCm, weightKg: a.weightKg, goal: a.goal, activity: a.activity,
               training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : a.days === 4 ? 'gym4_upper_lower' : 'gym5_ppl_ul'), allergies: a.allergies || [] };
@@ -662,6 +673,26 @@
         var c = el('input', { type: 'checkbox', name: 'allergy', value: a }); c.checked = (v.allergies || []).indexOf(a) >= 0;
         return el('label', null, [c, a.replace('_', ' ')]);
       }));
+      var IA = !storageKey && S.intake ? S.intake.answers : null;       // what the client wrote on their sign-up form pre-ticks the food lists
+      var avoid0 = v.avoid || (IA ? foodKeys(IA.foods, O) : []), likes0 = v.likes || (IA ? foodKeys(IA.likes, O).filter(function (k) { return avoid0.indexOf(k) < 0; }) : []);
+      function chips(name, picked) {
+        return el('div', { class: 'checks' }, Object.keys(O.foods || {}).map(function (k) {
+          var c = el('input', { type: 'checkbox', name: name, value: k }); c.checked = picked.indexOf(k) >= 0;
+          return el('label', null, [c, O.foods[k]]);
+        }));
+      }
+      var avoidBox = chips('avoid', avoid0), likesBox = chips('likes', likes0);
+      function oneList(from, other) {                     // a food is on one list or the other, never both
+        from.addEventListener('change', function (e) { if (e.target.checked) { var o = other.querySelector('input[value="' + e.target.value + '"]'); if (o) o.checked = false; } });
+      }
+      oneList(avoidBox, likesBox); oneList(likesBox, avoidBox);
+      var foodCount = function () { var n = avoidBox.querySelectorAll('input:checked').length + likesBox.querySelectorAll('input:checked').length; return n ? ' (' + n + ' ticked)' : ''; };
+      var foodSum = el('summary', { text: 'What they eat' + foodCount() });
+      var foodBox = el('details', { class: 'full foodprefs' }, [foodSum,
+        el('label', { text: 'Does not eat' }), el('div', { class: 'hint', text: 'Dishes that need these are left out.' }), avoidBox,
+        el('label', { text: 'Likes', style: 'margin-top:14px' }), el('div', { class: 'hint', text: 'Lunches and dinners are built around these first.' }), likesBox]);
+      if (avoid0.length || likes0.length) foodBox.open = true;
+      foodBox.addEventListener('change', function () { foodSum.textContent = 'What they eat' + foodCount(); });
       var msg = el('div'); var btn = el('button', { type: 'submit', text: 'Build the plan' });
       var form = el('form', { class: 'card', novalidate: true, onsubmit: function (e) {
         e.preventDefault(); msg.replaceChildren();
@@ -669,6 +700,7 @@
         ['firstName', 'lastName', 'sex', 'goal', 'activity', 'training', 'menu', 'startDate'].forEach(function (k) { var x = String(f.get(k) || '').trim(); if (x) out[k] = x; });
         ['age', 'heightCm', 'weightKg', 'goalWeightKg', 'mealsPerDay', 'weeks'].forEach(function (k) { var x = String(f.get(k) || '').trim(); if (x) out[k] = Number(x); });
         out.allergies = f.getAll('allergy');
+        out.avoid = f.getAll('avoid'); out.likes = f.getAll('likes'); if (f.get('diet') && f.get('diet') !== 'any') out.diet = String(f.get('diet'));
         var missing = ['firstName', 'age', 'heightCm', 'weightKg'].filter(function (k) { return out[k] === undefined || out[k] === ''; });
         if (missing.length) { msg.appendChild(banner('bad', 'Fill in name, age, height and weight.')); return; }
         if (ownToggle.checked) {
@@ -677,9 +709,9 @@
           out.kcal = ks; if (f.get('proteinG')) out.proteinG = Number(f.get('proteinG'));
         }
         if (v.edits) {                      // hand edits only make sense on the same training plan, menu, meal count and length
-          var same = ['training', 'menu', 'mealsPerDay', 'weeks'].every(function (k) { return String(out[k]) === String(v[k]); });
+          var same = ['training', 'menu', 'mealsPerDay', 'weeks'].every(function (k) { return String(out[k]) === String(v[k]); }) && String(out.diet || 'any') === String(v.diet || 'any') && String(out.avoid) === String(v.avoid || []) && String(out.likes) === String(v.likes || []);
           if (same) out.edits = v.edits;
-          else if (!confirm('Changing the training plan, food, meals a day or length starts a fresh plan, so your hand edits will be dropped. Continue?')) return;
+          else if (!confirm('Changing the training plan, food, what they eat, meals a day or length starts a fresh plan, so your hand edits will be dropped. Continue?')) return;
         }
         btn.disabled = true;
         call('cpBuildCreate', Object.assign({ form: out }, storageKey ? { storageKey: storageKey } : {}, !storageKey && S.intake ? { intakeId: S.intake.id } : {})).then(function (j) {
@@ -693,8 +725,8 @@
           var pick = el('select', { 'aria-label': 'Start from' }, [el('option', { value: '', text: 'A standard plan' })].concat(TPLS.map(function (t) { var o = el('option', { value: t.id, text: 'My template: ' + t.name }); if (startTpl && startTpl.id === t.id) o.selected = true; return o; })));
           pick.addEventListener('change', function () {
             var t = TPLS.filter(function (x) { return x.id === pick.value; })[0] || null, keep = {};
-            new FormData(form).forEach(function (val, k) { if (k !== 'allergy' && val !== '') keep[k] = val; });
-            keep.allergies = new FormData(form).getAll('allergy'); delete keep.edits;
+            new FormData(form).forEach(function (val, k) { if (k !== 'allergy' && k !== 'avoid' && k !== 'likes' && val !== '') keep[k] = val; });
+            keep.allergies = new FormData(form).getAll('allergy'); keep.avoid = new FormData(form).getAll('avoid'); keep.likes = new FormData(form).getAll('likes'); delete keep.edits;
             formView(keep, storageKey, clientName, t);
           });
           return field('Start from', pick);
@@ -708,6 +740,8 @@
         field('Food', sel('menu', O.menus, v.menu || Object.keys(O.menus)[0])), field('Meals', sel('mealsPerDay', feeds, v.mealsPerDay || 4)),
         field('Length', weeksSel), field('Start date', inp('startDate', 'date', v.startDate), 'optional'),
         el('div', { class: 'full' }, [el('label', { text: 'Allergies' }), allergy]),
+        O.diets ? el('div', { class: 'full' }, field('Diet', sel('diet', O.diets, v.diet || 'any'))) : null,
+        O.foods ? foodBox : null,
         el('div', { class: 'full' }, el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500' }, [ownToggle, 'Set my own calories', el('span', { class: 'hint', text: '(otherwise worked out for you)' })])),
         kcalBox]), el('div', { style: 'height:16px' }), el('div', { class: 'row' }, [btn, el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: function () { storageKey ? clientView(storageKey) : homeView(); } })])]);
       ownToggle.style.width = 'auto'; ownToggle.style.minHeight = '0';
@@ -727,7 +761,7 @@
       var IN = !storageKey && S.intake ? S.intake : null, ia = IN ? IN.answers : null;
       var intakeCard = ia ? el('div', { class: 'card', style: 'margin-bottom:14px' }, [el('h3', { text: 'From ' + ia.firstName + '\'s form' }),
         el('p', { class: 'small', text: 'Wants to train ' + ia.days + ' days a week ' + (ia.where === 'home' ? 'at home' : 'at a gym') + '.' + (ia.phone ? ' Mobile ' + ia.phone + '.' : '') }),
-        ia.health ? el('p', { class: 'small', text: 'Injuries or health: ' + ia.health }) : null, ia.foods ? el('p', { class: 'small', text: 'Will not eat: ' + ia.foods }) : null,
+        ia.health ? el('p', { class: 'small', text: 'Injuries or health: ' + ia.health }) : null, ia.foods ? el('p', { class: 'small', text: 'Will not eat: ' + ia.foods }) : null, ia.likes ? el('p', { class: 'small', text: 'Likes: ' + ia.likes }) : null,
         ia.notes ? el('p', { class: 'small', text: 'Also: ' + ia.notes }) : null,
         el('p', { class: 'mute small', style: 'margin:0', text: 'Check the details below, then build. What they wrote here is saved to your notes on this client.' })]) : null;
       show([el('h1', { text: storageKey ? 'New plan for ' + (clientName || v.firstName) : 'New client' }), intakeCard,

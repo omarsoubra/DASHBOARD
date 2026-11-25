@@ -434,6 +434,19 @@ async function buildAndPublish(coach, form, storageKey) {
   await M.cpCoachSetStatus({ coachToken: OMAR, slug: other.coach ? other.coach.slug : scB.coach.slug, status: 'suspended' });
   t('a suspended coach opens no scope', gone !== null && (await M.tenantScope('dashboard', { coachToken: other.session })) === null);
 
+  // what the client eats
+  const OPT = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'coach', 'options.json'), 'utf8'));
+  t('the server reads food words the same way the plan engine does', JSON.stringify(M.CP_FOOD_WORDS) === JSON.stringify(OPT.foodWords) && M.CP_FOOD_WORDS.every((w) => w[1].every((k) => OPT.foods[k])));
+  t('free writing becomes food ticks: sweet potato is not potato, peanut butter is not nuts', JSON.stringify(M.cpFoodKeys('No seafood, hate broccoli & sweet potato')) === JSON.stringify(['sweet_potato', 'tuna', 'prawns', 'broccoli'])
+    && JSON.stringify(M.cpFoodKeys('peanut butter')) === JSON.stringify(['peanut_butter']) && M.cpFoodKeys('nothing really').length === 0, M.cpFoodKeys('No seafood, hate broccoli & sweet potato'));
+  const itf = M.cpIntakeToForm({ ...ANS, foods: 'tuna and eggs', likes: 'steak, rice, eggs' });
+  t('a sign-up\'s food answers pre-fill the plan; a food is never on both lists', JSON.stringify(itf.avoid) === JSON.stringify(['tuna', 'eggs']) && JSON.stringify(itf.likes) === JSON.stringify(['steak', 'rice']), itf);
+  t('the plan form carries diet, likes and doesn\'t-eat; junk is refused', (() => {
+    const base = { firstName: 'Al', sex: 'male', age: 30, heightCm: 180, weightKg: 80, goal: 'lose_fat', activity: 'moderate', training: 'gym5_ppl_ul', menu: 'everyday' };
+    const c = M.cpCleanForm({ ...base, diet: 'no_red_meat', likes: ['rice'], avoid: Object.keys(OPT.foods).slice(0, 20) });
+    return c && c.diet === 'no_red_meat' && c.likes[0] === 'rice' && c.avoid.length === 20 && M.cpCleanForm({ ...base, avoid: new Array(31).fill('rice') }) === null && M.cpCleanForm({ ...base, likes: [{ x: 1 }] }) === null;
+  })());
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
