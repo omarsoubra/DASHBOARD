@@ -61,6 +61,15 @@
     "shellfish",
     "tree_nut"
    ]
+  },
+  "freefrom": {
+   "label": "Allergy-friendly (halal meat)",
+   "feeds": [
+    3,
+    4
+   ],
+   "halal": true,
+   "contains": []
   }
  },
  "kcal": [

@@ -289,7 +289,7 @@ async function buildAndPublish(coach, form, storageKey) {
   const auto = DB.plan_builds.find((x) => x.from_form && /kim_newman$/.test(x.storage_key));
   const an = auto && DB.coach_client_state.find((x) => x.storage_key === auto.storage_key);
   t('a sent form starts the plan by itself: queued for the coach to review, nothing published', auto && auto.status === 'queued' && auto.is_update === false && auto.form.firstName === 'Kim'
-    && auto.form.training === 'gym5_ppl_ul' && auto.form.menu === 'everyday' && auto.form.allergies.join() === 'peanut' && !('coach_id' in auto.form) && !DB.clients.some((c) => c.storage_key === auto.storage_key), auto);
+    && auto.form.training === 'gym5_ppl_ul' && auto.form.menu === 'freefrom' && auto.form.allergies.join() === 'peanut' && !('coach_id' in auto.form) && !DB.clients.some((c) => c.storage_key === auto.storage_key), auto);
   t('their health and food answers land in the coach\'s notes and the form is erased', an && /Old ankle sprain/.test(an.notes) && /No mushrooms/.test(an.notes) && /5 days a week at a gym/.test(an.notes) && !/script/.test(an.notes)
     && DB.coach_intakes[0].status === 'closed' && DB.coach_intakes[0].answers === null && B(await M.cpIntakes({ session: al3 })).forms.length === 0, an);
   t('the coach\'s plan list marks it as coming from their form', B(await M.cpClients({ session: al3 })).builds.some((x) => x.id === auto.id && x.fromForm === true));
@@ -319,7 +319,7 @@ async function buildAndPublish(coach, form, storageKey) {
   const ANS2 = { ...ANS, firstName: 'Lee', lastName: 'Standing', where: 'home', days: 3, allergies: [] };
   const s1 = B(await M.cpIntakeSubmit({ code, consent: true, answers: ANS2 })), s2 = B(await M.cpIntakeSubmit({ code, consent: true, answers: { ...ANS2, firstName: 'Mia' } }));
   const lee = DB.plan_builds.find((x) => /lee_standing$/.test(x.storage_key)), mia = DB.plan_builds.find((x) => /mia_standing$/.test(x.storage_key));
-  t('the standing link works for many people, each one starting their own plan for this coach only', s1.ok && s2.ok && lee && mia && lee.from_form && lee.form.training === 'home5' && lee.coach_id === auto.coach_id && mia.coach_id === auto.coach_id
+  t('the standing link works for many people, each one starting their own plan for this coach only', s1.ok && s2.ok && lee && mia && lee.from_form && lee.form.training === 'home5' && lee.form.menu === 'everyday' && lee.coach_id === auto.coach_id && mia.coach_id === auto.coach_id
     && B(await M.cpIntakeSubmit({ code, answers: ANS2 })).error === 'consent_required' && B(await M.cpIntakeSubmit({ code, consent: true, answers: { ...ANS2, age: 17 } })).error === 'bad_answers', [s1, s2]);
   const L2 = B(await M.cpIntakeLink({ session: al3, reset: true }));
   t('a new link kills the old one', L2.ok && L2.link !== L1.link && B(await M.cpIntakeInspect({ code })).error === 'bad_link' && B(await M.cpIntakeSubmit({ code, consent: true, answers: ANS2 })).error === 'bad_link'

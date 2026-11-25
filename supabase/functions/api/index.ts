@@ -4695,6 +4695,8 @@ function cpCleanForm(raw: any): Record<string, unknown> | null {
     if (JSON.stringify(clean).length > CP_MAX_EDITS_BYTES) return null;
     if (Object.keys(clean).length) out.edits = clean;
   }
+  if (out.activity !== undefined && !['sedentary', 'moderate', 'active', 'very_active'].includes(String(out.activity))) return null;
+  if (out.sex !== undefined && !['male', 'female'].includes(String(out.sex))) return null;
   if (!/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(String(out.firstName ?? ''))) return null;
   if (out.lastName !== undefined && !/^[A-Za-z][A-Za-z '\-]{0,30}$/.test(String(out.lastName))) return null;
   return out;
@@ -5229,7 +5231,8 @@ async function cpRegistry(body: any) {
     return { storageKey: c.storage_key, displayName: c.display_name, programUrl: `clients/${c.storage_key}/`, programType: sm.training ?? null,
       programGoal: sm.strategy ?? null, programUpdatedAt: b?.published_at ?? null, durationWeeks: sm.weeks ?? null, phaseCount: sm.weeks ? Math.round(sm.weeks / 4) : null,
       startWeight: c.start_weight ?? null, goalWeight: c.goal_weight ?? sm.goalWeightKg ?? null, startDate: c.start_date ?? null,
-      kcal: t0.kcal ?? null, p: t0.p ?? null, c: t0.c ?? null, f: t0.f ?? null };
+      kcal: t0.kcal ?? null, p: t0.p ?? null, c: t0.c ?? null, f: t0.f ?? null,
+      targets: (sm.targets ?? []).map((t: any) => ({ phase: t.phase, kcal: t.kcal, p: t.p, c: t.c, f: t.f })) };
   });
   return ok({ schemaVersion: 1, generatedAt: new Date().toISOString(), generatedBy: 'coach-platform', clientCount: clients.length, clients,
               coach: cpPublicCoach(coach) });
@@ -5312,11 +5315,12 @@ async function cpIntakeInspect(body: any) {
 function cpIntakeToForm(a: any): Record<string, unknown> {
   const f: Record<string, unknown> = { firstName: a.firstName, lastName: a.lastName, sex: a.sex, age: a.age, heightCm: a.heightCm, weightKg: a.weightKg,
     goal: a.goal, activity: a.activity, training: a.where === 'home' ? 'home5' : (a.days <= 3 ? 'gym3_full_body' : 'gym5_ppl_ul'),
-    menu: CP_DEFAULT_MENU, mealsPerDay: a.mealsPerDay ?? 4, weeks: 12, allergies: a.allergies ?? [] };
+    menu: (a.allergies ?? []).length ? CP_ALLERGY_MENU : CP_DEFAULT_MENU, mealsPerDay: a.mealsPerDay ?? 4, weeks: 12, allergies: a.allergies ?? [] };
   if (a.goalWeightKg) f.goalWeightKg = a.goalWeightKg;
   return f;
 }
 const CP_DEFAULT_MENU = 'everyday';
+const CP_ALLERGY_MENU = 'freefrom';                    // none of the nine allergens the form asks about
 const CP_INTAKE_MAX_PER_DAY = 30;
 /** Public, link-gated: the client's answers. They reach only the coach who owns the link, and a plan starts building
  *  straight away so the coach finds it ready to review. If it cannot start (same name as an existing client, client

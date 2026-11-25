@@ -582,6 +582,19 @@
         el('div', { class: 'full' }, el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500' }, [ownToggle, 'Set my own calories', el('span', { class: 'hint', text: '(otherwise worked out for you)' })])),
         kcalBox]), el('div', { style: 'height:16px' }), el('div', { class: 'row' }, [btn, el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: function () { storageKey ? clientView(storageKey) : homeView(); } })])]);
       ownToggle.style.width = 'auto'; ownToggle.style.minHeight = '0';
+      // an allergy the chosen food contains: move to a menu that is free of it, and say so
+      var menuSel = form.querySelector('select[name=menu]'), menuNote = el('div', { class: 'hint', style: 'margin-top:6px' });
+      menuSel.parentNode.appendChild(menuNote);
+      function fitMenu() {
+        var picked = Array.prototype.map.call(form.querySelectorAll('input[name=allergy]:checked'), function (c) { return c.value; });
+        var clash = function (k) { return (O.menus[k].contains || []).filter(function (x) { return picked.indexOf(x) >= 0; }); };
+        menuNote.textContent = '';
+        if (!clash(menuSel.value).length) return;
+        var safe = Object.keys(O.menus).filter(function (k) { return !clash(k).length; })[0];
+        if (safe) { menuSel.value = safe; menuNote.textContent = 'Changed to ' + O.menus[safe].label + ' because of the allergies ticked.'; }
+        else menuNote.textContent = 'No menu is free of ' + clash(menuSel.value).join(', ').replace(/_/g, ' ') + ' yet.';
+      }
+      allergy.addEventListener('change', fitMenu); menuSel.addEventListener('change', fitMenu); fitMenu();
       var IN = !storageKey && S.intake ? S.intake : null, ia = IN ? IN.answers : null;
       var intakeCard = ia ? el('div', { class: 'card', style: 'margin-bottom:14px' }, [el('h3', { text: 'From ' + ia.firstName + '\'s form' }),
         el('p', { class: 'small', text: 'Wants to train ' + ia.days + ' days a week ' + (ia.where === 'home' ? 'at home' : 'at a gym') + '.' + (ia.phone ? ' Mobile ' + ia.phone + '.' : '') }),
