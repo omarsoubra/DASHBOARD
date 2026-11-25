@@ -23,6 +23,7 @@ http.createServer(async (req, res) => {
       let body; try { body = JSON.parse(await read(req)); } catch { return send(res, 200, JSON.stringify({ ok: false, error: 'bad_json' })); }
       return send(res, 200, JSON.stringify(await FULL.call(body)));
     }
+    if (req.method === 'GET' && url.pathname === '/api') { const r = await FULL.get(url.search); return send(res, r.status, r.text); }
     if (req.method === 'POST' && url.pathname === '/sandbox/coach') {
       const b = JSON.parse(await read(req));
       const r = (await M.cpCoachCreate({ coachToken: OMAR, ...b })).__body;

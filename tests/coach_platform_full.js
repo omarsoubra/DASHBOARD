@@ -20,4 +20,9 @@ async function call(body) {
   const res = await handler(new Request('http://sandbox.invalid/api', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }));
   return res.json();
 }
-module.exports = { call, DB: FX.DB, FX };
+/** GET (the client app's own reads: overrides and cloud restore) through the real router. */
+async function get(search) {
+  const res = await handler(new Request('http://sandbox.invalid/api' + search, { method: 'GET' }));
+  return { status: res.status, text: await res.text() };
+}
+module.exports = { call, get, DB: FX.DB, FX };

@@ -5,19 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="robots" content="noindex, nofollow"/>
 <title>Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f6f6f4; --card:#fff; --ink:#16161a; --mute:#6b6b76; --line:#e4e4e0; --accent:#16161a; --good:#1c7c4a; --warn:#a15c00; --bad:#b3261e; --soft:#f0f0ec; }
+  :root { --bg:#f4f5f7; --card:#fff; --ink:#15161c; --ink2:#4a4d5a; --mute:#7a7e8c; --line:#e3e5ea; --accent:#15161c; --good:#00845b; --warn:#b7790f; --bad:#d0423b; --soft:#eef0f3;
+    --side-w:232px; --side-bg:#0c0d13; --side-line:#1c1d29; --side-text:#c4c6d4; --side-muted:#6b6d85; --brand:#00e5a0; }
   * { box-sizing: border-box; }
-  html, body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-text-size-adjust:100%; }
-  header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:12px 16px; display:flex; align-items:center; gap:12px; }
-  header .brand { font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:14px; }
-  header .who { margin-left:auto; color:var(--mute); font-size:14px; }
-  main { max-width:860px; margin:0 auto; padding:18px 16px 80px; }
-  h1 { font-size:24px; margin:6px 0 14px; line-height:1.2; }
-  h2 { font-size:15px; margin:26px 0 10px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); font-weight:600; }
+  html, body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 'Inter', system-ui, -apple-system, sans-serif; -webkit-text-size-adjust:100%; }
+  .side { position:fixed; top:0; left:0; bottom:0; width:var(--side-w); z-index:90; background:var(--side-bg); border-right:1px solid var(--side-line); display:flex; flex-direction:column; padding:16px 12px; gap:2px; color:var(--side-text); overflow-y:auto; transition:transform .2s ease; }
+  .side-head { padding:4px 8px 20px; min-height:40px; display:flex; flex-direction:column; line-height:1; }
+  .side-head b { font-family:'Bebas Neue', sans-serif; font-weight:400; font-size:24px; letter-spacing:.04em; color:#f2f3f7; display:flex; align-items:center; gap:8px; }
+  .side-head small { font-family:'DM Mono', monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--side-muted); margin-top:4px; }
+  .side img.logo { width:26px; height:26px; border-radius:6px; object-fit:cover; }
+  .side .grp { font-family:'DM Mono', monospace; font-size:10px; letter-spacing:.14em; color:var(--side-muted); padding:16px 12px 8px; }
+  .side a.nv { display:flex; align-items:center; gap:12px; height:40px; padding:0 12px; border-radius:8px; color:var(--side-text); text-decoration:none; font-size:14px; font-weight:500; white-space:nowrap; position:relative; }
+  .side a.nv svg { width:18px; height:18px; flex:0 0 18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .side a.nv:hover { background:#151621; color:#fff; }
+  .side a.nv[aria-current="page"] { background:#161a1d; color:#fff; }
+  .side a.nv[aria-current="page"]::before { content:''; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:2px; background:var(--brand); }
+  .side a.nv[aria-current="page"] svg { color:var(--brand); }
+  .side a.nv:focus-visible, .side .out:focus-visible, .topbar button:focus-visible { outline:2px solid #fff; outline-offset:-2px; }
+  .side-foot { margin-top:auto; border-top:1px solid var(--side-line); padding:12px 4px 0; }
+  .side .out { display:flex; align-items:center; width:100%; height:36px; padding:0 8px; border-radius:8px; background:transparent; border:0; color:var(--side-text); font:500 13px 'Inter', system-ui, sans-serif; min-height:0; text-align:left; }
+  .side .out:hover { background:#151621; color:#fff; }
+  .topbar { display:none; }
+  .backdrop { display:none; }
+  main { margin-left:var(--side-w); max-width:1100px; padding:32px 32px 80px; }
+  body.bare .side, body.bare .topbar { display:none; } body.bare main { margin:0 auto; max-width:520px; padding:32px 16px; }
+  @media (max-width:767px) {
+    .side { width:264px; transform:translateX(-100%); z-index:96; }
+    body.drawer .side { transform:translateX(0); box-shadow:0 0 40px rgba(0,0,0,.35); }
+    .backdrop { display:block; position:fixed; inset:0; background:rgba(10,11,16,.45); z-index:95; opacity:0; pointer-events:none; transition:opacity .2s; }
+    body.drawer .backdrop { opacity:1; pointer-events:auto; }
+    .topbar { display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:80; height:56px; padding:0 16px; background:var(--side-bg); color:#fff; }
+    .topbar b { font-family:'Bebas Neue', sans-serif; font-weight:400; font-size:20px; letter-spacing:.04em; }
+    .topbar span { margin-left:auto; font-size:13px; color:var(--side-text); font-weight:500; }
+    .topbar button { background:transparent; border:1px solid #262838; color:#fff; width:36px; height:36px; min-height:36px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
+    .topbar svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; }
+    main { margin-left:0; padding:16px 16px 80px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .side, .backdrop { transition:none; } }
+  h1 { font:600 24px/1.2 'Inter', system-ui, sans-serif; letter-spacing:-0.01em; margin:0 0 20px; }
+  h2 { font:600 14px/1.3 'Inter', system-ui, sans-serif; margin:28px 4px 10px; color:var(--ink); }
   h3 { font-size:16px; margin:0 0 6px; }
   p { margin:0 0 10px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:12px; box-shadow:0 1px 2px rgba(20,22,30,.03); }
   .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   .grow { flex:1 1 auto; min-width:0; }
   .mute { color:var(--mute); } .small { font-size:14px; } .right { text-align:right; }
@@ -54,10 +86,6 @@
   @keyframes sp { to { transform:rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spin { animation:none; } }
   svg.chart { width:100%; height:120px; display:block; }
-  header img.logo { width:30px; height:30px; border-radius:8px; object-fit:cover; }
-  header nav { display:flex; gap:4px; margin-left:8px; }
-  header nav button { background:none; border:0; color:var(--mute); font-weight:600; padding:8px 10px; min-height:40px; border-radius:8px; }
-  header nav button[aria-current="page"] { color:var(--ink); background:var(--soft); }
   button, .btn { color:var(--on-accent, #fff); }
   .tabs button[aria-pressed="true"] { color:var(--on-accent, #fff); }
   .edit { display:grid; gap:8px; }
@@ -83,12 +111,12 @@
   .two { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; } @media (max-width:720px) { .two { grid-template-columns:1fr; } .erow { grid-template-columns:minmax(0,1fr) 56px 72px 40px; } .erow .rest { display:none; } }
   .checks { display:flex; flex-wrap:wrap; gap:8px; } .checks label { display:flex; align-items:center; gap:6px; font-weight:400; margin:0; border:1px solid var(--line); border-radius:99px; padding:7px 12px; background:#fff; }
   .checks input { width:auto; min-height:0; }
-  nav a.navlink { font:inherit; font-size:14px; font-weight:600; color:var(--mute); text-decoration:none; padding:8px 10px; border-radius:8px; white-space:nowrap; }
-  nav a.navlink:hover { color:var(--ink); background:var(--soft); }
 </style>
 </head>
-<body>
-<header><img class="logo" id="logo" alt="" hidden><span class="brand" id="brand">Coach</span><nav id="nav" aria-label="Sections"></nav><span class="who" id="who"></span></header>
+<body class="bare">
+<div class="topbar"><button type="button" id="menu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><b id="brand2">Coach</b><span id="where"></span></div>
+<aside class="side" id="side"><div class="side-head"><b><img class="logo" id="logo" alt="" hidden><span id="brand">Coach</span></b><small>Coach dashboard</small></div><nav id="nav" aria-label="Sections"></nav><div class="side-foot" id="who"></div></aside>
+<div class="backdrop" id="backdrop"></div>
 <main id="app" aria-live="polite"></main>
 <script>
 (function () {
@@ -154,26 +182,54 @@
   }
   function lum(hex) { var c = [1, 3, 5].map(function (i) { var v = parseInt(hex.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
   function applyTheme(accent) {
-    var a = /^#[0-9a-f]{6}$/i.test(accent || '') ? accent : '#16161a';
-    document.documentElement.style.setProperty('--accent', a);
-    document.documentElement.style.setProperty('--on-accent', lum(a) > 0.3 ? '#16161a' : '#ffffff');
+    var a = /^#[0-9a-f]{6}$/i.test(accent || '') ? accent : '#00e5a0';
+    document.documentElement.style.setProperty('--brand', a);
+  }
+  var ICON = {
+    today: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+    clients: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 010 6.4"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
+    checkins: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/>',
+    activity: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    'new': '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+    plans: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    templates: '<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/>',
+    look: '<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="15.5" cy="10" r="1.2"/><path d="M12 21a3 3 0 010-6h2a3 3 0 003-3"/>'
+  };
+  function icon(name) {   // fixed drawings from the table above, never text from the server
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = ICON[name] || ''; return svg;
   }
   function setHeader(section) {
-    document.getElementById('brand').textContent = S.coach ? S.coach.brand : 'Coach';
-    document.title = S.coach ? S.coach.brand + ' - Coach' : 'Coach';
+    var brand = S.coach ? S.coach.brand : 'Coach';
+    document.getElementById('brand').textContent = brand; document.getElementById('brand2').textContent = brand;
+    document.title = S.coach ? S.coach.brand + ' - Plans' : 'Coach';
     applyTheme(S.coach && S.coach.accent);
     var logo = document.getElementById('logo');
     if (S.coach && S.coach.logo) { logo.src = 'data:image/png;base64,' + S.coach.logo; logo.hidden = false; } else { logo.hidden = true; logo.removeAttribute('src'); }
     var nav = document.getElementById('nav'); nav.replaceChildren();
     var who = document.getElementById('who'); who.replaceChildren();
+    document.body.classList.toggle('bare', !S.coach); document.body.classList.remove('drawer');
     if (!S.coach) return;
     if (section) S.section = section;
-    nav.appendChild(el('a', { class: 'navlink', href: DASH, text: '‹ Dashboard' }));
-    [['clients', 'Plans and forms', homeView], ['templates', 'Templates', templatesView], ['look', 'Your look', lookView]].forEach(function (x) {
-      nav.appendChild(el('button', { type: 'button', 'aria-current': S.section === x[0] ? 'page' : null, text: x[1], onclick: x[2] }));
-    });
-    who.appendChild(el('button', { class: 'link', text: 'Sign out', onclick: function () { call('cpLogout').catch(function () {}); signOut(false); } }));
+    var NAMES = { 'new': 'New client', clients: 'Plans and forms', templates: 'Templates', look: 'Your look' };
+    document.getElementById('where').textContent = NAMES[S.section] || '';
+    function link(ic, text, href, current) {
+      var a = el('a', { class: 'nv', href: href, 'aria-current': current ? 'page' : null }); a.appendChild(icon(ic)); a.appendChild(el('span', { text: text })); return a;
+    }
+    nav.appendChild(el('div', { class: 'grp', text: 'COACHING' }));
+    nav.appendChild(link('today', 'Today', DASH + '#/today'));
+    nav.appendChild(link('clients', 'Clients', DASH + '#/clients'));
+    nav.appendChild(link('checkins', 'Check-ins', DASH + '#/check-ins'));
+    nav.appendChild(link('activity', 'Activity', DASH + '#/activity'));
+    nav.appendChild(el('div', { class: 'grp', text: 'PLANS' }));
+    nav.appendChild(link('new', 'New client', '#new', S.section === 'new'));
+    nav.appendChild(link('plans', 'Plans and forms', '#plans', S.section === 'clients'));
+    nav.appendChild(link('templates', 'Templates', '#templates', S.section === 'templates'));
+    nav.appendChild(link('look', 'Your look', '#look', S.section === 'look'));
+    who.appendChild(el('button', { class: 'out', type: 'button', text: 'Sign out', onclick: function () { call('cpLogout').catch(function () {}); signOut(false); } }));
   }
+  document.getElementById('menu').addEventListener('click', function () { document.body.classList.toggle('drawer'); });
+  document.getElementById('backdrop').addEventListener('click', function () { document.body.classList.remove('drawer'); });
   function signOut(expired) {
     S.session = null; S.coach = null; try { localStorage.removeItem(KEY); localStorage.removeItem('sbo_coach_token'); localStorage.removeItem('cp_coach_v1'); } catch (e) {}
     location.replace(DASH);
@@ -400,18 +456,6 @@
         [sendBtn, out])));
     }).catch(function () {});
   }
-  var NEED_ORDER = ['checkin', 'ended', 'ending', 'not_started', 'quiet', 'no_checkin'];
-  var NEED_LABEL = { checkin: 'Check-in', ended: 'Plan ended', ending: 'Plan ending', not_started: 'Not started', quiet: 'Gone quiet', no_checkin: 'No check-in' };
-  var NEED_TONE = { checkin: 'good', ended: 'bad', ending: 'warn', not_started: 'warn', quiet: 'bad', no_checkin: 'warn' };
-  function needText(n) {
-    if (n.kind === 'checkin') return 'Sent a check-in ' + when(n.at) + '. Read it and reply.';
-    if (n.kind === 'ended') return 'Their plan finished ' + when(n.at) + '. Build the next block.';
-    if (n.kind === 'ending') return 'Their plan ends in ' + n.days + (n.days === 1 ? ' day' : ' days') + '. Build the next block.';
-    if (n.kind === 'not_started') return 'Has not opened the app in ' + n.days + ' days. Send them the link again.';
-    if (n.kind === 'quiet') return 'Nothing logged for ' + n.days + ' days. Message them.';
-    if (n.kind === 'no_checkin') return n.at ? 'Last check-in was ' + when(n.at) + '. Ask for one.' : 'No check-in yet. Ask for one.';
-    return '';
-  }
   function homeView() {
     show(busy('Loading your clients'));
     call('cpClients').then(function (j) {
@@ -443,6 +487,7 @@
 
   // ── the plan form (new client, or a new plan for an existing one) ────────
   function formView(prev, storageKey, clientName, startTpl) {
+    if (S.coach) setHeader(storageKey ? 'clients' : 'new');
     show(busy('Loading'));
     Promise.all([options(), templates()]).then(function (res) {
       var O = res[0], TPLS = res[1];
@@ -950,6 +995,7 @@
   function route() {
     var h = location.hash, c = /^#client=(c_[a-z0-9_]{2,38})$/.exec(h);
     if (h === '#new') formView(null, null); else if (h === '#templates') templatesView(); else if (h === '#look') lookView(); else if (c) clientView(c[1]); else homeView();
+    document.body.classList.remove('drawer');
   }
   window.addEventListener('hashchange', function () { if (S.coach && /^#(new|plans|templates|look|client=)/.test(location.hash)) route(); });
   call('cpMe').then(function (j) { if (j.ok) { S.coach = j.coach; try { localStorage.setItem('cp_coach_v1', JSON.stringify(j.coach)); } catch (e) {} setHeader(); route(); } }).catch(function (e) { if (e.message !== 'signed_out') loginView('Could not reach the server. Try again.'); });
