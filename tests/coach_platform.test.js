@@ -351,6 +351,27 @@ async function buildAndPublish(coach, form, storageKey) {
   DB.coach_intakes.find((r) => r.id === f2.id).expires_at = '2020-01-01T00:00:00Z';
   t('an expired link is dead', B(await M.cpIntakeInspect({ token: f2.link.split('#f=')[1] })).error === 'bad_link' && B(await M.cpIntakeSubmit({ token: f2.link.split('#f=')[1], consent: true, answers: ANS })).error === 'bad_link');
 
+  console.log('coach platform — the coach\'s own foods and meals');
+  {
+    const FOOD = { name: 'Turkey meatballs homemade', unit: 'g', p: 19, c: 4, f: 7, allergens: ['egg', 'nonsense'], halal: true };
+    const s1 = B(await M.cpFoodSave({ session: al3, food: FOOD }));
+    t('a coach adds their own food: id made by the server, unknown allergy tags dropped', s1.ok && s1.food.id === 'cf_cy_turkey_meatballs_homemade' && s1.food.allergens.join() === 'egg' && s1.food.halal === true, s1);
+    t('macros that cannot be right, a bad name or no unit are refused in plain words', B(await M.cpFoodSave({ session: al3, food: { ...FOOD, name: 'Too much', p: 60, c: 30, f: 20 } })).error === 'bad_food'
+      && B(await M.cpFoodSave({ session: al3, food: { ...FOOD, name: '<b>x</b>' } })).error === 'bad_food' && B(await M.cpFoodSave({ session: al3, food: { ...FOOD, name: 'No unit', unit: 'cup' } })).error === 'bad_food'
+      && B(await M.cpFoodSave({ session: al3, food: { ...FOOD, name: 'Nothing', p: 0, c: 0, f: 0 } })).error === 'bad_food' && B(await M.cpFoodSave({ session: 'x'.repeat(43), food: FOOD })).error === 'unauthorized');
+    const again = B(await M.cpFoodSave({ session: al3, food: { ...FOOD, p: 20 } }));
+    t('saving the same name again updates it (no duplicate)', again.ok && DB.coach_foods.filter((r) => r.food_id === s1.food.id).length === 1 && Number(DB.coach_foods.find((r) => r.food_id === s1.food.id).p) === 20);
+    const ms = B(await M.cpMealSave({ session: al3, meal: { name: 'Meatball Rice Bowl', items: [{ id: s1.food.id, qty: 250 }, { id: 'thai_jasmine_rice_cooked', qty: 200 }], steps: ['Warm the meatballs.', 'Serve over the rice.'] } }));
+    const lib = B(await M.cpLibrary({ session: al3 })), libB = B(await M.cpLibrary({ session: other.session }));
+    t('a saved meal and the food are in the coach\'s library, and in nobody else\'s', ms.ok && lib.foods.length === 1 && lib.meals.length === 1 && lib.meals[0].items[0].id === s1.food.id && libB.foods.length === 0 && libB.meals.length === 0, [lib, libB]);
+    t('another coach cannot delete this coach\'s food or meal', B(await M.cpFoodDelete({ session: other.session, id: s1.food.id })).error === 'unknown_food' && B(await M.cpMealDelete({ session: other.session, id: ms.id })).error === 'unknown_meal');
+    t('a meal needs a name, 1 to 12 foods and amounts', B(await M.cpMealSave({ session: al3, meal: { name: 'Empty', items: [] } })).error === 'bad_meal' && B(await M.cpMealSave({ session: al3, meal: { name: 'No amount', items: [{ id: 'x_food', qty: 0 }] } })).error === 'bad_meal');
+    let job = null; for (let i = 0; i < 30 && !(job && job.coach.slug === 'cy'); i++) job = B(await M.cpWorkerClaim({ builderKey: BUILDER_KEY })).job;
+    t('the builder is handed this coach\'s foods with the job', job && job.coach.foods.length === 1 && job.coach.foods[0].id === s1.food.id && job.coach.foods[0].p === 20, job && job.coach.foods);
+    const del = B(await M.cpFoodDelete({ session: al3, id: s1.food.id }));
+    t('a removed food leaves the coach\'s list but stays for the builder, so old plans still rebuild', del.ok && B(await M.cpLibrary({ session: al3 })).foods.length === 0 && DB.coach_foods.length === 1 && !!DB.coach_foods[0].archived_at);
+    t('removing a saved meal removes it', B(await M.cpMealDelete({ session: al3, id: ms.id })).ok && B(await M.cpLibrary({ session: al3 })).meals.length === 0);
+  }
   console.log('coach platform — the coach dashboard only reaches the coach\'s own clients');
   const { admin: A } = require('./coach_platform_fixture.js');
   const scA = await M.tenantScope('dashboard', { coachToken: al3 }), scB = await M.tenantScope('dashboard', { coachToken: other.session });

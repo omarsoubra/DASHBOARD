@@ -92,6 +92,8 @@
   .erow { display:grid; grid-template-columns:minmax(0,1fr) 64px 84px 96px 40px; gap:6px; align-items:center; }
   .frow { display:grid; grid-template-columns:minmax(0,1fr) 92px 44px 40px; gap:6px; align-items:center; }
   .erow input, .erow select, .frow input { padding:9px 8px; min-height:42px; }
+  .ex { padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid var(--line); } .ex:last-child { border-bottom:0; }
+  .erow2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; } .erow2 input { grid-column:1 / -1; } .erow2 select, .erow2 input { padding:9px 8px; min-height:42px; font-size:14px; }
   .ehead { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); font-weight:600; }
   button.x { background:none; border:1px solid var(--line); color:var(--mute); padding:0; width:40px; min-height:42px; font-size:18px; line-height:1; }
   button.mini { padding:6px 12px; min-height:36px; font-size:14px; background:transparent; color:var(--ink); border-color:var(--line); }
@@ -611,14 +613,73 @@
   // coach rebuilds the preview; the server and the plan engine validate everything again.
   function library() {
     if (S.library) return Promise.resolve(S.library);
-    return fetch('library.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (l) {
+    return Promise.all([fetch('library.json', { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                        call('cpLibrary').catch(function () { return {}; })]).then(function (res) {
+      var l = res[0], mine = res[1] && res[1].ok ? res[1] : { foods: [], meals: [] };
       l.byId = {}; l.byName = {}; l.foods.forEach(function (f) { l.byId[f.id] = f; l.byName[f.name.toLowerCase()] = f; });
+      l.meals = mine.meals || [];
+      (mine.foods || []).forEach(function (f) { addOwnFood(l, f); });
       S.library = l; return l;
     });
   }
+  // one of the coach's own foods, in the shape the shared food list uses (macros per 1 g, or per one item)
+  function addOwnFood(l, f) {
+    var per = f.unit === 'g' ? 0.01 : 1, name = f.name + ' (yours)';
+    var row = { id: f.id, name: name, unit: f.unit, p: f.p * per, c: f.c * per, f: f.f * per, allergens: f.allergens || [], halal: !!f.halal, whole: false, mine: true, raw: f };
+    l.foods = l.foods.filter(function (x) { return x.id !== f.id; }); l.foods.push(row);
+    l.byId[f.id] = row; l.byName[name.toLowerCase()] = row;
+    var dl = document.getElementById('foodlist'); if (dl && !Array.prototype.some.call(dl.options, function (o) { return o.value === name; })) dl.appendChild(el('option', { value: name }));
+    return row;
+  }
+  // the small form for adding a food of the coach's own
+  function ownFoodForm(lib, onAdded) {
+    var name = el('input', { type: 'text', maxlength: 60, placeholder: 'e.g. Homemade turkey meatballs', 'aria-label': 'Food name' });
+    var unit = el('select', { 'aria-label': 'Measured in' }, [el('option', { value: 'g', text: 'Per 100 g' }), el('option', { value: 'unit', text: 'Per one (each)' })]);
+    var n = function (label) { return el('input', { type: 'number', min: 0, max: 300, step: '0.1', inputmode: 'decimal', placeholder: label, 'aria-label': label }); };
+    var p = n('Protein g'), c = n('Carbs g'), f = n('Fat g'), kcal = el('span', { class: 'mute small' });
+    var tags = el('div', { class: 'checks' }, ['egg', 'fish', 'gluten', 'peanut', 'sesame', 'shellfish', 'soy', 'tree_nut', 'dairy'].map(function (a) {
+      var cb = el('input', { type: 'checkbox', value: a }); return el('label', null, [cb, a.replace('_', ' ')]); }));
+    var halal = el('input', { type: 'checkbox' }); halal.style.width = 'auto'; halal.style.minHeight = '0';
+    var msg = el('div');
+    function calc() { var k = 4 * (Number(p.value) || 0) + 4 * (Number(c.value) || 0) + 9 * (Number(f.value) || 0); kcal.textContent = k ? Math.round(k) + ' kcal ' + (unit.value === 'g' ? 'per 100 g' : 'each') : ''; }
+    [p, c, f, unit].forEach(function (x) { x.addEventListener('input', calc); });
+    var save = el('button', { type: 'button', text: 'Add to my foods', onclick: function () {
+      msg.replaceChildren(); save.disabled = true;
+      call('cpFoodSave', { food: { name: name.value, unit: unit.value, p: Number(p.value) || 0, c: Number(c.value) || 0, f: Number(f.value) || 0,
+        allergens: Array.prototype.map.call(tags.querySelectorAll('input:checked'), function (x) { return x.value; }), halal: halal.checked } }).then(function (j) {
+        save.disabled = false;
+        if (!j.ok) { msg.appendChild(banner('bad', say(j))); return; }
+        var row = addOwnFood(lib, j.food); onAdded(row);
+      }).catch(function () { save.disabled = false; });
+    } });
+    var mineList = el('div');
+    function drawMine() {
+      var own = lib.foods.filter(function (x) { return x.mine; });
+      mineList.replaceChildren(own.length ? el('p', { class: 'mute small', style: 'margin:10px 0 4px', text: 'Your foods so far' }) : null);
+      own.forEach(function (x) {
+        mineList.appendChild(el('div', { class: 'row small', style: 'margin-bottom:4px' }, [el('span', { class: 'grow', text: x.raw.name + ' · ' + x.raw.p + ' P / ' + x.raw.c + ' C / ' + x.raw.f + ' F ' + (x.unit === 'g' ? 'per 100 g' : 'each') }),
+          el('button', { type: 'button', class: 'link', text: 'Remove', 'aria-label': 'Remove ' + x.raw.name, onclick: function () {
+            if (!confirm('Remove this food from your list? Plans that already use it keep it.')) return;
+            call('cpFoodDelete', { id: x.id }).then(function (j) { if (j.ok) { lib.foods = lib.foods.filter(function (y) { return y.id !== x.id; }); delete lib.byName[x.name.toLowerCase()]; drawMine(); } });
+          } })]));
+      });
+    }
+    drawMine();
+    return el('div', { class: 'card', style: 'margin-top:10px;background:var(--soft,#f5f5f7)' }, [el('h3', { text: 'Add your own food' }),
+      el('p', { class: 'mute small', text: 'Take the numbers from the label. It joins your food list for every client.' }),
+      field('Name', name), el('div', { style: 'height:8px' }), field('Measured', unit), el('div', { style: 'height:8px' }),
+      el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px' }, [p, c, f]), kcal, el('div', { style: 'height:8px' }),
+      el('label', { text: 'Contains (tick every allergen in it)' }), tags,
+      el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500;margin-top:10px' }, [halal, 'Halal, or has no meat in it']), msg,
+      el('div', { class: 'row', style: 'margin-top:10px' }, [save]), mineList]);
+  }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   // "Changed" means: different from the plan as it is built right now
-  function dayKey(d) { return d ? d.day + '|' + d.exercises.map(function (x) { return [x.name, Number(x.sets), String(x.reps).replace('–', '-'), Number(x.rest_seconds)].join(','); }).join(';') : ''; }
+  function dayKey(d) { return d ? d.day + '|' + d.exercises.map(function (x) { return [x.name, Number(x.sets), String(x.reps).replace('–', '-'), Number(x.rest_seconds), x.rir == null ? 1 : Number(x.rir), x.method || '', x.note || ''].join(','); }).join(';') : ''; }
+  // how a set is done: the same list the plan engine knows (engine.py METHODS)
+  var METHODS = [['drop_set', 'Drop set on the last set'], ['rest_pause', 'Rest-pause on the last set'], ['superset', 'Superset with the next exercise'], ['to_failure', 'Last set to failure'],
+                 ['amrap', 'Last set max reps'], ['myo_reps', 'Myo-reps'], ['slow_lower', '3 second lowering'], ['pause', '1 second pause each rep']];
+  function methodTag(x) { var m = METHODS.filter(function (y) { return y[0] === x.method; })[0]; return m ? ' · ' + m[1].toLowerCase() : ''; }
   function mealKey(items) { return items.map(function (i) { return i.id + ':' + Number(i.qty); }).sort().join(';'); }
   function macros(items, lib) {
     var t = { p: 0, c: 0, f: 0 };
@@ -640,8 +701,19 @@
       var reps = el('input', { type: 'text', value: x.reps || '8-12', maxlength: 14, 'aria-label': 'Reps' });
       var rest = el('select', { class: 'rest', 'aria-label': 'Rest' }, REST.map(function (r) { var o = el('option', { value: r[0], text: r[1] }); if (Number(x.rest_seconds || 90) === r[0]) o.selected = true; return o; }));
       if (!REST.some(function (r) { return r[0] === Number(x.rest_seconds || 90); })) rest.appendChild(el('option', { value: x.rest_seconds, text: x.rest_seconds + ' sec', selected: true }));
-      var r = el('div', { class: 'erow' }, [n, sets, reps, rest, el('button', { type: 'button', class: 'x', 'aria-label': 'Remove exercise', text: '×', onclick: function () { r.remove(); } })]);
-      r.read = function () { return { name: n.value.trim(), sets: Number(sets.value), reps: reps.value.trim(), rir: x.rir == null ? 1 : x.rir, rest_seconds: Number(rest.value) }; };
+      var rirNow = x.rir == null ? 1 : Number(x.rir);
+      var rir = el('select', { 'aria-label': 'Effort' }, [0, 1, 2, 3, 4, 5].map(function (v) { var o = el('option', { value: v, text: v === 0 ? 'To the limit (0 in reserve)' : v + ' rep' + (v === 1 ? '' : 's') + ' in reserve' }); if (v === rirNow) o.selected = true; return o; }));
+      var method = el('select', { 'aria-label': 'How the sets are done' }, [['', 'Straight sets']].concat(METHODS).map(function (m) { var o = el('option', { value: m[0], text: m[1] }); if ((x.method || '') === m[0]) o.selected = true; return o; }));
+      var note = el('input', { type: 'text', value: x.note || '', maxlength: 120, placeholder: 'Your instruction for this exercise (optional)', 'aria-label': 'Your instruction' });
+      var r = el('div', { class: 'ex' }, [
+        el('div', { class: 'erow' }, [n, sets, reps, rest, el('button', { type: 'button', class: 'x', 'aria-label': 'Remove exercise', text: '×', onclick: function () { r.remove(); } })]),
+        el('div', { class: 'erow2' }, [rir, method, note])]);
+      r.read = function () {
+        var o = { name: n.value.trim(), sets: Number(sets.value), reps: reps.value.trim(), rir: Number(rir.value), rest_seconds: Number(rest.value) };
+        if (method.value) o.method = method.value;
+        if (note.value.trim()) o.note = note.value.trim();
+        return o;
+      };
       return r;
     }
     day.exercises.forEach(function (x) { rows.appendChild(row(x)); });
@@ -711,9 +783,34 @@
       steps.value = (cur.steps || []).join('\n');
       var all = el('input', { type: 'checkbox' }); all.style.width = 'auto'; all.style.minHeight = '0';
       var msg = el('div');
-      var box = el('div', { class: 'card changed' }, [field('Meal name', name), el('div', { style: 'height:10px' }),
+      // the coach's own meals: drop one in, or keep this one for next time
+      var pick = el('select', { 'aria-label': 'Use one of my meals' }, [el('option', { value: '', text: lib.meals.length ? 'Use one of my meals' : 'No saved meals yet' })].concat(lib.meals.map(function (m) { return el('option', { value: m.id, text: m.name }); })));
+      pick.disabled = !lib.meals.length;
+      pick.addEventListener('change', function () {
+        var m = lib.meals.filter(function (x) { return x.id === pick.value; })[0]; if (!m) return;
+        var gone = m.items.filter(function (it) { return !lib.byId[it.id]; });
+        name.value = m.name; rows.replaceChildren(); m.items.forEach(function (it) { if (lib.byId[it.id]) rows.appendChild(row(it)); });
+        steps.value = (m.steps || []).join('\n'); sum();
+        msg.replaceChildren(gone.length ? banner('info', gone.length + ' food' + (gone.length === 1 ? '' : 's') + ' from that meal is no longer in your list and was left out.') : banner('info', 'Loaded. Check the amounts against this client\'s target below.'));
+      });
+      var ownBox = el('div');
+      var keep = el('button', { type: 'button', class: 'mini', text: 'Save to my meals', onclick: function () {
+        var items = read(); msg.replaceChildren();
+        if (!items.length || !name.value.trim()) { msg.appendChild(banner('bad', 'A meal needs a name and at least one food.')); return; }
+        call('cpMealSave', { meal: { name: name.value.trim(), items: items, steps: steps.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean) } }).then(function (j) {
+          if (!j.ok) { msg.appendChild(banner('bad', say(j))); return; }
+          lib.meals = lib.meals.filter(function (x) { return x.id !== j.id; }).concat([{ id: j.id, name: name.value.trim(), items: items, steps: steps.value.split('\n').filter(Boolean) }]);
+          keep.textContent = j.replaced ? 'Updated in my meals' : 'Saved to my meals';
+        });
+      } });
+      var box = el('div', { class: 'card changed' }, [field('Meal name', name), el('div', { style: 'height:8px' }), pick, el('div', { style: 'height:10px' }),
         el('div', { class: 'frow ehead' }, [el('span', { text: 'Food' }), el('span', { text: 'Amount' }), el('span'), el('span')]), rows,
-        el('div', { style: 'height:8px' }), el('button', { type: 'button', class: 'mini', text: '+ Add food', onclick: function () { var r = row(null); rows.appendChild(r); r.querySelector('input').focus(); } }),
+        el('div', { style: 'height:8px' }), el('div', { class: 'row' }, [
+          el('button', { type: 'button', class: 'mini', text: '+ Add food', onclick: function () { var r = row(null); rows.appendChild(r); r.querySelector('input').focus(); } }),
+          el('button', { type: 'button', class: 'mini', text: '+ Add my own food', onclick: function () {
+            if (ownBox.firstChild) { ownBox.replaceChildren(); return; }
+            ownBox.replaceChildren(ownFoodForm(lib, function (f) { ownBox.replaceChildren(); var r = row({ id: f.id, qty: f.unit === 'unit' ? 1 : 100 }); rows.appendChild(r); sum(); }));
+          } }), keep]), ownBox,
         totals, el('div', { style: 'height:12px' }), el('label', { text: 'How to make it' }), steps,
         phases.length > 1 ? el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:500;margin-top:12px' }, [all, 'Use these amounts in every phase']) : null, msg,
         el('div', { class: 'row', style: 'margin-top:14px' }, [el('button', { type: 'button', text: 'Done', onclick: function () {
@@ -765,7 +862,7 @@
         for (var di = 0; di < count; di++) (function (i) {
           if (state.editing === 't' + i) { var slot = el('div'); body.appendChild(slot); trainingEditor(ctx, state.phase, i, function () { state.editing = null; draw(); }).then(function (n) { slot.replaceWith(n); n.scrollIntoView({ block: 'nearest' }); }); return; }
           var changed = canEdit && dayKey(cur[i]) !== dayKey(base[i]);
-          var rows = canEdit ? cur[i].exercises.map(function (x) { return { name: x.name, sets: x.sets, reps: x.reps, rest: restText(x.rest_seconds) }; }) : (built[i].exercises || []);
+          var rows = canEdit ? cur[i].exercises.map(function (x) { return { name: x.name, sets: x.sets, reps: x.reps + methodTag(x), rest: restText(x.rest_seconds) }; }) : (built[i].exercises || []);
           var tt = el('table', null, [el('thead', null, el('tr', null, [el('th', { text: 'Exercise' }), el('th', { class: 'num', text: 'Sets' }), el('th', { class: 'num', text: 'Reps' }), el('th', { class: 'num', text: 'Rest' })]))]);
           var b2 = el('tbody');
           rows.forEach(function (x) { b2.appendChild(el('tr', null, [el('td', { text: x.name }), el('td', { class: 'num', text: x.sets }), el('td', { class: 'num', text: x.reps }), el('td', { class: 'num', text: x.rest || '' })])); });

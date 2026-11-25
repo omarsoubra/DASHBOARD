@@ -716,6 +716,11 @@ async function route(type: string, body: any): Promise<Response> {
       case 'cpClientInvite':     return cpClientInvite(body);
       case 'cpTemplateSave':     return cpTemplateSave(body);
       case 'cpTemplates':        return cpTemplates(body);
+      case 'cpLibrary':     return cpLibrary(body);
+      case 'cpFoodSave':     return cpFoodSave(body);
+      case 'cpFoodDelete':     return cpFoodDelete(body);
+      case 'cpMealSave':     return cpMealSave(body);
+      case 'cpMealDelete':     return cpMealDelete(body);
       case 'cpTemplateDelete':   return cpTemplateDelete(body);
       case 'cpClientPhotos':     return cpClientPhotos(body);
       case 'cpRegistry':     return cpRegistry(body);
@@ -5051,7 +5056,7 @@ async function cpWorkerClaim(body: any) {
         await admin.from('plan_builds').update({ status: 'failed', error: { stage: 'coach', reasons: ['coach account is not active'] }, updated_at: nowIso }).eq('id', b.id);
         continue;
       }
-      return ok({ job: { id: b.id, kind, storageKey: b.storage_key, form: b.form, pageSha256: b.page_sha256 ?? null, coach: { slug: coach.slug, name: coach.name, brand: coach.brand || coach.name, email: coach.email, accent: coach.accent ?? null, logo: coach.logo ?? null } } });
+      return ok({ job: { id: b.id, kind, storageKey: b.storage_key, form: b.form, pageSha256: b.page_sha256 ?? null, coach: { slug: coach.slug, name: coach.name, brand: coach.brand || coach.name, email: coach.email, accent: coach.accent ?? null, logo: coach.logo ?? null, foods: await cpCoachFoods(b.coach_id) } } });
     }
   }
   return ok({ job: null });
@@ -5218,6 +5223,100 @@ async function cpTemplateSave(body: any) {
   if (error || !row?.id) return err('write_failed');
   return ok({ id: row.id, replaced: false });
 }
+// ── the coach's own food and meal library ─────────────────────────────────────────────────────────────────────────────
+// Foods the coach adds (their own name and macros) sit next to the shared food list; meals they save can be dropped into
+// any client's plan. The plan engine checks every food and amount again when a plan is built.
+const CP_MAX_FOODS = 300, CP_MAX_MEALS = 200;
+const CP_ALLERGENS = ['egg', 'fish', 'gluten', 'peanut', 'sesame', 'shellfish', 'soy', 'tree_nut', 'dairy'];
+const CP_FOOD_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 &'()\/+,.\-]{1,59}$/;
+const cpFoodView = (r: any) => ({ id: r.food_id, name: r.name, unit: r.unit, p: Number(r.p), c: Number(r.c), f: Number(r.f),
+  allergens: r.allergens ?? [], halal: !!r.halal, archived: !!r.archived_at });
+/** The foods the builder needs for this coach: every one ever made, archived or not, so an old plan still rebuilds. */
+async function cpCoachFoods(coachId: string): Promise<any[]> {
+  const { data } = await admin.from('coach_foods').select('food_id, name, unit, p, c, f, allergens, halal, archived_at').eq('coach_id', coachId).limit(1000);
+  return (data ?? []).map(cpFoodView);
+}
+async function cpLibrary(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: meals } = await admin.from('coach_meals').select('id, name, items, steps, created_at').eq('coach_id', coach.id).order('name', { ascending: true }).limit(CP_MAX_MEALS);
+  return ok({ foods: (await cpCoachFoods(coach.id)).filter((f) => !f.archived),
+              meals: (meals ?? []).map((m: any) => ({ id: m.id, name: m.name, items: m.items ?? [], steps: m.steps ?? [] })) });
+}
+async function cpFoodSave(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const f = body?.food ?? {};
+  const name = String(f.name ?? '').replace(/\s+/g, ' ').trim();
+  if (!CP_FOOD_NAME_RE.test(name)) return err('bad_food', { detail: 'Give the food a plain name, up to 60 letters.' });
+  const unit = f.unit === 'unit' ? 'unit' : f.unit === 'g' ? 'g' : null;
+  if (!unit) return err('bad_food', { detail: 'Choose grams or each.' });
+  const num = (v: unknown) => { const n = Math.round(Number(v) * 10) / 10; return Number.isFinite(n) ? n : NaN; };
+  const p = num(f.p ?? 0), c = num(f.c ?? 0), fat = num(f.f ?? 0), top = unit === 'g' ? 100 : 300;
+  if ([p, c, fat].some((x) => !(x >= 0 && x <= top)) || (unit === 'g' && p + c + fat > 100) || p + c + fat <= 0)
+    return err('bad_food', { detail: unit === 'g' ? 'Protein, carbs and fat are per 100 g, so together they cannot pass 100.' : 'Those macros do not look right for one item.' });
+  const allergens = Array.isArray(f.allergens) ? [...new Set(f.allergens.filter((a: unknown) => CP_ALLERGENS.includes(String(a))))] : [];
+  const foodId = `cf_${coach.slug}_${cpSlug(name)}`.slice(0, 43).replace(/_+$/, '');
+  if (!/^cf_[a-z0-9_]{2,40}$/.test(foodId)) return err('bad_food', { detail: 'Give the food a plain name.' });
+  const row = { name, unit, p, c, f: fat, allergens, halal: f.halal === true, archived_at: null, updated_at: new Date().toISOString() };
+  const { data: had } = await admin.from('coach_foods').select('id, unit').eq('coach_id', coach.id).eq('food_id', foodId).maybeSingle();
+  if (had) {
+    if (had.unit !== unit) return err('bad_food', { detail: 'You already have a food with this name measured the other way. Give this one a different name.' });
+    const { error } = await admin.from('coach_foods').update(row).eq('id', had.id);
+    if (error) return err('write_failed');
+  } else {
+    const { data: all } = await admin.from('coach_foods').select('id').eq('coach_id', coach.id).limit(1000);
+    if ((all ?? []).length >= CP_MAX_FOODS) return err('too_many', { detail: `You can keep up to ${CP_MAX_FOODS} of your own foods.` });
+    const { error } = await admin.from('coach_foods').insert({ coach_id: coach.id, food_id: foodId, ...row });
+    if (error) return err('write_failed');
+  }
+  return ok({ food: cpFoodView({ food_id: foodId, ...row }) });
+}
+/** Hides a food from the coach's list. It is kept for the builder, so a plan that already uses it still rebuilds. */
+async function cpFoodDelete(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: had } = await admin.from('coach_foods').select('id').eq('coach_id', coach.id).eq('food_id', String(body?.id ?? '')).maybeSingle();
+  if (!had) return err('unknown_food');
+  await admin.from('coach_foods').update({ archived_at: new Date().toISOString() }).eq('id', had.id);
+  return ok({});
+}
+async function cpMealSave(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const m = body?.meal ?? {};
+  const name = String(m.name ?? '').replace(/\s+/g, ' ').trim();
+  if (!CP_FOOD_NAME_RE.test(name)) return err('bad_meal', { detail: 'Give the meal a plain name, up to 60 letters.' });
+  if (!Array.isArray(m.items) || m.items.length < 1 || m.items.length > 12) return err('bad_meal', { detail: 'A meal needs 1 to 12 foods.' });
+  const items = [];
+  for (const it of m.items) {
+    const id = String(it?.id ?? ''), qty = Math.round(Number(it?.qty) * 10) / 10;
+    if (!/^[a-z0-9_]{2,64}$/.test(id) || !(qty > 0 && qty <= 1500)) return err('bad_meal', { detail: 'Each food needs an amount.' });
+    items.push({ id, qty });
+  }
+  const steps = Array.isArray(m.steps) ? m.steps.map((x: unknown) => String(x).replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 8) : [];
+  if (steps.some((x: string) => x.length > 300)) return err('bad_meal', { detail: 'Keep each step under 300 letters.' });
+  const { data: had } = await admin.from('coach_meals').select('id').eq('coach_id', coach.id).eq('name', name).maybeSingle();
+  if (had) {
+    const { error } = await admin.from('coach_meals').update({ items, steps, updated_at: new Date().toISOString() }).eq('id', had.id);
+    if (error) return err('write_failed');
+    return ok({ id: had.id, replaced: true });
+  }
+  const { data: all } = await admin.from('coach_meals').select('id').eq('coach_id', coach.id).limit(1000);
+  if ((all ?? []).length >= CP_MAX_MEALS) return err('too_many', { detail: `You can keep up to ${CP_MAX_MEALS} saved meals.` });
+  const { data: row, error } = await admin.from('coach_meals').insert({ coach_id: coach.id, name, items, steps }).select('id').single();
+  if (error || !row?.id) return err('write_failed');
+  return ok({ id: row.id, replaced: false });
+}
+async function cpMealDelete(body: any) {
+  const coach = await cpCoach(body?.session);
+  if (!coach) return err('unauthorized');
+  const { data: had } = await admin.from('coach_meals').select('id, coach_id').eq('id', String(body?.id ?? '')).maybeSingle();
+  if (!had || had.coach_id !== coach.id) return err('unknown_meal');
+  await admin.from('coach_meals').delete().eq('id', had.id);
+  return ok({});
+}
+
 async function cpTemplates(body: any) {
   const coach = await cpCoach(body?.session);
   if (!coach) return err('unauthorized');
