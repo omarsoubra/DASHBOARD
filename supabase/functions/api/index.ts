@@ -16,6 +16,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const COACH_PASSWORD_HASH  = Deno.env.get('COACH_PASSWORD_HASH') ?? '';
+// Where the site is served. LOCKED IN leaves CP_SITE_BASE unset and gets its own address; Drafted sets it to its site.
+const SITE_BASE = (() => { const v = (Deno.env.get('CP_SITE_BASE') ?? '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(\/[A-Za-z0-9._\/-]*)?$/.test(v) ? v : 'https://omarsoubra.github.io/DASHBOARD'; })();
 
 const rawAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -890,7 +892,7 @@ async function coachWorkoutCompletions(body: any) {
 // access key (client_device_tokens), which the client token check accepts
 // exactly like the legacy link token, so every existing client page works unchanged.
 // Only sha256 hashes of invite tokens and device keys are ever stored.
-const ACCOUNT_APP_URL = 'https://omarsoubra.github.io/DASHBOARD/login/';
+const ACCOUNT_APP_URL = `${SITE_BASE}/login/`;
 const INVITE_TTL_MS = { invite: 7 * 24 * 3600_000, reset: 24 * 3600_000 } as const;
 const DEVICE_TTL_MS = 60 * 24 * 3600_000;
 const MAX_ACTIVE_DEVICES = 10;
@@ -1102,7 +1104,7 @@ async function accountSignOut(body: any) {
 // (needs_invite). If the public page cannot be read the answer is the same:
 // fail closed. Nothing here changes the existing key; the app keeps working.
 // ══════════════════════════════════════════════════════════════════════════
-const PUBLIC_PAGE_BASE = 'https://omarsoubra.github.io/DASHBOARD/clients/';
+const PUBLIC_PAGE_BASE = `${SITE_BASE}/clients/`;
 
 /** true = this key is visible in the client's public page (or the page can't be checked). */
 async function keyIsPublic(storageKey: string, token: string): Promise<boolean> {

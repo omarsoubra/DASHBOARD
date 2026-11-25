@@ -70,6 +70,7 @@ export type PushEnv = {
   /** Platform mode only: sha256 of the plan builder's key. The builder publishes the pages, so it may also report a
    *  published page's facts and announce a plan update (the two deploy operations). */
   builderKeySha256?: string;
+  siteBase?: string;                // CP_SITE_BASE (Drafted); empty on LOCKED IN
 };
 
 export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
@@ -89,6 +90,7 @@ export function readPushEnv(get: (k: string) => string | undefined): PushEnv {
     dailyReminders: { all: daily.includes('*'), keys: new Set(daily.filter((k) => k !== '*')) },
     platform: String(get('PUSH_PLATFORM') ?? '') === '1',
     builderKeySha256: String(get('CP_BUILDER_KEY_SHA256') ?? '').toLowerCase(),
+    siteBase: (() => { const v = String(get('CP_SITE_BASE') ?? '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(\/[A-Za-z0-9._\/-]*)?$/.test(v) ? v : ''; })(),
   };
 }
 
@@ -645,7 +647,7 @@ export function makePushHandler(deps: Deps): (req: Request) => Promise<Response>
   /** A page that answers 404/5xx is down; network trouble is not a page fault. */
   async function pageDown(key: string): Promise<boolean> {
     try {
-      const r = await fetchImpl(`${COACH_PAGES_BASE}/clients/${key}/index.html`, { method: 'HEAD' });
+      const r = await fetchImpl(`${env.siteBase || COACH_PAGES_BASE}/clients/${key}/index.html`, { method: 'HEAD' });
       return r.status >= 400;
     } catch (_) { return false; }
   }
