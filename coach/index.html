@@ -383,8 +383,8 @@
           call('cpImport', { rows: good.map(function (r) { return r.form; }) }).then(function (j) {
             if (!j.ok) { go.disabled = false; go.textContent = 'Try again'; out.appendChild(banner('bad', say(j))); return; }
             var failed = j.results.filter(function (x) { return !x.ok; });
-            out.replaceChildren(banner('good', j.queued + ' plan' + (j.queued === 1 ? ' is' : 's are') + ' building. Each takes about a minute. You can leave this page; they wait for you in step 3.'),
-              failed.length ? el('div', { class: 'card' }, [el('h3', { text: 'Not started' })].concat(failed.map(function (x) { return el('p', { class: 'small', text: x.name + ': ' + x.why }); }))) : null);
+            out.replaceChildren.apply(out, [banner('good', j.queued + ' plan' + (j.queued === 1 ? ' is' : 's are') + ' building. Each takes about a minute. You can leave this page; they wait for you in step 3.'),
+              failed.length ? el('div', { class: 'card' }, [el('h3', { text: 'Not started' })].concat(failed.map(function (x) { return el('p', { class: 'small', text: x.name + ': ' + x.why }); }))) : null].filter(Boolean));
             ta.value = ''; drawReady();
           }).catch(function () { go.disabled = false; go.textContent = 'Try again'; });
         } });
@@ -422,12 +422,12 @@
               call('cpPublish', { buildId: b.id }).then(function (r) { if (r.ok && r.link) got.push({ name: nm(b), link: r.link }); next(); }).catch(next);
             })();
           } });
-          ready.replaceChildren(
+          ready.replaceChildren.apply(ready, [
             el('p', { class: 'small', text: done.length + ' ready to publish' + (busyN ? ' · ' + busyN + ' still building' : '') + (stuck.length ? ' · ' + stuck.length + ' need a change' : '') + '.' }),
             done.length ? el('div', { class: 'card' }, done.map(function (b) { return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm(b) }), el('div', { class: 'mute small', text: 'Tap to look it over or change it first' })]), pill(b.status)]); })) : null,
             stuck.length ? el('div', { class: 'card' }, stuck.map(function (b) { return el('button', { class: 'item', onclick: function () { buildView(b.id); } }, [el('span', { class: 'grow' }, [el('span', { class: 'name', text: nm(b) }), el('div', { class: 'mute small', text: 'Tap to see what needs changing' })]), pill(b.status)]); })) : null,
             done.length ? el('div', { style: 'margin-top:12px' }, [pub]) : null, links,
-            busyN ? el('button', { type: 'button', class: 'link', style: 'margin-top:8px', text: 'Refresh', onclick: drawReady }) : null);
+            busyN ? el('button', { type: 'button', class: 'link', style: 'margin-top:8px', text: 'Refresh', onclick: drawReady }) : null].filter(Boolean));
         }).catch(function () {});
       }
       drawReady();
@@ -782,7 +782,7 @@
     var mineList = el('div');
     function drawMine() {
       var own = lib.foods.filter(function (x) { return x.mine; });
-      mineList.replaceChildren(own.length ? el('p', { class: 'mute small', style: 'margin:10px 0 4px', text: 'Your foods so far' }) : null);
+      mineList.replaceChildren(); if (own.length) mineList.appendChild(el('p', { class: 'mute small', style: 'margin:10px 0 4px', text: 'Your foods so far' }));
       own.forEach(function (x) {
         mineList.appendChild(el('div', { class: 'row small', style: 'margin-bottom:4px' }, [el('span', { class: 'grow', text: x.raw.name + ' · ' + x.raw.p + ' P / ' + x.raw.c + ' C / ' + x.raw.f + ' F ' + (x.unit === 'g' ? 'per 100 g' : 'each') }),
           el('button', { type: 'button', class: 'link', text: 'Remove', 'aria-label': 'Remove ' + x.raw.name, onclick: function () {
