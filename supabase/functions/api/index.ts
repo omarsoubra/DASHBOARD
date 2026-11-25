@@ -1334,16 +1334,25 @@ async function foodLogGet(body: any) {
   return ok({ storageKey: key, since, days: foodLogDays(data ?? []) });
 }
 
+/** A platform coach's saved client list may only name that coach's own clients. The list is written by the coach's
+ *  browser, so anything else in it (another coach's client remembered by a shared computer, or a made-up entry) is
+ *  dropped on the way in AND on the way out. Omar's own list (no scope) is untouched. */
+function tenantRoster(roster: unknown): any[] {
+  const scope = TENANT.getStore();
+  if (!scope) return roster as any[];
+  const list = Array.isArray(roster) ? roster : [];
+  return list.filter((c: any) => c && typeof c === 'object' && typeof c.storageKey === 'string' && scope.keys.includes(c.storageKey.toLowerCase()));
+}
 async function rosterGet(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
   const { data } = await admin.from('roster_snapshots').select('*').order('snapshot_ts', { ascending: false }).limit(1).single();
   if (!data) return ok({ ts: 0, roster: [] });
-  return ok({ ts: new Date(data.snapshot_ts).getTime(), roster: data.roster_json });
+  return ok({ ts: new Date(data.snapshot_ts).getTime(), roster: tenantRoster(data.roster_json) });
 }
 
 async function rosterPut(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
-  const roster = body?.roster ?? [];
+  const roster = tenantRoster(body?.roster ?? []);
   await admin.from('roster_snapshots').insert({
     snapshot_ts: new Date(body?.ts ?? Date.now()).toISOString(),
     roster_json: roster,
