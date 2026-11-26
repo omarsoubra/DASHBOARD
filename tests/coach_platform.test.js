@@ -167,6 +167,10 @@ async function buildAndPublish(coach, form, storageKey) {
   t('settings need a session', B(await M.cpSettingsSave({ session: OMAR, brand: 'X' })).error === 'unauthorized');
   t('a colour must be a 6-digit hex', B(await M.cpSettingsSave({ session: cy.session, accent: 'red' })).error === 'bad_accent' && B(await M.cpSettingsSave({ session: cy.session, accent: '#12' })).error === 'bad_accent');
   t('a brand name with markup is refused', B(await M.cpSettingsSave({ session: cy.session, brand: '<b>Cy</b>' })).error === 'bad_brand');
+  // a brand is written into every client page, inside markup and inside quoted script text: nothing that can break out of either
+  t('a brand that tries to carry script is refused', ["'+alert(1)+'", 'a\\b', 'x"y', 'a;b', 'a(b)', 'a=b', 'a/b', '`x`${1}'].every((b) => M.cpSafeName(b, 40) === null || !/['"\\<>;()=\/`$]/.test(M.cpSafeName(b, 40))), ["'+alert(1)+'", '`x`'].map((b) => M.cpSafeName(b, 40)));
+  t('an honest apostrophe is kept as a typographic one', M.cpSafeName("Sam's Coaching & Co.", 40) === 'Sam\u2019s Coaching & Co.' && B(await M.cpSettingsSave({ session: cy.session, brand: "Cy's Gym" })).ok
+    && DB.coaches.find((c) => c.slug === 'cy').brand === 'Cy\u2019s Gym' && B(await M.cpSettingsSave({ session: cy.session, brand: 'CY STRONG' })).ok);
   t('a file that is not a PNG is refused as a logo', B(await M.cpSettingsSave({ session: cy.session, logo: { ...logo, 180: Buffer.from('<svg onload=alert(1)>'.repeat(10)).toString('base64') } })).error === 'bad_logo');
   t('a PNG of the wrong size is refused', B(await M.cpSettingsSave({ session: cy.session, logo: { ...logo, 180: logo[32] } })).error === 'bad_logo');
   const saved = B(await M.cpSettingsSave({ session: cy.session, brand: 'CY STRONG', accent: '#D4AF37', logo }));

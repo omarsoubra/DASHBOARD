@@ -16,6 +16,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const COACH_PASSWORD_HASH  = Deno.env.get('COACH_PASSWORD_HASH') ?? '';
+// true only where outside coaches are hosted (the builder key is set). LOCKED IN's own server leaves it unset.
+const CP_PLATFORM_ON = !!(Deno.env.get('CP_BUILDER_KEY_SHA256') ?? '');
 // Where the site is served. LOCKED IN leaves CP_SITE_BASE unset and gets its own address; Drafted sets it to its site.
 const SITE_BASE = (() => { const v = (Deno.env.get('CP_SITE_BASE') ?? '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(\/[A-Za-z0-9._\/-]*)?$/.test(v) ? v : 'https://omarsoubra.github.io/DASHBOARD'; })();
 
@@ -743,7 +745,7 @@ async function route(type: string, body: any): Promise<Response> {
   } catch (e) {
     const clientKey = body?.storageKey ?? body?.client ?? null;
     logEfError(type, clientKey, 'internal_error', String(e));
-    return err('internal_error', { detail: String(e).slice(0, 300) });
+    return err('internal_error');                          // the detail is in the server log, not in the answer
   }
 }
 
@@ -1355,7 +1357,9 @@ function tenantRoster(roster: unknown): any[] {
 }
 async function rosterGet(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
-  const { data } = await admin.from('roster_snapshots').select('*').order('snapshot_ts', { ascending: false }).limit(1).single();
+  let rq = admin.from('roster_snapshots').select('*');
+  if (!TENANT.getStore() && CP_PLATFORM_ON) rq = rq.is('coach_id', null);       // the owner's own roster: never a platform coach's
+  const { data } = await rq.order('snapshot_ts', { ascending: false }).limit(1).maybeSingle();
   if (!data) return ok({ ts: 0, roster: [] });
   return ok({ ts: new Date(data.snapshot_ts).getTime(), roster: tenantRoster(data.roster_json) });
 }
@@ -1364,7 +1368,7 @@ async function rosterPut(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
   const roster = tenantRoster(body?.roster ?? []);
   await admin.from('roster_snapshots').insert({
-    snapshot_ts: new Date(body?.ts ?? Date.now()).toISOString(),
+    snapshot_ts: new Date(TENANT.getStore() ? Date.now() : (body?.ts ?? Date.now())).toISOString(),
     roster_json: roster,
     client_count: roster.length,
     author: 'coach',
@@ -2635,6 +2639,12 @@ async function workoutCompletionsGet(body: any) {
 }
 
 async function doWrite(kind: string, body: any, silent = false): Promise<any> {
+  // What a client types is later shown on their coach's dashboard. Nothing they send may carry markup: angle brackets
+  // are dropped from every text field and each is capped (photos and tokens are not text and are left alone).
+  body = { ...(body ?? {}) };
+  for (const k of Object.keys(body)) {
+    if (typeof body[k] === 'string' && !/token|password|image|photo|data|base64/i.test(k)) body[k] = body[k].replace(/[<>]/g, '').slice(0, 4000);
+  }
   const key = String(body.client ?? '').toLowerCase();
   const { data: client, error: clientErr } = await admin.from('clients').select('id').eq('storage_key', key).single();
   const clientId = client?.id ?? null;
@@ -2751,17 +2761,17 @@ async function doWrite(kind: string, body: any, silent = false): Promise<any> {
     // to the performed name is collapsed to NULL for the same reason — a row
     // must not claim a substitution that did not happen.
     const _perfName = String(body.exerciseName ?? body.exercise ?? '');
-    const _rawRx = String(body.prescribedExerciseName ?? '').trim().slice(0, 200);
+    const _rawRx = String(body.prescribedExerciseName ?? '').replace(/[<>]/g, '').trim().slice(0, 200);
     const prescribedEx = (!_rawRx || _rawRx === _perfName.trim()) ? null : _rawRx;
     const { data, error: wkErr } = await admin.from('workout_log_entries').insert({
       client_ref: clientRef,
       prescribed_exercise_name: prescribedEx,
       client_id: clientId, client_key: key,
-      exercise_name: body.exerciseName ?? body.exercise ?? '',
+      exercise_name: String(body.exerciseName ?? body.exercise ?? '').replace(/[<>]/g, '').slice(0, 200),
       phase_key:  body.phase  != null ? String(body.phase)  : null,
       day_index:  body.dayIdx != null ? Number(body.dayIdx) : null,
-      weight:     String(body.weightActual ?? body.weight ?? ''),
-      reps_done:  String(body.repsActual   ?? body.reps   ?? ''),
+      weight:     String(body.weightActual ?? body.weight ?? '').replace(/[<>]/g, '').slice(0, 40),
+      reps_done:  String(body.repsActual   ?? body.reps   ?? '').replace(/[<>]/g, '').slice(0, 40),
       sets_done:  String(body.setsActual   ?? body.sets   ?? ''),
       rpe:        String(body.rpeActual    ?? body.rpe    ?? ''),
       notes:      body.notes ?? '',
@@ -2908,7 +2918,9 @@ async function queueInsert(kind: string, body: any, reason: string): Promise<any
 }
 
 async function isKnownActiveRosterKey(key: string): Promise<boolean> {
-  const { data } = await admin.from('roster_snapshots').select('roster_json').order('snapshot_ts', { ascending: false }).limit(1).single();
+  let rq = admin.from('roster_snapshots').select('roster_json');
+  if (!TENANT.getStore() && CP_PLATFORM_ON) rq = rq.is('coach_id', null);
+  const { data } = await rq.order('snapshot_ts', { ascending: false }).limit(1).maybeSingle();
   const roster = (data?.roster_json ?? []) as any[];
   return roster.some((c) => String(c.storageKey).toLowerCase() === key && String(c.accessStatus ?? '').toLowerCase() === 'active');
 }
@@ -4491,6 +4503,13 @@ const CP_STALE_CLAIM_MS = 10 * 60_000;
 const CP_LOCK_AFTER = 8;
 const CP_LOCK_MS = 15 * 60_000;
 const CP_EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+// A brand or coach name is written into every client page (HTML and script text). Only letters, digits, spaces and
+// . & + - ! are kept as typed; a straight apostrophe becomes a typographic one, which cannot end a quoted string.
+const CP_SAFE_NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} .&+\-!\u2019]{0,59}$/u;
+function cpSafeName(raw: unknown, max: number): string | null {
+  const s = String(raw ?? '').replace(/\s+/g, ' ').trim().replace(/['\u2018\u02BC`]/g, '\u2019');
+  return s.length >= 1 && s.length <= max && CP_SAFE_NAME_RE.test(s) ? s : null;
+}
 const CP_FORM_KEYS = ['firstName', 'lastName', 'sex', 'age', 'heightCm', 'weightKg', 'goalWeightKg', 'goal', 'activity', 'training',
   'menu', 'mealsPerDay', 'weeks', 'allergies', 'kcal', 'proteinG', 'startDate', 'diet', 'likes', 'avoid'];
 // Words in a client's own writing -> the plan engine's food keys (same table as engine.py FOOD_WORDS; a test keeps them equal).
@@ -4569,12 +4588,12 @@ async function cpOwnClient(coach: any, storageKey: unknown): Promise<any | null>
 // ── owner (Omar) ────────────────────────────────────────────────────────────
 async function cpCoachCreate(body: any) {
   if (!verifyCoachToken(body?.coachToken)) return err('unauthorized');
-  const name = String(body?.name ?? '').trim();
-  const brand = String(body?.brand ?? '').trim();
+  const name = cpSafeName(body?.name, 60) ?? '';
+  const brand = String(body?.brand ?? '').trim() ? (cpSafeName(body?.brand, 40) ?? '\u0000') : '';
   const email = String(body?.email ?? '').trim().toLowerCase();
   const slug = cpSlug(body?.slug || name.split(/\s+/)[0]).replace(/_/g, '').slice(0, 16);
-  if (!name || name.length > 60) return err('bad_name');
-  if (brand.length > 40) return err('bad_brand');
+  if (!name) return err('bad_name');
+  if (brand === '\u0000') return err('bad_brand');
   if (!CP_EMAIL_RE.test(email)) return err('bad_email');
   if (!/^[a-z0-9]{2,16}$/.test(slug)) return err('bad_slug');
   const limit = body?.clientLimit === undefined ? 25 : Number(body.clientLimit);
@@ -4669,7 +4688,7 @@ async function cpLogin(body: any) {
   if (!c || !c.password_hash || !c.password_salt) { await cpPasswordHash(password, '00'); return err('bad_login'); }
   if (c.locked_until && Date.parse(c.locked_until) > Date.now()) return err('locked', { until: c.locked_until });
   if (!cpSameHex(await cpPasswordHash(password, c.password_salt), c.password_hash)) {
-    const fails = Number(c.failed_logins ?? 0) + 1;
+    const fails = (c.locked_until ? 0 : Number(c.failed_logins ?? 0)) + 1;       // a lock that has run out starts the count again
     await admin.from('coaches').update({
       failed_logins: fails, locked_until: fails >= CP_LOCK_AFTER ? new Date(Date.now() + CP_LOCK_MS).toISOString() : null,
     }).eq('id', c.id);
@@ -4758,8 +4777,10 @@ async function cpQueueNewClient(coach: any, form: Record<string, unknown>, intak
   if (clash) return { ok: false, error: 'client_exists', extra: { detail: 'You already have a client with this name. Add or change the last name, or update their plan from their page.' } };
   const { data: mine } = await admin.from('clients').select('id').eq('coach_id', coach.id);
   if ((mine ?? []).length >= Number(coach.client_limit ?? 0)) return { ok: false, error: 'client_limit', extra: { limit: coach.client_limit } };
-  const { data: open } = await admin.from('plan_builds').select('id, storage_key, status').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
-  if ((open ?? []).length >= (opts.maxOpen ?? (fromForm ? CP_MAX_OPEN_FORM_BUILDS : CP_MAX_OPEN_BUILDS))) return { ok: false, error: 'too_many_open_builds' };
+  const { data: open } = await admin.from('plan_builds').select('id, storage_key, status, from_form').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
+  // sign-ups and the coach's own plans have separate room: a flood of sign-ups can never stop the coach building
+  const sameKind = (open ?? []).filter((b: any) => !!b.from_form === !!fromForm).length;
+  if (sameKind >= (opts.maxOpen ?? (fromForm ? CP_MAX_OPEN_FORM_BUILDS : CP_MAX_OPEN_BUILDS))) return { ok: false, error: 'too_many_open_builds' };
   if ((open ?? []).some((b: any) => b.storage_key === storageKey)) return { ok: false, error: 'build_in_progress' };
   if (fromForm) {                                        // a sign-up form never starts a second plan for a name already waiting for review
     const { data: waiting } = await admin.from('plan_builds').select('id').eq('coach_id', coach.id).eq('storage_key', storageKey).in('status', ['built', 'failed']);
@@ -4832,8 +4853,8 @@ async function cpBuildCreate(body: any) {
     const q = await cpQueueNewClient(coach, form, body?.intakeId ?? null, false);
     return q.ok ? ok({ buildId: q.buildId, storageKey: q.storageKey }) : err(q.error, q.extra);
   }
-  const { data: open } = await admin.from('plan_builds').select('id, storage_key, status').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
-  if ((open ?? []).length >= CP_MAX_OPEN_BUILDS) return err('too_many_open_builds');
+  const { data: open } = await admin.from('plan_builds').select('id, storage_key, status, from_form').eq('coach_id', coach.id).in('status', ['queued', 'building', 'publishing']);
+  if ((open ?? []).filter((b: any) => !b.from_form).length >= CP_MAX_OPEN_BUILDS) return err('too_many_open_builds');
   if ((open ?? []).some((b: any) => b.storage_key === storageKey)) return err('build_in_progress');
   const { data: row, error } = await admin.from('plan_builds')
     .insert({ coach_id: coach.id, storage_key: storageKey, is_update: isUpdate, form, status: 'queued' }).select('id').single();
@@ -5158,8 +5179,8 @@ async function cpSettingsSave(body: any) {
   if (!coach) return err('unauthorized');
   const patch: Record<string, unknown> = {};
   if (body?.brand !== undefined) {
-    const brand = String(body.brand ?? '').replace(/\s+/g, ' ').trim();
-    if (!brand || brand.length > 40 || /[<>"]/.test(brand)) return err('bad_brand');
+    const brand = cpSafeName(body.brand, 40);
+    if (!brand) return err('bad_brand', { detail: 'Use letters, numbers, spaces and . & + - ! only, up to 40 characters.' });
     patch.brand = brand;
   }
   if (body?.accent !== undefined) {
