@@ -28,9 +28,15 @@
   "chicken": "Chicken",
   "steak": "Steak",
   "beef_mince": "Beef mince",
+  "salmon": "Salmon",
+  "white_fish": "White fish",
   "tuna": "Tuna",
   "prawns": "Prawns",
   "eggs": "Eggs",
+  "halloumi": "Halloumi",
+  "cheese": "Cheese",
+  "beans": "Black beans",
+  "edamame": "Edamame",
   "rice": "Rice",
   "potato": "Potato",
   "sweet_potato": "Sweet potato",
@@ -40,27 +46,35 @@
   "bread": "Bread",
   "wraps": "Wraps",
   "tacos": "Corn tortillas",
-  "oats": "Oats",
+  "oats": "Oats and cereal",
   "yoghurt": "Yoghurt",
   "milk": "Milk",
   "protein_powder": "Protein powder",
   "peanut_butter": "Peanut butter",
-  "nuts": "Nuts",
+  "nuts": "Nuts and seeds",
+  "pesto": "Pesto",
+  "hummus": "Hummus",
   "avocado": "Avocado",
   "banana": "Banana",
+  "apple": "Apple",
   "berries": "Berries",
   "broccoli": "Broccoli",
   "mixed_veg": "Mixed vegetables",
   "green_beans": "Green beans",
+  "peas": "Peas",
   "spinach": "Spinach",
-  "tomato": "Tomato",
-  "honey": "Honey"
+  "salad": "Salad (lettuce, cucumber, capsicum)",
+  "tomato": "Tomato and salsa",
+  "honey": "Honey",
+  "soy_sauce": "Soy sauce"
  },
  "diets": {
   "any": "Eats everything",
   "no_red_meat": "No red meat",
-  "no_seafood": "No seafood",
-  "no_red_meat_no_seafood": "Chicken only (no red meat, no seafood)"
+  "no_seafood": "No fish or seafood",
+  "no_red_meat_no_seafood": "Chicken only (no red meat, no seafood)",
+  "pescatarian": "Pescatarian (fish, no meat)",
+  "vegetarian": "Vegetarian (eggs and dairy, no meat or fish)"
  },
  "foodWords": [
   [
@@ -119,15 +133,31 @@
    ]
   ],
   [
-   "seafood|fish",
+   "seafood",
    [
+    "salmon",
+    "white_fish",
     "tuna",
     "prawns"
    ]
   ],
   [
+   "salmon",
+   [
+    "salmon"
+   ]
+  ],
+  [
    "tuna",
    [
+    "tuna"
+   ]
+  ],
+  [
+   "fish",
+   [
+    "salmon",
+    "white_fish",
     "tuna"
    ]
   ],
@@ -168,7 +198,7 @@
    ]
   ],
   [
-   "bread|toast|sourdough",
+   "bread|toast|sourdough|bagel|bun",
    [
     "bread"
    ]
@@ -186,9 +216,63 @@
    ]
   ],
   [
-   "oat|porridge|muesli",
+   "oat|porridge|muesli|cereal|weet",
    [
     "oats"
+   ]
+  ],
+  [
+   "halloumi",
+   [
+    "halloumi"
+   ]
+  ],
+  [
+   "cheese|feta",
+   [
+    "cheese"
+   ]
+  ],
+  [
+   "hummus|hommus",
+   [
+    "hummus"
+   ]
+  ],
+  [
+   "pesto",
+   [
+    "pesto"
+   ]
+  ],
+  [
+   "edamame",
+   [
+    "edamame"
+   ]
+  ],
+  [
+   "black bean|beans",
+   [
+    "beans"
+   ]
+  ],
+  [
+   "peas",
+   [
+    "peas"
+   ]
+  ],
+  [
+   "apple",
+   [
+    "apple"
+   ]
+  ],
+  [
+   "salad|lettuce|cucumber|capsicum",
+   [
+    "salad"
    ]
   ],
   [
@@ -208,7 +292,9 @@
    [
     "yoghurt",
     "milk",
-    "protein_powder"
+    "protein_powder",
+    "cheese",
+    "halloumi"
    ]
   ],
   [
@@ -254,7 +340,7 @@
    ]
   ],
   [
-   "tomato",
+   "tomato|salsa",
    [
     "tomato"
    ]
@@ -318,6 +404,23 @@
    ],
    "halal": true,
    "contains": []
+  },
+  "vegetarian": {
+   "label": "Vegetarian (eggs and dairy)",
+   "feeds": [
+    3,
+    4
+   ],
+   "halal": true,
+   "contains": [
+    "dairy",
+    "egg",
+    "gluten",
+    "peanut",
+    "sesame",
+    "soy",
+    "tree_nut"
+   ]
   }
  },
  "kcal": [

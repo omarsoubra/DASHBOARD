@@ -441,7 +441,7 @@ async function buildAndPublish(coach, form, storageKey) {
   // what the client eats
   const OPT = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'coach', 'options.json'), 'utf8'));
   t('the server reads food words the same way the plan engine does', JSON.stringify(M.CP_FOOD_WORDS) === JSON.stringify(OPT.foodWords) && M.CP_FOOD_WORDS.every((w) => w[1].every((k) => OPT.foods[k])));
-  t('free writing becomes food ticks: sweet potato is not potato, peanut butter is not nuts', JSON.stringify(M.cpFoodKeys('No seafood, hate broccoli & sweet potato')) === JSON.stringify(['sweet_potato', 'tuna', 'prawns', 'broccoli'])
+  t('free writing becomes food ticks: sweet potato is not potato, peanut butter is not nuts', JSON.stringify(M.cpFoodKeys('No seafood, hate broccoli & sweet potato')) === JSON.stringify(['sweet_potato', 'salmon', 'white_fish', 'tuna', 'prawns', 'broccoli'])
     && JSON.stringify(M.cpFoodKeys('peanut butter')) === JSON.stringify(['peanut_butter']) && M.cpFoodKeys('nothing really').length === 0, M.cpFoodKeys('No seafood, hate broccoli & sweet potato'));
   const itf = M.cpIntakeToForm({ ...ANS, foods: 'tuna and eggs', likes: 'steak, rice, eggs' });
   t('a sign-up\'s food answers pre-fill the plan; a food is never on both lists', JSON.stringify(itf.avoid) === JSON.stringify(['tuna', 'eggs']) && JSON.stringify(itf.likes) === JSON.stringify(['steak', 'rice']), itf);
